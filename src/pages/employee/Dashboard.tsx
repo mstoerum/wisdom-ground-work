@@ -29,6 +29,25 @@ const EmployeeDashboard = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
+    // Check for active conversation to resume
+    const { data: activeSession } = await supabase
+      .from("conversation_sessions")
+      .select("id, survey_id, initial_mood, surveys(consent_config, first_message)")
+      .eq("employee_id", user.id)
+      .eq("status", "active")
+      .maybeSingle();
+
+    if (activeSession) {
+      // Resume existing conversation
+      setSurveyId(activeSession.survey_id);
+      setSurveyDetails(activeSession.surveys);
+      setMood(activeSession.initial_mood || 50);
+      // Skip consent and mood selection, go straight to chat
+      setStep("chat");
+      return;
+    }
+
+    // Look for new pending surveys
     const { data: assignments } = await supabase
       .from("survey_assignments")
       .select("id, survey_id, surveys(id, consent_config, first_message)")
@@ -69,8 +88,8 @@ const EmployeeDashboard = () => {
     setStep("closing");
   };
 
-  const handleComplete = async () => {
-    await endConversation(mood);
+  const handleComplete = async (finalMood: number) => {
+    await endConversation(finalMood);
     
     // Mark assignment as completed
     if (assignmentId) {
@@ -154,7 +173,7 @@ const EmployeeDashboard = () => {
           )}
 
           {step === "closing" && (
-            <ClosingRitual onComplete={handleComplete} />
+            <ClosingRitual initialMood={mood} onComplete={handleComplete} />
           )}
 
           {step === "complete" && (

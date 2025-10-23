@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ConversationBubble } from "./ConversationBubble";
 import { Send, Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
@@ -24,7 +25,15 @@ export const ChatInterface = ({ conversationId, onComplete }: ChatInterfaceProps
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const loadFirstMessage = async () => {
+    const loadConversation = async () => {
+      // Load existing messages first
+      const { data: existingResponses } = await supabase
+        .from("responses")
+        .select("content, ai_response, created_at")
+        .eq("conversation_session_id", conversationId)
+        .order("created_at", { ascending: true });
+
+      // Get first message
       const { data: session } = await supabase
         .from("conversation_sessions")
         .select("surveys(first_message)")
@@ -36,9 +45,19 @@ export const ChatInterface = ({ conversationId, onComplete }: ChatInterfaceProps
         content: session?.surveys?.first_message || "Hi! I'm here to listen. How are you feeling about work today?",
         timestamp: new Date()
       };
-      setMessages([greeting]);
+
+      // Reconstruct message history if resuming
+      if (existingResponses && existingResponses.length > 0) {
+        const history = existingResponses.flatMap(r => [
+          { role: "user" as const, content: r.content, timestamp: new Date(r.created_at) },
+          { role: "assistant" as const, content: r.ai_response || "", timestamp: new Date(r.created_at) }
+        ]);
+        setMessages([greeting, ...history]);
+      } else {
+        setMessages([greeting]);
+      }
     };
-    loadFirstMessage();
+    loadConversation();
   }, [conversationId]);
 
   useEffect(() => {
@@ -109,8 +128,25 @@ export const ChatInterface = ({ conversationId, onComplete }: ChatInterfaceProps
     }
   };
 
+  const userMessageCount = messages.filter(m => m.role === "user").length;
+  const estimatedTotal = 8;
+  const progressPercent = Math.min((userMessageCount / estimatedTotal) * 100, 100);
+
   return (
     <div className="flex flex-col h-[600px] bg-card rounded-lg border border-border/50">
+      {/* Progress Indicator */}
+      <div className="p-4 border-b border-border/50">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm text-muted-foreground">
+            {userMessageCount > 0 && userMessageCount < estimatedTotal && `Question ${userMessageCount} of ~${estimatedTotal}`}
+            {userMessageCount >= 6 && userMessageCount < estimatedTotal && " • Almost done!"}
+            {userMessageCount >= estimatedTotal && "Wrapping up..."}
+          </span>
+          <span className="text-sm font-medium">{Math.round(progressPercent)}%</span>
+        </div>
+        <Progress value={progressPercent} className="h-1.5" />
+      </div>
+      
       <ScrollArea className="flex-1 p-6">
         <div className="space-y-4">
           {messages.map((message, index) => (

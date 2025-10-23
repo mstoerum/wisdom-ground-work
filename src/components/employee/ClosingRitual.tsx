@@ -1,12 +1,34 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Heart } from "lucide-react";
+import { CheckCircle2, Heart, TrendingUp, Minus } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
 
 interface ClosingRitualProps {
-  onComplete: () => void;
+  initialMood: number;
+  onComplete: (finalMood: number) => void;
 }
 
-export const ClosingRitual = ({ onComplete }: ClosingRitualProps) => {
+export const ClosingRitual = ({ initialMood, onComplete }: ClosingRitualProps) => {
+  const [finalMood, setFinalMood] = useState(50);
+
+  const moodLabels = [
+    { value: 0, label: "Very Low", emoji: "😢" },
+    { value: 25, label: "Low", emoji: "😕" },
+    { value: 50, label: "Neutral", emoji: "😐" },
+    { value: 75, label: "Good", emoji: "🙂" },
+    { value: 100, label: "Great", emoji: "😊" }
+  ];
+
+  const getCurrentMood = (value: number) => {
+    return moodLabels.reduce((prev, curr) => 
+      Math.abs(curr.value - value) < Math.abs(prev.value - value) ? curr : prev
+    );
+  };
+
+  const currentMood = getCurrentMood(finalMood);
+  const moodChange = finalMood - initialMood;
+
   return (
     <Card className="bg-gradient-to-br from-card to-card/50 border-border/50">
       <CardHeader>
@@ -16,6 +38,40 @@ export const ClosingRitual = ({ onComplete }: ClosingRitualProps) => {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Final Mood Selection */}
+        <div className="bg-muted/50 rounded-lg p-6 space-y-4">
+          <h3 className="font-medium text-center">How are you feeling now?</h3>
+          <div className="text-center">
+            <div className="text-6xl mb-2">{currentMood.emoji}</div>
+            <p className="text-lg font-medium">{currentMood.label}</p>
+          </div>
+          <Slider
+            value={[finalMood]}
+            onValueChange={(value) => setFinalMood(value[0])}
+            max={100}
+            step={1}
+            className="w-full"
+          />
+          
+          {/* Mood Change Indicator */}
+          {moodChange !== 0 && (
+            <div className="text-center pt-2">
+              {moodChange > 0 ? (
+                <div className="flex items-center justify-center gap-2 text-success">
+                  <TrendingUp className="h-4 w-4" />
+                  <span className="text-sm font-medium">
+                    Your mood improved by +{moodChange} points! 🎉
+                  </span>
+                </div>
+              ) : moodChange < 0 ? (
+                <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                  <Minus className="h-4 w-4" />
+                  <span className="text-sm">Thank you for sharing honestly</span>
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
         <div className="space-y-3">
           <p className="text-foreground">
             Your feedback has been securely recorded and will help us create a better workplace.
@@ -39,7 +95,7 @@ export const ClosingRitual = ({ onComplete }: ClosingRitualProps) => {
           </div>
         </div>
 
-        <Button onClick={onComplete} className="w-full" size="lg">
+        <Button onClick={() => onComplete(finalMood)} className="w-full" size="lg">
           Complete Session
         </Button>
       </CardContent>
