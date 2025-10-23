@@ -6,6 +6,120 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Verify user authentication
+ */
+const verifyAuth = async (supabase: any, authHeader: string) => {
+  const token = authHeader.replace('Bearer ', '');
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+
+  if (error || !user) {
+    throw new Error('Unauthorized');
+  }
+
+  return user;
+};
+
+/**
+ * Verify user has HR admin role
+ */
+const verifyHRAdmin = async (supabase: any, userId: string) => {
+  const { data: roles } = await supabase
+    .from('user_roles')
+    .select('role')
+    .eq('user_id', userId);
+
+  const isHRAdmin = roles?.some((r: any) => r.role === 'hr_admin');
+  
+  if (!isHRAdmin) {
+    throw new Error('Forbidden: HR admin access required');
+  }
+};
+
+/**
+ * Fetch survey by ID and validate status
+ */
+const fetchSurvey = async (supabase: any, surveyId: string) => {
+  const { data: survey, error } = await supabase
+    .from('surveys')
+    .select('*')
+    .eq('id', surveyId)
+    .single();
+
+  if (error || !survey) {
+    throw new Error('Survey not found');
+  }
+
+  if (survey.status !== 'draft') {
+    throw new Error('Survey must be in draft status to deploy');
+  }
+
+  return survey;
+};
+
+/**
+ * Get target employee IDs based on survey configuration
+ */
+const getTargetEmployees = async (supabase: any, schedule: any): Promise<string[]> => {
+  const targetType = schedule.target_type;
+  const targetDepartments = schedule.target_departments || [];
+  const targetEmployees = schedule.target_employees || [];
+
+  if (targetType === 'all') {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id');
+    return profiles?.map((p: any) => p.id) || [];
+  }
+  
+  if (targetType === 'department') {
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id')
+      .in('department', targetDepartments);
+    return profiles?.map((p: any) => p.id) || [];
+  }
+  
+  if (targetType === 'manual') {
+    return targetEmployees;
+  }
+
+  return [];
+};
+
+/**
+ * Create survey assignments for target employees
+ */
+const createAssignments = async (supabase: any, surveyId: string, employeeIds: string[]) => {
+  const assignments = employeeIds.map(employeeId => ({
+    survey_id: surveyId,
+    employee_id: employeeId,
+    status: 'pending',
+  }));
+
+  const { error } = await supabase
+    .from('survey_assignments')
+    .insert(assignments);
+
+  if (error) {
+    throw new Error('Failed to create assignments');
+  }
+};
+
+/**
+ * Update survey status to active
+ */
+const activateSurvey = async (supabase: any, surveyId: string) => {
+  const { error } = await supabase
+    .from('surveys')
+    .update({ status: 'active', updated_at: new Date().toISOString() })
+    .eq('id', surveyId);
+
+  if (error) {
+    throw new Error('Failed to update survey status');
+  }
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -17,32 +131,17 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Verify authentication
-    const authHeader = req.headers.get('Authorization')!;
-    const token = authHeader.replace('Bearer ', '');
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-
-    if (authError || !user) {
-      console.error('Authentication failed:', authError);
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('Missing authorization header');
     }
+
+    const user = await verifyAuth(supabase, authHeader);
+    console.log('User authenticated:', user.id);
 
     // Verify HR admin role
-    const { data: roles } = await supabase
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', user.id);
-
-    const isHRAdmin = roles?.some(r => r.role === 'hr_admin');
-    if (!isHRAdmin) {
-      console.error('User does not have hr_admin role');
-      return new Response(JSON.stringify({ error: 'Forbidden: HR admin access required' }), {
-        status: 403,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    await verifyHRAdmin(supabase, user.id);
+    console.log('HR admin verified');
 
     const { survey_id } = await req.json();
 
@@ -55,51 +154,13 @@ serve(async (req) => {
 
     console.log('Deploying survey:', survey_id);
 
-    // Fetch survey details
-    const { data: survey, error: surveyError } = await supabase
-      .from('surveys')
-      .select('*')
-      .eq('id', survey_id)
-      .single();
+    // Fetch and validate survey
+    const survey = await fetchSurvey(supabase, survey_id);
+    console.log('Survey fetched:', survey.title);
 
-    if (surveyError || !survey) {
-      console.error('Survey not found:', surveyError);
-      return new Response(JSON.stringify({ error: 'Survey not found' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (survey.status !== 'draft') {
-      return new Response(JSON.stringify({ error: 'Survey must be in draft status to deploy' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Parse schedule config
+    // Get target employees
     const schedule = survey.schedule as any;
-    const targetType = schedule.target_type;
-    const targetDepartments = schedule.target_departments || [];
-    const targetEmployees = schedule.target_employees || [];
-
-    // Determine target employees
-    let employeeIds: string[] = [];
-
-    if (targetType === 'all') {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id');
-      employeeIds = profiles?.map(p => p.id) || [];
-    } else if (targetType === 'department') {
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id')
-        .in('department', targetDepartments);
-      employeeIds = profiles?.map(p => p.id) || [];
-    } else if (targetType === 'manual') {
-      employeeIds = targetEmployees;
-    }
+    const employeeIds = await getTargetEmployees(supabase, schedule);
 
     if (employeeIds.length === 0) {
       return new Response(JSON.stringify({ error: 'No employees targeted' }), {
@@ -111,37 +172,10 @@ serve(async (req) => {
     console.log(`Creating assignments for ${employeeIds.length} employees`);
 
     // Create survey assignments
-    const assignments = employeeIds.map(employeeId => ({
-      survey_id,
-      employee_id: employeeId,
-      status: 'pending',
-    }));
+    await createAssignments(supabase, survey_id, employeeIds);
 
-    const { error: assignmentError } = await supabase
-      .from('survey_assignments')
-      .insert(assignments);
-
-    if (assignmentError) {
-      console.error('Failed to create assignments:', assignmentError);
-      return new Response(JSON.stringify({ error: 'Failed to create assignments' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Update survey status to active
-    const { error: updateError } = await supabase
-      .from('surveys')
-      .update({ status: 'active', updated_at: new Date().toISOString() })
-      .eq('id', survey_id);
-
-    if (updateError) {
-      console.error('Failed to update survey status:', updateError);
-      return new Response(JSON.stringify({ error: 'Failed to update survey status' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // Activate survey
+    await activateSurvey(supabase, survey_id);
 
     console.log(`Survey deployed successfully with ${employeeIds.length} assignments`);
 
@@ -156,11 +190,18 @@ serve(async (req) => {
     );
   } catch (error) {
     console.error('Error in deploy-survey function:', error);
+    
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    const statusCode = errorMessage.includes('Unauthorized') ? 401 
+      : errorMessage.includes('Forbidden') ? 403
+      : errorMessage.includes('not found') ? 404
+      : errorMessage.includes('required') || errorMessage.includes('No employees') || errorMessage.includes('must be') ? 400
+      : 500;
+
     return new Response(
       JSON.stringify({ error: errorMessage }),
       {
-        status: 500,
+        status: statusCode,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );

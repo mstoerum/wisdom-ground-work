@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ConversationBubble } from "./ConversationBubble";
@@ -20,6 +20,10 @@ interface ChatInterfaceProps {
   onSaveAndExit: () => void;
 }
 
+// Constants
+const ESTIMATED_TOTAL_QUESTIONS = 8;
+const PROGRESS_COMPLETE_THRESHOLD = 100;
+
 export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -27,47 +31,51 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: Cha
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    const loadConversation = async () => {
-      // Load existing messages first
-      const { data: existingResponses } = await supabase
-        .from("responses")
-        .select("content, ai_response, created_at")
-        .eq("conversation_session_id", conversationId)
-        .order("created_at", { ascending: true });
+  // Load conversation history on mount
+  const loadConversation = useCallback(async () => {
+    // Fetch existing responses
+    const { data: existingResponses } = await supabase
+      .from("responses")
+      .select("content, ai_response, created_at")
+      .eq("conversation_session_id", conversationId)
+      .order("created_at", { ascending: true });
 
-      // Get first message
-      const { data: session } = await supabase
-        .from("conversation_sessions")
-        .select("surveys(first_message)")
-        .eq("id", conversationId)
-        .single();
+    // Fetch first message from survey
+    const { data: session } = await supabase
+      .from("conversation_sessions")
+      .select("surveys(first_message)")
+      .eq("id", conversationId)
+      .single();
 
-      const greeting: Message = {
-        role: "assistant",
-        content: session?.surveys?.first_message || "Hi! I'm here to listen. How are you feeling about work today?",
-        timestamp: new Date()
-      };
-
-      // Reconstruct message history if resuming
-      if (existingResponses && existingResponses.length > 0) {
-        const history = existingResponses.flatMap(r => [
-          { role: "user" as const, content: r.content, timestamp: new Date(r.created_at) },
-          { role: "assistant" as const, content: r.ai_response || "", timestamp: new Date(r.created_at) }
-        ]);
-        setMessages([greeting, ...history]);
-      } else {
-        setMessages([greeting]);
-      }
+    const greeting: Message = {
+      role: "assistant",
+      content: session?.surveys?.first_message || "Hi! I'm here to listen. How are you feeling about work today?",
+      timestamp: new Date()
     };
-    loadConversation();
+
+    // Reconstruct message history if resuming
+    if (existingResponses && existingResponses.length > 0) {
+      const history = existingResponses.flatMap(r => [
+        { role: "user" as const, content: r.content, timestamp: new Date(r.created_at) },
+        { role: "assistant" as const, content: r.ai_response || "", timestamp: new Date(r.created_at) }
+      ]);
+      setMessages([greeting, ...history]);
+    } else {
+      setMessages([greeting]);
+    }
   }, [conversationId]);
 
+  useEffect(() => {
+    loadConversation();
+  }, [loadConversation]);
+
+  // Auto-scroll to bottom when messages change
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = async () => {
+  // Send message to AI
+  const sendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
@@ -124,11 +132,9 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: Cha
 
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Check if conversation should complete
+      // Auto-complete conversation after sufficient exchanges
       if (data.shouldComplete) {
-        setTimeout(() => {
-          onComplete();
-        }, 2000);
+        setTimeout(onComplete, 2000);
       }
     } catch (error) {
       console.error("Chat error:", error);
@@ -138,14 +144,15 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: Cha
         variant: "destructive",
       });
       
-      // Remove failed user message and restore input
+      // Restore state on error
       setMessages(prev => prev.slice(0, -1));
       setInput(currentInput);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [input, isLoading, conversationId, messages, onComplete, toast]);
 
+  // Handle Enter key to send message
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -153,19 +160,18 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: Cha
     }
   };
 
-  const handleSaveAndExit = () => {
+  // Save and exit conversation
+  const handleSaveAndExit = useCallback(() => {
     toast({
       title: "Progress saved",
       description: "You can resume this conversation anytime.",
     });
-    setTimeout(() => {
-      onSaveAndExit();
-    }, 1000);
-  };
+    setTimeout(onSaveAndExit, 1000);
+  }, [onSaveAndExit, toast]);
 
+  // Calculate conversation progress
   const userMessageCount = messages.filter(m => m.role === "user").length;
-  const estimatedTotal = 8;
-  const progressPercent = Math.min((userMessageCount / estimatedTotal) * 100, 100);
+  const progressPercent = Math.min((userMessageCount / ESTIMATED_TOTAL_QUESTIONS) * 100, PROGRESS_COMPLETE_THRESHOLD);
 
   return (
     <div className="flex flex-col h-[600px] bg-card rounded-lg border border-border/50">
@@ -174,9 +180,9 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: Cha
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
-              {userMessageCount > 0 && userMessageCount < estimatedTotal && `Question ${userMessageCount} of ~${estimatedTotal}`}
-              {userMessageCount >= 6 && userMessageCount < estimatedTotal && " • Almost done!"}
-              {userMessageCount >= estimatedTotal && "Wrapping up..."}
+              {userMessageCount > 0 && userMessageCount < ESTIMATED_TOTAL_QUESTIONS && `Question ${userMessageCount} of ~${ESTIMATED_TOTAL_QUESTIONS}`}
+              {userMessageCount >= 6 && userMessageCount < ESTIMATED_TOTAL_QUESTIONS && " • Almost done!"}
+              {userMessageCount >= ESTIMATED_TOTAL_QUESTIONS && "Wrapping up..."}
             </span>
           </div>
           <div className="flex items-center gap-2">

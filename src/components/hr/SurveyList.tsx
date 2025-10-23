@@ -29,11 +29,27 @@ interface SurveyListProps {
   status?: 'active' | 'draft' | 'scheduled' | 'completed';
 }
 
+type SurveyStatus = 'active' | 'draft' | 'scheduled' | 'completed' | 'archived';
+
+// Helper: Get color class for survey status badge
+const getStatusColor = (status: SurveyStatus): string => {
+  const colorMap: Record<SurveyStatus, string> = {
+    active: 'bg-green-500/10 text-green-500',
+    draft: 'bg-gray-500/10 text-gray-500',
+    scheduled: 'bg-blue-500/10 text-blue-500',
+    completed: 'bg-purple-500/10 text-purple-500',
+    archived: 'bg-gray-500/10 text-gray-500',
+  };
+  
+  return colorMap[status] || colorMap.draft;
+};
+
 export const SurveyList = ({ status }: SurveyListProps) => {
   const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [surveyToDelete, setSurveyToDelete] = useState<string | null>(null);
   
+  // Fetch surveys with optional status filter
   const { data: surveys, isLoading, refetch } = useQuery({
     queryKey: ['surveys', status],
     queryFn: async () => {
@@ -52,16 +68,7 @@ export const SurveyList = ({ status }: SurveyListProps) => {
     },
   });
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-500/10 text-green-500';
-      case 'draft': return 'bg-gray-500/10 text-gray-500';
-      case 'scheduled': return 'bg-blue-500/10 text-blue-500';
-      case 'completed': return 'bg-purple-500/10 text-purple-500';
-      default: return 'bg-gray-500/10 text-gray-500';
-    }
-  };
-
+  // Delete draft survey
   const handleDeleteDraft = async () => {
     if (!surveyToDelete) return;
 
@@ -82,6 +89,48 @@ export const SurveyList = ({ status }: SurveyListProps) => {
       setDeleteDialogOpen(false);
       setSurveyToDelete(null);
     }
+  };
+
+  // Close active survey
+  const handleCloseSurvey = async (surveyId: string) => {
+    if (!window.confirm("Close this survey? No new responses will be accepted.")) return;
+    
+    await supabase.from('surveys').update({ status: 'completed' }).eq('id', surveyId);
+    refetch();
+    toast.success("Survey closed successfully");
+  };
+
+  // Archive completed survey
+  const handleArchiveSurvey = async (surveyId: string) => {
+    if (!window.confirm("Archive this survey? It will be hidden from the main list.")) return;
+    
+    await supabase.from('surveys').update({ status: 'archived' }).eq('id', surveyId);
+    refetch();
+    toast.success("Survey archived");
+  };
+
+  // Duplicate survey
+  const handleDuplicateSurvey = async (surveyId: string) => {
+    const { data } = await supabase.from('surveys').select('*').eq('id', surveyId).single();
+    if (data) {
+      const { data: newSurvey } = await supabase.from('surveys').insert({
+        ...data,
+        id: undefined,
+        title: `${data.title} - Copy`,
+        status: 'draft',
+        created_at: undefined,
+      }).select().single();
+      
+      if (newSurvey) {
+        navigate(`/hr/create-survey?draft_id=${newSurvey.id}`);
+      }
+    }
+  };
+
+  // Confirm draft deletion
+  const confirmDeleteDraft = (surveyId: string) => {
+    setSurveyToDelete(surveyId);
+    setDeleteDialogOpen(true);
   };
 
   if (isLoading) {
@@ -128,10 +177,7 @@ export const SurveyList = ({ status }: SurveyListProps) => {
                         Continue Editing
                       </DropdownMenuItem>
                       <DropdownMenuItem 
-                        onClick={() => {
-                          setSurveyToDelete(survey.id);
-                          setDeleteDialogOpen(true);
-                        }}
+                        onClick={() => confirmDeleteDraft(survey.id)}
                         className="text-destructive"
                       >
                         <Trash2 className="h-4 w-4 mr-2" />
@@ -146,44 +192,18 @@ export const SurveyList = ({ status }: SurveyListProps) => {
                         View Analytics
                       </DropdownMenuItem>
                       {survey.status === 'active' && (
-                        <DropdownMenuItem onClick={async () => {
-                          if (window.confirm("Close this survey? No new responses will be accepted.")) {
-                            await supabase.from('surveys').update({ status: 'completed' }).eq('id', survey.id);
-                            refetch();
-                            toast.success("Survey closed successfully");
-                          }
-                        }}>
+                        <DropdownMenuItem onClick={() => handleCloseSurvey(survey.id)}>
                           <Archive className="h-4 w-4 mr-2" />
                           Close Survey
                         </DropdownMenuItem>
                       )}
                       {survey.status === 'completed' && (
                         <>
-                          <DropdownMenuItem onClick={async () => {
-                            if (window.confirm("Archive this survey? It will be hidden from the main list.")) {
-                              await supabase.from('surveys').update({ status: 'archived' }).eq('id', survey.id);
-                              refetch();
-                              toast.success("Survey archived");
-                            }
-                          }}>
+                          <DropdownMenuItem onClick={() => handleArchiveSurvey(survey.id)}>
                             <Archive className="h-4 w-4 mr-2" />
                             Archive Survey
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={async () => {
-                            const { data } = await supabase.from('surveys').select('*').eq('id', survey.id).single();
-                            if (data) {
-                              const { data: newSurvey } = await supabase.from('surveys').insert({
-                                ...data,
-                                id: undefined,
-                                title: `${data.title} - Copy`,
-                                status: 'draft',
-                                created_at: undefined,
-                              }).select().single();
-                              if (newSurvey) {
-                                navigate(`/hr/create-survey?draft_id=${newSurvey.id}`);
-                              }
-                            }
-                          }}>
+                          <DropdownMenuItem onClick={() => handleDuplicateSurvey(survey.id)}>
                             <Edit className="h-4 w-4 mr-2" />
                             Duplicate Survey
                           </DropdownMenuItem>
@@ -197,7 +217,7 @@ export const SurveyList = ({ status }: SurveyListProps) => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center gap-2">
-              <Badge className={getStatusColor(survey.status || 'draft')}>
+              <Badge className={getStatusColor((survey.status || 'draft') as SurveyStatus)}>
                 {survey.status || 'draft'}
               </Badge>
               <div className="flex items-center gap-1 text-sm text-muted-foreground">

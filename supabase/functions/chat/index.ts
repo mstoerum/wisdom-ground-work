@@ -6,24 +6,207 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Constants
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 10;
+const MAX_MESSAGE_LENGTH = 2000;
+const CONVERSATION_COMPLETE_THRESHOLD = 8;
+const AI_MODEL = "google/gemini-2.5-flash";
+const AI_MODEL_LITE = "google/gemini-2.5-flash-lite";
+
 // Rate limiting map (simple in-memory, production should use Redis)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
+/**
+ * Check if user has exceeded rate limit
+ */
 const checkRateLimit = (userId: string): boolean => {
   const now = Date.now();
   const limit = rateLimitMap.get(userId);
   
   if (!limit || now > limit.resetTime) {
-    rateLimitMap.set(userId, { count: 1, resetTime: now + 60000 }); // 1 minute window
+    rateLimitMap.set(userId, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
     return true;
   }
   
-  if (limit.count >= 10) {
-    return false; // Max 10 requests per minute
+  if (limit.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
   }
   
   limit.count++;
   return true;
+};
+
+/**
+ * Validate and sanitize user input
+ */
+const validateInput = (conversationId: unknown, messages: unknown, lastContent: unknown) => {
+  if (!conversationId || typeof conversationId !== "string") {
+    throw new Error("Invalid conversationId");
+  }
+  if (!Array.isArray(messages) || messages.length === 0) {
+    throw new Error("Invalid messages array");
+  }
+  if (!lastContent || typeof lastContent !== "string") {
+    throw new Error("Invalid message content");
+  }
+  if (lastContent.length > MAX_MESSAGE_LENGTH) {
+    throw new Error("Message too long");
+  }
+};
+
+/**
+ * Build adaptive conversation context from previous responses
+ */
+const buildConversationContext = (previousResponses: any[], themes: any[]): string => {
+  if (!previousResponses || previousResponses.length === 0) return "";
+
+  const discussedThemes = new Set(
+    previousResponses
+      .filter(r => r.theme_id)
+      .map(r => themes?.find((t: any) => t.id === r.theme_id)?.name)
+      .filter(Boolean)
+  );
+  
+  const sentimentPattern = previousResponses
+    .slice(-3)
+    .map(r => r.sentiment)
+    .filter(Boolean);
+  
+  const lastSentiment = sentimentPattern[sentimentPattern.length - 1];
+  
+  return `
+CONVERSATION CONTEXT:
+- Topics already discussed: ${discussedThemes.size > 0 ? Array.from(discussedThemes).join(", ") : "None yet"}
+- Recent sentiment pattern: ${sentimentPattern.join(" → ")}
+- Exchange count: ${previousResponses.length}
+${previousResponses.length > 0 ? `- Key points mentioned earlier: "${previousResponses.slice(0, 2).map(r => r.content.substring(0, 60)).join('"; "')}"` : ""}
+
+ADAPTIVE INSTRUCTIONS:
+${lastSentiment === "negative" ? 
+  "- The employee is sharing challenges. Use empathetic, validating language. Acknowledge their feelings." : ""}
+${lastSentiment === "positive" ? 
+  "- The employee is positive. Great! Also gently explore if there are any challenges to ensure balanced feedback." : ""}
+${discussedThemes.size > 0 && discussedThemes.size < themes?.length ? 
+  `- Themes not yet covered: ${themes?.filter((t: any) => !Array.from(discussedThemes).includes(t.name)).map((t: any) => t.name).join(", ")}. Transition naturally to explore these.` : ""}
+${previousResponses.length >= 3 ? "- Reference earlier points when relevant to show you're listening and building on what they've shared." : ""}
+`;
+};
+
+/**
+ * Generate system prompt for empathetic AI conversation
+ */
+const getSystemPrompt = (conversationContext: string): string => {
+  return `You are a compassionate, empathetic AI assistant conducting a confidential employee feedback conversation. 
+
+Your goals:
+- Create a safe, non-judgmental space for honest feedback
+- Ask thoughtful follow-up questions to understand nuances
+- Show empathy and active listening
+- Guide conversation naturally through work experience, challenges, and suggestions
+- Keep responses warm, concise, and conversational (2-3 sentences max)
+- Probe deeper on important topics without being repetitive
+- Recognize emotional cues and respond appropriately
+- Reference earlier points naturally when building on topics
+
+Conversation flow:
+1. Start with open-ended questions about their current experience
+2. Explore challenges with curiosity and care
+3. Ask about positive aspects to balance the conversation
+4. Invite suggestions for improvement
+5. Naturally transition between themes after 3-4 exchanges on one topic
+6. Naturally conclude when sufficient depth is reached (after 8-12 exchanges)
+
+${conversationContext}
+
+Remember: Your tone should be warm, professional, and genuinely interested in understanding their perspective. Adapt your approach based on their sentiment and what they've already shared.`;
+};
+
+/**
+ * Call AI gateway with retry logic
+ */
+const callAI = async (apiKey: string, model: string, messages: any[], temperature: number, maxTokens: number): Promise<string> => {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature,
+      max_tokens: maxTokens,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    console.error("AI gateway error:", response.status, error);
+    throw new Error("Failed to get AI response");
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content;
+};
+
+/**
+ * Analyze sentiment of user message
+ */
+const analyzeSentiment = async (apiKey: string, userMessage: string): Promise<{ sentiment: string; score: number }> => {
+  const sentimentResponse = await callAI(
+    apiKey,
+    AI_MODEL,
+    [
+      { role: "system", content: "Analyze sentiment. Reply with only: positive, neutral, or negative" },
+      { role: "user", content: userMessage }
+    ],
+    0.3,
+    10
+  );
+
+  const sentiment = sentimentResponse.toLowerCase().trim();
+  const score = sentiment === "positive" ? 75 : sentiment === "negative" ? 25 : 50;
+  
+  return { sentiment, score };
+};
+
+/**
+ * Detect theme from user message
+ */
+const detectTheme = async (apiKey: string, userMessage: string, themes: any[]): Promise<string | null> => {
+  if (!themes || themes.length === 0) return null;
+
+  const themePrompt = `Classify this employee feedback into ONE of these themes:
+${themes.map(t => `- ${t.name}: ${t.description}`).join('\n')}
+
+Employee feedback: "${userMessage}"
+
+Reply with only the exact theme name.`;
+
+  const themeName = await callAI(apiKey, AI_MODEL_LITE, [{ role: "user", content: themePrompt }], 0.2, 20);
+  
+  const matchedTheme = themes.find(t => 
+    themeName.toLowerCase().includes(t.name.toLowerCase())
+  );
+  
+  return matchedTheme?.id || null;
+};
+
+/**
+ * Detect urgency in user message
+ */
+const detectUrgency = async (apiKey: string, userMessage: string): Promise<boolean> => {
+  const urgencyPrompt = `Analyze if this employee feedback indicates an URGENT issue requiring immediate HR attention. 
+Urgent issues include: harassment, safety concerns, severe mental health crisis, threats, discrimination, or illegal activity.
+
+Employee feedback: "${userMessage}"
+
+Reply with only: urgent OR not-urgent`;
+
+  const urgencyResponse = await callAI(apiKey, AI_MODEL, [{ role: "user", content: urgencyPrompt }], 0.1, 10);
+  
+  return urgencyResponse.toLowerCase().includes('urgent');
 };
 
 serve(async (req) => {
@@ -39,23 +222,10 @@ serve(async (req) => {
     }
 
     const { conversationId, messages } = await req.json();
+    const lastMessage = messages[messages.length - 1];
     
     // Input validation
-    if (!conversationId || typeof conversationId !== "string") {
-      throw new Error("Invalid conversationId");
-    }
-    if (!Array.isArray(messages) || messages.length === 0) {
-      throw new Error("Invalid messages array");
-    }
-    
-    // Sanitize user input
-    const lastMessage = messages[messages.length - 1];
-    if (!lastMessage.content || typeof lastMessage.content !== "string") {
-      throw new Error("Invalid message content");
-    }
-    if (lastMessage.content.length > 2000) {
-      throw new Error("Message too long");
-    }
+    validateInput(conversationId, messages, lastMessage.content);
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -122,182 +292,37 @@ serve(async (req) => {
       .limit(10);
 
     const turnCount = messages.filter((m: any) => m.role === "user").length;
-    const shouldComplete = turnCount >= 8;
+    const shouldComplete = turnCount >= CONVERSATION_COMPLETE_THRESHOLD;
 
-    // Build conversation context summary
-    let conversationContext = "";
-    if (previousResponses && previousResponses.length > 0) {
-      const discussedThemes = new Set(
-        previousResponses
-          .filter(r => r.theme_id)
-          .map(r => themes?.find((t: any) => t.id === r.theme_id)?.name)
-          .filter(Boolean)
-      );
-      
-      const sentimentPattern = previousResponses
-        .slice(-3)
-        .map(r => r.sentiment)
-        .filter(Boolean);
-      
-      conversationContext = `
-CONVERSATION CONTEXT:
-- Topics already discussed: ${discussedThemes.size > 0 ? Array.from(discussedThemes).join(", ") : "None yet"}
-- Recent sentiment pattern: ${sentimentPattern.join(" → ")}
-- Exchange count: ${previousResponses.length}
-${previousResponses.length > 0 ? `- Key points mentioned earlier: "${previousResponses.slice(0, 2).map(r => r.content.substring(0, 60)).join('"; "')}"` : ""}
+    // Build conversation context
+    const conversationContext = buildConversationContext(previousResponses || [], themes || []);
+    const systemPrompt = getSystemPrompt(conversationContext);
 
-ADAPTIVE INSTRUCTIONS:
-${sentimentPattern[sentimentPattern.length - 1] === "negative" ? 
-  "- The employee is sharing challenges. Use empathetic, validating language. Acknowledge their feelings." : ""}
-${sentimentPattern[sentimentPattern.length - 1] === "positive" ? 
-  "- The employee is positive. Great! Also gently explore if there are any challenges to ensure balanced feedback." : ""}
-${discussedThemes.size > 0 && discussedThemes.size < themeIds.length ? 
-  `- Themes not yet covered: ${themeIds.filter((id: any) => !Array.from(discussedThemes).includes(themes?.find((t: any) => t.id === id)?.name)).map((id: any) => themes?.find((t: any) => t.id === id)?.name).filter(Boolean).join(", ")}. Transition naturally to explore these.` : ""}
-${previousResponses.length >= 3 ? "- Reference earlier points when relevant to show you're listening and building on what they've shared." : ""}
-`;
-    }
-
-    // System prompt for empathetic conversational AI with adaptive behavior
-    const systemPrompt = `You are a compassionate, empathetic AI assistant conducting a confidential employee feedback conversation. 
-
-Your goals:
-- Create a safe, non-judgmental space for honest feedback
-- Ask thoughtful follow-up questions to understand nuances
-- Show empathy and active listening
-- Guide conversation naturally through work experience, challenges, and suggestions
-- Keep responses warm, concise, and conversational (2-3 sentences max)
-- Probe deeper on important topics without being repetitive
-- Recognize emotional cues and respond appropriately
-- Reference earlier points naturally when building on topics
-
-Conversation flow:
-1. Start with open-ended questions about their current experience
-2. Explore challenges with curiosity and care
-3. Ask about positive aspects to balance the conversation
-4. Invite suggestions for improvement
-5. Naturally transition between themes after 3-4 exchanges on one topic
-6. Naturally conclude when sufficient depth is reached (after 8-12 exchanges)
-
-${conversationContext}
-
-Remember: Your tone should be warm, professional, and genuinely interested in understanding their perspective. Adapt your approach based on their sentiment and what they've already shared.`;
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages,
-        ],
-        temperature: 0.8,
-        max_tokens: 200,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      console.error("AI gateway error:", response.status, error);
-      throw new Error("Failed to get AI response");
-    }
-
-    const data = await response.json();
-    const aiMessage = data.choices[0].message.content;
+    // Get AI response
+    const aiMessage = await callAI(
+      LOVABLE_API_KEY,
+      AI_MODEL,
+      [{ role: "system", content: systemPrompt }, ...messages],
+      0.8,
+      200
+    );
 
     // Analyze sentiment
-    const sentimentResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: "Analyze sentiment. Reply with only: positive, neutral, or negative" },
-          { role: "user", content: messages[messages.length - 1].content }
-        ],
-        temperature: 0.3,
-        max_tokens: 10,
-      }),
-    });
-
-    const sentimentData = await sentimentResponse.json();
-    const sentiment = sentimentData.choices[0].message.content.toLowerCase().trim();
-    const sentimentScore = sentiment === "positive" ? 75 : sentiment === "negative" ? 25 : 50;
+    const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, lastMessage.content);
 
     // Detect theme
-    let detectedThemeId = null;
-    if (themes && themes.length > 0) {
-      const themePrompt = `Classify this employee feedback into ONE of these themes:
-${themes.map(t => `- ${t.name}: ${t.description}`).join('\n')}
-
-Employee feedback: "${messages[messages.length - 1].content}"
-
-Reply with only the exact theme name.`;
-
-      const themeResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
-          messages: [{ role: "user", content: themePrompt }],
-          temperature: 0.2,
-          max_tokens: 20,
-        }),
-      });
-
-      if (themeResponse.ok) {
-        const themeData = await themeResponse.json();
-        const themeName = themeData.choices[0].message.content.trim();
-        const matchedTheme = themes.find(t => 
-          themeName.toLowerCase().includes(t.name.toLowerCase())
-        );
-        if (matchedTheme) {
-          detectedThemeId = matchedTheme.id;
-        }
-      }
-    }
+    const detectedThemeId = await detectTheme(LOVABLE_API_KEY, lastMessage.content, themes || []);
 
     // Detect urgency
-    const urgencyPrompt = `Analyze if this employee feedback indicates an URGENT issue requiring immediate HR attention. 
-Urgent issues include: harassment, safety concerns, severe mental health crisis, threats, discrimination, or illegal activity.
+    const isUrgent = await detectUrgency(LOVABLE_API_KEY, lastMessage.content);
 
-Employee feedback: "${messages[messages.length - 1].content}"
-
-Reply with only: urgent OR not-urgent`;
-
-    const urgencyResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [{ role: "user", content: urgencyPrompt }],
-        temperature: 0.1,
-        max_tokens: 10,
-      }),
-    });
-
-    const urgencyData = await urgencyResponse.json();
-    const isUrgent = urgencyData.choices[0].message.content.toLowerCase().includes('urgent');
-
-    // Store response in database with theme and urgency
+    // Store response in database
     const { data: insertedResponse, error: insertError } = await supabase
       .from("responses")
       .insert({
         conversation_session_id: conversationId,
         survey_id: session?.survey_id,
-        content: messages[messages.length - 1].content,
+        content: lastMessage.content,
         ai_response: aiMessage,
         sentiment,
         sentiment_score: sentimentScore,
