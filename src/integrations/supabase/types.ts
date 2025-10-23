@@ -444,6 +444,47 @@ export type Database = {
         }
         Relationships: []
       }
+      survey_updates: {
+        Row: {
+          content: string
+          created_at: string | null
+          created_by: string
+          id: string
+          published_at: string | null
+          survey_id: string
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          created_by: string
+          id?: string
+          published_at?: string | null
+          survey_id: string
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          created_by?: string
+          id?: string
+          published_at?: string | null
+          survey_id?: string
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_updates_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       surveys: {
         Row: {
           ai_prompt_overrides: Json | null

@@ -15,7 +15,9 @@ import { EmployeeTargeting } from "@/components/hr/wizard/EmployeeTargeting";
 import { ScheduleSettings } from "@/components/hr/wizard/ScheduleSettings";
 import { ConsentSettings } from "@/components/hr/wizard/ConsentSettings";
 import { DeployConfirmationModal } from "@/components/hr/wizard/DeployConfirmationModal";
+import { SurveyPreview } from "@/components/hr/wizard/SurveyPreview";
 import { useState, useEffect, useCallback } from "react";
+import { Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
@@ -38,6 +40,7 @@ const CreateSurvey = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeploying, setIsDeploying] = useState(false);
   const [showDeployModal, setShowDeployModal] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
   const [surveyId, setSurveyId] = useState<string | null>(draftId);
   const [targetCount, setTargetCount] = useState(0);
 
@@ -259,14 +262,20 @@ const CreateSurvey = () => {
   return (
     <HRLayout>
       <div className="space-y-6 max-w-5xl mx-auto">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/hr/dashboard')}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Create New Survey</h1>
-            <p className="text-muted-foreground mt-1">Design an AI-powered feedback conversation</p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate('/hr/dashboard')}>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Create New Survey</h1>
+              <p className="text-muted-foreground mt-1">Design an AI-powered feedback conversation</p>
+            </div>
           </div>
+          <Button variant="outline" onClick={() => setShowPreview(true)}>
+            <Eye className="h-4 w-4 mr-2" />
+            Preview as Employee
+          </Button>
         </div>
 
         <WizardProgress currentStep={currentStep} steps={STEPS} />
@@ -298,6 +307,21 @@ const CreateSurvey = () => {
           targetCount={targetCount}
           onConfirm={handleDeploy}
           isDeploying={isDeploying}
+        />
+
+        <SurveyPreview
+          open={showPreview}
+          onOpenChange={setShowPreview}
+          surveyData={{
+            title: form.watch("title"),
+            first_message: form.watch("first_message"),
+            themes: form.watch("themes"),
+            consent_config: {
+              anonymization_level: form.watch("anonymization_level"),
+              data_retention_days: Number(form.watch("data_retention_days")),
+              consent_message: form.watch("consent_message"),
+            },
+          }}
         />
       </div>
     </HRLayout>

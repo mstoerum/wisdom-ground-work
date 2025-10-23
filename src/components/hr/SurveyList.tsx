@@ -145,10 +145,50 @@ export const SurveyList = ({ status }: SurveyListProps) => {
                         <BarChart3 className="h-4 w-4 mr-2" />
                         View Analytics
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Archive className="h-4 w-4 mr-2" />
-                        Archive
-                      </DropdownMenuItem>
+                      {survey.status === 'active' && (
+                        <DropdownMenuItem onClick={async () => {
+                          if (window.confirm("Close this survey? No new responses will be accepted.")) {
+                            await supabase.from('surveys').update({ status: 'completed' }).eq('id', survey.id);
+                            refetch();
+                            toast.success("Survey closed successfully");
+                          }
+                        }}>
+                          <Archive className="h-4 w-4 mr-2" />
+                          Close Survey
+                        </DropdownMenuItem>
+                      )}
+                      {survey.status === 'completed' && (
+                        <>
+                          <DropdownMenuItem onClick={async () => {
+                            if (window.confirm("Archive this survey? It will be hidden from the main list.")) {
+                              await supabase.from('surveys').update({ status: 'archived' }).eq('id', survey.id);
+                              refetch();
+                              toast.success("Survey archived");
+                            }
+                          }}>
+                            <Archive className="h-4 w-4 mr-2" />
+                            Archive Survey
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={async () => {
+                            const { data } = await supabase.from('surveys').select('*').eq('id', survey.id).single();
+                            if (data) {
+                              const { data: newSurvey } = await supabase.from('surveys').insert({
+                                ...data,
+                                id: undefined,
+                                title: `${data.title} - Copy`,
+                                status: 'draft',
+                                created_at: undefined,
+                              }).select().single();
+                              if (newSurvey) {
+                                navigate(`/hr/create-survey?draft_id=${newSurvey.id}`);
+                              }
+                            }
+                          }}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Duplicate Survey
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </>
                   )}
                 </DropdownMenuContent>

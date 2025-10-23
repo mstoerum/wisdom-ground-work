@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PlusCircle, FileText } from "lucide-react";
+import { PlusCircle, FileText, Share2 } from "lucide-react";
+import { ShareUpdateDialog } from "@/components/hr/ShareUpdateDialog";
 import { useCommitments } from "@/hooks/useCommitments";
 import { CommitmentForm } from "@/components/hr/CommitmentForm";
 import { CommitmentList } from "@/components/hr/CommitmentList";
@@ -17,6 +18,7 @@ const Commitments = () => {
   const [selectedSurvey, setSelectedSurvey] = useState<string>("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingCommitment, setEditingCommitment] = useState<Commitment | undefined>();
+  const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
 
   const { data: surveys = [] } = useQuery({
     queryKey: ['surveys-for-commitments'],
@@ -75,10 +77,20 @@ const Commitments = () => {
             <h1 className="text-3xl font-bold">Action Commitments</h1>
             <p className="text-muted-foreground mt-1">Track and manage follow-up actions</p>
           </div>
-          <Button onClick={handleNewCommitment} disabled={selectedSurvey === "all"}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            New Commitment
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => setIsShareDialogOpen(true)} 
+              disabled={selectedSurvey === "all" || commitments.length === 0}
+              variant="outline"
+            >
+              <Share2 className="mr-2 h-4 w-4" />
+              Share Update
+            </Button>
+            <Button onClick={handleNewCommitment} disabled={selectedSurvey === "all"}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              New Commitment
+            </Button>
+          </div>
         </div>
 
         <Card>
@@ -157,6 +169,15 @@ const Commitments = () => {
             />
           </DialogContent>
         </Dialog>
+
+        {selectedSurvey !== "all" && (
+          <ShareUpdateDialog
+            open={isShareDialogOpen}
+            onOpenChange={setIsShareDialogOpen}
+            surveyId={selectedSurvey}
+            commitments={commitments}
+          />
+        )}
       </div>
     </HRLayout>
   );

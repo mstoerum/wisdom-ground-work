@@ -76,18 +76,48 @@ const Analytics = () => {
           </div>
         </div>
 
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
           <Select
             value={filters.surveyId || "all"}
             onValueChange={(value) => setFilters({ ...filters, surveyId: value === "all" ? undefined : value })}
           >
-            <SelectTrigger className="w-[250px]">
+            <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="All surveys" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All surveys</SelectItem>
               {surveys?.map(s => (
                 <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.sentiment || "all"}
+            onValueChange={(value) => setFilters({ ...filters, sentiment: value === "all" ? undefined : value as any })}
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="All sentiments" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sentiments</SelectItem>
+              <SelectItem value="positive">Positive</SelectItem>
+              <SelectItem value="neutral">Neutral</SelectItem>
+              <SelectItem value="negative">Negative</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.themeId || "all"}
+            onValueChange={(value) => setFilters({ ...filters, themeId: value === "all" ? undefined : value })}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All themes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All themes</SelectItem>
+              {themes?.map(t => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>

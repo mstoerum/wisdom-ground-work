@@ -8,6 +8,7 @@ import { ClosingRitual } from "@/components/employee/ClosingRitual";
 import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
 import { VisibleCommitments } from "@/components/employee/VisibleCommitments";
 import { SurveyHistory } from "@/components/employee/SurveyHistory";
+import { SurveyUpdates } from "@/components/employee/SurveyUpdates";
 import { useConversation } from "@/hooks/useConversation";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -151,6 +152,7 @@ const EmployeeDashboard = () => {
               </p>
             </div>
 
+            <SurveyUpdates />
             <VisibleCommitments />
             <SurveyHistory />
           </div>

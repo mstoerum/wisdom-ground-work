@@ -8,6 +8,8 @@ export interface AnalyticsFilters {
   startDate?: Date;
   endDate?: Date;
   department?: string;
+  themeId?: string;
+  sentiment?: 'positive' | 'neutral' | 'negative';
 }
 
 export interface ParticipationMetrics {
@@ -117,6 +119,14 @@ export const useAnalytics = (filters: AnalyticsFilters = {}) => {
 
       if (filters.surveyId) {
         query = query.eq('conversation_sessions.survey_id', filters.surveyId);
+      }
+
+      if (filters.themeId) {
+        query = query.eq('theme_id', filters.themeId);
+      }
+
+      if (filters.sentiment) {
+        query = query.eq('sentiment', filters.sentiment);
       }
 
       const { data, error } = await query;
