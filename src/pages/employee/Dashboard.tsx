@@ -15,6 +15,8 @@ type ConversationStep = "consent" | "mood" | "chat" | "closing" | "complete";
 const EmployeeDashboard = () => {
   const [step, setStep] = useState<ConversationStep>("consent");
   const [surveyId, setSurveyId] = useState<string | null>(null);
+  const [surveyDetails, setSurveyDetails] = useState<any>(null);
+  const [assignmentId, setAssignmentId] = useState<string | null>(null);
   const [mood, setMood] = useState(50);
   const { conversationId, startConversation, endConversation } = useConversation();
   const { toast } = useToast();
@@ -29,20 +31,15 @@ const EmployeeDashboard = () => {
 
     const { data: assignments } = await supabase
       .from("survey_assignments")
-      .select("survey_id")
-      .eq("employee_id", user.id);
+      .select("id, survey_id, surveys(id, consent_config, first_message)")
+      .eq("employee_id", user.id)
+      .eq("status", "pending");
 
     if (assignments && assignments.length > 0) {
-      const { data: survey } = await supabase
-        .from("surveys")
-        .select("id")
-        .eq("id", assignments[0].survey_id)
-        .eq("status", "active")
-        .maybeSingle();
-
-      if (survey) {
-        setSurveyId(survey.id);
-      }
+      const assignment = assignments[0];
+      setSurveyId(assignment.survey_id);
+      setAssignmentId(assignment.id);
+      setSurveyDetails(assignment.surveys);
     }
   };
 
@@ -74,6 +71,18 @@ const EmployeeDashboard = () => {
 
   const handleComplete = async () => {
     await endConversation(mood);
+    
+    // Mark assignment as completed
+    if (assignmentId) {
+      await supabase
+        .from("survey_assignments")
+        .update({
+          status: "completed",
+          completed_at: new Date().toISOString(),
+        })
+        .eq("id", assignmentId);
+    }
+
     setStep("complete");
     
     toast({
@@ -127,6 +136,7 @@ const EmployeeDashboard = () => {
           {step === "consent" && (
             <ConsentModal
               open={true}
+              consentMessage={surveyDetails?.consent_config?.consent_message}
               onConsent={handleConsent}
               onDecline={handleDecline}
             />

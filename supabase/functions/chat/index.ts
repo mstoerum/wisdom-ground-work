@@ -21,6 +21,16 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Fetch conversation and survey details
+    const { data: session } = await supabase
+      .from("conversation_sessions")
+      .select("survey_id, surveys(themes, first_message)")
+      .eq("id", conversationId)
+      .single();
+
+    const turnCount = messages.filter((m: any) => m.role === "user").length;
+    const shouldComplete = turnCount >= 8;
+
     // System prompt for empathetic conversational AI
     const systemPrompt = `You are a compassionate, empathetic AI assistant conducting a confidential employee feedback conversation. 
 
@@ -68,15 +78,44 @@ Remember: Your tone should be warm, professional, and genuinely interested in un
     const data = await response.json();
     const aiMessage = data.choices[0].message.content;
 
+    // Analyze sentiment
+    const sentimentResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: "Analyze sentiment. Reply with only: positive, neutral, or negative" },
+          { role: "user", content: messages[messages.length - 1].content }
+        ],
+        temperature: 0.3,
+        max_tokens: 10,
+      }),
+    });
+
+    const sentimentData = await sentimentResponse.json();
+    const sentiment = sentimentData.choices[0].message.content.toLowerCase().trim();
+    const sentimentScore = sentiment === "positive" ? 75 : sentiment === "negative" ? 25 : 50;
+
     // Store response in database
     await supabase.from("responses").insert({
       conversation_session_id: conversationId,
+      survey_id: session?.survey_id,
       content: messages[messages.length - 1].content,
       ai_response: aiMessage,
+      sentiment,
+      sentiment_score: sentimentScore,
+      created_at: new Date().toISOString(),
     });
 
     return new Response(
-      JSON.stringify({ message: aiMessage }),
+      JSON.stringify({ 
+        message: aiMessage,
+        shouldComplete: shouldComplete 
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {

@@ -138,44 +138,54 @@ export type Database = {
       conversation_sessions: {
         Row: {
           anonymization_level: string | null
-          anonymous_token_hash: string | null
+          anonymous_token_id: string | null
           consent_given: boolean | null
           consent_timestamp: string | null
           employee_id: string | null
           ended_at: string | null
+          final_mood: number | null
           id: string
-          mood_selection: Json | null
+          initial_mood: number | null
           started_at: string | null
           status: string | null
           survey_id: string
         }
         Insert: {
           anonymization_level?: string | null
-          anonymous_token_hash?: string | null
+          anonymous_token_id?: string | null
           consent_given?: boolean | null
           consent_timestamp?: string | null
           employee_id?: string | null
           ended_at?: string | null
+          final_mood?: number | null
           id?: string
-          mood_selection?: Json | null
+          initial_mood?: number | null
           started_at?: string | null
           status?: string | null
           survey_id: string
         }
         Update: {
           anonymization_level?: string | null
-          anonymous_token_hash?: string | null
+          anonymous_token_id?: string | null
           consent_given?: boolean | null
           consent_timestamp?: string | null
           employee_id?: string | null
           ended_at?: string | null
+          final_mood?: number | null
           id?: string
-          mood_selection?: Json | null
+          initial_mood?: number | null
           started_at?: string | null
           status?: string | null
           survey_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "conversation_sessions_anonymous_token_id_fkey"
+            columns: ["anonymous_token_id"]
+            isOneToOne: false
+            referencedRelation: "anonymous_tokens"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "conversation_sessions_survey_id_fkey"
             columns: ["survey_id"]
@@ -256,50 +266,50 @@ export type Database = {
       responses: {
         Row: {
           ai_analysis: Json | null
+          ai_response: string | null
+          content: string
+          conversation_session_id: string | null
           created_at: string | null
           id: string
           is_paraphrased: boolean | null
-          message_text: string
-          original_text: string | null
           sentiment: string | null
           sentiment_score: number | null
-          session_id: string
           survey_id: string
           theme_id: string | null
           urgency_escalated: boolean | null
         }
         Insert: {
           ai_analysis?: Json | null
+          ai_response?: string | null
+          content?: string
+          conversation_session_id?: string | null
           created_at?: string | null
           id?: string
           is_paraphrased?: boolean | null
-          message_text: string
-          original_text?: string | null
           sentiment?: string | null
           sentiment_score?: number | null
-          session_id: string
           survey_id: string
           theme_id?: string | null
           urgency_escalated?: boolean | null
         }
         Update: {
           ai_analysis?: Json | null
+          ai_response?: string | null
+          content?: string
+          conversation_session_id?: string | null
           created_at?: string | null
           id?: string
           is_paraphrased?: boolean | null
-          message_text?: string
-          original_text?: string | null
           sentiment?: string | null
           sentiment_score?: number | null
-          session_id?: string
           survey_id?: string
           theme_id?: string | null
           urgency_escalated?: boolean | null
         }
         Relationships: [
           {
-            foreignKeyName: "responses_session_id_fkey"
-            columns: ["session_id"]
+            foreignKeyName: "responses_conversation_session_id_fkey"
+            columns: ["conversation_session_id"]
             isOneToOne: false
             referencedRelation: "conversation_sessions"
             referencedColumns: ["id"]

@@ -14,12 +14,31 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface ConsentModalProps {
   open: boolean;
+  consentMessage?: string;
   onConsent: () => void;
   onDecline: () => void;
 }
 
-export const ConsentModal = ({ open, onConsent, onDecline }: ConsentModalProps) => {
+export const ConsentModal = ({ open, consentMessage, onConsent, onDecline }: ConsentModalProps) => {
   const [agreed, setAgreed] = useState(false);
+
+  const defaultMessage = `**How Your Data is Protected**
+- All responses may be anonymized based on survey settings
+- Data is encrypted both in transit and at rest
+- Only aggregated insights are shared with management
+- Individual responses are analyzed for themes only
+
+**Your Rights**
+- Participation is completely voluntary
+- You may end the conversation at any time
+- You control what information you share
+- No individual feedback will be used against you
+
+**Purpose**
+This feedback helps us understand employee well-being and improve our workplace. Your honest insights are valuable and will be handled with the utmost care.
+
+**Data Retention**
+Anonymized feedback is retained for analytical purposes according to company policy.`;
 
   return (
     <Dialog open={open}>
@@ -32,42 +51,8 @@ export const ConsentModal = ({ open, onConsent, onDecline }: ConsentModalProps) 
         </DialogHeader>
 
         <ScrollArea className="h-[400px] pr-4">
-          <div className="space-y-4 text-sm">
-            <section>
-              <h3 className="font-semibold mb-2">How Your Data is Protected</h3>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>All responses are fully anonymized before storage</li>
-                <li>Your identity is never linked to your feedback</li>
-                <li>Data is encrypted both in transit and at rest</li>
-                <li>Only aggregated insights are shared with management</li>
-              </ul>
-            </section>
-
-            <section>
-              <h3 className="font-semibold mb-2">Your Rights</h3>
-              <ul className="list-disc list-inside space-y-1 text-muted-foreground">
-                <li>Participation is completely voluntary</li>
-                <li>You may end the conversation at any time</li>
-                <li>You control what information you share</li>
-                <li>No individual feedback will be used against you</li>
-              </ul>
-            </section>
-
-            <section>
-              <h3 className="font-semibold mb-2">Purpose</h3>
-              <p className="text-muted-foreground">
-                This feedback helps us understand employee well-being and improve our workplace.
-                Your honest insights are valuable and will be handled with the utmost care and confidentiality.
-              </p>
-            </section>
-
-            <section>
-              <h3 className="font-semibold mb-2">Data Retention</h3>
-              <p className="text-muted-foreground">
-                Anonymized feedback is retained for analytical purposes. Individual conversation
-                sessions are automatically deleted after aggregation.
-              </p>
-            </section>
+          <div className="space-y-4 text-sm whitespace-pre-line text-muted-foreground">
+            {consentMessage || defaultMessage}
           </div>
         </ScrollArea>
 

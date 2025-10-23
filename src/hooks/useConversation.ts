@@ -42,10 +42,13 @@ export const useConversation = () => {
       const { data: session, error: sessionError } = await supabase
         .from("conversation_sessions")
         .insert({
+          employee_id: user.id,
           anonymous_token_id: anonymousTokenId,
           survey_id: surveyId,
           initial_mood: initialMood,
           status: "active",
+          consent_given: true,
+          consent_timestamp: new Date().toISOString(),
         })
         .select()
         .single();

@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ConversationBubble } from "./ConversationBubble";
 import { Send, Loader2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Message {
   role: "user" | "assistant";
@@ -23,14 +24,22 @@ export const ChatInterface = ({ conversationId, onComplete }: ChatInterfaceProps
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Start with AI greeting
-    const greeting: Message = {
-      role: "assistant",
-      content: "Thank you for sharing. I'm here to listen and understand. Could you tell me more about what's on your mind today?",
-      timestamp: new Date()
+    const loadFirstMessage = async () => {
+      const { data: session } = await supabase
+        .from("conversation_sessions")
+        .select("surveys(first_message)")
+        .eq("id", conversationId)
+        .single();
+
+      const greeting: Message = {
+        role: "assistant",
+        content: session?.surveys?.first_message || "Hi! I'm here to listen. How are you feeling about work today?",
+        timestamp: new Date()
+      };
+      setMessages([greeting]);
     };
-    setMessages([greeting]);
-  }, []);
+    loadFirstMessage();
+  }, [conversationId]);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -79,6 +88,13 @@ export const ChatInterface = ({ conversationId, onComplete }: ChatInterfaceProps
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Check if conversation should complete
+      if (data.shouldComplete) {
+        setTimeout(() => {
+          onComplete();
+        }, 2000);
+      }
     } catch (error) {
       console.error("Chat error:", error);
     } finally {
