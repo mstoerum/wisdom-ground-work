@@ -5,7 +5,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { Form } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { SurveyFormData, surveyFormSchema, defaultSurveyValues } from "@/lib/surveySchema";
+import { SurveyFormData, surveyFormSchema, getDefaultSurveyValues } from "@/lib/surveySchema";
+import { useSurveyDefaults } from "@/hooks/useSurveyDefaults";
 import { WizardProgress } from "@/components/hr/wizard/WizardProgress";
 import { WizardNavigation } from "@/components/hr/wizard/WizardNavigation";
 import { SurveyDetails } from "@/components/hr/wizard/SurveyDetails";
@@ -40,11 +41,21 @@ const CreateSurvey = () => {
   const [surveyId, setSurveyId] = useState<string | null>(draftId);
   const [targetCount, setTargetCount] = useState(0);
 
+  // Load survey defaults
+  const { data: surveyDefaults } = useSurveyDefaults();
+
   const form = useForm<SurveyFormData>({
     resolver: zodResolver(surveyFormSchema),
-    defaultValues: defaultSurveyValues,
+    defaultValues: getDefaultSurveyValues(surveyDefaults),
     mode: "onChange",
   });
+
+  // Update form when defaults load
+  useEffect(() => {
+    if (surveyDefaults && !draftId) {
+      form.reset(getDefaultSurveyValues(surveyDefaults));
+    }
+  }, [surveyDefaults, draftId, form]);
 
   // Load draft if editing
   const { data: draftData } = useQuery({
@@ -66,10 +77,11 @@ const CreateSurvey = () => {
   useEffect(() => {
     if (draftData) {
       const schedule = draftData.schedule as any;
+      const defaults = getDefaultSurveyValues(surveyDefaults);
       form.reset({
         title: draftData.title,
         description: draftData.description || "",
-        first_message: draftData.first_message || defaultSurveyValues.first_message,
+        first_message: draftData.first_message || defaults.first_message,
         themes: (draftData.themes as string[]) || [],
         target_type: schedule.target_type || 'all',
         target_departments: schedule.target_departments || [],
@@ -79,11 +91,11 @@ const CreateSurvey = () => {
         end_date: schedule.end_date || null,
         reminder_frequency: schedule.reminder_frequency,
         anonymization_level: (draftData.consent_config as any)?.anonymization_level || 'identified',
-        consent_message: (draftData.consent_config as any)?.consent_message || defaultSurveyValues.consent_message,
+        consent_message: (draftData.consent_config as any)?.consent_message || defaults.consent_message,
         data_retention_days: (draftData.consent_config as any)?.data_retention_days || '60',
       });
     }
-  }, [draftData, form]);
+  }, [draftData, form, surveyDefaults]);
 
   const saveDraft = useCallback(async (showToast = true) => {
     setIsSaving(true);

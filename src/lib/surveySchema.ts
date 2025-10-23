@@ -38,10 +38,10 @@ export const surveyFormSchema = z.object({
 
 export type SurveyFormData = z.infer<typeof surveyFormSchema>;
 
-export const defaultSurveyValues: SurveyFormData = {
+export const getDefaultSurveyValues = (defaults?: any): SurveyFormData => ({
   title: "",
   description: "",
-  first_message: "Hi! I'm here to listen. How are you feeling about work today?",
+  first_message: defaults?.first_message || "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.",
   themes: [],
   target_type: "all",
   target_departments: [],
@@ -50,7 +50,9 @@ export const defaultSurveyValues: SurveyFormData = {
   start_date: null,
   end_date: null,
   reminder_frequency: 7,
-  anonymization_level: "identified",
-  consent_message: "Your responses help us create a better workplace. By participating, you consent to sharing your feedback with HR. All data will be handled according to our privacy policy.",
-  data_retention_days: "60",
-};
+  anonymization_level: defaults?.anonymization_level || "identified",
+  consent_message: defaults?.consent_message || "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.",
+  data_retention_days: defaults?.data_retention_days?.toString() || "60",
+});
+
+export const defaultSurveyValues: SurveyFormData = getDefaultSurveyValues();

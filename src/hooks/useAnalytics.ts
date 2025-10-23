@@ -207,11 +207,19 @@ export const useAnalytics = (filters: AnalyticsFilters = {}) => {
     },
   });
 
+  const refetch = () => {
+    participationQuery.refetch();
+    sentimentQuery.refetch();
+    themesQuery.refetch();
+    urgencyQuery.refetch();
+  };
+
   return {
     participation: participationQuery.data,
     sentiment: sentimentQuery.data,
     themes: themesQuery.data || [],
     urgency: urgencyQuery.data || [],
     isLoading: participationQuery.isLoading || sentimentQuery.isLoading || themesQuery.isLoading,
+    refetch,
   };
 };

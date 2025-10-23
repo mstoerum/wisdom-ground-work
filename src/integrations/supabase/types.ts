@@ -204,6 +204,7 @@ export type Database = {
           id: string
           resolution_notes: string | null
           resolved_at: string | null
+          resolved_by: string | null
           response_id: string
         }
         Insert: {
@@ -214,6 +215,7 @@ export type Database = {
           id?: string
           resolution_notes?: string | null
           resolved_at?: string | null
+          resolved_by?: string | null
           response_id: string
         }
         Update: {
@@ -224,6 +226,7 @@ export type Database = {
           id?: string
           resolution_notes?: string | null
           resolved_at?: string | null
+          resolved_by?: string | null
           response_id?: string
         }
         Relationships: [
@@ -364,6 +367,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      survey_defaults: {
+        Row: {
+          anonymization_level: string
+          consent_message: string
+          created_at: string | null
+          created_by: string
+          data_retention_days: number
+          first_message: string
+          id: string
+          organization_id: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          anonymization_level?: string
+          consent_message?: string
+          created_at?: string | null
+          created_by: string
+          data_retention_days?: number
+          first_message?: string
+          id?: string
+          organization_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          anonymization_level?: string
+          consent_message?: string
+          created_at?: string | null
+          created_by?: string
+          data_retention_days?: number
+          first_message?: string
+          id?: string
+          organization_id?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       survey_themes: {
         Row: {

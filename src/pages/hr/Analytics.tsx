@@ -21,7 +21,7 @@ import { toast } from "sonner";
 
 const Analytics = () => {
   const [filters, setFilters] = useState<AnalyticsFilters>({});
-  const { participation, sentiment, themes, urgency, isLoading } = useAnalytics(filters);
+  const { participation, sentiment, themes, urgency, isLoading, refetch } = useAnalytics(filters);
 
   const { data: surveys } = useQuery({
     queryKey: ['surveys-list'],
@@ -190,8 +190,8 @@ const Analytics = () => {
             <ResponseList surveyId={filters.surveyId} />
           </TabsContent>
 
-          <TabsContent value="urgency">
-            <UrgencyFlags urgencies={urgency} />
+          <TabsContent value="urgent">
+            <UrgencyFlags urgencies={urgency} onUpdate={refetch} />
           </TabsContent>
         </Tabs>
       </div>
