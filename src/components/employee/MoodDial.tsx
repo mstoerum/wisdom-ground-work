@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 
 interface MoodDialProps {
   onMoodSelect: (mood: number) => void;
@@ -23,7 +24,10 @@ export const MoodDial = ({ onMoodSelect }: MoodDialProps) => {
 
   const handleChange = (value: number[]) => {
     setMood(value);
-    onMoodSelect(value[0]);
+  };
+
+  const handleContinue = () => {
+    onMoodSelect(mood[0]);
   };
 
   return (
@@ -51,6 +55,10 @@ export const MoodDial = ({ onMoodSelect }: MoodDialProps) => {
           <span>Struggling</span>
           <span>Thriving</span>
         </div>
+
+        <Button onClick={handleContinue} size="lg" className="mt-4">
+          Continue
+        </Button>
       </div>
     </Card>
   );

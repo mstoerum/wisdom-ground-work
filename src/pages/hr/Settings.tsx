@@ -1,5 +1,7 @@
 import { HRLayout } from "@/components/hr/HRLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UserManagement } from "@/components/hr/settings/UserManagement";
+import { SurveyDefaults } from "@/components/hr/settings/SurveyDefaults";
 
 const Settings = () => {
   return (
@@ -10,19 +12,20 @@ const Settings = () => {
           <p className="text-muted-foreground mt-1">Manage system configuration and preferences</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>HR Settings</CardTitle>
-            <CardDescription>
-              Settings and configuration options coming soon.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              Configure survey defaults, manage team members, and customize system preferences.
-            </p>
-          </CardContent>
-        </Card>
+        <Tabs defaultValue="users" className="space-y-4">
+          <TabsList>
+            <TabsTrigger value="users">User Management</TabsTrigger>
+            <TabsTrigger value="defaults">Survey Defaults</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="users">
+            <UserManagement />
+          </TabsContent>
+
+          <TabsContent value="defaults">
+            <SurveyDefaults />
+          </TabsContent>
+        </Tabs>
       </div>
     </HRLayout>
   );

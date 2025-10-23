@@ -1,28 +1,139 @@
+import { useState } from "react";
 import { HRLayout } from "@/components/hr/HRLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PlusCircle } from "lucide-react";
+import { useCommitments } from "@/hooks/useCommitments";
+import { CommitmentForm } from "@/components/hr/CommitmentForm";
+import { CommitmentList } from "@/components/hr/CommitmentList";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import type { Commitment } from "@/hooks/useCommitments";
 
 const Commitments = () => {
+  const [selectedSurvey, setSelectedSurvey] = useState<string>("all");
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingCommitment, setEditingCommitment] = useState<Commitment | undefined>();
+
+  const { data: surveys = [] } = useQuery({
+    queryKey: ['surveys-for-commitments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('surveys')
+        .select('id, title')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const {
+    commitments,
+    isLoading,
+    createCommitment,
+    updateCommitment,
+    deleteCommitment,
+  } = useCommitments(selectedSurvey === "all" ? undefined : selectedSurvey);
+
+  const handleSubmit = (data: any) => {
+    if (editingCommitment) {
+      updateCommitment.mutate({ id: editingCommitment.id, ...data });
+    } else {
+      createCommitment.mutate(data);
+    }
+    setIsFormOpen(false);
+    setEditingCommitment(undefined);
+  };
+
+  const handleEdit = (commitment: Commitment) => {
+    setEditingCommitment(commitment);
+    setIsFormOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    deleteCommitment.mutate(id);
+  };
+
+  const handleToggleVisibility = (id: string, visible: boolean) => {
+    updateCommitment.mutate({ id, visible_to_employees: visible });
+  };
+
+  const handleNewCommitment = () => {
+    setEditingCommitment(undefined);
+    setIsFormOpen(true);
+  };
+
   return (
     <HRLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Action Commitments</h1>
-          <p className="text-muted-foreground mt-1">Track and manage follow-up actions</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Action Commitments</h1>
+            <p className="text-muted-foreground mt-1">Track and manage follow-up actions</p>
+          </div>
+          <Button onClick={handleNewCommitment} disabled={selectedSurvey === "all"}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            New Commitment
+          </Button>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Commitments Management</CardTitle>
-            <CardDescription>
-              This feature is part of Phase 4 and will be implemented soon.
-            </CardDescription>
+            <div className="flex items-center justify-between">
+              <CardTitle>Filter by Survey</CardTitle>
+              <Select value={selectedSurvey} onValueChange={setSelectedSurvey}>
+                <SelectTrigger className="w-64">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Surveys</SelectItem>
+                  {surveys.map((survey) => (
+                    <SelectItem key={survey.id} value={survey.id}>
+                      {survey.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              The commitments dashboard will help you create, track, and communicate action plans based on employee feedback.
-            </p>
-          </CardContent>
         </Card>
+
+        {isLoading ? (
+          <Card>
+            <CardContent className="py-12 text-center">
+              <p className="text-muted-foreground">Loading commitments...</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <CommitmentList
+            commitments={commitments}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onToggleVisibility={handleToggleVisibility}
+          />
+        )}
+
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>
+                {editingCommitment ? "Edit" : "Create"} Action Commitment
+              </DialogTitle>
+            </DialogHeader>
+            <CommitmentForm
+              surveyId={selectedSurvey}
+              commitment={editingCommitment}
+              onSubmit={handleSubmit}
+              onCancel={() => {
+                setIsFormOpen(false);
+                setEditingCommitment(undefined);
+              }}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </HRLayout>
   );

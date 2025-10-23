@@ -4,10 +4,27 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SurveyList } from "@/components/hr/SurveyList";
-import { PlusCircle, Users, TrendingUp, CheckSquare } from "lucide-react";
+import { PlusCircle, Users, TrendingUp, CheckSquare, AlertCircle } from "lucide-react";
+import { useAnalytics } from "@/hooks/useAnalytics";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 const HRDashboard = () => {
   const navigate = useNavigate();
+  const { participation, urgency, isLoading } = useAnalytics();
+
+  const { data: activeSurveysCount = 0 } = useQuery({
+    queryKey: ['active-surveys-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('surveys')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'active');
+      
+      if (error) throw error;
+      return count || 0;
+    },
+  });
 
   return (
     <HRLayout>
@@ -32,7 +49,7 @@ const HRDashboard = () => {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{isLoading ? "-" : activeSurveysCount}</div>
               <p className="text-xs text-muted-foreground mt-1">Currently running</p>
             </CardContent>
           </Card>
@@ -43,8 +60,8 @@ const HRDashboard = () => {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
-              <p className="text-xs text-muted-foreground mt-1">This month</p>
+              <div className="text-2xl font-bold">{isLoading ? "-" : participation?.completed || 0}</div>
+              <p className="text-xs text-muted-foreground mt-1">Completed surveys</p>
             </CardContent>
           </Card>
 
@@ -54,18 +71,20 @@ const HRDashboard = () => {
               <CheckSquare className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0%</div>
+              <div className="text-2xl font-bold">
+                {isLoading ? "-" : `${participation?.completionRate || 0}%`}
+              </div>
               <p className="text-xs text-muted-foreground mt-1">Average completion</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">Pending Actions</CardTitle>
-              <CheckSquare className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm font-medium">Urgent Flags</CardTitle>
+              <AlertCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">0</div>
+              <div className="text-2xl font-bold">{isLoading ? "-" : urgency?.length || 0}</div>
               <p className="text-xs text-muted-foreground mt-1">Requiring attention</p>
             </CardContent>
           </Card>
