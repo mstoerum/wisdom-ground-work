@@ -77,17 +77,23 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: Cha
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = input;
     setInput("");
     setIsLoading(true);
 
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error("Please sign in to continue");
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+            Authorization: `Bearer ${session.access_token}`,
           },
           body: JSON.stringify({
             conversationId,
@@ -99,9 +105,16 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: Cha
         }
       );
 
-      if (!response.ok) throw new Error("Failed to get response");
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to get response");
+      }
 
       const data = await response.json();
+      
+      if (data.error) {
+        throw new Error(data.error);
+      }
       
       const assistantMessage: Message = {
         role: "assistant",
@@ -119,6 +132,15 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: Cha
       }
     } catch (error) {
       console.error("Chat error:", error);
+      toast({
+        title: "Message failed",
+        description: error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+      
+      // Remove failed user message and restore input
+      setMessages(prev => prev.slice(0, -1));
+      setInput(currentInput);
     } finally {
       setIsLoading(false);
     }

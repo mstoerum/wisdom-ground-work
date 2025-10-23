@@ -1,1 +1,13 @@
 project_id = "rnvtbtefsskbwaadedef"
+
+[functions.chat]
+verify_jwt = true
+
+[functions.deploy-survey]
+verify_jwt = true
+
+[functions.data-retention-cleanup]
+verify_jwt = false
+
+[functions.export-user-data]
+verify_jwt = true
