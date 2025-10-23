@@ -3,8 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { toast } from "sonner";
-import { Shield } from "lucide-react";
+import { Shield, CheckCircle2 } from "lucide-react";
 
 const AdminBootstrap = () => {
   const [loading, setLoading] = useState(false);
@@ -17,19 +18,14 @@ const AdminBootstrap = () => {
 
   const checkAdminExists = async () => {
     try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('id')
-        .eq('role', 'hr_admin')
-        .limit(1);
+      const { data, error } = await supabase.rpc('has_any_admin');
 
       if (error) throw error;
 
-      // If admin already exists, redirect
-      if (data && data.length > 0) {
+      if (data) {
         navigate('/');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error checking admin:', error);
     } finally {
       setChecking(false);
@@ -71,33 +67,63 @@ const AdminBootstrap = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-6">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-2xl">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 mb-4">
             <Shield className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Initial Admin Setup</CardTitle>
+          <CardTitle className="text-2xl">Welcome to Spradley!</CardTitle>
           <CardDescription>
-            No HR administrators have been assigned yet. Become the first admin to start managing surveys and analytics.
+            You're the first user! Let's set you up as the HR Administrator.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="rounded-lg bg-muted p-4">
-            <h3 className="font-semibold mb-2">As an HR Admin, you will be able to:</h3>
-            <ul className="space-y-1 text-sm text-muted-foreground">
-              <li>• Create and manage employee feedback surveys</li>
-              <li>• View analytics and insights from responses</li>
-              <li>• Assign roles to other team members</li>
-              <li>• Track action commitments and outcomes</li>
+        <CardContent className="space-y-6">
+          <Alert>
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertDescription>
+              As the first user, you'll automatically receive full administrative privileges.
+            </AlertDescription>
+          </Alert>
+
+          <div className="bg-muted p-4 rounded-lg space-y-3">
+            <h3 className="font-semibold">As an HR Admin, you can:</h3>
+            <ul className="space-y-2 text-sm">
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                <span>Create and deploy AI-powered employee feedback surveys</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                <span>Access real-time analytics and sentiment insights</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                <span>Manage action commitments and share updates with employees</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                <span>Configure security, compliance, and data retention policies</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                <span>Invite and manage team members with different roles</span>
+              </li>
             </ul>
           </div>
-          <Button 
-            onClick={becomeAdmin} 
-            disabled={loading}
-            className="w-full"
-          >
-            {loading ? "Assigning Role..." : "Become First Admin"}
-          </Button>
+
+          <div className="space-y-3">
+            <Button 
+              onClick={becomeAdmin} 
+              disabled={loading}
+              className="w-full"
+              size="lg"
+            >
+              {loading ? "Setting up your account..." : "Become HR Admin & Get Started"}
+            </Button>
+            <p className="text-xs text-center text-muted-foreground">
+              You can invite other team members and assign roles after setup
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>

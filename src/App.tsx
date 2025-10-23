@@ -14,6 +14,7 @@ import Analytics from "./pages/hr/Analytics";
 import Commitments from "./pages/hr/Commitments";
 import Settings from "./pages/hr/Settings";
 import NotFound from "./pages/NotFound";
+import EmployeeProfile from "./pages/employee/Profile";
 
 const queryClient = new QueryClient();
 
@@ -28,10 +29,18 @@ const App = () => (
           <Route path="/auth" element={<Auth />} />
           <Route path="/admin-bootstrap" element={<AdminBootstrap />} />
           <Route 
-            path="/employee/*" 
+            path="/employee/dashboard" 
             element={
               <ProtectedRoute>
                 <EmployeeDashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/employee/profile" 
+            element={
+              <ProtectedRoute>
+                <EmployeeProfile />
               </ProtectedRoute>
             } 
           />

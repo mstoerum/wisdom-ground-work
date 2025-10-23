@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { useUserRole } from "@/hooks/useUserRole";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   SidebarProvider,
   Sidebar,
@@ -13,28 +14,38 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, PlusCircle, BarChart3, ListChecks, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, MessageSquare, Bell, User, LogOut } from "lucide-react";
 import { NavLink } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-interface HRLayoutProps {
+interface EmployeeLayoutProps {
   children: ReactNode;
 }
 
 const menuItems = [
-  { title: "Dashboard", url: "/hr/dashboard", icon: LayoutDashboard, tourId: undefined, adminOnly: false },
-  { title: "Create Survey", url: "/hr/create-survey", icon: PlusCircle, tourId: undefined, adminOnly: true },
-  { title: "Analytics", url: "/hr/analytics", icon: BarChart3, tourId: "analytics", adminOnly: false },
-  { title: "Action Commitments", url: "/hr/commitments", icon: ListChecks, tourId: "commitments", adminOnly: false },
-  { title: "Settings", url: "/hr/settings", icon: Settings, tourId: "settings", adminOnly: true },
+  { title: "Dashboard", url: "/employee/dashboard", icon: LayoutDashboard },
+  { title: "Profile", url: "/employee/profile", icon: User },
 ];
 
-export const HRLayout = ({ children }: HRLayoutProps) => {
+export const EmployeeLayout = ({ children }: EmployeeLayoutProps) => {
   const navigate = useNavigate();
-  const { isHRAdmin } = useUserRole();
 
-  const visibleMenuItems = menuItems.filter(item => !item.adminOnly || isHRAdmin);
+  const { data: profile } = useQuery({
+    queryKey: ['employee-profile'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+  });
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -51,16 +62,21 @@ export const HRLayout = ({ children }: HRLayoutProps) => {
       <div className="flex min-h-screen w-full">
         <Sidebar>
           <div className="p-4 border-b">
-            <h2 className="text-lg font-semibold">Spradley HR</h2>
-            <p className="text-sm text-muted-foreground">Admin Portal</p>
+            <h2 className="text-lg font-semibold">Spradley</h2>
+            {profile && (
+              <div className="mt-2">
+                <p className="text-sm font-medium">{profile.full_name}</p>
+                <p className="text-xs text-muted-foreground">{profile.department}</p>
+              </div>
+            )}
           </div>
           <SidebarContent>
             <SidebarGroup>
-              <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
+              <SidebarGroupLabel>Menu</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {visibleMenuItems.map((item) => (
-                    <SidebarMenuItem key={item.title} data-tour={item.tourId}>
+                  {menuItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton asChild>
                         <NavLink 
                           to={item.url}

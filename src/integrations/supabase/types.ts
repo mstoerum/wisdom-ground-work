@@ -374,6 +374,7 @@ export type Database = {
           email: string
           full_name: string | null
           id: string
+          is_active: boolean
           updated_at: string | null
         }
         Insert: {
@@ -382,6 +383,7 @@ export type Database = {
           email: string
           full_name?: string | null
           id: string
+          is_active?: boolean
           updated_at?: string | null
         }
         Update: {
@@ -390,6 +392,7 @@ export type Database = {
           email?: string
           full_name?: string | null
           id?: string
+          is_active?: boolean
           updated_at?: string | null
         }
         Relationships: []
@@ -714,6 +717,7 @@ export type Database = {
     }
     Functions: {
       assign_initial_hr_admin: { Args: never; Returns: undefined }
+      has_any_admin: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
