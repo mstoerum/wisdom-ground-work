@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, HelpCircle } from "lucide-react";
+import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, HelpCircle, PlusCircle, BarChart2, Frown } from "lucide-react";
 import { useAnalytics, type AnalyticsFilters } from "@/hooks/useAnalytics";
 import { MetricCard } from "@/components/hr/analytics/MetricCard";
 import { SentimentChart } from "@/components/hr/analytics/SentimentChart";
@@ -18,8 +18,11 @@ import { exportAnalyticsToPDF } from "@/lib/exportAnalyticsPDF";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { EmptyState } from "@/components/hr/analytics/EmptyState";
+import { useNavigate } from "react-router-dom";
 
 const Analytics = () => {
+  const navigate = useNavigate();
   const [filters, setFilters] = useState<AnalyticsFilters>({});
   const { participation, sentiment, themes, urgency, isLoading, refetch } = useAnalytics(filters);
 
@@ -153,6 +156,28 @@ const Analytics = () => {
                   <div className="h-64 bg-muted/50 rounded-lg animate-pulse" />
                 </div>
               </>
+            ) : !surveys || surveys.length === 0 ? (
+              <EmptyState
+                icon={PlusCircle}
+                title="No Surveys Created Yet"
+                description="Create your first survey to start collecting employee feedback and see analytics here."
+                actionLabel="Create Survey"
+                onAction={() => navigate('/hr/create-survey')}
+              />
+            ) : participation?.totalAssigned === 0 ? (
+              <EmptyState
+                icon={Users}
+                title="No Survey Assignments Yet"
+                description="Once you deploy surveys and assign them to employees, analytics will appear here."
+                actionLabel="View Surveys"
+                onAction={() => navigate('/hr/dashboard')}
+              />
+            ) : participation?.completed === 0 ? (
+              <EmptyState
+                icon={BarChart2}
+                title="No Responses Yet"
+                description="Employees haven't submitted responses yet. Once they do, you'll see detailed analytics and insights here."
+              />
             ) : (
               <>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -231,8 +256,16 @@ const Analytics = () => {
             <ResponseList surveyId={filters.surveyId} />
           </TabsContent>
 
-          <TabsContent value="urgent">
-            <UrgencyFlags urgencies={urgency} onUpdate={refetch} />
+          <TabsContent value="urgency">
+            {!urgency || urgency.length === 0 ? (
+              <EmptyState
+                icon={AlertTriangle}
+                title="No Urgent Flags"
+                description="Great news! There are no urgent issues requiring immediate attention. Urgent flags will appear here when employees report critical concerns."
+              />
+            ) : (
+              <UrgencyFlags urgencies={urgency} onUpdate={refetch} />
+            )}
           </TabsContent>
         </Tabs>
       </div>

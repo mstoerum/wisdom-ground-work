@@ -14,7 +14,8 @@ import { useConversation } from "@/hooks/useConversation";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { LogOut, MessageSquare } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { LogOut, MessageSquare, PlayCircle } from "lucide-react";
 
 type ConversationStep = "consent" | "mood" | "chat" | "closing" | "complete";
 
@@ -50,6 +51,11 @@ const EmployeeDashboard = () => {
       setMood(activeSession.initial_mood || 50);
       // Skip consent and mood selection, go straight to chat
       setStep("chat");
+      
+      toast({
+        title: "Conversation Resumed",
+        description: "Continuing your active feedback session.",
+      });
       return;
     }
 
@@ -212,6 +218,15 @@ const EmployeeDashboard = () => {
         </div>
 
         <AnonymizationBanner />
+
+        {step === "chat" && (
+          <Alert className="mt-6 border-primary/50 bg-primary/10">
+            <PlayCircle className="h-4 w-4" />
+            <AlertDescription>
+              You have an active conversation in progress. Your responses are being saved automatically.
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="mt-8">
           {step === "consent" && (
