@@ -76,7 +76,7 @@ export const useAnalytics = (filters: AnalyticsFilters = {}) => {
     queryFn: async () => {
       let query = supabase
         .from('survey_assignments')
-        .select('*');
+        .select('id, survey_id, status, assigned_at, completed_at');
 
       if (filters.surveyId) {
         query = query.eq('survey_id', filters.surveyId);
@@ -115,7 +115,7 @@ export const useAnalytics = (filters: AnalyticsFilters = {}) => {
     queryFn: async () => {
       let query = supabase
         .from('responses')
-        .select('*, conversation_sessions!inner(initial_mood, final_mood, survey_id)');
+        .select('sentiment, sentiment_score, conversation_sessions!inner(initial_mood, final_mood, survey_id)');
 
       if (filters.surveyId) {
         query = query.eq('conversation_sessions.survey_id', filters.surveyId);

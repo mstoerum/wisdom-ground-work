@@ -141,7 +141,18 @@ const Analytics = () => {
 
           <TabsContent value="overview" className="space-y-6">
             {isLoading ? (
-              <p className="text-muted-foreground">Loading analytics...</p>
+              <>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <div className="h-32 bg-muted/50 rounded-lg animate-pulse" />
+                  <div className="h-32 bg-muted/50 rounded-lg animate-pulse" />
+                  <div className="h-32 bg-muted/50 rounded-lg animate-pulse" />
+                  <div className="h-32 bg-muted/50 rounded-lg animate-pulse" />
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="h-64 bg-muted/50 rounded-lg animate-pulse" />
+                  <div className="h-64 bg-muted/50 rounded-lg animate-pulse" />
+                </div>
+              </>
             ) : (
               <>
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

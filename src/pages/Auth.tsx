@@ -66,9 +66,12 @@ const Auth = () => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
           if (error.message.includes("Invalid login credentials")) {
-            throw new Error("Invalid email or password");
+            throw new Error("Invalid email or password. Please check your credentials and try again.");
           }
-          throw error;
+          if (error.message.includes("Email not confirmed")) {
+            throw new Error("Please check your email to confirm your account before signing in.");
+          }
+          throw new Error(error.message || "Failed to sign in. Please try again.");
         }
         toast.success("Welcome back!");
         
@@ -94,7 +97,10 @@ const Auth = () => {
           if (error.message.includes("User already registered")) {
             throw new Error("This email is already registered. Please sign in instead.");
           }
-          throw error;
+          if (error.message.includes("Password should be")) {
+            throw new Error("Password must be at least 6 characters long.");
+          }
+          throw new Error(error.message || "Failed to create account. Please try again.");
         }
         
         toast.success("Account created successfully! You can now sign in.");

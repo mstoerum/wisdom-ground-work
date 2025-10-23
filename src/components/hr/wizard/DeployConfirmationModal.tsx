@@ -1,7 +1,9 @@
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SurveyFormData } from "@/lib/surveySchema";
+import { DeploymentProgress } from "./DeploymentProgress";
 import { Calendar, Users, Shield, Target } from "lucide-react";
 import { format } from "date-fns";
 
@@ -24,15 +26,46 @@ export const DeployConfirmationModal = ({
   onConfirm,
   isDeploying,
 }: DeployConfirmationModalProps) => {
+  const [deployStage, setDeployStage] = useState<'validating' | 'creating_assignments' | 'deploying' | 'complete'>('validating');
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    if (isDeploying) {
+      setDeployStage('validating');
+      setProgress(0);
+      
+      const timer1 = setTimeout(() => {
+        setDeployStage('creating_assignments');
+        setProgress(33);
+      }, 800);
+      
+      const timer2 = setTimeout(() => {
+        setDeployStage('deploying');
+        setProgress(66);
+      }, 1600);
+      
+      return () => {
+        clearTimeout(timer1);
+        clearTimeout(timer2);
+      };
+    } else {
+      setDeployStage('validating');
+      setProgress(0);
+    }
+  }, [isDeploying]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Deploy Survey?</DialogTitle>
           <DialogDescription>
-            Review the survey configuration before deploying to employees
+            {isDeploying ? "Deploying your survey..." : "Review the survey configuration before deploying to employees"}
           </DialogDescription>
         </DialogHeader>
+
+        {isDeploying ? (
+          <DeploymentProgress stage={deployStage} progress={progress} />
+        ) : (
 
         <div className="space-y-4 py-4">
           <div>
@@ -86,6 +119,7 @@ export const DeployConfirmationModal = ({
             </div>
           </div>
         </div>
+        )}
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isDeploying}>
