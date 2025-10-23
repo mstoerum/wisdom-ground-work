@@ -1,15 +1,252 @@
 import { HRLayout } from "@/components/hr/HRLayout";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { Form } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { SurveyFormData, surveyFormSchema, defaultSurveyValues } from "@/lib/surveySchema";
+import { WizardProgress } from "@/components/hr/wizard/WizardProgress";
+import { WizardNavigation } from "@/components/hr/wizard/WizardNavigation";
+import { SurveyDetails } from "@/components/hr/wizard/SurveyDetails";
+import { ThemeSelector } from "@/components/hr/wizard/ThemeSelector";
+import { EmployeeTargeting } from "@/components/hr/wizard/EmployeeTargeting";
+import { ScheduleSettings } from "@/components/hr/wizard/ScheduleSettings";
+import { ConsentSettings } from "@/components/hr/wizard/ConsentSettings";
+import { DeployConfirmationModal } from "@/components/hr/wizard/DeployConfirmationModal";
+import { useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent } from "@/components/ui/card";
+
+const STEPS = [
+  { number: 1, title: "Details" },
+  { number: 2, title: "Themes" },
+  { number: 3, title: "Targeting" },
+  { number: 4, title: "Schedule" },
+  { number: 5, title: "Privacy" },
+];
 
 const CreateSurvey = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const draftId = searchParams.get('draft_id');
+  
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeploying, setIsDeploying] = useState(false);
+  const [showDeployModal, setShowDeployModal] = useState(false);
+  const [surveyId, setSurveyId] = useState<string | null>(draftId);
+  const [targetCount, setTargetCount] = useState(0);
+
+  const form = useForm<SurveyFormData>({
+    resolver: zodResolver(surveyFormSchema),
+    defaultValues: defaultSurveyValues,
+    mode: "onChange",
+  });
+
+  // Load draft if editing
+  const { data: draftData } = useQuery({
+    queryKey: ['survey-draft', draftId],
+    queryFn: async () => {
+      if (!draftId) return null;
+      const { data, error } = await supabase
+        .from('surveys')
+        .select('*')
+        .eq('id', draftId)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!draftId,
+  });
+
+  useEffect(() => {
+    if (draftData) {
+      const schedule = draftData.schedule as any;
+      form.reset({
+        title: draftData.title,
+        description: draftData.description || "",
+        first_message: draftData.first_message || defaultSurveyValues.first_message,
+        themes: (draftData.themes as string[]) || [],
+        target_type: schedule.target_type || 'all',
+        target_departments: schedule.target_departments || [],
+        target_employees: schedule.target_employees || [],
+        schedule_type: schedule.schedule_type || 'immediate',
+        start_date: schedule.start_date || null,
+        end_date: schedule.end_date || null,
+        reminder_frequency: schedule.reminder_frequency,
+        anonymization_level: (draftData.consent_config as any)?.anonymization_level || 'identified',
+        consent_message: (draftData.consent_config as any)?.consent_message || defaultSurveyValues.consent_message,
+        data_retention_days: (draftData.consent_config as any)?.data_retention_days || '60',
+      });
+    }
+  }, [draftData, form]);
+
+  const saveDraft = useCallback(async (showToast = true) => {
+    setIsSaving(true);
+    try {
+      const values = form.getValues();
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) throw new Error('Not authenticated');
+
+      const surveyData = {
+        title: values.title || 'Untitled Survey',
+        description: values.description,
+        first_message: values.first_message,
+        themes: values.themes,
+        schedule: {
+          target_type: values.target_type,
+          target_departments: values.target_departments,
+          target_employees: values.target_employees,
+          schedule_type: values.schedule_type,
+          start_date: values.start_date,
+          end_date: values.end_date,
+          reminder_frequency: values.reminder_frequency,
+        },
+        consent_config: {
+          anonymization_level: values.anonymization_level,
+          consent_message: values.consent_message,
+          data_retention_days: values.data_retention_days,
+        },
+        created_by: user.id,
+        status: 'draft',
+      };
+
+      if (surveyId) {
+        const { error } = await supabase
+          .from('surveys')
+          .update(surveyData)
+          .eq('id', surveyId);
+        
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from('surveys')
+          .insert(surveyData)
+          .select()
+          .single();
+        
+        if (error) throw error;
+        setSurveyId(data.id);
+      }
+
+      if (showToast) {
+        toast.success('Draft saved successfully');
+      }
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      toast.error('Failed to save draft');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [form, surveyId]);
+
+  // Auto-save every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (form.formState.isDirty) {
+        saveDraft(false);
+      }
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [form.formState.isDirty, saveDraft]);
+
+  const validateCurrentStep = () => {
+    const values = form.getValues();
+    
+    switch (currentStep) {
+      case 1:
+        return values.title && values.first_message;
+      case 2:
+        return values.themes.length > 0;
+      case 3:
+        if (values.target_type === 'department') {
+          return values.target_departments && values.target_departments.length > 0;
+        }
+        if (values.target_type === 'manual') {
+          return values.target_employees && values.target_employees.length > 0;
+        }
+        return true;
+      case 4:
+        if (values.schedule_type === 'scheduled') {
+          return values.start_date !== null;
+        }
+        return true;
+      case 5:
+        return values.consent_message;
+      default:
+        return true;
+    }
+  };
+
+  const handleNext = async () => {
+    const isValid = await form.trigger();
+    if (!isValid || !validateCurrentStep()) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    if (currentStep < 5) {
+      setCurrentStep(currentStep + 1);
+      await saveDraft(false);
+    } else {
+      setShowDeployModal(true);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleDeploy = async () => {
+    setIsDeploying(true);
+    try {
+      await saveDraft(false);
+      
+      const { data, error } = await supabase.functions.invoke('deploy-survey', {
+        body: { survey_id: surveyId },
+      });
+
+      if (error) throw error;
+
+      toast.success(`Survey deployed successfully! ${data.assignment_count} employees assigned.`);
+      navigate('/hr/dashboard');
+    } catch (error) {
+      console.error('Error deploying survey:', error);
+      toast.error('Failed to deploy survey');
+    } finally {
+      setIsDeploying(false);
+      setShowDeployModal(false);
+    }
+  };
+
+  const renderStep = () => {
+    switch (currentStep) {
+      case 1:
+        return <SurveyDetails form={form} />;
+      case 2:
+        return <ThemeSelector form={form} />;
+      case 3:
+        return <EmployeeTargeting form={form} />;
+      case 4:
+        return <ScheduleSettings form={form} />;
+      case 5:
+        return <ConsentSettings form={form} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <HRLayout>
-      <div className="space-y-6">
+      <div className="space-y-6 max-w-5xl mx-auto">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={() => navigate('/hr/dashboard')}>
             <ArrowLeft className="h-4 w-4" />
@@ -20,19 +257,36 @@ const CreateSurvey = () => {
           </div>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Survey Wizard</CardTitle>
-            <CardDescription>
-              This feature is coming soon. The multi-step wizard will guide you through creating surveys with theme selection, employee targeting, scheduling, and privacy settings.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">
-              In the meantime, you can explore the dashboard and other features.
-            </p>
-          </CardContent>
-        </Card>
+        <WizardProgress currentStep={currentStep} steps={STEPS} />
+
+        <Form {...form}>
+          <form onSubmit={(e) => e.preventDefault()}>
+            <Card>
+              <CardContent className="pt-6">
+                {renderStep()}
+                <WizardNavigation
+                  currentStep={currentStep}
+                  totalSteps={5}
+                  onBack={handleBack}
+                  onNext={handleNext}
+                  onSaveDraft={() => saveDraft(true)}
+                  isNextDisabled={!validateCurrentStep()}
+                  isSaving={isSaving}
+                />
+              </CardContent>
+            </Card>
+          </form>
+        </Form>
+
+        <DeployConfirmationModal
+          open={showDeployModal}
+          onOpenChange={setShowDeployModal}
+          formData={form.getValues()}
+          themeCount={form.watch("themes").length}
+          targetCount={targetCount}
+          onConfirm={handleDeploy}
+          isDeploying={isDeploying}
+        />
       </div>
     </HRLayout>
   );

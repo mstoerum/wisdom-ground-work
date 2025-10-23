@@ -1,23 +1,40 @@
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Users } from "lucide-react";
+import { MoreVertical, Users, Edit, BarChart3, Archive, Trash2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 interface SurveyListProps {
   status?: 'active' | 'draft' | 'scheduled' | 'completed';
 }
 
 export const SurveyList = ({ status }: SurveyListProps) => {
-  const { data: surveys = [], isLoading } = useQuery({
+  const navigate = useNavigate();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [surveyToDelete, setSurveyToDelete] = useState<string | null>(null);
+  
+  const { data: surveys, isLoading, refetch } = useQuery({
     queryKey: ['surveys', status],
     queryFn: async () => {
       let query = supabase
@@ -35,11 +52,43 @@ export const SurveyList = ({ status }: SurveyListProps) => {
     },
   });
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-green-500/10 text-green-500';
+      case 'draft': return 'bg-gray-500/10 text-gray-500';
+      case 'scheduled': return 'bg-blue-500/10 text-blue-500';
+      case 'completed': return 'bg-purple-500/10 text-purple-500';
+      default: return 'bg-gray-500/10 text-gray-500';
+    }
+  };
+
+  const handleDeleteDraft = async () => {
+    if (!surveyToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('surveys')
+        .delete()
+        .eq('id', surveyToDelete);
+
+      if (error) throw error;
+
+      toast.success('Draft deleted successfully');
+      refetch();
+    } catch (error) {
+      console.error('Error deleting draft:', error);
+      toast.error('Failed to delete draft');
+    } finally {
+      setDeleteDialogOpen(false);
+      setSurveyToDelete(null);
+    }
+  };
+
   if (isLoading) {
     return <div className="text-muted-foreground">Loading surveys...</div>;
   }
 
-  if (surveys.length === 0) {
+  if (!surveys || surveys.length === 0) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
@@ -52,18 +101,9 @@ export const SurveyList = ({ status }: SurveyListProps) => {
     );
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'active': return 'bg-green-500/10 text-green-500';
-      case 'draft': return 'bg-gray-500/10 text-gray-500';
-      case 'scheduled': return 'bg-blue-500/10 text-blue-500';
-      case 'completed': return 'bg-purple-500/10 text-purple-500';
-      default: return 'bg-gray-500/10 text-gray-500';
-    }
-  };
-
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="space-y-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {surveys.map((survey) => (
         <Card key={survey.id}>
           <CardHeader>
@@ -81,10 +121,36 @@ export const SurveyList = ({ status }: SurveyListProps) => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem>Edit</DropdownMenuItem>
-                  <DropdownMenuItem>View Analytics</DropdownMenuItem>
-                  <DropdownMenuItem>Duplicate</DropdownMenuItem>
-                  <DropdownMenuItem className="text-destructive">Archive</DropdownMenuItem>
+                  {survey.status === 'draft' && (
+                    <>
+                      <DropdownMenuItem onClick={() => navigate(`/hr/create-survey?draft_id=${survey.id}`)}>
+                        <Edit className="h-4 w-4 mr-2" />
+                        Continue Editing
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => {
+                          setSurveyToDelete(survey.id);
+                          setDeleteDialogOpen(true);
+                        }}
+                        className="text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete Draft
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {survey.status !== 'draft' && (
+                    <>
+                      <DropdownMenuItem onClick={() => navigate(`/hr/analytics?survey_id=${survey.id}`)}>
+                        <BarChart3 className="h-4 w-4 mr-2" />
+                        View Analytics
+                      </DropdownMenuItem>
+                      <DropdownMenuItem>
+                        <Archive className="h-4 w-4 mr-2" />
+                        Archive
+                      </DropdownMenuItem>
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
@@ -121,6 +187,22 @@ export const SurveyList = ({ status }: SurveyListProps) => {
           </CardContent>
         </Card>
       ))}
+      </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Draft Survey?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The draft survey will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteDraft}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
