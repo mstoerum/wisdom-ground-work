@@ -1,5 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEffect } from "react";
+import { useToast } from "@/hooks/use-toast";
 
 export interface AnalyticsFilters {
   surveyId?: string;
@@ -33,6 +35,40 @@ export interface ThemeInsight {
 }
 
 export const useAnalytics = (filters: AnalyticsFilters = {}) => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  // Real-time updates subscription
+  useEffect(() => {
+    const channel = supabase
+      .channel('analytics-updates')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'responses' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['analytics-participation'] });
+          queryClient.invalidateQueries({ queryKey: ['analytics-sentiment'] });
+          queryClient.invalidateQueries({ queryKey: ['analytics-themes'] });
+          toast({
+            title: "New response received",
+            description: "Analytics updated with latest data",
+          });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'conversation_sessions' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['analytics-participation'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient, toast]);
+
   const participationQuery = useQuery({
     queryKey: ['analytics-participation', filters],
     queryFn: async () => {

@@ -2,10 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ConversationBubble } from "./ConversationBubble";
-import { Send, Loader2 } from "lucide-react";
+import { Send, Loader2, Save } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface Message {
   role: "user" | "assistant";
@@ -16,13 +17,15 @@ interface Message {
 interface ChatInterfaceProps {
   conversationId: string;
   onComplete: () => void;
+  onSaveAndExit: () => void;
 }
 
-export const ChatInterface = ({ conversationId, onComplete }: ChatInterfaceProps) => {
+export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const loadConversation = async () => {
@@ -128,6 +131,16 @@ export const ChatInterface = ({ conversationId, onComplete }: ChatInterfaceProps
     }
   };
 
+  const handleSaveAndExit = () => {
+    toast({
+      title: "Progress saved",
+      description: "You can resume this conversation anytime.",
+    });
+    setTimeout(() => {
+      onSaveAndExit();
+    }, 1000);
+  };
+
   const userMessageCount = messages.filter(m => m.role === "user").length;
   const estimatedTotal = 8;
   const progressPercent = Math.min((userMessageCount / estimatedTotal) * 100, 100);
@@ -137,12 +150,25 @@ export const ChatInterface = ({ conversationId, onComplete }: ChatInterfaceProps
       {/* Progress Indicator */}
       <div className="p-4 border-b border-border/50">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm text-muted-foreground">
-            {userMessageCount > 0 && userMessageCount < estimatedTotal && `Question ${userMessageCount} of ~${estimatedTotal}`}
-            {userMessageCount >= 6 && userMessageCount < estimatedTotal && " • Almost done!"}
-            {userMessageCount >= estimatedTotal && "Wrapping up..."}
-          </span>
-          <span className="text-sm font-medium">{Math.round(progressPercent)}%</span>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-muted-foreground">
+              {userMessageCount > 0 && userMessageCount < estimatedTotal && `Question ${userMessageCount} of ~${estimatedTotal}`}
+              {userMessageCount >= 6 && userMessageCount < estimatedTotal && " • Almost done!"}
+              {userMessageCount >= estimatedTotal && "Wrapping up..."}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">{Math.round(progressPercent)}%</span>
+            <Button
+              onClick={handleSaveAndExit}
+              variant="ghost"
+              size="sm"
+              className="h-7"
+            >
+              <Save className="h-3 w-3 mr-1" />
+              Save & Exit
+            </Button>
+          </div>
         </div>
         <Progress value={progressPercent} className="h-1.5" />
       </div>

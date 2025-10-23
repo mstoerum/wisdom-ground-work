@@ -11,6 +11,7 @@ import { ParticipationChart } from "@/components/hr/analytics/ParticipationChart
 import { ThemeInsights } from "@/components/hr/analytics/ThemeInsights";
 import { ResponseList } from "@/components/hr/analytics/ResponseList";
 import { UrgencyFlags } from "@/components/hr/analytics/UrgencyFlags";
+import { DateRangePicker } from "@/components/hr/analytics/DateRangePicker";
 import { exportToCSV } from "@/lib/exportAnalytics";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -64,6 +65,12 @@ const Analytics = () => {
               ))}
             </SelectContent>
           </Select>
+          
+          <DateRangePicker
+            startDate={filters.startDate}
+            endDate={filters.endDate}
+            onDateChange={(start, end) => setFilters({ ...filters, startDate: start, endDate: end })}
+          />
         </div>
 
         <Tabs defaultValue="overview" className="space-y-6">

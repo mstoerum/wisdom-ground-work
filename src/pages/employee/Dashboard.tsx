@@ -5,6 +5,7 @@ import { ChatInterface } from "@/components/employee/ChatInterface";
 import { AnonymizationBanner } from "@/components/employee/AnonymizationBanner";
 import { ConsentModal } from "@/components/employee/ConsentModal";
 import { ClosingRitual } from "@/components/employee/ClosingRitual";
+import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
 import { useConversation } from "@/hooks/useConversation";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -118,6 +119,10 @@ const EmployeeDashboard = () => {
     await supabase.auth.signOut();
   };
 
+  const handleSaveAndExit = () => {
+    handleSignOut();
+  };
+
   if (!surveyId) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
@@ -166,10 +171,13 @@ const EmployeeDashboard = () => {
           )}
 
           {step === "chat" && conversationId && (
-            <ChatInterface
-              conversationId={conversationId}
-              onComplete={handleChatComplete}
-            />
+            <ChatErrorBoundary conversationId={conversationId} onExit={handleSaveAndExit}>
+              <ChatInterface 
+                conversationId={conversationId}
+                onComplete={handleChatComplete}
+                onSaveAndExit={handleSaveAndExit}
+              />
+            </ChatErrorBoundary>
           )}
 
           {step === "closing" && (
