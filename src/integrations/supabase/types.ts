@@ -234,6 +234,13 @@ export type Database = {
             foreignKeyName: "escalation_log_response_id_fkey"
             columns: ["response_id"]
             isOneToOne: false
+            referencedRelation: "anonymized_responses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "escalation_log_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
             referencedRelation: "responses"
             referencedColumns: ["id"]
           },
@@ -502,7 +509,46 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      anonymized_responses: {
+        Row: {
+          ai_analysis: Json | null
+          ai_response: string | null
+          content: string | null
+          conversation_session_id: string | null
+          created_at: string | null
+          employee_id: string | null
+          id: string | null
+          is_paraphrased: boolean | null
+          sentiment: string | null
+          sentiment_score: number | null
+          survey_id: string | null
+          theme_id: string | null
+          urgency_escalated: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "responses_conversation_session_id_fkey"
+            columns: ["conversation_session_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "responses_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "responses_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "survey_themes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       assign_initial_hr_admin: { Args: never; Returns: undefined }
