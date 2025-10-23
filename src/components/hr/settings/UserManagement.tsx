@@ -3,16 +3,19 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { toast } from "@/hooks/use-toast";
 import { useState } from "react";
-import { UserPlus, UserMinus } from "lucide-react";
+import type { Database } from "@/integrations/supabase/types";
+
+type AppRole = Database['public']['Enums']['app_role'];
 
 export const UserManagement = () => {
   const queryClient = useQueryClient();
-  const [confirmDialog, setConfirmDialog] = useState<{ userId: string; role: 'employee' | 'hr_admin' | 'hr_analyst'; action: 'add' | 'remove' } | null>(null);
+  const [selectedUser, setSelectedUser] = useState<{ id: string; name: string } | null>(null);
+  const [selectedRole, setSelectedRole] = useState<AppRole>('employee');
+  const [actionType, setActionType] = useState<'add' | 'remove'>('add');
 
   const { data: users = [], isLoading } = useQuery({
     queryKey: ['all-users'],
@@ -42,41 +45,53 @@ export const UserManagement = () => {
     },
   });
 
-  const changeRoleMutation = useMutation({
-    mutationFn: async ({ userId, role, action }: { userId: string; role: 'employee' | 'hr_admin' | 'hr_analyst'; action: 'add' | 'remove' }) => {
+  const roleChangeMutation = useMutation({
+    mutationFn: async ({ userId, role, action }: { userId: string; role: AppRole; action: 'add' | 'remove' }) => {
       if (action === 'add') {
         const { error } = await supabase
           .from('user_roles')
-          .insert({ user_id: userId, role: role as any });
+          .insert([{ user_id: userId, role }]);
         if (error) throw error;
       } else {
         const { error } = await supabase
           .from('user_roles')
           .delete()
           .eq('user_id', userId)
-          .eq('role', role as any);
+          .eq('role', role);
         if (error) throw error;
       }
     },
-    onSuccess: (_, { action, role }) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['all-users'] });
       toast({
-        title: "Role updated",
-        description: `Successfully ${action === 'add' ? 'added' : 'removed'} ${role.replace('_', ' ')} role`,
+        title: "Success",
+        description: `Role ${actionType === 'add' ? 'added' : 'removed'} successfully`,
       });
-      setConfirmDialog(null);
+      setSelectedUser(null);
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to update role",
+        description: error.message,
         variant: "destructive",
       });
     },
   });
 
-  const handleRoleChange = (userId: string, role: 'employee' | 'hr_admin' | 'hr_analyst', action: 'add' | 'remove') => {
-    setConfirmDialog({ userId, role, action });
+  const handleRoleAction = (user: any, role: AppRole, action: 'add' | 'remove') => {
+    setSelectedUser({ id: user.id, name: user.full_name || user.email });
+    setSelectedRole(role);
+    setActionType(action);
+  };
+
+  const confirmRoleChange = () => {
+    if (selectedUser) {
+      roleChangeMutation.mutate({
+        userId: selectedUser.id,
+        role: selectedRole,
+        action: actionType,
+      });
+    }
   };
 
   if (isLoading) {
@@ -90,111 +105,97 @@ export const UserManagement = () => {
   }
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle>User Management</CardTitle>
-          <CardDescription>
-            Manage user roles and permissions
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Roles</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>{user.full_name || "-"}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.department || "-"}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-1 flex-wrap">
-                      {user.roles.length === 0 ? (
-                        <Badge variant="outline">employee</Badge>
-                      ) : (
-                        user.roles.map((role: string) => (
-                          <Badge key={role} variant="secondary">
-                            {role.replace('_', ' ')}
-                          </Badge>
-                        ))
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Select
-                        onValueChange={(role) => handleRoleChange(user.id, role as 'employee' | 'hr_admin' | 'hr_analyst', 'add')}
-                      >
+    <Card>
+      <CardHeader>
+        <CardTitle>User Management</CardTitle>
+        <CardDescription>
+          Manage user roles and permissions. HR Admins can add or remove roles.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Department</TableHead>
+              <TableHead>Roles</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell>{user.full_name || "-"}</TableCell>
+                <TableCell>{user.email}</TableCell>
+                <TableCell>{user.department || "-"}</TableCell>
+                <TableCell>
+                  <div className="flex gap-1 flex-wrap">
+                    {user.roles.length === 0 ? (
+                      <Badge variant="outline">employee</Badge>
+                    ) : (
+                      user.roles.map((role: string) => (
+                        <Badge key={role} variant="secondary">
+                          {role.replace('_', ' ')}
+                        </Badge>
+                      ))
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex gap-2 justify-end">
+                    <Select onValueChange={(role) => handleRoleAction(user, role as AppRole, 'add')}>
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue placeholder="Add role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hr_admin">HR Admin</SelectItem>
+                        <SelectItem value="hr_analyst">HR Analyst</SelectItem>
+                        <SelectItem value="employee">Employee</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {user.roles.length > 0 && (
+                      <Select onValueChange={(role) => handleRoleAction(user, role as AppRole, 'remove')}>
                         <SelectTrigger className="w-[140px]">
-                          <SelectValue placeholder="Add role" />
+                          <SelectValue placeholder="Remove role" />
                         </SelectTrigger>
                         <SelectContent>
-                          {(['employee', 'hr_admin', 'hr_analyst'] as const)
-                            .filter(role => !user.roles.includes(role))
-                            .map(role => (
-                              <SelectItem key={role} value={role}>
-                                {role.replace('_', ' ')}
-                              </SelectItem>
-                            ))}
+                          {user.roles.map((role: string) => (
+                            <SelectItem key={role} value={role}>
+                              {role.replace('_', ' ')}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
-                      {user.roles.length > 0 && (
-                        <Select
-                          onValueChange={(role) => handleRoleChange(user.id, role as 'employee' | 'hr_admin' | 'hr_analyst', 'remove')}
-                        >
-                          <SelectTrigger className="w-[140px]">
-                            <SelectValue placeholder="Remove role" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {user.roles.map((role: string) => (
-                              <SelectItem key={role} value={role}>
-                                {role.replace('_', ' ')}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
 
-      <AlertDialog open={!!confirmDialog} onOpenChange={() => setConfirmDialog(null)}>
+      <AlertDialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Confirm Role Change</AlertDialogTitle>
+            <AlertDialogTitle>
+              {actionType === 'add' ? 'Add' : 'Remove'} Role
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to {confirmDialog?.action} the role{' '}
-              <strong>{confirmDialog?.role.replace('_', ' ')}</strong>?
-              This will immediately affect the user's permissions.
+              Are you sure you want to {actionType} the role "{selectedRole.replace('_', ' ')}" 
+              {actionType === 'add' ? ' to ' : ' from '} 
+              {selectedUser?.name}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => {
-                if (confirmDialog) {
-                  changeRoleMutation.mutate(confirmDialog);
-                }
-              }}
-            >
+            <AlertDialogAction onClick={confirmRoleChange}>
               Confirm
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </Card>
   );
 };

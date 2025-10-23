@@ -21,23 +21,29 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch conversation and survey details
+    // Fetch conversation and survey details with themes
     const { data: session } = await supabase
       .from("conversation_sessions")
-      .select("survey_id, surveys!inner(themes, first_message)")
+      .select(`
+        survey_id, 
+        surveys(
+          themes, 
+          first_message
+        )
+      `)
       .eq("id", conversationId)
       .single();
 
+    // Fetch theme details for classification
+    const survey = session?.surveys as any;
+    const themeIds = survey?.themes || [];
+    const { data: themes } = await supabase
+      .from("survey_themes")
+      .select("id, name, description")
+      .in("id", themeIds);
+
     const turnCount = messages.filter((m: any) => m.role === "user").length;
     const shouldComplete = turnCount >= 8;
-
-    // Fetch survey themes for classification
-    const surveysData: any = session?.surveys;
-    const surveyThemes = surveysData ? (Array.isArray(surveysData) ? surveysData[0]?.themes : surveysData.themes) : [];
-    const { data: themesData } = await supabase
-      .from('survey_themes')
-      .select('id, name, description')
-      .in('id', surveyThemes || []);
 
     // System prompt for empathetic conversational AI
     const systemPrompt = `You are a compassionate, empathetic AI assistant conducting a confidential employee feedback conversation. 
@@ -110,9 +116,9 @@ Remember: Your tone should be warm, professional, and genuinely interested in un
 
     // Detect theme
     let detectedThemeId = null;
-    if (themesData && themesData.length > 0) {
+    if (themes && themes.length > 0) {
       const themePrompt = `Classify this employee feedback into ONE of these themes:
-${themesData.map(t => `- ${t.name}: ${t.description}`).join('\n')}
+${themes.map(t => `- ${t.name}: ${t.description}`).join('\n')}
 
 Employee feedback: "${messages[messages.length - 1].content}"
 
@@ -134,10 +140,12 @@ Reply with only the exact theme name.`;
 
       if (themeResponse.ok) {
         const themeData = await themeResponse.json();
-        const themeName = themeData.choices[0].message.content.toLowerCase().trim();
-        const detectedTheme = themesData.find(t => themeName.includes(t.name.toLowerCase()));
-        if (detectedTheme) {
-          detectedThemeId = detectedTheme.id;
+        const themeName = themeData.choices[0].message.content.trim();
+        const matchedTheme = themes.find(t => 
+          themeName.toLowerCase().includes(t.name.toLowerCase())
+        );
+        if (matchedTheme) {
+          detectedThemeId = matchedTheme.id;
         }
       }
     }
@@ -167,8 +175,9 @@ Reply with only: urgent OR not-urgent`;
     const urgencyData = await urgencyResponse.json();
     const isUrgent = urgencyData.choices[0].message.content.toLowerCase().includes('urgent');
 
-    // Store response with theme and urgency
-    const { data: insertedResponse } = await supabase.from("responses")
+    // Store response in database with theme and urgency
+    const { data: insertedResponse, error: insertError } = await supabase
+      .from("responses")
       .insert({
         conversation_session_id: conversationId,
         survey_id: session?.survey_id,
@@ -183,7 +192,11 @@ Reply with only: urgent OR not-urgent`;
       .select()
       .single();
 
-    // Create escalation log if urgent
+    if (insertError) {
+      console.error("Error inserting response:", insertError);
+    }
+
+    // If urgent, create escalation log entry
     if (isUrgent && insertedResponse) {
       await supabase.from("escalation_log").insert({
         response_id: insertedResponse.id,
