@@ -135,6 +135,86 @@ export type Database = {
           },
         ]
       }
+      audit_logs: {
+        Row: {
+          action_type: string
+          id: string
+          ip_address: string | null
+          metadata: Json | null
+          resource_id: string | null
+          resource_type: string | null
+          timestamp: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resource_id?: string | null
+          resource_type?: string | null
+          timestamp?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          id?: string
+          ip_address?: string | null
+          metadata?: Json | null
+          resource_id?: string | null
+          resource_type?: string | null
+          timestamp?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      consent_history: {
+        Row: {
+          anonymization_level: string
+          consent_given_at: string
+          consent_revoked_at: string | null
+          data_retention_days: number
+          id: string
+          ip_address: string | null
+          survey_id: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          anonymization_level?: string
+          consent_given_at?: string
+          consent_revoked_at?: string | null
+          data_retention_days?: number
+          id?: string
+          ip_address?: string | null
+          survey_id: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          anonymization_level?: string
+          consent_given_at?: string
+          consent_revoked_at?: string | null
+          data_retention_days?: number
+          id?: string
+          ip_address?: string | null
+          survey_id?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consent_history_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_sessions: {
         Row: {
           anonymization_level: string | null
@@ -188,6 +268,47 @@ export type Database = {
           },
           {
             foreignKeyName: "conversation_sessions_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      data_retention_log: {
+        Row: {
+          deleted_at: string
+          details: Json | null
+          executed_by: string | null
+          execution_type: string
+          id: string
+          records_deleted_count: number
+          retention_policy_days: number
+          survey_id: string | null
+        }
+        Insert: {
+          deleted_at?: string
+          details?: Json | null
+          executed_by?: string | null
+          execution_type?: string
+          id?: string
+          records_deleted_count?: number
+          retention_policy_days: number
+          survey_id?: string | null
+        }
+        Update: {
+          deleted_at?: string
+          details?: Json | null
+          executed_by?: string | null
+          execution_type?: string
+          id?: string
+          records_deleted_count?: number
+          retention_policy_days?: number
+          survey_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "data_retention_log_survey_id_fkey"
             columns: ["survey_id"]
             isOneToOne: false
             referencedRelation: "surveys"
@@ -599,6 +720,15 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      log_audit_event: {
+        Args: {
+          _action_type: string
+          _metadata?: Json
+          _resource_id?: string
+          _resource_type?: string
+        }
+        Returns: string
       }
     }
     Enums: {

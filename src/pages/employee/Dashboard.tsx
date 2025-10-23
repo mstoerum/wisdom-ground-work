@@ -9,9 +9,11 @@ import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
 import { VisibleCommitments } from "@/components/employee/VisibleCommitments";
 import { SurveyHistory } from "@/components/employee/SurveyHistory";
 import { SurveyUpdates } from "@/components/employee/SurveyUpdates";
+import { ConsentHistory } from "@/components/employee/ConsentHistory";
 import { useConversation } from "@/hooks/useConversation";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogOut, MessageSquare } from "lucide-react";
 
 type ConversationStep = "consent" | "mood" | "chat" | "closing" | "complete";
@@ -66,7 +68,20 @@ const EmployeeDashboard = () => {
     }
   };
 
-  const handleConsent = () => {
+  const handleConsent = async () => {
+    if (!surveyId || !surveyDetails) return;
+
+    // Log consent to consent_history table
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await supabase.from("consent_history").insert({
+        user_id: user.id,
+        survey_id: surveyId,
+        anonymization_level: surveyDetails?.consent_config?.anonymization_level || "anonymous",
+        data_retention_days: surveyDetails?.consent_config?.data_retention_days || 60,
+      });
+    }
+
     setStep("mood");
   };
 
@@ -152,9 +167,30 @@ const EmployeeDashboard = () => {
               </p>
             </div>
 
-            <SurveyUpdates />
-            <VisibleCommitments />
-            <SurveyHistory />
+            <Tabs defaultValue="updates" className="space-y-4">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="updates">Updates</TabsTrigger>
+                <TabsTrigger value="commitments">Commitments</TabsTrigger>
+                <TabsTrigger value="history">History</TabsTrigger>
+                <TabsTrigger value="consent">Privacy</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="updates">
+                <SurveyUpdates />
+              </TabsContent>
+
+              <TabsContent value="commitments">
+                <VisibleCommitments />
+              </TabsContent>
+
+              <TabsContent value="history">
+                <SurveyHistory />
+              </TabsContent>
+
+              <TabsContent value="consent">
+                <ConsentHistory />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>

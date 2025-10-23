@@ -6,13 +6,56 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Rate limiting map (simple in-memory, production should use Redis)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
+const checkRateLimit = (userId: string): boolean => {
+  const now = Date.now();
+  const limit = rateLimitMap.get(userId);
+  
+  if (!limit || now > limit.resetTime) {
+    rateLimitMap.set(userId, { count: 1, resetTime: now + 60000 }); // 1 minute window
+    return true;
+  }
+  
+  if (limit.count >= 10) {
+    return false; // Max 10 requests per minute
+  }
+  
+  limit.count++;
+  return true;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Get authorization header
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader) {
+      throw new Error("Missing authorization header");
+    }
+
     const { conversationId, messages } = await req.json();
+    
+    // Input validation
+    if (!conversationId || typeof conversationId !== "string") {
+      throw new Error("Invalid conversationId");
+    }
+    if (!Array.isArray(messages) || messages.length === 0) {
+      throw new Error("Invalid messages array");
+    }
+    
+    // Sanitize user input
+    const lastMessage = messages[messages.length - 1];
+    if (!lastMessage.content || typeof lastMessage.content !== "string") {
+      throw new Error("Invalid message content");
+    }
+    if (lastMessage.content.length > 2000) {
+      throw new Error("Message too long");
+    }
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -21,10 +64,28 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch conversation and survey details with themes
-    const { data: session } = await supabase
+    // Verify user authentication
+    const { data: { user }, error: userError } = await supabase.auth.getUser(
+      authHeader.replace("Bearer ", "")
+    );
+    
+    if (userError || !user) {
+      throw new Error("Unauthorized: Invalid authentication");
+    }
+
+    // Rate limiting check
+    if (!checkRateLimit(user.id)) {
+      return new Response(
+        JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Fetch conversation and verify user has access
+    const { data: session, error: sessionError } = await supabase
       .from("conversation_sessions")
       .select(`
+        employee_id,
         survey_id, 
         surveys(
           themes, 
@@ -33,6 +94,16 @@ serve(async (req) => {
       `)
       .eq("id", conversationId)
       .single();
+
+    if (sessionError || !session) {
+      throw new Error("Conversation not found");
+    }
+
+    // Verify user owns this conversation
+    if (session.employee_id !== user.id) {
+      console.warn(`Unauthorized access attempt: User ${user.id} tried to access conversation ${conversationId}`);
+      throw new Error("Unauthorized: You don't have access to this conversation");
+    }
 
     // Fetch theme details for classification
     const survey = session?.surveys as any;
@@ -250,6 +321,20 @@ Reply with only: urgent OR not-urgent`;
       });
     }
 
+    // Log to audit logs
+    await supabase.from("audit_logs").insert({
+      user_id: user.id,
+      action_type: "chat_message_sent",
+      resource_type: "conversation_session",
+      resource_id: conversationId,
+      metadata: {
+        survey_id: session?.survey_id,
+        theme_id: detectedThemeId,
+        sentiment: sentiment,
+        urgency_escalated: isUrgent,
+      },
+    });
+
     return new Response(
       JSON.stringify({ 
         message: aiMessage,
@@ -259,9 +344,15 @@ Reply with only: urgent OR not-urgent`;
     );
   } catch (error) {
     console.error("Chat error:", error);
+    
+    // Don't expose internal errors to client
+    const clientMessage = error instanceof Error && error.message.startsWith("Unauthorized")
+      ? error.message
+      : "An error occurred processing your request. Please try again.";
+    
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: clientMessage }),
+      { status: error instanceof Error && error.message.includes("Unauthorized") ? 403 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
