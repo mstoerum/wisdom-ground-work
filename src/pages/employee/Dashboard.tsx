@@ -180,6 +180,8 @@ const EmployeeDashboard = () => {
             <ConsentModal
               open={true}
               consentMessage={surveyDetails?.consent_config?.consent_message}
+              anonymizationLevel={surveyDetails?.consent_config?.anonymization_level}
+              dataRetentionDays={surveyDetails?.consent_config?.data_retention_days}
               onConsent={handleConsent}
               onDecline={handleDecline}
             />

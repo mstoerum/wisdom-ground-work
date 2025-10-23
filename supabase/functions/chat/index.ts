@@ -42,10 +42,51 @@ serve(async (req) => {
       .select("id, name, description")
       .in("id", themeIds);
 
+    // Fetch previous responses for conversational memory
+    const { data: previousResponses } = await supabase
+      .from("responses")
+      .select("content, ai_response, theme_id, sentiment")
+      .eq("conversation_session_id", conversationId)
+      .order("created_at", { ascending: true })
+      .limit(10);
+
     const turnCount = messages.filter((m: any) => m.role === "user").length;
     const shouldComplete = turnCount >= 8;
 
-    // System prompt for empathetic conversational AI
+    // Build conversation context summary
+    let conversationContext = "";
+    if (previousResponses && previousResponses.length > 0) {
+      const discussedThemes = new Set(
+        previousResponses
+          .filter(r => r.theme_id)
+          .map(r => themes?.find((t: any) => t.id === r.theme_id)?.name)
+          .filter(Boolean)
+      );
+      
+      const sentimentPattern = previousResponses
+        .slice(-3)
+        .map(r => r.sentiment)
+        .filter(Boolean);
+      
+      conversationContext = `
+CONVERSATION CONTEXT:
+- Topics already discussed: ${discussedThemes.size > 0 ? Array.from(discussedThemes).join(", ") : "None yet"}
+- Recent sentiment pattern: ${sentimentPattern.join(" → ")}
+- Exchange count: ${previousResponses.length}
+${previousResponses.length > 0 ? `- Key points mentioned earlier: "${previousResponses.slice(0, 2).map(r => r.content.substring(0, 60)).join('"; "')}"` : ""}
+
+ADAPTIVE INSTRUCTIONS:
+${sentimentPattern[sentimentPattern.length - 1] === "negative" ? 
+  "- The employee is sharing challenges. Use empathetic, validating language. Acknowledge their feelings." : ""}
+${sentimentPattern[sentimentPattern.length - 1] === "positive" ? 
+  "- The employee is positive. Great! Also gently explore if there are any challenges to ensure balanced feedback." : ""}
+${discussedThemes.size > 0 && discussedThemes.size < themeIds.length ? 
+  `- Themes not yet covered: ${themeIds.filter((id: any) => !Array.from(discussedThemes).includes(themes?.find((t: any) => t.id === id)?.name)).map((id: any) => themes?.find((t: any) => t.id === id)?.name).filter(Boolean).join(", ")}. Transition naturally to explore these.` : ""}
+${previousResponses.length >= 3 ? "- Reference earlier points when relevant to show you're listening and building on what they've shared." : ""}
+`;
+    }
+
+    // System prompt for empathetic conversational AI with adaptive behavior
     const systemPrompt = `You are a compassionate, empathetic AI assistant conducting a confidential employee feedback conversation. 
 
 Your goals:
@@ -56,15 +97,19 @@ Your goals:
 - Keep responses warm, concise, and conversational (2-3 sentences max)
 - Probe deeper on important topics without being repetitive
 - Recognize emotional cues and respond appropriately
+- Reference earlier points naturally when building on topics
 
 Conversation flow:
 1. Start with open-ended questions about their current experience
 2. Explore challenges with curiosity and care
 3. Ask about positive aspects to balance the conversation
 4. Invite suggestions for improvement
-5. Naturally conclude when sufficient depth is reached (after 8-12 exchanges)
+5. Naturally transition between themes after 3-4 exchanges on one topic
+6. Naturally conclude when sufficient depth is reached (after 8-12 exchanges)
 
-Remember: Your tone should be warm, professional, and genuinely interested in understanding their perspective.`;
+${conversationContext}
+
+Remember: Your tone should be warm, professional, and genuinely interested in understanding their perspective. Adapt your approach based on their sentiment and what they've already shared.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
