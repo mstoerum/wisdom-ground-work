@@ -1,16 +1,40 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle2, Heart, TrendingUp, Minus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { CheckCircle2, Heart, TrendingUp, Minus, MessageCircle } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 
 interface ClosingRitualProps {
   initialMood: number;
+  conversationId: string;
   onComplete: (finalMood: number) => void;
 }
 
-export const ClosingRitual = ({ initialMood, onComplete }: ClosingRitualProps) => {
+export const ClosingRitual = ({ initialMood, conversationId, onComplete }: ClosingRitualProps) => {
   const [finalMood, setFinalMood] = useState(50);
+
+  const { data: themesDiscussed = [] } = useQuery({
+    queryKey: ['themes-discussed', conversationId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('responses')
+        .select('theme_id, survey_themes(name)')
+        .eq('conversation_session_id', conversationId)
+        .not('theme_id', 'is', null);
+
+      if (error) throw error;
+      
+      // Get unique themes
+      const uniqueThemes = Array.from(
+        new Map(data.map(item => [item.theme_id, item.survey_themes]))
+      ).map(([_, theme]) => theme);
+      
+      return uniqueThemes.filter(Boolean);
+    },
+  });
 
   const moodLabels = [
     { value: 0, label: "Very Low", emoji: "😢" },
@@ -72,8 +96,28 @@ export const ClosingRitual = ({ initialMood, onComplete }: ClosingRitualProps) =
             </div>
           )}
         </div>
+        {/* Themes Discussed Summary */}
+        {themesDiscussed.length > 0 && (
+          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <MessageCircle className="h-4 w-4 text-primary" />
+              <h4 className="font-medium text-sm">Topics You Shared Feedback On</h4>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {themesDiscussed.map((theme: any, index: number) => (
+                <Badge key={index} variant="secondary">
+                  {theme.name}
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="space-y-3">
-          <p className="text-foreground">
+          <p className="text-foreground font-medium">
+            Thank you for taking the time to share your thoughts! 🙏
+          </p>
+          <p className="text-foreground text-sm">
             Your feedback has been securely recorded and will help us create a better workplace.
           </p>
           <p className="text-muted-foreground text-sm">

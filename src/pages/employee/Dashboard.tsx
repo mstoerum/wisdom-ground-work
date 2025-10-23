@@ -6,6 +6,8 @@ import { AnonymizationBanner } from "@/components/employee/AnonymizationBanner";
 import { ConsentModal } from "@/components/employee/ConsentModal";
 import { ClosingRitual } from "@/components/employee/ClosingRitual";
 import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
+import { VisibleCommitments } from "@/components/employee/VisibleCommitments";
+import { SurveyHistory } from "@/components/employee/SurveyHistory";
 import { useConversation } from "@/hooks/useConversation";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -125,19 +127,33 @@ const EmployeeDashboard = () => {
 
   if (!surveyId) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="text-center max-w-md">
-          <div className="bg-muted rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
-            <MessageSquare className="h-10 w-10 text-muted-foreground" />
+      <div className="min-h-screen bg-background p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex justify-between items-center mb-8">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground">Your Feedback Hub</h1>
+              <p className="text-muted-foreground mt-1">Track your participation and see our commitments</p>
+            </div>
+            <Button onClick={handleSignOut} variant="ghost" size="sm">
+              <LogOut className="h-4 w-4 mr-2" />
+              Sign Out
+            </Button>
           </div>
-          <h1 className="text-2xl font-bold mb-3">No Active Surveys</h1>
-          <p className="text-muted-foreground mb-6">
-            You don't have any surveys assigned right now. Check back later for new feedback opportunities.
-          </p>
-          <Button onClick={handleSignOut} variant="outline">
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
+
+          <div className="space-y-6">
+            <div className="bg-muted/50 rounded-lg p-6 text-center">
+              <div className="bg-muted rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                <MessageSquare className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <h2 className="text-xl font-bold mb-2">No Active Surveys</h2>
+              <p className="text-muted-foreground">
+                You don't have any surveys assigned right now. Check back later for new feedback opportunities.
+              </p>
+            </div>
+
+            <VisibleCommitments />
+            <SurveyHistory />
+          </div>
         </div>
       </div>
     );
@@ -183,8 +199,12 @@ const EmployeeDashboard = () => {
             </ChatErrorBoundary>
           )}
 
-          {step === "closing" && (
-            <ClosingRitual initialMood={mood} onComplete={handleComplete} />
+          {step === "closing" && conversationId && (
+            <ClosingRitual 
+              initialMood={mood} 
+              conversationId={conversationId}
+              onComplete={handleComplete} 
+            />
           )}
 
           {step === "complete" && (
