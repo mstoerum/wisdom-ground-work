@@ -2,8 +2,9 @@ import { useState } from "react";
 import { HRLayout } from "@/components/hr/HRLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle } from "lucide-react";
+import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, HelpCircle } from "lucide-react";
 import { useAnalytics, type AnalyticsFilters } from "@/hooks/useAnalytics";
 import { MetricCard } from "@/components/hr/analytics/MetricCard";
 import { SentimentChart } from "@/components/hr/analytics/SentimentChart";
@@ -13,8 +14,10 @@ import { ResponseList } from "@/components/hr/analytics/ResponseList";
 import { UrgencyFlags } from "@/components/hr/analytics/UrgencyFlags";
 import { DateRangePicker } from "@/components/hr/analytics/DateRangePicker";
 import { exportToCSV } from "@/lib/exportAnalytics";
+import { exportAnalyticsToPDF } from "@/lib/exportAnalyticsPDF";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const Analytics = () => {
   const [filters, setFilters] = useState<AnalyticsFilters>({});
@@ -36,6 +39,23 @@ const Analytics = () => {
     exportToCSV(participation, sentiment, themes);
   };
 
+  const handlePDFExport = async () => {
+    if (!participation || !sentiment) {
+      toast.error("Analytics data not loaded yet");
+      return;
+    }
+
+    const surveyName = surveys?.find(s => s.id === filters.surveyId)?.title || "All Surveys";
+    
+    try {
+      await exportAnalyticsToPDF(surveyName, participation, sentiment, themes, urgency);
+      toast.success("PDF report generated successfully");
+    } catch (error) {
+      console.error("PDF export error:", error);
+      toast.error("Failed to generate PDF report");
+    }
+  };
+
   return (
     <HRLayout>
       <div className="space-y-6">
@@ -44,10 +64,16 @@ const Analytics = () => {
             <h1 className="text-3xl font-bold">Analytics</h1>
             <p className="text-muted-foreground mt-1">Track insights and sentiment trends</p>
           </div>
-          <Button onClick={handleExport} variant="outline">
-            <Download className="h-4 w-4 mr-2" />
-            Export CSV
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleExport} variant="outline">
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+            <Button onClick={handlePDFExport} variant="outline">
+              <FileText className="h-4 w-4 mr-2" />
+              Export PDF
+            </Button>
+          </div>
         </div>
 
         <div className="flex gap-4">
@@ -100,6 +126,7 @@ const Analytics = () => {
                     icon={BarChart3}
                     suffix="%"
                   />
+                  
                   <MetricCard
                     title="Avg Sentiment"
                     value={sentiment?.avgScore || 0}

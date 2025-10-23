@@ -3,11 +3,12 @@ import { SurveyFormData } from "@/lib/surveySchema";
 import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { Clock } from "lucide-react";
+import { Clock, HelpCircle } from "lucide-react";
 
 interface ThemeSelectorProps {
   form: UseFormReturn<SurveyFormData>;
@@ -52,7 +53,19 @@ export const ThemeSelector = ({ form }: ThemeSelectorProps) => {
         name="themes"
         render={() => (
           <FormItem>
-            <FormLabel>Themes *</FormLabel>
+            <div className="flex items-center gap-2">
+              <FormLabel>Themes *</FormLabel>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>Themes help organize employee feedback into categories like Work-Life Balance, Leadership, Career Development, etc. The AI will explore each selected theme conversationally.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <FormDescription>Select at least one theme to include in the survey</FormDescription>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
               {isLoading ? (

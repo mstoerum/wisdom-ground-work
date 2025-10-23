@@ -9,7 +9,7 @@ import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
 import { useConversation } from "@/hooks/useConversation";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { LogOut } from "lucide-react";
+import { LogOut, MessageSquare } from "lucide-react";
 
 type ConversationStep = "consent" | "mood" | "chat" | "closing" | "complete";
 
@@ -126,10 +126,13 @@ const EmployeeDashboard = () => {
   if (!surveyId) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-2">No Active Surveys</h1>
-          <p className="text-muted-foreground mb-4">
-            There are currently no surveys assigned to you.
+        <div className="text-center max-w-md">
+          <div className="bg-muted rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-6">
+            <MessageSquare className="h-10 w-10 text-muted-foreground" />
+          </div>
+          <h1 className="text-2xl font-bold mb-3">No Active Surveys</h1>
+          <p className="text-muted-foreground mb-6">
+            You don't have any surveys assigned right now. Check back later for new feedback opportunities.
           </p>
           <Button onClick={handleSignOut} variant="outline">
             <LogOut className="h-4 w-4 mr-2" />

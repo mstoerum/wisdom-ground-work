@@ -41,7 +41,10 @@ export const UrgencyFlags = ({ urgencies }: UrgencyFlagsProps) => {
               </div>
             ))
           ) : (
-            <p className="text-muted-foreground">No urgent flags at this time.</p>
+            <div className="text-center py-8">
+              <p className="text-lg font-medium text-primary mb-2">Great news! 🎉</p>
+              <p className="text-muted-foreground">No urgent flags at this time. All feedback is being addressed normally.</p>
+            </div>
           )}
         </div>
       </CardContent>

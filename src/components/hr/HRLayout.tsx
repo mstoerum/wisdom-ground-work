@@ -22,11 +22,11 @@ interface HRLayoutProps {
 }
 
 const menuItems = [
-  { title: "Dashboard", url: "/hr/dashboard", icon: LayoutDashboard },
-  { title: "Create Survey", url: "/hr/create-survey", icon: PlusCircle },
-  { title: "Analytics", url: "/hr/analytics", icon: BarChart3 },
-  { title: "Action Commitments", url: "/hr/commitments", icon: ListChecks },
-  { title: "Settings", url: "/hr/settings", icon: Settings },
+  { title: "Dashboard", url: "/hr/dashboard", icon: LayoutDashboard, tourId: undefined },
+  { title: "Create Survey", url: "/hr/create-survey", icon: PlusCircle, tourId: undefined },
+  { title: "Analytics", url: "/hr/analytics", icon: BarChart3, tourId: "analytics" },
+  { title: "Action Commitments", url: "/hr/commitments", icon: ListChecks, tourId: "commitments" },
+  { title: "Settings", url: "/hr/settings", icon: Settings, tourId: "settings" },
 ];
 
 export const HRLayout = ({ children }: HRLayoutProps) => {
@@ -56,7 +56,7 @@ export const HRLayout = ({ children }: HRLayoutProps) => {
               <SidebarGroupContent>
                 <SidebarMenu>
                   {menuItems.map((item) => (
-                    <SidebarMenuItem key={item.title}>
+                    <SidebarMenuItem key={item.title} data-tour={item.tourId}>
                       <SidebarMenuButton asChild>
                         <NavLink 
                           to={item.url}

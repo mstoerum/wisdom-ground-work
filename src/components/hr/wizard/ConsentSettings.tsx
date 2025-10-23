@@ -4,9 +4,10 @@ import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessa
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Shield, AlertCircle } from "lucide-react";
+import { Shield, AlertCircle, HelpCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 interface ConsentSettingsProps {
@@ -44,7 +45,19 @@ export const ConsentSettings = ({ form }: ConsentSettingsProps) => {
         name="anonymization_level"
         render={({ field }) => (
           <FormItem className="space-y-4">
-            <FormLabel>Response Anonymization *</FormLabel>
+            <div className="flex items-center gap-2">
+              <FormLabel>Response Anonymization *</FormLabel>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>Fully anonymous surveys don't store any employee identifiers, protecting complete confidentiality. Identified surveys allow follow-up on urgent issues but link responses to employee profiles.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <FormControl>
               <RadioGroup
                 onValueChange={field.onChange}
@@ -94,7 +107,19 @@ export const ConsentSettings = ({ form }: ConsentSettingsProps) => {
         name="consent_message"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>Consent Message *</FormLabel>
+            <div className="flex items-center gap-2">
+              <FormLabel>Consent Message *</FormLabel>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>Clear consent builds trust with employees. Explain what data you'll collect, how it will be used, and how their privacy is protected.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <FormControl>
               <Textarea
                 placeholder="Your responses help us create a better workplace..."

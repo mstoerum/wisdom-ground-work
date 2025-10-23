@@ -4,8 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Search, FileText, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ResponseListProps {
   surveyId?: string;
@@ -14,14 +16,17 @@ interface ResponseListProps {
 export const ResponseList = ({ surveyId }: ResponseListProps) => {
   const [search, setSearch] = useState("");
   const [sentimentFilter, setSentimentFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
 
-  const { data: responses, isLoading } = useQuery({
-    queryKey: ['responses-list', surveyId, sentimentFilter],
+  const { data: responsesData, isLoading } = useQuery({
+    queryKey: ['responses-list', surveyId, sentimentFilter, page],
     queryFn: async () => {
       let query = supabase
         .from('responses')
-        .select('*, survey_themes(name)')
-        .order('created_at', { ascending: false });
+        .select('*, survey_themes(name)', { count: 'exact' })
+        .order('created_at', { ascending: false })
+        .range((page - 1) * pageSize, page * pageSize - 1);
 
       if (surveyId) {
         query = query.eq('survey_id', surveyId);
@@ -31,15 +36,22 @@ export const ResponseList = ({ surveyId }: ResponseListProps) => {
         query = query.eq('sentiment', sentimentFilter);
       }
 
-      const { data, error } = await query;
+      const { data, error, count } = await query;
       if (error) throw error;
-      return data;
+      return { responses: data, totalCount: count || 0 };
     },
   });
 
-  const filteredResponses = responses?.filter(r => 
+  const responses = responsesData?.responses || [];
+  const totalCount = responsesData?.totalCount || 0;
+
+  const filteredResponses = responses.filter(r => 
     search === "" || r.content.toLowerCase().includes(search.toLowerCase())
   );
+
+  const totalPages = Math.ceil(totalCount / pageSize);
+  const startIndex = (page - 1) * pageSize + 1;
+  const endIndex = Math.min(page * pageSize, totalCount);
 
   return (
     <Card>
@@ -69,41 +81,96 @@ export const ResponseList = ({ surveyId }: ResponseListProps) => {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {isLoading ? (
-            <p className="text-muted-foreground">Loading responses...</p>
-          ) : filteredResponses && filteredResponses.length > 0 ? (
-            filteredResponses.map((response) => (
-              <div key={response.id} className="border-b pb-4 last:border-0">
-                <div className="flex items-start justify-between mb-2">
+        {isLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="border-b pb-4">
+                <div className="flex justify-between mb-2">
                   <div className="flex gap-2">
-                    {response.sentiment && (
-                      <Badge variant={
-                        response.sentiment === 'positive' ? 'default' : 
-                        response.sentiment === 'negative' ? 'destructive' : 
-                        'secondary'
-                      }>
-                        {response.sentiment}
-                      </Badge>
-                    )}
-                    {response.survey_themes && (
-                      <Badge variant="outline">{response.survey_themes.name}</Badge>
-                    )}
-                    {response.urgency_escalated && (
-                      <Badge variant="destructive">Urgent</Badge>
-                    )}
+                    <Skeleton className="h-5 w-20" />
+                    <Skeleton className="h-5 w-24" />
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(response.created_at).toLocaleDateString()}
-                  </span>
+                  <Skeleton className="h-4 w-20" />
                 </div>
-                <p className="text-sm">{response.content}</p>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4 mt-2" />
               </div>
-            ))
-          ) : (
-            <p className="text-muted-foreground">No responses found.</p>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : filteredResponses.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No responses yet</h3>
+            <p className="text-muted-foreground max-w-md">
+              {surveyId 
+                ? "This survey is active. Responses will appear here once employees start sharing feedback."
+                : "Responses from all surveys will appear here once employees complete their feedback sessions."}
+            </p>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-4">
+              {filteredResponses.map((response) => (
+                <div key={response.id} className="border-b pb-4 last:border-0">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex gap-2">
+                      {response.sentiment && (
+                        <Badge variant={
+                          response.sentiment === 'positive' ? 'default' : 
+                          response.sentiment === 'negative' ? 'destructive' : 
+                          'secondary'
+                        }>
+                          {response.sentiment}
+                        </Badge>
+                      )}
+                      {response.survey_themes && (
+                        <Badge variant="outline">{response.survey_themes.name}</Badge>
+                      )}
+                      {response.urgency_escalated && (
+                        <Badge variant="destructive">Urgent</Badge>
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(response.created_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <p className="text-sm">{response.content}</p>
+                </div>
+              ))}
+            </div>
+
+            {totalCount > pageSize && (
+              <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                <p className="text-sm text-muted-foreground">
+                  Showing {startIndex}-{endIndex} of {totalCount} responses
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" />
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-1 px-3">
+                    <span className="text-sm">Page {page} of {totalPages}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </CardContent>
     </Card>
   );

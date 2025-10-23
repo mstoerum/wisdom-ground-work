@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PlusCircle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
+import { PlusCircle, FileText } from "lucide-react";
 import { useCommitments } from "@/hooks/useCommitments";
 import { CommitmentForm } from "@/components/hr/CommitmentForm";
 import { CommitmentList } from "@/components/hr/CommitmentList";
@@ -102,10 +103,32 @@ const Commitments = () => {
         </Card>
 
         {isLoading ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground">Loading commitments...</p>
-            </CardContent>
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <Skeleton className="h-6 w-48" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-4 w-full mb-2" />
+                  <Skeleton className="h-4 w-3/4" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : commitments.length === 0 ? (
+          <Card className="flex flex-col items-center justify-center p-12 text-center">
+            <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No commitments yet</h3>
+            <p className="text-muted-foreground mb-4 max-w-md">
+              Create action commitments to track follow-up on survey insights and show employees you're listening.
+            </p>
+            {selectedSurvey !== "all" && (
+              <Button onClick={handleNewCommitment}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Create First Commitment
+              </Button>
+            )}
           </Card>
         ) : (
           <CommitmentList

@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ThemeInsight } from "@/hooks/useAnalytics";
-import { MessageSquare, TrendingUp, AlertTriangle } from "lucide-react";
+import { MessageSquare, TrendingUp, AlertTriangle, Layers } from "lucide-react";
 
 interface ThemeInsightsProps {
   themes: ThemeInsight[];
@@ -9,6 +9,18 @@ interface ThemeInsightsProps {
 
 export const ThemeInsights = ({ themes }: ThemeInsightsProps) => {
   const sortedThemes = [...themes].sort((a, b) => b.responseCount - a.responseCount);
+
+  if (sortedThemes.length === 0) {
+    return (
+      <Card className="flex flex-col items-center justify-center p-12 text-center">
+        <Layers className="h-12 w-12 text-muted-foreground mb-4" />
+        <h3 className="text-lg font-semibold mb-2">No theme data yet</h3>
+        <p className="text-muted-foreground max-w-md">
+          Theme insights will appear here once employees complete surveys and share feedback on different topics.
+        </p>
+      </Card>
+    );
+  }
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
