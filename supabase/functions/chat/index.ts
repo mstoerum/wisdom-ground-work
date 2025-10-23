@@ -24,12 +24,20 @@ serve(async (req) => {
     // Fetch conversation and survey details
     const { data: session } = await supabase
       .from("conversation_sessions")
-      .select("survey_id, surveys(themes, first_message)")
+      .select("survey_id, surveys!inner(themes, first_message)")
       .eq("id", conversationId)
       .single();
 
     const turnCount = messages.filter((m: any) => m.role === "user").length;
     const shouldComplete = turnCount >= 8;
+
+    // Fetch survey themes for classification
+    const surveysData: any = session?.surveys;
+    const surveyThemes = surveysData ? (Array.isArray(surveysData) ? surveysData[0]?.themes : surveysData.themes) : [];
+    const { data: themesData } = await supabase
+      .from('survey_themes')
+      .select('id, name, description')
+      .in('id', surveyThemes || []);
 
     // System prompt for empathetic conversational AI
     const systemPrompt = `You are a compassionate, empathetic AI assistant conducting a confidential employee feedback conversation. 
@@ -100,16 +108,89 @@ Remember: Your tone should be warm, professional, and genuinely interested in un
     const sentiment = sentimentData.choices[0].message.content.toLowerCase().trim();
     const sentimentScore = sentiment === "positive" ? 75 : sentiment === "negative" ? 25 : 50;
 
-    // Store response in database
-    await supabase.from("responses").insert({
-      conversation_session_id: conversationId,
-      survey_id: session?.survey_id,
-      content: messages[messages.length - 1].content,
-      ai_response: aiMessage,
-      sentiment,
-      sentiment_score: sentimentScore,
-      created_at: new Date().toISOString(),
+    // Detect theme
+    let detectedThemeId = null;
+    if (themesData && themesData.length > 0) {
+      const themePrompt = `Classify this employee feedback into ONE of these themes:
+${themesData.map(t => `- ${t.name}: ${t.description}`).join('\n')}
+
+Employee feedback: "${messages[messages.length - 1].content}"
+
+Reply with only the exact theme name.`;
+
+      const themeResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-lite",
+          messages: [{ role: "user", content: themePrompt }],
+          temperature: 0.2,
+          max_tokens: 20,
+        }),
+      });
+
+      if (themeResponse.ok) {
+        const themeData = await themeResponse.json();
+        const themeName = themeData.choices[0].message.content.toLowerCase().trim();
+        const detectedTheme = themesData.find(t => themeName.includes(t.name.toLowerCase()));
+        if (detectedTheme) {
+          detectedThemeId = detectedTheme.id;
+        }
+      }
+    }
+
+    // Detect urgency
+    const urgencyPrompt = `Analyze if this employee feedback indicates an URGENT issue requiring immediate HR attention. 
+Urgent issues include: harassment, safety concerns, severe mental health crisis, threats, discrimination, or illegal activity.
+
+Employee feedback: "${messages[messages.length - 1].content}"
+
+Reply with only: urgent OR not-urgent`;
+
+    const urgencyResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [{ role: "user", content: urgencyPrompt }],
+        temperature: 0.1,
+        max_tokens: 10,
+      }),
     });
+
+    const urgencyData = await urgencyResponse.json();
+    const isUrgent = urgencyData.choices[0].message.content.toLowerCase().includes('urgent');
+
+    // Store response with theme and urgency
+    const { data: insertedResponse } = await supabase.from("responses")
+      .insert({
+        conversation_session_id: conversationId,
+        survey_id: session?.survey_id,
+        content: messages[messages.length - 1].content,
+        ai_response: aiMessage,
+        sentiment,
+        sentiment_score: sentimentScore,
+        theme_id: detectedThemeId,
+        urgency_escalated: isUrgent,
+        created_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    // Create escalation log if urgent
+    if (isUrgent && insertedResponse) {
+      await supabase.from("escalation_log").insert({
+        response_id: insertedResponse.id,
+        escalation_type: 'ai_detected',
+        escalated_at: new Date().toISOString(),
+      });
+    }
 
     return new Response(
       JSON.stringify({ 
