@@ -397,6 +397,50 @@ export type Database = {
         }
         Relationships: []
       }
+      public_survey_links: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          current_responses: number | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          link_token: string
+          max_responses: number | null
+          survey_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          current_responses?: number | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          link_token: string
+          max_responses?: number | null
+          survey_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          current_responses?: number | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          link_token?: string
+          max_responses?: number | null
+          survey_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_survey_links_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       responses: {
         Row: {
           ai_analysis: Json | null

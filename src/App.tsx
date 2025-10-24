@@ -15,6 +15,7 @@ import Commitments from "./pages/hr/Commitments";
 import Settings from "./pages/hr/Settings";
 import NotFound from "./pages/NotFound";
 import EmployeeProfile from "./pages/employee/Profile";
+import PublicSurvey from "./pages/PublicSurvey";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/admin-bootstrap" element={<AdminBootstrap />} />
+          <Route path="/survey/:linkToken" element={<PublicSurvey />} />
           <Route 
             path="/employee/dashboard" 
             element={
