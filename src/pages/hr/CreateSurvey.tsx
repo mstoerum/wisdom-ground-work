@@ -200,7 +200,28 @@ const CreateSurvey = () => {
   };
 
   const handleNext = async () => {
-    const isValid = await form.trigger();
+    // Only validate fields relevant to the current step
+    let fieldsToValidate: (keyof SurveyFormData)[] = [];
+    
+    switch (currentStep) {
+      case 1:
+        fieldsToValidate = ['title', 'first_message'];
+        break;
+      case 2:
+        fieldsToValidate = ['themes'];
+        break;
+      case 3:
+        fieldsToValidate = ['target_type', 'target_departments', 'target_employees'];
+        break;
+      case 4:
+        fieldsToValidate = ['schedule_type', 'start_date', 'end_date'];
+        break;
+      case 5:
+        fieldsToValidate = ['consent_message', 'anonymization_level', 'data_retention_days'];
+        break;
+    }
+
+    const isValid = await form.trigger(fieldsToValidate);
     if (!isValid || !validateCurrentStep()) {
       toast.error('Please fill in all required fields');
       return;
