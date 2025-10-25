@@ -65,6 +65,11 @@ const getTargetEmployees = async (supabase: any, schedule: any): Promise<string[
   const targetDepartments = schedule.target_departments || [];
   const targetEmployees = schedule.target_employees || [];
 
+  // Public link surveys don't create assignments upfront
+  if (targetType === 'public_link') {
+    return [];
+  }
+
   if (targetType === 'all') {
     const { data: profiles } = await supabase
       .from('profiles')
@@ -85,6 +90,44 @@ const getTargetEmployees = async (supabase: any, schedule: any): Promise<string[
   }
 
   return [];
+};
+
+/**
+ * Generate random token for public link
+ */
+const generateLinkToken = (): string => {
+  return crypto.randomUUID().replace(/-/g, '').substring(0, 16);
+};
+
+/**
+ * Create public survey link
+ */
+const createPublicLink = async (
+  supabase: any, 
+  surveyId: string, 
+  userId: string,
+  schedule: any
+) => {
+  const linkToken = generateLinkToken();
+  
+  const { data: linkData, error } = await supabase
+    .from('public_survey_links')
+    .insert({
+      survey_id: surveyId,
+      link_token: linkToken,
+      created_by: userId,
+      expires_at: schedule.link_expires_at || null,
+      max_responses: schedule.max_link_responses || null,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Failed to create public link:', error);
+    throw new Error('Failed to create public survey link');
+  }
+
+  return linkData;
 };
 
 /**
@@ -160,29 +203,51 @@ serve(async (req) => {
 
     // Get target employees
     const schedule = survey.schedule as any;
-    const employeeIds = await getTargetEmployees(supabase, schedule);
+    const targetType = schedule.target_type;
 
-    if (employeeIds.length === 0) {
-      return new Response(JSON.stringify({ error: 'No employees targeted' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    let publicLink = null;
+    let assignmentCount = 0;
+
+    // Handle public link surveys
+    if (targetType === 'public_link') {
+      console.log('Creating public survey link');
+      publicLink = await createPublicLink(supabase, survey_id, user.id, schedule);
+      console.log('Public link created:', publicLink.link_token);
+    } else {
+      // Handle traditional employee targeting
+      const employeeIds = await getTargetEmployees(supabase, schedule);
+
+      if (employeeIds.length === 0) {
+        return new Response(JSON.stringify({ 
+          error: 'No employees targeted. Please ensure there are employees in the system before deploying.' 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      console.log(`Creating assignments for ${employeeIds.length} employees`);
+
+      // Create survey assignments
+      await createAssignments(supabase, survey_id, employeeIds);
+      assignmentCount = employeeIds.length;
     }
-
-    console.log(`Creating assignments for ${employeeIds.length} employees`);
-
-    // Create survey assignments
-    await createAssignments(supabase, survey_id, employeeIds);
 
     // Activate survey
     await activateSurvey(supabase, survey_id);
 
-    console.log(`Survey deployed successfully with ${employeeIds.length} assignments`);
+    console.log(`Survey deployed successfully`);
 
     return new Response(
       JSON.stringify({
         success: true,
-        assignment_count: employeeIds.length,
+        assignment_count: assignmentCount,
+        public_link: publicLink ? {
+          token: publicLink.link_token,
+          url: `${Deno.env.get('SUPABASE_URL')?.replace('https://', 'https://').replace('.supabase.co', '.lovableproject.com')}/survey/${publicLink.link_token}`,
+          expires_at: publicLink.expires_at,
+          max_responses: publicLink.max_responses,
+        } : null,
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -769,6 +769,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_link_responses: {
+        Args: { link_id: string }
+        Returns: undefined
+      }
       log_audit_event: {
         Args: {
           _action_type: string
