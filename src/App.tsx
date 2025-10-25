@@ -16,6 +16,7 @@ import Settings from "./pages/hr/Settings";
 import NotFound from "./pages/NotFound";
 import EmployeeProfile from "./pages/employee/Profile";
 import PublicSurvey from "./pages/PublicSurvey";
+import AcceptInvitation from "./pages/AcceptInvitation";
 
 const queryClient = new QueryClient();
 
@@ -26,10 +27,11 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/admin-bootstrap" element={<AdminBootstrap />} />
-          <Route path="/survey/:linkToken" element={<PublicSurvey />} />
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/admin-bootstrap" element={<AdminBootstrap />} />
+            <Route path="/survey/:linkToken" element={<PublicSurvey />} />
+            <Route path="/invite/:token" element={<AcceptInvitation />} />
           <Route 
             path="/employee/dashboard" 
             element={

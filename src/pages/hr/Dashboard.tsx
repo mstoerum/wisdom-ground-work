@@ -3,9 +3,10 @@ import { HRLayout } from "@/components/hr/HRLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SurveyList } from "@/components/hr/SurveyList";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PlusCircle, Users, TrendingUp, CheckSquare, AlertCircle } from "lucide-react";
+import { PlusCircle, Users, TrendingUp, CheckSquare, AlertCircle, UserPlus } from "lucide-react";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +29,19 @@ const HRDashboard = () => {
     },
   });
 
+  const { data: employeeCount = 0 } = useQuery({
+    queryKey: ['employee-count'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true);
+      
+      if (error) throw error;
+      return count || 0;
+    },
+  });
+
   return (
     <HRLayout>
       <OnboardingTour />
@@ -43,6 +57,19 @@ const HRDashboard = () => {
             Create Survey
           </Button>
         </div>
+
+        {/* Empty state alert for no employees */}
+        {employeeCount === 0 && (
+          <Alert>
+            <UserPlus className="h-4 w-4" />
+            <AlertDescription className="flex items-center justify-between">
+              <span>No employees in your organization yet. Add employees to start sending surveys.</span>
+              <Button onClick={() => navigate('/hr/settings')} variant="outline" size="sm">
+                Invite Employees
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Stats Cards */}
         {isLoading ? (

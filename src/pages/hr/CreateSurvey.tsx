@@ -43,6 +43,7 @@ const CreateSurvey = () => {
   const [showPreview, setShowPreview] = useState(false);
   const [surveyId, setSurveyId] = useState<string | null>(draftId);
   const [targetCount, setTargetCount] = useState(0);
+  const [deployResult, setDeployResult] = useState<any>(null);
 
   // Load survey defaults
   const { data: surveyDefaults } = useSurveyDefaults();
@@ -252,14 +253,27 @@ const CreateSurvey = () => {
 
       if (error) throw error;
 
-      toast.success(`Survey deployed successfully! ${data.assignment_count} employees assigned.`);
-      navigate('/hr/dashboard');
+      // Store deploy result for modal to display
+      setDeployResult(data);
+
+      // Show appropriate success message
+      if (data.public_link) {
+        toast.success('Survey deployed! Public link created.');
+      } else {
+        toast.success(`Survey deployed! ${data.assignment_count || 0} employees assigned.`);
+      }
+      
+      // Don't navigate immediately if it's a public link - let user see the link
+      if (!data.public_link) {
+        navigate('/hr/dashboard');
+      }
     } catch (error) {
       console.error('Error deploying survey:', error);
       toast.error('Failed to deploy survey');
-    } finally {
       setIsDeploying(false);
       setShowDeployModal(false);
+    } finally {
+      setIsDeploying(false);
     }
   };
 
@@ -322,12 +336,18 @@ const CreateSurvey = () => {
 
         <DeployConfirmationModal
           open={showDeployModal}
-          onOpenChange={setShowDeployModal}
+          onOpenChange={(open) => {
+            setShowDeployModal(open);
+            if (!open && deployResult) {
+              navigate('/hr/dashboard');
+            }
+          }}
           formData={form.getValues()}
           themeCount={form.watch("themes").length}
           targetCount={targetCount}
           onConfirm={handleDeploy}
           isDeploying={isDeploying}
+          deployResult={deployResult}
         />
 
         <SurveyPreview

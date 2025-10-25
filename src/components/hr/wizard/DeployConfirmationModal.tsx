@@ -2,10 +2,12 @@ import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { SurveyFormData } from "@/lib/surveySchema";
 import { DeploymentProgress } from "./DeploymentProgress";
-import { Calendar, Users, Shield, Target } from "lucide-react";
+import { Calendar, Users, Shield, Target, Link2, Copy, CheckCircle } from "lucide-react";
 import { format } from "date-fns";
+import { toast } from "sonner";
 
 interface DeployConfirmationModalProps {
   open: boolean;
@@ -15,6 +17,14 @@ interface DeployConfirmationModalProps {
   targetCount: number;
   onConfirm: () => void;
   isDeploying: boolean;
+  deployResult?: {
+    public_link?: {
+      link_token: string;
+      expires_at: string | null;
+      max_responses: number | null;
+    };
+    assignmentsCreated?: number;
+  };
 }
 
 export const DeployConfirmationModal = ({
@@ -25,9 +35,24 @@ export const DeployConfirmationModal = ({
   targetCount,
   onConfirm,
   isDeploying,
+  deployResult,
 }: DeployConfirmationModalProps) => {
   const [deployStage, setDeployStage] = useState<'validating' | 'creating_assignments' | 'deploying' | 'complete'>('validating');
   const [progress, setProgress] = useState(0);
+  const [copied, setCopied] = useState(false);
+
+  const surveyUrl = deployResult?.public_link 
+    ? `${window.location.origin}/survey/${deployResult.public_link.link_token}`
+    : null;
+
+  const handleCopyLink = () => {
+    if (surveyUrl) {
+      navigator.clipboard.writeText(surveyUrl);
+      setCopied(true);
+      toast.success("Link copied to clipboard!");
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   useEffect(() => {
     if (isDeploying) {
@@ -65,8 +90,51 @@ export const DeployConfirmationModal = ({
 
         {isDeploying ? (
           <DeploymentProgress stage={deployStage} progress={progress} />
+        ) : deployResult?.public_link ? (
+          // Show public link after successful deployment
+          <div className="space-y-4 py-4">
+            <div className="bg-primary/5 border-2 border-primary/20 rounded-lg p-4 space-y-3">
+              <div className="flex items-center gap-2 text-primary">
+                <Link2 className="h-5 w-5" />
+                <h4 className="font-semibold">Survey Link Ready!</h4>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Share this link to allow anyone to participate in your survey
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  value={surveyUrl || ''}
+                  readOnly
+                  className="font-mono text-sm"
+                />
+                <Button onClick={handleCopyLink} variant="outline" className="shrink-0">
+                  {copied ? (
+                    <>
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy
+                    </>
+                  )}
+                </Button>
+              </div>
+              {deployResult.public_link.expires_at && (
+                <p className="text-xs text-muted-foreground">
+                  Expires: {format(new Date(deployResult.public_link.expires_at), "PPP 'at' p")}
+                </p>
+              )}
+              {deployResult.public_link.max_responses && (
+                <p className="text-xs text-muted-foreground">
+                  Max responses: {deployResult.public_link.max_responses}
+                </p>
+              )}
+            </div>
+          </div>
         ) : (
-
+          // Show confirmation details before deployment
         <div className="space-y-4 py-4">
           <div>
             <h4 className="font-semibold text-lg mb-2">{formData.title}</h4>

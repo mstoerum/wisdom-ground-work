@@ -316,6 +316,48 @@ export type Database = {
           },
         ]
       }
+      employee_invitations: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          department: string | null
+          email: string
+          expires_at: string
+          full_name: string | null
+          id: string
+          invitation_token: string
+          invited_by: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          department?: string | null
+          email: string
+          expires_at?: string
+          full_name?: string | null
+          id?: string
+          invitation_token: string
+          invited_by: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          department?: string | null
+          email?: string
+          expires_at?: string
+          full_name?: string | null
+          id?: string
+          invitation_token?: string
+          invited_by?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       escalation_log: {
         Row: {
           employee_notified: boolean | null

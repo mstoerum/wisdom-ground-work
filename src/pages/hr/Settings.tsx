@@ -6,6 +6,7 @@ import { AuditLogs } from "@/components/hr/settings/AuditLogs";
 import { DataRetention } from "@/components/hr/settings/DataRetention";
 import { SecuritySettings } from "@/components/hr/settings/SecuritySettings";
 import { ComplianceGuide } from "@/components/hr/ComplianceGuide";
+import { EmployeeInvitations } from "@/components/hr/settings/EmployeeInvitations";
 
 const Settings = () => {
   return (
@@ -17,8 +18,9 @@ const Settings = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-4">
-          <TabsList className="grid grid-cols-3 lg:grid-cols-6 w-full">
+          <TabsList className="grid grid-cols-3 lg:grid-cols-7 w-full">
             <TabsTrigger value="users">Users</TabsTrigger>
+            <TabsTrigger value="invitations">Invitations</TabsTrigger>
             <TabsTrigger value="defaults">Defaults</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
             <TabsTrigger value="audit">Audit Logs</TabsTrigger>
@@ -28,6 +30,10 @@ const Settings = () => {
 
           <TabsContent value="users">
             <UserManagement />
+          </TabsContent>
+
+          <TabsContent value="invitations">
+            <EmployeeInvitations />
           </TabsContent>
 
           <TabsContent value="defaults">
