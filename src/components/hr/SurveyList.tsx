@@ -5,7 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Users, Edit, BarChart3, Archive, Trash2 } from "lucide-react";
+import { MoreVertical, Users, Edit, BarChart3, Archive, Trash2, Link as LinkIcon, ExternalLink, Copy } from "lucide-react";
+import { PublicLinkDetails } from "./PublicLinkDetails";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,6 +49,8 @@ export const SurveyList = ({ status }: SurveyListProps) => {
   const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [surveyToDelete, setSurveyToDelete] = useState<string | null>(null);
+  const [linkDialogOpen, setLinkDialogOpen] = useState(false);
+  const [selectedLink, setSelectedLink] = useState<any>(null);
   
   // Fetch surveys with optional status filter
   const { data: surveys, isLoading, refetch } = useQuery({
@@ -65,6 +68,30 @@ export const SurveyList = ({ status }: SurveyListProps) => {
       const { data, error } = await query;
       if (error) throw error;
       return data || [];
+    },
+  });
+
+  // Fetch public survey links
+  const { data: publicLinks } = useQuery({
+    queryKey: ["public-survey-links"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("public_survey_links")
+        .select("id, survey_id, link_token, is_active, expires_at, max_responses, current_responses")
+        .eq("is_active", true);
+      
+      if (error) throw error;
+      
+      // Create a map of survey_id -> link data
+      const linkMap = new Map();
+      data?.forEach(link => {
+        const isExpired = link.expires_at && new Date(link.expires_at) < new Date();
+        const isMaxed = link.max_responses && link.current_responses >= link.max_responses;
+        if (!isExpired && !isMaxed) {
+          linkMap.set(link.survey_id, link);
+        }
+      });
+      return linkMap;
     },
   });
 
@@ -133,6 +160,22 @@ export const SurveyList = ({ status }: SurveyListProps) => {
     setDeleteDialogOpen(true);
   };
 
+  // Copy public link to clipboard
+  const handleCopyPublicLink = (linkToken: string) => {
+    const surveyUrl = `${window.location.origin}/public-survey/${linkToken}`;
+    navigator.clipboard.writeText(surveyUrl);
+    toast.success("Link copied to clipboard");
+  };
+
+  // View public link details
+  const handleViewPublicLink = (surveyId: string) => {
+    const link = publicLinks?.get(surveyId);
+    if (link) {
+      setSelectedLink(link);
+      setLinkDialogOpen(true);
+    }
+  };
+
   if (isLoading) {
     return <div className="text-muted-foreground">Loading surveys...</div>;
   }
@@ -170,6 +213,12 @@ export const SurveyList = ({ status }: SurveyListProps) => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  {publicLinks?.has(survey.id) && (
+                    <DropdownMenuItem onClick={() => handleViewPublicLink(survey.id)}>
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                      View & Copy Link
+                    </DropdownMenuItem>
+                  )}
                   {survey.status === 'draft' && (
                     <>
                       <DropdownMenuItem onClick={() => navigate(`/hr/create-survey?draft_id=${survey.id}`)}>
@@ -216,10 +265,16 @@ export const SurveyList = ({ status }: SurveyListProps) => {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge className={getStatusColor((survey.status || 'draft') as SurveyStatus)}>
                 {survey.status || 'draft'}
               </Badge>
+              {publicLinks?.has(survey.id) && (
+                <Badge variant="outline" className="gap-1">
+                  <LinkIcon className="h-3 w-3" />
+                  Public link
+                </Badge>
+              )}
               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                 <Users className="h-3 w-3" />
                 <span>0 responses</span>
@@ -241,8 +296,21 @@ export const SurveyList = ({ status }: SurveyListProps) => {
               </div>
             )}
             
-            <div className="text-xs text-muted-foreground">
-              Created {format(new Date(survey.created_at), 'MMM d, yyyy')}
+            <div className="flex items-center justify-between">
+              <div className="text-xs text-muted-foreground">
+                Created {format(new Date(survey.created_at), 'MMM d, yyyy')}
+              </div>
+              {publicLinks?.has(survey.id) && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleCopyPublicLink(publicLinks.get(survey.id).link_token)}
+                  className="gap-1.5 h-8"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                  Copy Link
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -263,6 +331,12 @@ export const SurveyList = ({ status }: SurveyListProps) => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <PublicLinkDetails
+        open={linkDialogOpen}
+        onOpenChange={setLinkDialogOpen}
+        linkData={selectedLink}
+      />
     </div>
   );
 };
