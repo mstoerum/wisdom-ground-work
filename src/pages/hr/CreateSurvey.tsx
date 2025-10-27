@@ -114,7 +114,7 @@ const CreateSurvey = () => {
     }
   }, [draftData, form, surveyDefaults]);
 
-  const saveDraft = useCallback(async (showToast = true) => {
+  const saveDraft = useCallback(async (showToast = true): Promise<string | null> => {
     setIsSaving(true);
     try {
       const values = form.getValues();
@@ -135,6 +135,8 @@ const CreateSurvey = () => {
           start_date: values.start_date,
           end_date: values.end_date,
           reminder_frequency: values.reminder_frequency,
+          link_expires_at: values.link_expires_at,
+          max_link_responses: values.max_link_responses,
         },
         consent_config: {
           anonymization_level: values.anonymization_level,
@@ -144,6 +146,8 @@ const CreateSurvey = () => {
         created_by: user.id,
         status: 'draft',
       };
+
+      let savedId = surveyId;
 
       if (surveyId) {
         const { error } = await supabase
@@ -160,15 +164,19 @@ const CreateSurvey = () => {
           .single();
         
         if (error) throw error;
+        savedId = data.id;
         setSurveyId(data.id);
       }
 
       if (showToast) {
         toast.success('Draft saved successfully');
       }
+
+      return savedId;
     } catch (error) {
       console.error('Error saving draft:', error);
       toast.error('Failed to save draft');
+      return null;
     } finally {
       setIsSaving(false);
     }
@@ -258,10 +266,17 @@ const CreateSurvey = () => {
   const handleDeploy = async () => {
     setIsDeploying(true);
     try {
-      await saveDraft(false);
+      const id = await saveDraft(false);
+      
+      if (!id) {
+        toast.error('Unable to save survey before deployment');
+        setIsDeploying(false);
+        setShowDeployModal(false);
+        return;
+      }
       
       const { data, error } = await supabase.functions.invoke('deploy-survey', {
-        body: { survey_id: surveyId },
+        body: { survey_id: id },
       });
 
       if (error) throw error;
@@ -272,6 +287,9 @@ const CreateSurvey = () => {
       // Show appropriate success message
       if (data.public_link) {
         toast.success('Survey deployed! Public link created.');
+      } else if (data.message) {
+        toast.error(data.message);
+        setShowDeployModal(false);
       } else {
         toast.success(`Survey deployed! ${data.assignment_count || 0} employees assigned.`);
       }
@@ -280,9 +298,10 @@ const CreateSurvey = () => {
       if (!data.public_link) {
         navigate('/hr/dashboard');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deploying survey:', error);
-      toast.error('Failed to deploy survey');
+      const message = error?.message || 'Failed to deploy survey';
+      toast.error(message);
       setIsDeploying(false);
       setShowDeployModal(false);
     } finally {

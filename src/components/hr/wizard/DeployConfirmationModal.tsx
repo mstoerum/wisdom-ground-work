@@ -19,7 +19,8 @@ interface DeployConfirmationModalProps {
   isDeploying: boolean;
   deployResult?: {
     public_link?: {
-      link_token: string;
+      link_token?: string;
+      token?: string;
       expires_at: string | null;
       max_responses: number | null;
     };
@@ -41,8 +42,9 @@ export const DeployConfirmationModal = ({
   const [progress, setProgress] = useState(0);
   const [copied, setCopied] = useState(false);
 
-  const surveyUrl = deployResult?.public_link 
-    ? `${window.location.origin}/survey/${deployResult.public_link.link_token}`
+  const linkToken = deployResult?.public_link?.link_token || deployResult?.public_link?.token;
+  const surveyUrl = linkToken 
+    ? `${window.location.origin}/survey/${linkToken}`
     : null;
 
   const handleCopyLink = () => {
