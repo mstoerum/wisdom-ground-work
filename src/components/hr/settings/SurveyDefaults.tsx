@@ -167,7 +167,17 @@ export const SurveyDefaults = () => {
         </div>
 
         <Button 
-          onClick={() => saveMutation.mutate()}
+          onClick={() => {
+            if (!consentMessage.trim()) {
+              toast.error('Consent message cannot be empty');
+              return;
+            }
+            if (!firstMessage.trim()) {
+              toast.error('First message cannot be empty');
+              return;
+            }
+            saveMutation.mutate();
+          }}
           disabled={saveMutation.isPending}
         >
           {saveMutation.isPending ? 'Saving...' : 'Save Defaults'}

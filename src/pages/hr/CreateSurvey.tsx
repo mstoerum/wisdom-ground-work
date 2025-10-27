@@ -57,7 +57,15 @@ const CreateSurvey = () => {
   // Update form when defaults load
   useEffect(() => {
     if (surveyDefaults && !draftId) {
-      form.reset(getDefaultSurveyValues(surveyDefaults));
+      const defaults = getDefaultSurveyValues(surveyDefaults);
+      // Ensure consent_message and first_message are never empty
+      if (!defaults.consent_message || defaults.consent_message.trim() === '') {
+        defaults.consent_message = "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.";
+      }
+      if (!defaults.first_message || defaults.first_message.trim() === '') {
+        defaults.first_message = "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.";
+      }
+      form.reset(defaults);
     }
   }, [surveyDefaults, draftId, form]);
 
@@ -82,10 +90,15 @@ const CreateSurvey = () => {
     if (draftData) {
       const schedule = draftData.schedule as any;
       const defaults = getDefaultSurveyValues(surveyDefaults);
+      
+      // Ensure fallback values are never empty strings
+      const safeFirstMessage = draftData.first_message || defaults.first_message || "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.";
+      const safeConsentMessage = (draftData.consent_config as any)?.consent_message || defaults.consent_message || "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.";
+      
       form.reset({
         title: draftData.title,
         description: draftData.description || "",
-        first_message: draftData.first_message || defaults.first_message,
+        first_message: safeFirstMessage.trim() ? safeFirstMessage : "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.",
         themes: (draftData.themes as string[]) || [],
         target_type: schedule.target_type || 'all',
         target_departments: schedule.target_departments || [],
@@ -95,7 +108,7 @@ const CreateSurvey = () => {
         end_date: schedule.end_date || null,
         reminder_frequency: schedule.reminder_frequency,
         anonymization_level: (draftData.consent_config as any)?.anonymization_level || 'identified',
-        consent_message: (draftData.consent_config as any)?.consent_message || defaults.consent_message,
+        consent_message: safeConsentMessage.trim() ? safeConsentMessage : "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.",
         data_retention_days: (draftData.consent_config as any)?.data_retention_days || '60',
       });
     }
