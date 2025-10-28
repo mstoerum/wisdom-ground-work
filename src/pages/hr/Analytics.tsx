@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, HelpCircle, PlusCircle, BarChart2, Frown } from "lucide-react";
+import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, HelpCircle, PlusCircle, BarChart2, Frown, Brain, Building2, Target, Bell } from "lucide-react";
 import { useAnalytics, type AnalyticsFilters } from "@/hooks/useAnalytics";
 import { MetricCard } from "@/components/hr/analytics/MetricCard";
 import { SentimentChart } from "@/components/hr/analytics/SentimentChart";
@@ -13,8 +13,14 @@ import { ThemeInsights } from "@/components/hr/analytics/ThemeInsights";
 import { ResponseList } from "@/components/hr/analytics/ResponseList";
 import { UrgencyFlags } from "@/components/hr/analytics/UrgencyFlags";
 import { DateRangePicker } from "@/components/hr/analytics/DateRangePicker";
+import { ExecutiveDashboard } from "@/components/hr/analytics/ExecutiveDashboard";
+import { AIInsightsPanel } from "@/components/hr/analytics/AIInsightsPanel";
+import { TrendAnalysis } from "@/components/hr/analytics/TrendAnalysis";
+import { DepartmentComparison } from "@/components/hr/analytics/DepartmentComparison";
+import { AlertSystem } from "@/components/hr/analytics/AlertSystem";
 import { exportToCSV } from "@/lib/exportAnalytics";
 import { exportAnalyticsToPDF } from "@/lib/exportAnalyticsPDF";
+import { exportExecutiveReport } from "@/lib/exportExecutiveReport";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -59,6 +65,33 @@ const Analytics = () => {
     }
   };
 
+  const handleExecutiveReport = async () => {
+    if (!participation || !sentiment) {
+      toast.error("Analytics data not loaded yet");
+      return;
+    }
+
+    const surveyName = surveys?.find(s => s.id === filters.surveyId)?.title || "All Surveys";
+    
+    try {
+      await exportExecutiveReport({
+        surveyName,
+        participation,
+        sentiment,
+        themes,
+        urgency,
+        generatedAt: new Date(),
+        period: filters.startDate && filters.endDate 
+          ? `${filters.startDate.toLocaleDateString()} - ${filters.endDate.toLocaleDateString()}`
+          : 'All Time'
+      });
+      toast.success("Executive report generated successfully");
+    } catch (error) {
+      console.error("Executive report error:", error);
+      toast.error("Failed to generate executive report");
+    }
+  };
+
   return (
     <HRLayout>
       <div className="space-y-6">
@@ -75,6 +108,10 @@ const Analytics = () => {
             <Button onClick={handlePDFExport} variant="outline">
               <FileText className="h-4 w-4 mr-2" />
               Export PDF
+            </Button>
+            <Button onClick={handleExecutiveReport} variant="default">
+              <Target className="h-4 w-4 mr-2" />
+              Executive Report
             </Button>
           </div>
         </div>
@@ -132,15 +169,29 @@ const Analytics = () => {
           />
         </div>
 
-        <Tabs defaultValue="overview" className="space-y-6">
+        <Tabs defaultValue="executive" className="space-y-6">
           <TabsList>
+            <TabsTrigger value="executive">Executive</TabsTrigger>
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="trends">Trends</TabsTrigger>
+            <TabsTrigger value="departments">Departments</TabsTrigger>
+            <TabsTrigger value="insights">AI Insights</TabsTrigger>
+            <TabsTrigger value="alerts">Alerts</TabsTrigger>
             <TabsTrigger value="participation">Participation</TabsTrigger>
             <TabsTrigger value="sentiment">Sentiment</TabsTrigger>
             <TabsTrigger value="themes">Themes</TabsTrigger>
             <TabsTrigger value="responses">Responses</TabsTrigger>
             <TabsTrigger value="urgency">Urgent Flags</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="executive" className="space-y-6">
+            <ExecutiveDashboard 
+              participation={participation}
+              sentiment={sentiment}
+              themes={themes}
+              urgency={urgency}
+            />
+          </TabsContent>
 
           <TabsContent value="overview" className="space-y-6">
             {isLoading ? (
@@ -254,6 +305,33 @@ const Analytics = () => {
 
           <TabsContent value="responses">
             <ResponseList surveyId={filters.surveyId} />
+          </TabsContent>
+
+          <TabsContent value="trends">
+            <TrendAnalysis surveyId={filters.surveyId} />
+          </TabsContent>
+
+          <TabsContent value="departments">
+            <DepartmentComparison surveyId={filters.surveyId} />
+          </TabsContent>
+
+          <TabsContent value="insights">
+            <AIInsightsPanel 
+              participation={participation}
+              sentiment={sentiment}
+              themes={themes}
+              urgency={urgency}
+            />
+          </TabsContent>
+
+          <TabsContent value="alerts">
+            <AlertSystem 
+              surveyId={filters.surveyId}
+              onAlertAction={(alertId, action) => {
+                console.log(`Alert ${alertId}: ${action}`);
+                toast.success(`Action taken: ${action}`);
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="urgency">
