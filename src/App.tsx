@@ -20,6 +20,7 @@ import NotFound from "./pages/NotFound";
 import EmployeeProfile from "./pages/employee/Profile";
 import PublicSurvey from "./pages/PublicSurvey";
 import AcceptInvitation from "./pages/AcceptInvitation";
+import TestTrustFlow from "./pages/TestTrustFlow";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,9 @@ const App = () => (
             <Route path="/demo" element={<Demo />} />
             <Route path="/demo/employee" element={<DemoEmployee />} />
             <Route path="/demo/hr" element={<DemoHR />} />
+            
+            {/* Test Routes */}
+            <Route path="/test/trust-flow" element={<TestTrustFlow />} />
             
           <Route
             path="/employee/dashboard" 
