@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
-import { MessageSquare } from "lucide-react";
+import { MessageSquare, PlayCircle, Sparkles } from "lucide-react";
+import { SocialProof } from "@/components/employee/SocialProof";
 
 const Index = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -39,42 +40,67 @@ const Index = () => {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="max-w-2xl text-center space-y-8 p-6">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-background to-muted/20">
+      <div className="max-w-4xl text-center space-y-8 p-6">
         <div className="space-y-4">
           <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
             <MessageSquare className="h-10 w-10 text-primary" />
           </div>
-          <h1 className="text-4xl font-bold tracking-tight">Welcome to Spradley</h1>
-          <p className="text-xl text-muted-foreground">
-            AI-powered employee feedback that drives meaningful change
+          <h1 className="text-5xl font-bold tracking-tight bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+            Welcome to Spradley
+          </h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            The only employee feedback tool employees actually want to use
+          </p>
+          <p className="text-sm text-muted-foreground">
+            AI-powered conversations that replace rigid surveys with empathetic dialogue
           </p>
         </div>
         
-        <div className="flex gap-4 justify-center">
-          <Button onClick={() => navigate('/auth')} size="lg">
-            Get Started
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <Button 
+            onClick={() => navigate('/demo')} 
+            size="lg"
+            className="gap-2 text-lg px-8"
+          >
+            <PlayCircle className="h-5 w-5" />
+            Try Interactive Demo
           </Button>
-          <Button onClick={() => navigate('/auth')} variant="outline" size="lg">
+          <Button onClick={() => navigate('/auth')} variant="outline" size="lg" className="px-8">
             Sign In
           </Button>
         </div>
 
+        <div className="pt-4 max-w-md mx-auto">
+          <SocialProof />
+        </div>
+
         <div className="pt-8 grid gap-6 sm:grid-cols-3 text-left">
-          <div className="space-y-2">
-            <h3 className="font-semibold">Empathetic Conversations</h3>
+          <div className="space-y-2 p-4 rounded-lg border border-border/50 bg-card/50">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">Empathetic Conversations</h3>
+            </div>
             <p className="text-sm text-muted-foreground">
               AI-driven dialogues that adapt to employee responses for authentic feedback
             </p>
           </div>
-          <div className="space-y-2">
-            <h3 className="font-semibold">Actionable Insights</h3>
+          <div className="space-y-2 p-4 rounded-lg border border-border/50 bg-card/50">
+            <div className="flex items-center gap-2 mb-2">
+              <MessageSquare className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold">Actionable Insights</h3>
+            </div>
             <p className="text-sm text-muted-foreground">
               Real-time analytics and sentiment tracking for informed decision-making
             </p>
           </div>
-          <div className="space-y-2">
-            <h3 className="font-semibold">Privacy First</h3>
+          <div className="space-y-2 p-4 rounded-lg border border-border/50 bg-card/50">
+            <div className="flex items-center gap-2 mb-2">
+              <svg className="h-5 w-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <h3 className="font-semibold">Privacy First</h3>
+            </div>
             <p className="text-sm text-muted-foreground">
               GDPR-compliant with robust anonymization and encryption
             </p>

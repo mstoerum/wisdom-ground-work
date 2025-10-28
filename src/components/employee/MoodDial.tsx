@@ -33,8 +33,8 @@ export const MoodDial = ({ onMoodSelect }: MoodDialProps) => {
   return (
     <Card className="p-8 bg-gradient-to-br from-card to-card/50 border-border/50">
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-semibold mb-2">How are you feeling today?</h2>
-        <p className="text-muted-foreground">Share your current state with us</p>
+        <h2 className="text-2xl font-semibold mb-2">How are you feeling about work right now?</h2>
+        <p className="text-muted-foreground">This helps us understand your starting point — be honest, there are no wrong answers</p>
       </div>
 
       <div className="flex flex-col items-center gap-8">
