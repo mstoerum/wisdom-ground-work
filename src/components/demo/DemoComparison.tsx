@@ -1,7 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { DemoMessage } from "@/utils/demoConversationLogic";
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+}
 import { ArrowRight, X, MessageSquare } from "lucide-react";
 
 interface DemoComparisonProps {

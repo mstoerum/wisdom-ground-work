@@ -4,22 +4,26 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { MoodDial } from "@/components/employee/MoodDial";
-import { DemoChat } from "@/components/demo/DemoChat";
+import { DemoAIChat } from "@/components/demo/DemoAIChat";
 import { DemoComparison } from "@/components/demo/DemoComparison";
-import { DemoMessage } from "@/utils/demoConversationLogic";
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+  timestamp: Date;
+}
 import { ArrowLeft, Sparkles } from "lucide-react";
 
 export default function DemoEmployee() {
   const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState<'intro' | 'interactive' | 'comparison' | 'complete'>('intro');
   const [mood, setMood] = useState(7);
-  const [conversationMessages, setConversationMessages] = useState<DemoMessage[]>([]);
+  const [conversationMessages, setConversationMessages] = useState<Message[]>([]);
 
   const handleStartSurvey = () => {
     setCurrentStep('interactive');
   };
 
-  const handleChatComplete = (messages: DemoMessage[]) => {
+  const handleChatComplete = (messages: Message[]) => {
     setConversationMessages(messages);
     setCurrentStep('comparison');
   };
@@ -100,7 +104,7 @@ export default function DemoEmployee() {
               <Badge variant="secondary">Anonymous & Encrypted</Badge>
             </div>
             
-            <DemoChat 
+            <DemoAIChat 
               onComplete={handleChatComplete}
               onSkip={handleSkipToResults}
             />
