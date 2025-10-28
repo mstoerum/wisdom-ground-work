@@ -7,6 +7,9 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import AdminBootstrap from "./pages/AdminBootstrap";
+import Demo from "./pages/Demo";
+import DemoEmployee from "./pages/demo/DemoEmployee";
+import DemoHR from "./pages/demo/DemoHR";
 import EmployeeDashboard from "./pages/employee/Dashboard";
 import HRDashboard from "./pages/hr/Dashboard";
 import CreateSurvey from "./pages/hr/CreateSurvey";
@@ -32,7 +35,13 @@ const App = () => (
             <Route path="/admin-bootstrap" element={<AdminBootstrap />} />
             <Route path="/survey/:linkToken" element={<PublicSurvey />} />
             <Route path="/invite/:token" element={<AcceptInvitation />} />
-          <Route 
+            
+            {/* Demo Routes */}
+            <Route path="/demo" element={<Demo />} />
+            <Route path="/demo/employee" element={<DemoEmployee />} />
+            <Route path="/demo/hr" element={<DemoHR />} />
+            
+          <Route
             path="/employee/dashboard" 
             element={
               <ProtectedRoute>
