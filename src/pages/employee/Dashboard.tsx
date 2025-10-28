@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MoodDial } from "@/components/employee/MoodDial";
 import { ChatInterface } from "@/components/employee/ChatInterface";
 import { AnonymizationBanner } from "@/components/employee/AnonymizationBanner";
+import { AnonymizationRitual } from "@/components/employee/AnonymizationRitual";
 import { ConsentModal } from "@/components/employee/ConsentModal";
 import { ClosingRitual } from "@/components/employee/ClosingRitual";
 import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
@@ -17,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { LogOut, MessageSquare, PlayCircle } from "lucide-react";
 
-type ConversationStep = "consent" | "mood" | "chat" | "closing" | "complete";
+type ConversationStep = "consent" | "anonymization" | "mood" | "chat" | "closing" | "complete";
 
 const EmployeeDashboard = () => {
   const [step, setStep] = useState<ConversationStep>("consent");
@@ -88,6 +89,10 @@ const EmployeeDashboard = () => {
       });
     }
 
+    setStep("anonymization");
+  };
+
+  const handleAnonymizationComplete = () => {
     setStep("mood");
   };
 
@@ -134,9 +139,12 @@ const EmployeeDashboard = () => {
       description: "Your feedback has been recorded.",
     });
 
+    // Clear survey state to show dashboard instead of auto-logout
     setTimeout(() => {
-      supabase.auth.signOut();
-    }, 3000);
+      setSurveyId(null);
+      setSurveyDetails(null);
+      setAssignmentId(null);
+    }, 2000);
   };
 
   const handleSignOut = async () => {
@@ -240,6 +248,13 @@ const EmployeeDashboard = () => {
             />
           )}
 
+          {step === "anonymization" && (
+            <AnonymizationRitual 
+              sessionId={surveyId || "ANON-SESSION"}
+              onComplete={handleAnonymizationComplete}
+            />
+          )}
+
           {step === "mood" && (
             <MoodDial onMoodSelect={handleMoodSelect} />
           )}
@@ -263,9 +278,14 @@ const EmployeeDashboard = () => {
           )}
 
           {step === "complete" && (
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-bold mb-2">Session Complete</h2>
-              <p className="text-muted-foreground">Redirecting...</p>
+            <div className="text-center py-12 space-y-4">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-success/10 mb-4">
+                <span className="text-4xl">✓</span>
+              </div>
+              <h2 className="text-2xl font-bold mb-2">Thank You!</h2>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                Your feedback has been recorded. Explore the tabs below to see how we're acting on employee feedback.
+              </p>
             </div>
           )}
         </div>

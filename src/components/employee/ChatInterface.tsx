@@ -223,6 +223,31 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: Cha
       </ScrollArea>
 
       <div className="p-4 border-t border-border/50">
+        {/* Suggested Prompts - Show only when input is empty and no messages yet */}
+        {input === "" && userMessageCount === 0 && (
+          <div className="mb-3 p-3 bg-muted/30 rounded-lg border border-border/30">
+            <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+              <span>💬</span> Not sure where to start? Try:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {[
+                "I've been feeling...",
+                "What's been challenging is...",
+                "I'd like to talk about...",
+                "Something on my mind lately..."
+              ].map((prompt, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setInput(prompt)}
+                  className="text-xs px-2 py-1 bg-background hover:bg-muted rounded border border-border/50 transition-colors"
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        
         <div className="flex gap-2">
           <Textarea
             value={input}

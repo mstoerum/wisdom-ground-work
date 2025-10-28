@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, Heart, TrendingUp, Minus, MessageCircle } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
+import { SocialProof } from "./SocialProof";
 
 interface ClosingRitualProps {
   initialMood: number;
@@ -138,6 +139,8 @@ export const ClosingRitual = ({ initialMood, conversationId, onComplete }: Closi
             </ul>
           </div>
         </div>
+
+        <SocialProof />
 
         <Button onClick={() => onComplete(finalMood)} className="w-full" size="lg">
           Complete Session
