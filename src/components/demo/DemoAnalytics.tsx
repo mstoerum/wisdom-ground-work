@@ -1,10 +1,11 @@
 import { useState } from "react";
+import { HRLayout } from "@/components/hr/HRLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, ArrowLeft, TrendingDown, Eye, Clock } from "lucide-react";
+import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, Clock, TrendingDown } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { 
@@ -12,24 +13,17 @@ import {
   generateMockSentiment, 
   generateMockThemes, 
   generateMockUrgencyFlags, 
-  generateMockResponses,
   generateTimeSeriesData,
   generateDepartmentData,
   generateTrendData,
-  type MockParticipationMetrics,
-  type MockSentimentMetrics,
-  type MockThemeInsight,
-  type MockUrgencyFlag,
-  type MockResponse
 } from "@/utils/demoAnalyticsData";
-import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface DemoAnalyticsProps {
   onBackToMenu: () => void;
 }
 
 export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
-  const navigate = useNavigate();
   const [selectedDepartment, setSelectedDepartment] = useState("all");
   const [selectedTheme, setSelectedTheme] = useState("all");
 
@@ -37,8 +31,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
   const participation = generateMockParticipation();
   const sentiment = generateMockSentiment();
   const themes = generateMockThemes();
-  const urgencyFlags = generateMockUrgencyFlags();
-  const responses = generateMockResponses();
+  const urgency = generateMockUrgencyFlags();
   const timeSeriesData = generateTimeSeriesData();
   const departmentData = generateDepartmentData();
   const trendData = generateTrendData();
@@ -48,49 +41,51 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
   const filteredDepartmentData = selectedDepartment === "all" ? departmentData : departmentData.filter(d => d.department === selectedDepartment);
 
   const handleExport = () => {
-    // Mock export functionality
+    toast.success("CSV export started (Demo)");
     console.log("Exporting demo data...");
   };
 
   const handlePDFExport = () => {
-    // Mock PDF export functionality
+    toast.success("PDF export started (Demo)");
     console.log("Exporting PDF...");
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
-      {/* Demo Banner */}
-      <div className="bg-primary/10 border-b">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Demo Mode - HR Analytics</span>
-            <Badge variant="secondary">247 Employees • Q1 2025</Badge>
+    <HRLayout>
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+        {/* Demo Banner */}
+        <div className="bg-primary/10 border-b -mx-6 -mt-6 mb-6">
+          <div className="container mx-auto px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Demo Mode - HR Analytics</span>
+              <Badge variant="secondary">247 Employees • Q1 2025</Badge>
+            </div>
+            <Button variant="ghost" size="sm" onClick={onBackToMenu}>
+              Back to Demo Menu
+            </Button>
           </div>
-          <Button variant="ghost" size="sm" onClick={onBackToMenu}>
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Demo Menu
-          </Button>
         </div>
-      </div>
 
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold">Employee Feedback Analytics</h1>
-              <p className="text-muted-foreground mt-1">Comprehensive insights from 201 completed conversations</p>
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-bold">Employee Feedback Analytics</h1>
+                <p className="text-muted-foreground mt-1">
+                  Comprehensive insights from {participation.completed} completed conversations
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleExport} variant="outline">
+                  <Download className="h-4 w-4 mr-2" />
+                  Export CSV
+                </Button>
+                <Button onClick={handlePDFExport} variant="outline">
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export PDF
+                </Button>
+              </div>
             </div>
-            <div className="flex gap-2">
-              <Button onClick={handleExport} variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Export CSV
-              </Button>
-              <Button onClick={handlePDFExport} variant="outline">
-                <FileText className="h-4 w-4 mr-2" />
-                Export PDF
-              </Button>
-            </div>
-          </div>
 
           {/* Key Metrics */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -504,7 +499,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
             </TabsContent>
 
             <TabsContent value="urgency" className="space-y-6">
-              {urgencyFlags.length === 0 ? (
+              {!urgency || urgency.length === 0 ? (
                 <Card className="p-8 text-center">
                   <AlertTriangle className="h-12 w-12 text-green-600 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold mb-2">No Urgent Flags</h3>
@@ -517,7 +512,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                       <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
                       <div>
                         <h3 className="font-semibold text-orange-900 dark:text-orange-100">
-                          {urgencyFlags.filter(u => !u.resolved_at).length} Issues Require Immediate Attention
+                          {urgency.filter(u => !u.resolved_at).length} Issues Require Immediate Attention
                         </h3>
                         <p className="text-sm text-orange-800 dark:text-orange-200 mt-1">
                           These themes show high negative sentiment and multiple employee concerns.
@@ -526,13 +521,13 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                     </div>
                   </div>
 
-                  {urgencyFlags.map((flag) => (
+                  {urgency.map((flag) => (
                     <Card key={flag.id} className={`p-6 ${!flag.resolved_at ? 'border-l-4 border-orange-500' : 'border-l-4 border-green-500'}`}>
                       <div className="flex items-start justify-between mb-3">
                         <div>
                           <div className="flex items-center gap-2 mb-2">
                             <Badge variant={!flag.resolved_at ? "destructive" : "default"}>
-                              {flag.responses.survey_themes.name}
+                              {flag.responses?.survey_themes?.name || 'Theme'}
                             </Badge>
                             {!flag.resolved_at ? (
                               <Badge variant="outline">Urgent</Badge>
@@ -540,7 +535,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                               <Badge variant="outline">Resolved</Badge>
                             )}
                           </div>
-                          <h3 className="font-semibold text-lg mb-2">{flag.responses.content}</h3>
+                          <h3 className="font-semibold text-lg mb-2">{flag.responses?.content || 'No content'}</h3>
                           <p className="text-sm text-muted-foreground">
                             Escalated on {new Date(flag.escalated_at).toLocaleDateString()}
                             {flag.resolved_at && ` • Resolved on ${new Date(flag.resolved_at).toLocaleDateString()}`}
@@ -564,5 +559,6 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
         </div>
       </div>
     </div>
+    </HRLayout>
   );
 };
