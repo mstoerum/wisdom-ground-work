@@ -19,6 +19,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/hr/analytics/EmptyState";
+import { EnhancedAnalyticsDashboard } from "@/components/hr/analytics/EnhancedAnalyticsDashboard";
 import { useNavigate } from "react-router-dom";
 
 const Analytics = () => {
@@ -135,6 +136,7 @@ const Analytics = () => {
         <Tabs defaultValue="overview" className="space-y-6">
           <TabsList>
             <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="enhanced">Enhanced Insights</TabsTrigger>
             <TabsTrigger value="participation">Participation</TabsTrigger>
             <TabsTrigger value="sentiment">Sentiment</TabsTrigger>
             <TabsTrigger value="themes">Themes</TabsTrigger>
@@ -222,6 +224,10 @@ const Analytics = () => {
                 </div>
               </>
             )}
+          </TabsContent>
+
+          <TabsContent value="enhanced">
+            <EnhancedAnalyticsDashboard filters={filters} />
           </TabsContent>
 
           <TabsContent value="participation">

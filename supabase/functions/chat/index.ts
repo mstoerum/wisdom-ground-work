@@ -75,21 +75,42 @@ const buildConversationContext = (previousResponses: any[], themes: any[]): stri
   
   const lastSentiment = sentimentPattern[sentimentPattern.length - 1];
   
+  // Enhanced emotional context analysis
+  const emotionalKeywords = previousResponses
+    .slice(-2)
+    .map(r => r.content.toLowerCase())
+    .join(" ");
+  
+  const hasUrgency = emotionalKeywords.includes("urgent") || 
+                    emotionalKeywords.includes("crisis") || 
+                    emotionalKeywords.includes("emergency") ||
+                    emotionalKeywords.includes("can't take") ||
+                    emotionalKeywords.includes("overwhelmed");
+  
+  const hasPositiveMomentum = sentimentPattern.filter(s => s === "positive").length > 
+                             sentimentPattern.filter(s => s === "negative").length;
+  
   return `
 CONVERSATION CONTEXT:
 - Topics already discussed: ${discussedThemes.size > 0 ? Array.from(discussedThemes).join(", ") : "None yet"}
 - Recent sentiment pattern: ${sentimentPattern.join(" → ")}
 - Exchange count: ${previousResponses.length}
+- Emotional state: ${hasUrgency ? "URGENT - Employee needs immediate support" : 
+                   hasPositiveMomentum ? "Positive momentum - build on this" : 
+                   "Neutral - explore deeper"}
 ${previousResponses.length > 0 ? `- Key points mentioned earlier: "${previousResponses.slice(0, 2).map(r => r.content.substring(0, 60)).join('"; "')}"` : ""}
 
 ADAPTIVE INSTRUCTIONS:
 ${lastSentiment === "negative" ? 
-  "- The employee is sharing challenges. Use empathetic, validating language. Acknowledge their feelings." : ""}
+  "- The employee is sharing challenges. Use empathetic, validating language. Acknowledge their feelings and show you understand their perspective." : ""}
 ${lastSentiment === "positive" ? 
   "- The employee is positive. Great! Also gently explore if there are any challenges to ensure balanced feedback." : ""}
+${hasUrgency ? 
+  "- URGENT: Employee may be in distress. Use extra care, validate their feelings, and be prepared to escalate if needed." : ""}
 ${discussedThemes.size > 0 && discussedThemes.size < themes?.length ? 
   `- Themes not yet covered: ${themes?.filter((t: any) => !Array.from(discussedThemes).includes(t.name)).map((t: any) => t.name).join(", ")}. Transition naturally to explore these.` : ""}
 ${previousResponses.length >= 3 ? "- Reference earlier points when relevant to show you're listening and building on what they've shared." : ""}
+${previousResponses.length >= 6 ? "- You're in the deeper exploration phase. Ask more specific, probing questions to understand root causes and potential solutions." : ""}
 `;
 };
 
@@ -97,29 +118,48 @@ ${previousResponses.length >= 3 ? "- Reference earlier points when relevant to s
  * Generate system prompt for empathetic AI conversation
  */
 const getSystemPrompt = (conversationContext: string): string => {
-  return `You are a compassionate, empathetic AI assistant conducting a confidential employee feedback conversation. 
+  return `You are Spradley, a compassionate AI confidant designed to create a safe space for honest workplace feedback. You're not just collecting data—you're building trust and understanding.
 
-Your goals:
-- Create a safe, non-judgmental space for honest feedback
-- Ask thoughtful follow-up questions to understand nuances
-- Show empathy and active listening
-- Guide conversation naturally through work experience, challenges, and suggestions
-- Keep responses warm, concise, and conversational (2-3 sentences max)
-- Probe deeper on important topics without being repetitive
-- Recognize emotional cues and respond appropriately
-- Reference earlier points naturally when building on topics
+CORE IDENTITY:
+- You're a digital colleague who genuinely cares about their work experience
+- You remember what they've shared and build on it naturally
+- You adapt your communication style to match their emotional state
+- You're here to listen, understand, and help their voice be heard
 
-Conversation flow:
-1. Start with open-ended questions about their current experience
-2. Explore challenges with curiosity and care
-3. Ask about positive aspects to balance the conversation
-4. Invite suggestions for improvement
-5. Naturally transition between themes after 3-4 exchanges on one topic
-6. Naturally conclude when sufficient depth is reached (after 8-12 exchanges)
+CONVERSATION PRINCIPLES:
+- Start with genuine warmth and curiosity about their experience
+- Use "I" statements to show personal investment ("I can hear that this has been challenging for you")
+- Validate their feelings before exploring deeper ("That sounds really difficult")
+- Ask follow-up questions that show you're truly listening
+- Use their own words when referencing what they've shared
+- End responses with open-ended invitations to share more
+
+EMOTIONAL INTELLIGENCE:
+- If they're struggling: "I'm sorry you're going through this. Can you tell me more about what's making it so difficult?"
+- If they're positive: "That's wonderful to hear! What's working really well for you?"
+- If they're neutral: "I'd love to understand your experience better. What stands out most about your work lately?"
+- If they seem hesitant: "I want you to know this is a safe space. There are no wrong answers here."
+
+CONVERSATION FLOW:
+1. Warm opening that acknowledges their time and trust
+2. Open exploration of their current experience
+3. Gentle probing into challenges with empathy
+4. Celebration of positive aspects
+5. Invitation for suggestions and ideas
+6. Natural transitions between themes
+7. Meaningful conclusion that honors their sharing
 
 ${conversationContext}
 
-Remember: Your tone should be warm, professional, and genuinely interested in understanding their perspective. Adapt your approach based on their sentiment and what they've already shared.`;
+RESPONSE GUIDELINES:
+- Keep responses to 2-3 sentences maximum
+- Use conversational, warm language
+- Show you're listening by referencing their words
+- End with questions that invite deeper sharing
+- Match their energy level and communication style
+- Be genuinely curious about their perspective
+
+Remember: You're not conducting a survey—you're having a meaningful conversation with someone who deserves to be heard and understood.`;
 };
 
 /**
@@ -151,24 +191,54 @@ const callAI = async (apiKey: string, model: string, messages: any[], temperatur
 };
 
 /**
- * Analyze sentiment of user message
+ * Analyze sentiment of user message with enhanced emotional intelligence
  */
-const analyzeSentiment = async (apiKey: string, userMessage: string): Promise<{ sentiment: string; score: number }> => {
+const analyzeSentiment = async (apiKey: string, userMessage: string): Promise<{ sentiment: string; score: number; emotionalTone: string; urgencyLevel: string }> => {
   const sentimentResponse = await callAI(
     apiKey,
     AI_MODEL,
     [
-      { role: "system", content: "Analyze sentiment. Reply with only: positive, neutral, or negative" },
+      { 
+        role: "system", 
+        content: `Analyze this employee message for sentiment and emotional tone. Consider:
+        - Overall sentiment: positive, neutral, negative
+        - Emotional tone: excited, frustrated, concerned, satisfied, overwhelmed, hopeful, discouraged, grateful
+        - Urgency level: low, medium, high, critical
+        
+        Respond in this exact format: sentiment|emotionalTone|urgencyLevel
+        Example: negative|frustrated|medium` 
+      },
       { role: "user", content: userMessage }
     ],
-    0.3,
-    10
+    0.2,
+    20
   );
 
-  const sentiment = sentimentResponse.toLowerCase().trim();
-  const score = sentiment === "positive" ? 75 : sentiment === "negative" ? 25 : 50;
+  const [sentiment, emotionalTone, urgencyLevel] = sentimentResponse.toLowerCase().trim().split('|');
   
-  return { sentiment, score };
+  // Enhanced scoring based on emotional tone and urgency
+  let score = 50; // neutral baseline
+  
+  if (sentiment === "positive") {
+    score = emotionalTone === "excited" ? 90 : 
+            emotionalTone === "grateful" ? 85 : 
+            emotionalTone === "satisfied" ? 80 : 75;
+  } else if (sentiment === "negative") {
+    score = urgencyLevel === "critical" ? 5 :
+            urgencyLevel === "high" ? 15 :
+            emotionalTone === "overwhelmed" ? 20 :
+            emotionalTone === "frustrated" ? 25 : 30;
+  } else {
+    score = emotionalTone === "hopeful" ? 60 :
+            emotionalTone === "concerned" ? 40 : 50;
+  }
+  
+  return { 
+    sentiment: sentiment || "neutral", 
+    score: Math.max(0, Math.min(100, score)),
+    emotionalTone: emotionalTone || "neutral",
+    urgencyLevel: urgencyLevel || "low"
+  };
 };
 
 /**
@@ -307,8 +377,8 @@ serve(async (req) => {
       200
     );
 
-    // Analyze sentiment
-    const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, lastMessage.content);
+    // Analyze sentiment with enhanced emotional intelligence
+    const { sentiment, score: sentimentScore, emotionalTone, urgencyLevel } = await analyzeSentiment(LOVABLE_API_KEY, lastMessage.content);
 
     // Detect theme
     const detectedThemeId = await detectTheme(LOVABLE_API_KEY, lastMessage.content, themes || []);
@@ -316,7 +386,7 @@ serve(async (req) => {
     // Detect urgency
     const isUrgent = await detectUrgency(LOVABLE_API_KEY, lastMessage.content);
 
-    // Store response in database
+    // Store response in database with enhanced emotional data
     const { data: insertedResponse, error: insertError } = await supabase
       .from("responses")
       .insert({
@@ -327,7 +397,13 @@ serve(async (req) => {
         sentiment,
         sentiment_score: sentimentScore,
         theme_id: detectedThemeId,
-        urgency_escalated: isUrgent,
+        urgency_escalated: isUrgent || urgencyLevel === "critical" || urgencyLevel === "high",
+        ai_analysis: {
+          emotionalTone,
+          urgencyLevel,
+          conversationDepth: messages.filter(m => m.role === "user").length,
+          responseQuality: "high" // Enhanced AI responses
+        },
         created_at: new Date().toISOString(),
       })
       .select()
