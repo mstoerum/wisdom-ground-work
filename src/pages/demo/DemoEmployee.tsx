@@ -3,55 +3,33 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { ConversationBubble } from "@/components/employee/ConversationBubble";
 import { MoodDial } from "@/components/employee/MoodDial";
+import { DemoChat } from "@/components/demo/DemoChat";
+import { DemoComparison } from "@/components/demo/DemoComparison";
+import { DemoMessage } from "@/utils/demoConversationLogic";
 import { ArrowLeft, Sparkles } from "lucide-react";
-
-const demoConversation = [
-  {
-    role: "assistant" as const,
-    content: "Hello! Thank you for taking the time to share your feedback with us. This conversation is completely confidential and will help us create a better workplace. How are you feeling today?",
-    timestamp: new Date(Date.now() - 180000),
-  },
-  {
-    role: "user" as const,
-    content: "I'm feeling pretty good overall, thanks for asking.",
-    timestamp: new Date(Date.now() - 150000),
-  },
-  {
-    role: "assistant" as const,
-    content: "That's wonderful to hear! I'd like to understand more about your experience with work-life balance. How do you feel about the flexibility and boundaries between work and personal time?",
-    timestamp: new Date(Date.now() - 120000),
-  },
-  {
-    role: "user" as const,
-    content: "Honestly, it's been challenging. I often find myself answering emails late at night and on weekends. It feels like there's an expectation to always be available.",
-    timestamp: new Date(Date.now() - 90000),
-  },
-  {
-    role: "assistant" as const,
-    content: "I appreciate you sharing that. It sounds like the blurred boundaries are affecting your personal time. Can you tell me more about when this happens most - is it certain projects, times of the month, or particular team expectations?",
-    timestamp: new Date(Date.now() - 60000),
-  },
-  {
-    role: "user" as const,
-    content: "It's mostly during month-end reporting. The deadlines are tight, and there's pressure from leadership to deliver quickly. I don't feel I can say no.",
-    timestamp: new Date(Date.now() - 30000),
-  },
-  {
-    role: "assistant" as const,
-    content: "Thank you for being so open. Before we finish, is there anything else about your work experience you'd like to share?",
-    timestamp: new Date(),
-  },
-];
 
 export default function DemoEmployee() {
   const navigate = useNavigate();
-  const [currentStep, setCurrentStep] = useState<'intro' | 'chat' | 'complete'>('intro');
+  const [currentStep, setCurrentStep] = useState<'intro' | 'interactive' | 'comparison' | 'complete'>('intro');
   const [mood, setMood] = useState(7);
+  const [conversationMessages, setConversationMessages] = useState<DemoMessage[]>([]);
 
   const handleStartSurvey = () => {
-    setCurrentStep('chat');
+    setCurrentStep('interactive');
+  };
+
+  const handleChatComplete = (messages: DemoMessage[]) => {
+    setConversationMessages(messages);
+    setCurrentStep('comparison');
+  };
+
+  const handleSkipToResults = () => {
+    setCurrentStep('comparison');
+  };
+
+  const handleViewAnalytics = () => {
+    navigate('/demo/hr');
   };
 
   const handleComplete = () => {
@@ -110,35 +88,31 @@ export default function DemoEmployee() {
           </Card>
         )}
 
-        {currentStep === 'chat' && (
-          <div className="space-y-6">
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold">Conversation</h2>
-                <Badge variant="secondary">Anonymous</Badge>
-              </div>
-              
-              <div className="space-y-4 max-h-[500px] overflow-y-auto mb-4">
-                {demoConversation.map((msg, idx) => (
-                  <ConversationBubble
-                    key={idx}
-                    message={msg.content}
-                    isUser={msg.role === "user"}
-                    timestamp={msg.timestamp}
-                  />
-                ))}
-              </div>
-
-              <div className="bg-muted/50 rounded-lg p-4 text-center">
-                <p className="text-sm text-muted-foreground mb-3">
-                  In a real survey, you'd continue the conversation here.
+        {currentStep === 'interactive' && (
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-2xl font-semibold mb-1">Your Feedback Conversation</h2>
+                <p className="text-sm text-muted-foreground">
+                  Respond naturally - the AI will adapt to your answers
                 </p>
-                <Button onClick={handleComplete}>
-                  Complete Survey (Demo)
-                </Button>
               </div>
-            </Card>
-          </div>
+              <Badge variant="secondary">Anonymous & Encrypted</Badge>
+            </div>
+            
+            <DemoChat 
+              onComplete={handleChatComplete}
+              onSkip={handleSkipToResults}
+            />
+          </Card>
+        )}
+
+        {currentStep === 'comparison' && (
+          <DemoComparison
+            conversationMessages={conversationMessages}
+            onViewAnalytics={handleViewAnalytics}
+            onBackToMenu={() => navigate('/demo')}
+          />
         )}
 
         {currentStep === 'complete' && (
