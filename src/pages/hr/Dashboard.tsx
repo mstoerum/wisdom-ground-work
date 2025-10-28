@@ -11,6 +11,8 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingTour } from "@/components/hr/OnboardingTour";
+import { LoadingState } from "@/components/ui/loading-state";
+import { toast } from "sonner";
 
 const HRDashboard = () => {
   const navigate = useNavigate();
@@ -24,9 +26,15 @@ const HRDashboard = () => {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching active surveys count:', error);
+        toast.error('Failed to load survey data. Please refresh the page.');
+        throw error;
+      }
       return count || 0;
     },
+    retry: 3,
+    retryDelay: 1000,
   });
 
   const { data: employeeCount = 0 } = useQuery({
@@ -37,9 +45,15 @@ const HRDashboard = () => {
         .select('*', { count: 'exact', head: true })
         .eq('is_active', true);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching employee count:', error);
+        toast.error('Failed to load employee data. Please refresh the page.');
+        throw error;
+      }
       return count || 0;
     },
+    retry: 3,
+    retryDelay: 1000,
   });
 
   return (
@@ -73,19 +87,7 @@ const HRDashboard = () => {
 
         {/* Stats Cards */}
         {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-4">
-            {[1, 2, 3, 4].map((i) => (
-              <Card key={i}>
-                <CardHeader>
-                  <Skeleton className="h-4 w-24" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-8 w-16 mb-2" />
-                  <Skeleton className="h-3 w-32" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          <LoadingState message="Loading dashboard data..." />
         ) : (
           <div className="grid gap-4 md:grid-cols-4">
             <Card>

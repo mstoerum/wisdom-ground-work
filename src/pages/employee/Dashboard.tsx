@@ -16,7 +16,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { LogOut, MessageSquare, PlayCircle } from "lucide-react";
+import { useState } from "react";
 
 type ConversationStep = "consent" | "anonymization" | "mood" | "chat" | "closing" | "complete";
 
@@ -26,6 +28,8 @@ const EmployeeDashboard = () => {
   const [surveyDetails, setSurveyDetails] = useState<any>(null);
   const [assignmentId, setAssignmentId] = useState<string | null>(null);
   const [mood, setMood] = useState(50);
+  const [showDeclineDialog, setShowDeclineDialog] = useState(false);
+  const [showSaveExitDialog, setShowSaveExitDialog] = useState(false);
   const { conversationId, startConversation, endConversation } = useConversation();
   const { toast } = useToast();
 
@@ -96,7 +100,11 @@ const EmployeeDashboard = () => {
     setStep("mood");
   };
 
-  const handleDecline = async () => {
+  const handleDecline = () => {
+    setShowDeclineDialog(true);
+  };
+
+  const confirmDecline = async () => {
     toast({
       title: "Thank you",
       description: "You can participate whenever you're ready.",
@@ -152,6 +160,10 @@ const EmployeeDashboard = () => {
   };
 
   const handleSaveAndExit = () => {
+    setShowSaveExitDialog(true);
+  };
+
+  const confirmSaveAndExit = () => {
     handleSignOut();
   };
 
@@ -289,6 +301,27 @@ const EmployeeDashboard = () => {
             </div>
           )}
         </div>
+
+        {/* Confirmation Dialogs */}
+        <ConfirmationDialog
+          open={showDeclineDialog}
+          onOpenChange={setShowDeclineDialog}
+          title="Decline Feedback Session"
+          description="Are you sure you want to decline this feedback session? You can participate later if you change your mind."
+          confirmText="Decline"
+          cancelText="Continue"
+          onConfirm={confirmDecline}
+        />
+
+        <ConfirmationDialog
+          open={showSaveExitDialog}
+          onOpenChange={setShowSaveExitDialog}
+          title="Save and Exit"
+          description="Are you sure you want to save and exit? Your progress will be saved and you can resume this conversation later."
+          confirmText="Save & Exit"
+          cancelText="Continue"
+          onConfirm={confirmSaveAndExit}
+        />
       </div>
     </div>
   );

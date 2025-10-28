@@ -78,6 +78,25 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: Cha
   const sendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
 
+    // Input validation
+    if (input.trim().length < 3) {
+      toast({
+        title: "Message too short",
+        description: "Please write at least 3 characters to send a message.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (input.trim().length > 1000) {
+      toast({
+        title: "Message too long",
+        description: "Please keep your message under 1000 characters.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const userMessage: Message = {
       role: "user",
       content: input,
@@ -138,10 +157,33 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: Cha
       }
     } catch (error) {
       console.error("Chat error:", error);
+      
+      let errorMessage = "Please try again";
+      let errorTitle = "Message failed";
+      
+      if (error instanceof Error) {
+        if (error.message.includes("network") || error.message.includes("fetch")) {
+          errorTitle = "Connection error";
+          errorMessage = "Please check your internet connection and try again.";
+        } else if (error.message.includes("auth") || error.message.includes("sign in")) {
+          errorTitle = "Session expired";
+          errorMessage = "Please sign in again to continue the conversation.";
+        } else if (error.message.includes("rate limit")) {
+          errorTitle = "Too many messages";
+          errorMessage = "Please wait a moment before sending another message.";
+        } else {
+          errorMessage = error.message;
+        }
+      }
+      
       toast({
-        title: "Message failed",
-        description: error instanceof Error ? error.message : "Please try again",
+        title: errorTitle,
+        description: errorMessage,
         variant: "destructive",
+        action: error.message.includes("auth") ? {
+          label: "Sign In",
+          onClick: () => window.location.href = "/auth"
+        } : undefined
       });
       
       // Restore state on error
@@ -169,6 +211,28 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: Cha
     setTimeout(onSaveAndExit, 1000);
   }, [onSaveAndExit, toast]);
 
+  // Auto-save functionality
+  useEffect(() => {
+    if (messages.length > 1) {
+      const autoSave = async () => {
+        try {
+          await supabase
+            .from('conversation_sessions')
+            .update({ 
+              last_activity: new Date().toISOString(),
+              status: 'active'
+            })
+            .eq('id', conversationId);
+        } catch (error) {
+          console.error('Auto-save failed:', error);
+        }
+      };
+      
+      const timeoutId = setTimeout(autoSave, 2000);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [messages, conversationId]);
+
   // Calculate conversation progress
   const userMessageCount = messages.filter(m => m.role === "user").length;
   const progressPercent = Math.min((userMessageCount / ESTIMATED_TOTAL_QUESTIONS) * 100, PROGRESS_COMPLETE_THRESHOLD);
@@ -179,11 +243,21 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: Cha
       <div className="p-4 border-b border-border/50">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              {userMessageCount > 0 && userMessageCount < ESTIMATED_TOTAL_QUESTIONS && `Question ${userMessageCount} of ~${ESTIMATED_TOTAL_QUESTIONS}`}
-              {userMessageCount >= 6 && userMessageCount < ESTIMATED_TOTAL_QUESTIONS && " • Almost done!"}
-              {userMessageCount >= ESTIMATED_TOTAL_QUESTIONS && "Wrapping up..."}
-            </span>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-sm text-muted-foreground">
+                {userMessageCount > 0 && userMessageCount < ESTIMATED_TOTAL_QUESTIONS && `Question ${userMessageCount} of ~${ESTIMATED_TOTAL_QUESTIONS}`}
+                {userMessageCount >= 6 && userMessageCount < ESTIMATED_TOTAL_QUESTIONS && " • Almost done!"}
+                {userMessageCount >= ESTIMATED_TOTAL_QUESTIONS && "Wrapping up..."}
+                {userMessageCount === 0 && "Ready to start"}
+              </span>
+            </div>
+            {isLoading && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>AI is thinking...</span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm font-medium">{Math.round(progressPercent)}%</span>
@@ -249,17 +323,22 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: Cha
         )}
         
         <div className="flex gap-2">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Share your thoughts..."
-            className="min-h-[60px] resize-none"
-            disabled={isLoading}
-          />
+          <div className="flex-1 relative">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Share your thoughts..."
+              className="min-h-[60px] resize-none pr-12"
+              disabled={isLoading}
+            />
+            <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+              {input.length}/1000
+            </div>
+          </div>
           <Button
             onClick={sendMessage}
-            disabled={!input.trim() || isLoading}
+            disabled={!input.trim() || isLoading || input.trim().length < 3 || input.length > 1000}
             size="icon"
             className="h-[60px] w-[60px]"
           >
