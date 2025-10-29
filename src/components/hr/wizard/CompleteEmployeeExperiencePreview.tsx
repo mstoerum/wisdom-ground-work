@@ -90,7 +90,7 @@ export const CompleteEmployeeExperiencePreview = ({
   if (isLoadingQuery || isLoadingSurvey || !loadedSurveyData) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-[95vw] lg:max-w-6xl max-h-[95vh] p-0 gap-0 overflow-hidden flex flex-col">
+        <DialogContent className="max-w-[95vw] lg:max-w-6xl max-h-[95vh] h-[95vh] p-0 gap-0 flex flex-col">
           <div className="flex items-center justify-center min-h-[400px]">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
@@ -101,11 +101,11 @@ export const CompleteEmployeeExperiencePreview = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] lg:max-w-6xl max-h-[95vh] p-0 gap-0 overflow-hidden flex flex-col">
-        {/* Header */}
-        <DialogHeader className="px-8 pt-8 pb-6 border-b bg-muted/30">
+      <DialogContent className="max-w-[95vw] lg:max-w-6xl max-h-[95vh] h-[95vh] p-0 gap-0 flex flex-col">
+        {/* Header - Fixed at top */}
+        <DialogHeader className="px-8 pt-8 pb-6 border-b bg-muted/30 flex-shrink-0">
           <div className="flex items-start justify-between gap-4">
-zejście            <div className="flex-1">
+            <div className="flex-1">
               <DialogTitle className="text-2xl font-bold flex items-center gap-3 mb-2">
                 <div className="p-2 bg-primary/10 rounded-lg">
                   <Eye className="h-6 w-6 text-primary" />
@@ -142,8 +142,8 @@ zejście            <div className="flex-1">
           </div>
         </DialogHeader>
 
-        {/* Preview Mode Alert */}
-        <Alert className="mx-8 mt-4 border-primary/50 bg-primary/10">
+        {/* Preview Mode Alert - Fixed below header */}
+        <Alert className="mx-8 mt-4 border-primary/50 bg-primary/10 flex-shrink-0">
           <CheckCircle2 className="h-4 w-4" />
           <AlertDescription>
             <strong>Real Experience Preview:</strong> You are using the actual employee survey components.
@@ -152,14 +152,14 @@ zejście            <div className="flex-1">
           </AlertDescription>
         </Alert>
 
-        {/* Main Content - Real Employee Survey Flow */}
-        <div className="flex-1 overflow-hidden">
+        {/* Main Content - Real Employee Survey Flow - Scrollable */}
+        <div className="flex-1 min-h-0 overflow-y-auto">
           <PreviewModeProvider
             isPreviewMode={true}
             previewSurveyId={loadedSurveyData.id || surveyId}
             previewSurveyData={loadedSurveyData}
           >
-            <div className="h-full overflow-y-auto">
+            <div className="min-h-full">
               <EmployeeSurveyFlow
                 surveyId={loadedSurveyData.id || "preview-survey"}
                 surveyDetails={loadedSurveyData}
