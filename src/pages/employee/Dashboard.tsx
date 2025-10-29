@@ -265,6 +265,7 @@ const EmployeeDashboard = () => {
                 conversationId={conversationId}
                 onComplete={handleChatComplete}
                 onSaveAndExit={handleSaveAndExit}
+                showTrustFlow={true}
               />
             </ChatErrorBoundary>
           )}

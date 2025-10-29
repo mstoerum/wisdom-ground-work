@@ -7,6 +7,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { RitualIntroduction } from "@/components/trust/RitualIntroduction";
+import { AnonymizationRitual } from "@/components/trust/AnonymizationRitual";
+import { TrustIndicators } from "@/components/trust/TrustIndicators";
+import { CulturalContext, detectCulturalContext } from "@/lib/culturalAdaptation";
+import { trackTrustMetrics } from "@/lib/trustAnalytics";
 
 interface Message {
   role: "user" | "assistant";
@@ -18,18 +23,66 @@ interface ChatInterfaceProps {
   conversationId: string;
   onComplete: () => void;
   onSaveAndExit: () => void;
+  showTrustFlow?: boolean;
 }
 
 // Constants
 const ESTIMATED_TOTAL_QUESTIONS = 8;
 const PROGRESS_COMPLETE_THRESHOLD = 100;
 
-export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: ChatInterfaceProps) => {
+type TrustFlowStep = "introduction" | "anonymization" | "chat" | "complete";
+
+export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showTrustFlow = true }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [trustFlowStep, setTrustFlowStep] = useState<TrustFlowStep>("introduction");
+  const [sessionId, setSessionId] = useState<string>("");
+  const [culturalContext, setCulturalContext] = useState<CulturalContext | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Initialize cultural context
+  useEffect(() => {
+    if (showTrustFlow) {
+      const context = detectCulturalContext();
+      setCulturalContext(context);
+      trackTrustMetrics('session_started', {
+        culturalContext: context.region,
+        sessionId: conversationId
+      });
+    } else {
+      setTrustFlowStep("chat");
+    }
+  }, [showTrustFlow, conversationId]);
+
+  // Track trust indicators being viewed
+  useEffect(() => {
+    if (sessionId) {
+      trackTrustMetrics('trust_indicators_viewed', {
+        sessionId,
+        culturalContext: culturalContext?.region
+      });
+    }
+  }, [sessionId, culturalContext]);
+
+  // Trust flow handlers
+  const handleRitualIntroductionComplete = () => {
+    trackTrustMetrics('ritual_introduction_completed', {
+      culturalContext: culturalContext?.region,
+      sessionId: conversationId
+    });
+    setTrustFlowStep("anonymization");
+  };
+
+  const handleAnonymizationComplete = (newSessionId: string) => {
+    trackTrustMetrics('anonymization_completed', {
+      sessionId: newSessionId,
+      culturalContext: culturalContext?.region
+    });
+    setSessionId(newSessionId);
+    setTrustFlowStep("chat");
+  };
 
   // Load conversation history on mount
   const loadConversation = useCallback(async () => {
@@ -173,8 +226,33 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit }: Cha
   const userMessageCount = messages.filter(m => m.role === "user").length;
   const progressPercent = Math.min((userMessageCount / ESTIMATED_TOTAL_QUESTIONS) * 100, PROGRESS_COMPLETE_THRESHOLD);
 
+  // Show trust flow if enabled and not in chat step
+  if (showTrustFlow && trustFlowStep !== "chat") {
+    if (trustFlowStep === "introduction") {
+      return (
+        <RitualIntroduction 
+          onComplete={handleRitualIntroductionComplete}
+          culturalContext={culturalContext || undefined}
+        />
+      );
+    }
+    
+    if (trustFlowStep === "anonymization") {
+      return (
+        <AnonymizationRitual 
+          onComplete={handleAnonymizationComplete}
+        />
+      );
+    }
+  }
+
   return (
     <div className="flex flex-col h-[600px] bg-card rounded-lg border border-border/50">
+      {/* Trust Indicators */}
+      {sessionId && (
+        <TrustIndicators sessionId={sessionId} />
+      )}
+      
       {/* Progress Indicator */}
       <div className="p-4 border-b border-border/50">
         <div className="flex items-center justify-between mb-2">
