@@ -8,6 +8,7 @@ import { format } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState } from "react";
 import { InteractiveSurveyPreview } from "./InteractiveSurveyPreview";
+import { CompleteEmployeeExperiencePreview } from "./CompleteEmployeeExperiencePreview";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -40,6 +41,7 @@ export const ReviewAndDeployStep = ({
 }: ReviewAndDeployStepProps) => {
   const navigate = useNavigate();
   const [showPreview, setShowPreview] = useState(false);
+  const [showCompletePreview, setShowCompletePreview] = useState(false);
   const [showDeployConfirmation, setShowDeployConfirmation] = useState(false);
 
   // Get target type display
@@ -162,11 +164,18 @@ export const ReviewAndDeployStep = ({
               </CardDescription>
             </div>
             <div className="flex gap-2">
+              <Button 
+                variant="default" 
+                onClick={() => setShowCompletePreview(true)}
+                className="bg-primary"
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Complete Experience Preview
+              </Button>
               {surveyId && (
                 <Button 
-                  variant="default" 
+                  variant="outline" 
                   onClick={() => navigate(`/hr/test-survey-chat?draft_id=${surveyId}`)}
-                  className="bg-primary"
                 >
                   <TestTube className="h-4 w-4 mr-2" />
                   Test Chat Experience
@@ -182,34 +191,57 @@ export const ReviewAndDeployStep = ({
         <CardContent className="space-y-4">
           <div className="bg-primary/5 rounded-lg p-4 border border-primary/20">
             <div className="flex items-start gap-3">
-              <TestTube className="h-5 w-5 text-primary mt-0.5" />
+              <Eye className="h-5 w-5 text-primary mt-0.5" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-foreground mb-1">
-                  Full Chat Test Experience
+                  Complete Employee Experience Preview
                 </p>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Test the complete chat interface in a new page where you can interact with the AI conversation just like your employees will. This helps you verify the chat flow, test different responses, and ensure everything works smoothly before deploying.
+                  Experience the complete end-to-end employee journey: consent, anonymization ritual, mood selection, 
+                  chat conversation, and closing ritual. This shows exactly what your employees will see and helps you 
+                  verify compliance and trust-building elements before deploying.
                 </p>
-                {surveyId ? (
+                <Button 
+                  variant="default" 
+                  size="sm"
+                  onClick={() => setShowCompletePreview(true)}
+                >
+                  <Eye className="h-3 w-3 mr-2" />
+                  Open Complete Preview
+                </Button>
+              </div>
+            </div>
+          </div>
+          {surveyId && (
+            <div className="bg-muted/30 rounded-lg p-4 border border-primary/20">
+              <div className="flex items-start gap-3">
+                <TestTube className="h-5 w-5 text-primary mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground mb-1">
+                    Full Chat Test Experience (Advanced)
+                  </p>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Test the complete chat interface in a new page where you can interact with the AI conversation 
+                    just like your employees will. This helps you verify the chat flow, test different responses, 
+                    and ensure everything works smoothly before deploying.
+                  </p>
                   <Button 
-                    variant="default" 
+                    variant="outline" 
                     size="sm"
                     onClick={() => navigate(`/hr/test-survey-chat?draft_id=${surveyId}`)}
                   >
                     <TestTube className="h-3 w-3 mr-2" />
                     Open Test Page
                   </Button>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Save your survey first to enable the test page
-                  </p>
-                )}
+                </div>
               </div>
             </div>
-          </div>
+          )}
           <div className="bg-muted/30 rounded-lg p-4 border border-dashed">
             <p className="text-sm text-muted-foreground text-center">
-              Click "Quick Preview" for a quick modal preview, or use "Test Chat Experience" for the full interactive test page
+              <strong>Complete Preview:</strong> See the full employee journey from consent to completion. 
+              <strong>Quick Preview:</strong> Quick modal preview of the chat interface. 
+              {surveyId && " <strong>Test Chat:</strong> Full interactive test page with real AI responses."}
             </p>
           </div>
         </CardContent>
@@ -397,6 +429,22 @@ export const ReviewAndDeployStep = ({
       <InteractiveSurveyPreview
         open={showPreview}
         onOpenChange={setShowPreview}
+        surveyData={{
+          title: formData.title,
+          first_message: formData.first_message,
+          themes: formData.themes || [],
+          consent_config: {
+            anonymization_level: formData.anonymization_level,
+            data_retention_days: Number(formData.data_retention_days),
+            consent_message: formData.consent_message,
+          },
+        }}
+      />
+
+      {/* Complete Employee Experience Preview Dialog */}
+      <CompleteEmployeeExperiencePreview
+        open={showCompletePreview}
+        onOpenChange={setShowCompletePreview}
         surveyData={{
           title: formData.title,
           first_message: formData.first_message,
