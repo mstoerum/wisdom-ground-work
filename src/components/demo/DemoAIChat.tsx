@@ -39,15 +39,16 @@ export const DemoAIChat = ({ onComplete, onSkip }: DemoAIChatProps) => {
     const initializeDemoConversation = async () => {
       try {
         // Create a demo survey for the conversation
+        const userId = (await supabase.auth.getUser()).data.user?.id;
         const { data: survey, error: surveyError } = await supabase
           .from('surveys')
           .insert({
-            title: 'Demo Employee Feedback Survey',
             description: 'Interactive demo of Spradley AI conversation',
             first_message: "Hi! I'm Atlas, an AI guide here to help you share your thoughts about work. I'm not a person, and nothing you say here is connected to your name. This might feel a bit different from typical surveys, and that's okay. Let's start with something simple: What's one thing that's been on your mind about work lately?",
-            themes: [], // Will be populated with demo themes
-            is_demo: true,
-            created_by: (await supabase.auth.getUser()).data.user?.id
+            themes: [],
+            consent_config: {},
+            schedule: {},
+            created_by: userId || '',
           })
           .select()
           .single();

@@ -1,15 +1,16 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ArrowRight, X, MessageSquare } from "lucide-react";
+
 interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
 }
-import { ArrowRight, X, MessageSquare } from "lucide-react";
 
 interface DemoComparisonProps {
-  conversationMessages: DemoMessage[];
+  conversationMessages: Message[];
   onViewAnalytics: () => void;
   onBackToMenu: () => void;
 }

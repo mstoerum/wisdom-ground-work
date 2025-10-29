@@ -286,10 +286,10 @@ export const TrendAnalysis = ({ surveyId }: TrendAnalysisProps) => {
 
       {/* Trend Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {(['participation', 'sentiment', 'responses', 'urgency'] as const).map((metric) => {
+      {(['participation', 'sentiment', 'responses', 'urgency'] as const).map((metric) => {
           const config = getMetricConfig(metric);
-          const trendData = getTrendIndicator(trendData, metric as keyof TrendData);
-          const currentValue = trendData[trendData.length - 1]?.[metric as keyof TrendData] as number || 0;
+          const metricTrend = getTrendIndicator(trendData || [], metric as keyof TrendData);
+          const currentValue = trendData?.[trendData.length - 1]?.[metric as keyof TrendData] as number || 0;
           
           return (
             <Card key={metric}>
@@ -300,12 +300,12 @@ export const TrendAnalysis = ({ surveyId }: TrendAnalysisProps) => {
                     {config.label}
                   </div>
                   <div className="flex items-center gap-1">
-                    {getTrendIcon(trendData.direction)}
+                    {getTrendIcon(metricTrend.direction as 'up' | 'down' | 'neutral')}
                     <span className={`text-xs ${
-                      trendData.direction === 'up' ? 'text-green-600' : 
-                      trendData.direction === 'down' ? 'text-red-600' : 'text-gray-600'
+                      metricTrend.direction === 'up' ? 'text-green-600' : 
+                      metricTrend.direction === 'down' ? 'text-red-600' : 'text-gray-600'
                     }`}>
-                      {Math.abs(trendData.change).toFixed(1)}%
+                      {Math.abs(metricTrend.change).toFixed(1)}%
                     </span>
                   </div>
                 </div>

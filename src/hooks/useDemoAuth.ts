@@ -54,20 +54,9 @@ export const useDemoAuth = () => {
         // Continue anyway as the user is authenticated
       }
 
-      // If HR user, create a demo organization
+      // If HR user, log that demo org would be created
       if (role === 'hr') {
-        const { error: orgError } = await supabase
-          .from('organizations')
-          .insert({
-            id: authData.user!.id, // Use user ID as org ID for demo
-            name: 'Demo Company',
-            created_by: authData.user!.id,
-            is_demo: true
-          });
-
-        if (orgError) {
-          console.warn('Organization creation failed:', orgError);
-        }
+        console.log('Demo HR user created, organization setup simulated');
       }
 
       toast({
