@@ -10,6 +10,7 @@ import AdminBootstrap from "./pages/AdminBootstrap";
 import Demo from "./pages/Demo";
 import DemoEmployee from "./pages/demo/DemoEmployee";
 import DemoHR from "./pages/demo/DemoHR";
+import DesignPreview from "./pages/demo/DesignPreview";
 import EmployeeDashboard from "./pages/employee/Dashboard";
 import HRDashboard from "./pages/hr/Dashboard";
 import CreateSurvey from "./pages/hr/CreateSurvey";
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/demo" element={<Demo />} />
             <Route path="/demo/employee" element={<DemoEmployee />} />
             <Route path="/demo/hr" element={<DemoHR />} />
+            <Route path="/demo/design-preview" element={<DesignPreview />} />
             
           <Route
             path="/employee/dashboard" 
