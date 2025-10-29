@@ -3,13 +3,15 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ConversationBubble } from "@/components/employee/ConversationBubble";
-import { Send, Loader2, Eye, X } from "lucide-react";
+import { Send, Loader2, Eye, X, ChevronDown, ChevronUp, Info } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Shield, Clock } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 interface Message {
   role: "user" | "assistant";
@@ -88,6 +90,7 @@ export const InteractiveSurveyPreview = ({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showDetails, setShowDetails] = useState(true); // Default open for better UX on desktop
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Fetch theme details
@@ -173,134 +176,235 @@ export const InteractiveSurveyPreview = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Eye className="h-5 w-5" />
-            Interactive Preview: {title}
-          </DialogTitle>
-          <DialogDescription>
-            Experience the survey exactly as your employees will see it. Type responses to simulate the conversation.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="flex-1 flex flex-col min-h-0 space-y-4">
-          {/* Privacy Settings Preview */}
+      <DialogContent className="max-w-[95vw] lg:max-w-6xl max-h-[95vh] p-0 gap-0 overflow-hidden flex flex-col">
+        {/* Header with improved spacing */}
+        <DialogHeader className="px-8 pt-8 pb-6 border-b bg-muted/30">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <DialogTitle className="text-2xl font-bold flex items-center gap-3 mb-2">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Eye className="h-6 w-6 text-primary" />
+                </div>
+                <span>Interactive Preview: {title}</span>
+              </DialogTitle>
+              <DialogDescription className="text-base mt-2 max-w-2xl">
+                Experience the survey exactly as your employees will see it. Type responses to simulate the conversation flow.
+              </DialogDescription>
+            </div>
+          </div>
+          
+          {/* Quick Info Badges */}
           {consent_config && (
-            <div className="bg-muted/50 rounded-lg p-4 space-y-2 border">
-              <h3 className="font-semibold text-sm">Privacy Settings</h3>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="flex items-center gap-1">
-                  <Shield className="h-3 w-3" />
-                  {consent_config.anonymization_level === "anonymous" ? "Fully Anonymous" : "Identified"}
+            <div className="flex flex-wrap gap-2 mt-4">
+              <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1">
+                <Shield className="h-3.5 w-3.5" />
+                {consent_config.anonymization_level === "anonymous" ? "Fully Anonymous" : "Identified"}
+              </Badge>
+              <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1">
+                <Clock className="h-3.5 w-3.5" />
+                Data retained for {consent_config.data_retention_days || 60} days
+              </Badge>
+              {themeDetails.length > 0 && (
+                <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1">
+                  {themeDetails.length} {themeDetails.length === 1 ? 'Theme' : 'Themes'}
                 </Badge>
-                <Badge variant="outline" className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  Data kept for {consent_config.data_retention_days || 60} days
-                </Badge>
-              </div>
-              {consent_config.consent_message && (
-                <p className="text-sm text-muted-foreground mt-2">{consent_config.consent_message}</p>
               )}
             </div>
           )}
+        </DialogHeader>
 
-          {/* Chat Interface */}
-          <div className="flex-1 flex flex-col bg-card rounded-lg border border-border/50 min-h-0">
-            {/* Progress Indicator */}
-            <div className="p-4 border-b border-border/50">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm text-muted-foreground">
-                  Preview Mode • {userMessageCount} {userMessageCount === 1 ? 'message' : 'messages'}
-                </span>
-                <span className="text-sm font-medium">{Math.round(progressPercent)}%</span>
+        {/* Main Content Area - Split Layout */}
+        <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
+          {/* Left Side - Chat Interface (Hero) */}
+          <div className="flex-1 flex flex-col min-w-0 min-h-[500px] lg:min-h-0">
+            {/* Chat Container with generous padding */}
+            <div className="flex-1 flex flex-col bg-gradient-to-br from-background to-muted/20 rounded-lg m-6 lg:m-8 border border-border/50 shadow-sm min-h-0">
+              {/* Progress Indicator */}
+              <div className="p-5 border-b border-border/50 bg-card/50 backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-muted-foreground">
+                      Preview Mode
+                    </span>
+                    <span className="text-xs text-muted-foreground">•</span>
+                    <span className="text-sm text-muted-foreground">
+                      {userMessageCount} {userMessageCount === 1 ? 'message' : 'messages'} sent
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-foreground">{Math.round(progressPercent)}%</span>
+                  </div>
+                </div>
+                <Progress value={progressPercent} className="h-2" />
               </div>
-              <Progress value={progressPercent} className="h-1.5" />
-            </div>
 
-            {/* Messages */}
-            <ScrollArea className="flex-1 p-6">
-              <div className="space-y-4">
-                {messages.map((message, index) => (
-                  <ConversationBubble
-                    key={index}
-                    message={message.content}
-                    isUser={message.role === "user"}
-                    timestamp={message.timestamp}
-                  />
-                ))}
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="bg-muted rounded-lg p-4">
-                      <Loader2 className="h-4 w-4 animate-spin" />
+              {/* Messages Area with better spacing */}
+              <ScrollArea className="flex-1 p-8">
+                <div className="space-y-6 max-w-4xl mx-auto">
+                  {messages.map((message, index) => (
+                    <ConversationBubble
+                      key={index}
+                      message={message.content}
+                      isUser={message.role === "user"}
+                      timestamp={message.timestamp}
+                    />
+                  ))}
+                  {isLoading && (
+                    <div className="flex justify-start">
+                      <div className="bg-muted rounded-lg p-4 flex items-center gap-3">
+                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">AI is thinking...</span>
+                      </div>
+                    </div>
+                  )}
+                  <div ref={scrollRef} />
+                </div>
+              </ScrollArea>
+
+              {/* Input Area with improved styling */}
+              <div className="p-6 border-t border-border/50 bg-card/50 backdrop-blur-sm">
+                {/* Suggested Prompts */}
+                {input === "" && userMessageCount === 0 && messages.length === 1 && (
+                  <div className="mb-4 p-4 bg-primary/5 rounded-xl border border-primary/20">
+                    <p className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
+                      <Info className="h-4 w-4 text-primary" />
+                      Try typing a response to see how the AI responds
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {[
+                        "I've been feeling positive about the team collaboration lately",
+                        "What's been challenging is managing my workload",
+                        "I'd like to talk about career development opportunities",
+                        "Something on my mind lately is work-life balance"
+                      ].map((prompt, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => setInput(prompt)}
+                          className="text-left text-sm px-4 py-2.5 bg-background hover:bg-primary/10 rounded-lg border border-border/50 hover:border-primary/30 transition-all text-foreground"
+                        >
+                          {prompt}
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
-                <div ref={scrollRef} />
-              </div>
-            </ScrollArea>
 
-            {/* Input Area */}
-            <div className="p-4 border-t border-border/50">
-              {/* Suggested Prompts - Show only when input is empty and no messages yet */}
-              {input === "" && userMessageCount === 0 && messages.length === 1 && (
-                <div className="mb-3 p-3 bg-muted/30 rounded-lg border border-border/30">
-                  <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-                    <span>💡</span> Try typing a response to see how the AI responds
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      "I've been feeling positive about the team collaboration lately",
-                      "What's been challenging is managing my workload",
-                      "I'd like to talk about career development opportunities",
-                      "Something on my mind lately is work-life balance"
-                    ].map((prompt, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setInput(prompt)}
-                        className="text-xs px-2 py-1 bg-background hover:bg-muted rounded border border-border/50 transition-colors"
-                      >
-                        {prompt}
-                      </button>
-                    ))}
-                  </div>
+                <div className="flex gap-3">
+                  <Textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Type your response to preview the conversation..."
+                    className="min-h-[80px] text-base resize-none flex-1"
+                    disabled={isLoading}
+                  />
+                  <Button
+                    onClick={sendMessage}
+                    disabled={!input.trim() || isLoading}
+                    size="icon"
+                    className="h-[80px] w-[80px] shrink-0"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" />
+                    ) : (
+                      <Send className="h-5 w-5" />
+                    )}
+                  </Button>
                 </div>
-              )}
-
-              <div className="flex gap-2">
-                <Textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type your response to preview the conversation..."
-                  className="min-h-[60px] resize-none"
-                  disabled={isLoading}
-                />
-                <Button
-                  onClick={sendMessage}
-                  disabled={!input.trim() || isLoading}
-                  size="icon"
-                  className="h-[60px] w-[60px]"
-                >
-                  <Send className="h-4 w-4" />
-                </Button>
               </div>
             </div>
           </div>
 
-          {/* Themes Preview */}
-          {themeDetails.length > 0 && (
-            <div className="bg-muted/50 rounded-lg p-4 border">
-              <h3 className="font-semibold text-sm mb-2">Covered Themes (Preview)</h3>
-              <div className="flex flex-wrap gap-2">
-                {themeDetails.map((theme) => (
-                  <Badge key={theme.id} variant="secondary">
-                    {theme.name}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Right Side - Details Panel (Collapsible on mobile) */}
+          <div className="lg:w-80 xl:w-96 border-t lg:border-t-0 lg:border-l border-border/50 bg-muted/20 flex flex-col">
+            <Collapsible open={showDetails} onOpenChange={setShowDetails} className="w-full">
+              <CollapsibleTrigger asChild className="lg:hidden">
+                <Button 
+                  variant="ghost" 
+                  className="w-full justify-between p-4 hover:bg-muted/50 rounded-none"
+                >
+                  <span className="font-semibold">Survey Details</span>
+                  {showDetails ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="lg:!block">
+                <div className="p-6 space-y-6 overflow-y-auto max-h-[calc(95vh-200px)] lg:max-h-full">
+                  {/* Privacy Settings */}
+                  {consent_config && (
+                    <Card className="border-border/50">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Shield className="h-4 w-4 text-primary" />
+                          Privacy Settings
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Anonymization:</span>
+                          <Badge variant={consent_config.anonymization_level === "anonymous" ? "default" : "secondary"}>
+                            {consent_config.anonymization_level === "anonymous" ? "Anonymous" : "Identified"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">Retention:</span>
+                          <span className="font-medium">{consent_config.data_retention_days || 60} days</span>
+                        </div>
+                        {consent_config.consent_message && (
+                          <div className="pt-3 border-t border-border/50">
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {consent_config.consent_message}
+                            </p>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Themes */}
+                  {themeDetails.length > 0 && (
+                    <Card className="border-border/50">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Conversation Themes</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex flex-wrap gap-2">
+                          {themeDetails.map((theme) => (
+                            <Badge 
+                              key={theme.id} 
+                              variant="secondary"
+                              className="text-xs px-3 py-1.5"
+                            >
+                              {theme.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Preview Info */}
+                  <Card className="border-border/50 bg-primary/5">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Info className="h-4 w-4 text-primary" />
+                        About This Preview
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        This preview simulates the employee experience. The AI responses are mock examples. 
+                        In the actual survey, AI responses will be dynamically generated based on employee input and survey themes.
+                      </p>
+                    </CardContent>
+                  </Card>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
