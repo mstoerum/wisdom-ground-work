@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SurveyFormData } from "@/lib/surveySchema";
-import { Calendar, Users, Shield, Target, Link2, CheckCircle2, Eye, Rocket, AlertCircle, Copy } from "lucide-react";
+import { Calendar, Users, Shield, Target, Link2, CheckCircle2, Eye, Rocket, AlertCircle, Copy, TestTube } from "lucide-react";
 import { format } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState } from "react";
@@ -17,6 +17,7 @@ interface ReviewAndDeployStepProps {
   targetCount: number;
   onDeploy: () => void;
   isDeploying: boolean;
+  surveyId?: string | null;
   deployResult?: {
     public_link?: {
       token?: string;
@@ -34,8 +35,10 @@ export const ReviewAndDeployStep = ({
   targetCount,
   onDeploy,
   isDeploying,
+  surveyId,
   deployResult,
 }: ReviewAndDeployStepProps) => {
+  const navigate = useNavigate();
   const [showPreview, setShowPreview] = useState(false);
   const [showDeployConfirmation, setShowDeployConfirmation] = useState(false);
 
@@ -153,21 +156,60 @@ export const ReviewAndDeployStep = ({
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle>Preview Your Survey</CardTitle>
+              <CardTitle>Preview & Test Your Survey</CardTitle>
               <CardDescription>
                 Try out the survey experience before deploying to make sure everything looks good
               </CardDescription>
             </div>
-            <Button variant="outline" onClick={() => setShowPreview(true)}>
-              <Eye className="h-4 w-4 mr-2" />
-              Interactive Preview
-            </Button>
+            <div className="flex gap-2">
+              {surveyId && (
+                <Button 
+                  variant="default" 
+                  onClick={() => navigate(`/hr/test-survey-chat?draft_id=${surveyId}`)}
+                  className="bg-primary"
+                >
+                  <TestTube className="h-4 w-4 mr-2" />
+                  Test Chat Experience
+                </Button>
+              )}
+              <Button variant="outline" onClick={() => setShowPreview(true)}>
+                <Eye className="h-4 w-4 mr-2" />
+                Quick Preview
+              </Button>
+            </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="bg-primary/5 rounded-lg p-4 border border-primary/20">
+            <div className="flex items-start gap-3">
+              <TestTube className="h-5 w-5 text-primary mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-foreground mb-1">
+                  Full Chat Test Experience
+                </p>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Test the complete chat interface in a new page where you can interact with the AI conversation just like your employees will. This helps you verify the chat flow, test different responses, and ensure everything works smoothly before deploying.
+                </p>
+                {surveyId ? (
+                  <Button 
+                    variant="default" 
+                    size="sm"
+                    onClick={() => navigate(`/hr/test-survey-chat?draft_id=${surveyId}`)}
+                  >
+                    <TestTube className="h-3 w-3 mr-2" />
+                    Open Test Page
+                  </Button>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Save your survey first to enable the test page
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
           <div className="bg-muted/30 rounded-lg p-4 border border-dashed">
             <p className="text-sm text-muted-foreground text-center">
-              Click "Interactive Preview" to experience the survey exactly as your employees will see it
+              Click "Quick Preview" for a quick modal preview, or use "Test Chat Experience" for the full interactive test page
             </p>
           </div>
         </CardContent>
@@ -281,8 +323,18 @@ export const ReviewAndDeployStep = ({
             disabled={isDeploying}
           >
             <Eye className="h-4 w-4 mr-2" />
-            Preview First
+            Quick Preview
           </Button>
+          {surveyId && (
+            <Button
+              variant="outline"
+              onClick={() => navigate(`/hr/test-survey-chat?draft_id=${surveyId}`)}
+              disabled={isDeploying}
+            >
+              <TestTube className="h-4 w-4 mr-2" />
+              Test Chat
+            </Button>
+          )}
           <Button
             onClick={() => setShowDeployConfirmation(true)}
             disabled={isDeploying}

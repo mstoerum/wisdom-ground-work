@@ -387,6 +387,7 @@ const CreateSurvey = () => {
             targetCount={targetCount}
             onDeploy={handleDeploy}
             isDeploying={isDeploying}
+            surveyId={surveyId}
             deployResult={deployResult}
           />
         );
