@@ -5,8 +5,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MoreVertical, Users, Edit, BarChart3, Archive, Trash2, Link as LinkIcon, ExternalLink, Copy } from "lucide-react";
+import { MoreVertical, Users, Edit, BarChart3, Archive, Trash2, Link as LinkIcon, ExternalLink, Copy, Eye } from "lucide-react";
 import { PublicLinkDetails } from "./PublicLinkDetails";
+import { CompleteEmployeeExperiencePreview } from "./wizard/CompleteEmployeeExperiencePreview";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,6 +52,8 @@ export const SurveyList = ({ status }: SurveyListProps) => {
   const [surveyToDelete, setSurveyToDelete] = useState<string | null>(null);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [selectedLink, setSelectedLink] = useState<any>(null);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [selectedSurveyForPreview, setSelectedSurveyForPreview] = useState<any>(null);
   
   // Fetch surveys with optional status filter
   const { data: surveys, isLoading, refetch } = useQuery({
@@ -176,6 +179,12 @@ export const SurveyList = ({ status }: SurveyListProps) => {
     }
   };
 
+  // Open preview experience
+  const handlePreviewExperience = (survey: any) => {
+    setSelectedSurveyForPreview(survey);
+    setPreviewDialogOpen(true);
+  };
+
   if (isLoading) {
     return <div className="text-muted-foreground">Loading surveys...</div>;
   }
@@ -213,6 +222,10 @@ export const SurveyList = ({ status }: SurveyListProps) => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => handlePreviewExperience(survey)}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Preview Experience
+                  </DropdownMenuItem>
                   {publicLinks?.has(survey.id) && (
                     <DropdownMenuItem onClick={() => handleViewPublicLink(survey.id)}>
                       <ExternalLink className="h-4 w-4 mr-2" />
@@ -337,6 +350,21 @@ export const SurveyList = ({ status }: SurveyListProps) => {
         onOpenChange={setLinkDialogOpen}
         linkData={selectedLink}
       />
+
+      {/* Complete Employee Experience Preview */}
+      {selectedSurveyForPreview && (
+        <CompleteEmployeeExperiencePreview
+          open={previewDialogOpen}
+          onOpenChange={setPreviewDialogOpen}
+          surveyData={{
+            title: selectedSurveyForPreview.title,
+            first_message: selectedSurveyForPreview.first_message,
+            themes: selectedSurveyForPreview.themes || [],
+            consent_config: selectedSurveyForPreview.consent_config,
+          }}
+          surveyId={selectedSurveyForPreview.id}
+        />
+      )}
     </div>
   );
 };
