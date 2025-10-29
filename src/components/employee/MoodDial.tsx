@@ -52,8 +52,18 @@ export const MoodDial = ({ onMoodSelect }: MoodDialProps) => {
         </div>
         
         <div className="flex justify-between w-full max-w-md px-4 text-xs text-muted-foreground">
-          <span>Struggling</span>
-          <span>Thriving</span>
+          <span className="flex flex-col items-center gap-1">
+            <span>😔</span>
+            <span>Struggling</span>
+          </span>
+          <span className="flex flex-col items-center gap-1">
+            <span>😐</span>
+            <span>Neutral</span>
+          </span>
+          <span className="flex flex-col items-center gap-1">
+            <span>😊</span>
+            <span>Thriving</span>
+          </span>
         </div>
 
         <Button onClick={handleContinue} size="lg" className="mt-4">

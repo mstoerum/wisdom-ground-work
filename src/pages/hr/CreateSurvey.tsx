@@ -22,6 +22,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 
 const STEPS = [
   { number: 1, title: "Details" },
@@ -41,6 +42,7 @@ const CreateSurvey = () => {
   const [isDeploying, setIsDeploying] = useState(false);
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showDeployConfirmation, setShowDeployConfirmation] = useState(false);
   const [surveyId, setSurveyId] = useState<string | null>(draftId);
   const [targetCount, setTargetCount] = useState(0);
   const [deployResult, setDeployResult] = useState<any>(null);
@@ -224,36 +226,43 @@ const CreateSurvey = () => {
   const handleNext = async () => {
     // Only validate fields relevant to the current step
     let fieldsToValidate: (keyof SurveyFormData)[] = [];
+    let errorMessage = '';
     
     switch (currentStep) {
       case 1:
         fieldsToValidate = ['title', 'first_message'];
+        errorMessage = 'Please provide a survey title and opening message';
         break;
       case 2:
         fieldsToValidate = ['themes'];
+        errorMessage = 'Please select at least one theme for your survey';
         break;
       case 3:
         fieldsToValidate = ['target_type', 'target_departments', 'target_employees'];
+        errorMessage = 'Please configure who should receive this survey';
         break;
       case 4:
         fieldsToValidate = ['schedule_type', 'start_date', 'end_date'];
+        errorMessage = 'Please configure the survey schedule';
         break;
       case 5:
         fieldsToValidate = ['consent_message', 'anonymization_level', 'data_retention_days'];
+        errorMessage = 'Please configure privacy settings and consent message';
         break;
     }
 
     const isValid = await form.trigger(fieldsToValidate);
     if (!isValid || !validateCurrentStep()) {
-      toast.error('Please fill in all required fields');
+      toast.error(errorMessage);
       return;
     }
 
     if (currentStep < 5) {
       setCurrentStep(currentStep + 1);
       await saveDraft(false);
+      toast.success(`Step ${currentStep + 1} completed! Moving to next step.`);
     } else {
-      setShowDeployModal(true);
+      setShowDeployConfirmation(true);
     }
   };
 
@@ -264,6 +273,11 @@ const CreateSurvey = () => {
   };
 
   const handleDeploy = async () => {
+    setShowDeployConfirmation(false);
+    setShowDeployModal(true);
+  };
+
+  const confirmDeploy = async () => {
     setIsDeploying(true);
     try {
       const id = await saveDraft(false);
@@ -346,6 +360,35 @@ const CreateSurvey = () => {
         </div>
 
         <WizardProgress currentStep={currentStep} steps={STEPS} />
+        
+        {/* Step Navigation */}
+        <div className="flex items-center justify-center space-x-4 mb-6">
+          {STEPS.map((step, index) => (
+            <div key={step.number} className="flex items-center">
+              <div
+                className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                  currentStep === step.number
+                    ? "bg-primary text-primary-foreground"
+                    : currentStep > step.number
+                    ? "bg-primary/20 text-primary"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {currentStep > step.number ? "✓" : step.number}
+              </div>
+              <span className={`ml-2 text-sm ${
+                currentStep === step.number ? "text-primary font-medium" : "text-muted-foreground"
+              }`}>
+                {step.title}
+              </span>
+              {index < STEPS.length - 1 && (
+                <div className={`w-8 h-0.5 mx-4 ${
+                  currentStep > step.number ? "bg-primary" : "bg-muted"
+                }`} />
+              )}
+            </div>
+          ))}
+        </div>
 
         <Form {...form}>
           <form onSubmit={(e) => e.preventDefault()}>

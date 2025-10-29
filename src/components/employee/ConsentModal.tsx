@@ -109,6 +109,29 @@ Anonymized feedback is retained for analytical purposes according to company pol
               </div>
             </div>
 
+            {/* Simple Summary */}
+            <div className="bg-primary/5 rounded-lg p-4 border border-primary/20">
+              <h4 className="font-semibold text-sm mb-2 text-primary">Quick Summary</h4>
+              <ul className="space-y-1 text-sm text-muted-foreground">
+                <li className="flex items-center gap-2">
+                  <span className="text-primary">✓</span>
+                  <span>Your responses are {anonymizationLevel === "anonymous" ? "completely anonymous" : "kept confidential"}</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-primary">✓</span>
+                  <span>You can stop anytime without consequences</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-primary">✓</span>
+                  <span>Your manager will never see your individual responses</span>
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="text-primary">✓</span>
+                  <span>Data is automatically deleted after {dataRetentionDays} days</span>
+                </li>
+              </ul>
+            </div>
+
             {/* What You Should Know */}
             <div className="space-y-2">
               <h4 className="font-semibold text-sm">What You Should Know</h4>
