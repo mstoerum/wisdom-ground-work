@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { usePreviewMode } from "@/contexts/PreviewModeContext";
 
 /**
  * Custom hook for managing employee feedback conversation sessions
@@ -10,13 +11,23 @@ export const useConversation = () => {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(false);
   const { toast } = useToast();
+  const { isPreviewMode } = usePreviewMode();
 
   /**
    * Start a new conversation session with anonymization
    * Creates or reuses anonymous token and initializes session
+   * In preview mode, generates a mock conversation ID without database operations
    */
   const startConversation = useCallback(async (surveyId: string, initialMood: number) => {
     try {
+      // In preview mode, generate a mock conversation ID without DB operations
+      if (isPreviewMode) {
+        const mockId = `preview-${surveyId}-${Date.now()}`;
+        setConversationId(mockId);
+        setIsActive(true);
+        return mockId;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
@@ -53,7 +64,7 @@ export const useConversation = () => {
       });
       return null;
     }
-  }, [toast]);
+  }, [toast, isPreviewMode]);
 
   /**
    * Get existing or create new anonymous token
@@ -87,9 +98,17 @@ export const useConversation = () => {
   /**
    * End active conversation session
    * Records final mood and marks session as completed
+   * In preview mode, just resets local state without DB operations
    */
   const endConversation = useCallback(async (finalMood?: number) => {
     if (!conversationId) return;
+
+    // In preview mode, just reset state without DB operations
+    if (isPreviewMode) {
+      setIsActive(false);
+      setConversationId(null);
+      return;
+    }
 
     try {
       await supabase
@@ -111,7 +130,7 @@ export const useConversation = () => {
         variant: "destructive",
       });
     }
-  }, [conversationId, toast]);
+  }, [conversationId, toast, isPreviewMode]);
 
   return {
     conversationId,

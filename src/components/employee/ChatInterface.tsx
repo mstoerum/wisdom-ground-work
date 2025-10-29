@@ -12,6 +12,7 @@ import { AnonymizationRitual } from "@/components/trust/AnonymizationRitual";
 import { TrustIndicators } from "@/components/trust/TrustIndicators";
 import { CulturalContext, detectCulturalContext } from "@/lib/culturalAdaptation";
 import { trackTrustMetrics } from "@/lib/trustAnalytics";
+import { usePreviewMode } from "@/contexts/PreviewModeContext";
 
 interface Message {
   role: "user" | "assistant";
@@ -41,6 +42,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
   const [culturalContext, setCulturalContext] = useState<CulturalContext | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { isPreviewMode } = usePreviewMode();
 
   // Initialize cultural context
   useEffect(() => {
@@ -161,7 +163,8 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
             messages: [...messages, userMessage].map(m => ({
               role: m.role,
               content: m.content
-            }))
+            })),
+            testMode: isPreviewMode, // Flag for preview mode to prevent data persistence
           }),
         }
       );

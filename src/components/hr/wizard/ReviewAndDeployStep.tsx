@@ -455,6 +455,7 @@ export const ReviewAndDeployStep = ({
             consent_message: formData.consent_message,
           },
         }}
+        surveyId={surveyId || undefined}
       />
     </div>
   );
