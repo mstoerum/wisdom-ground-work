@@ -136,7 +136,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Urgent Flags</p>
-                    <p className="text-3xl font-bold text-orange-600">{urgencyFlags.filter(u => !u.resolved_at).length}</p>
+                    <p className="text-3xl font-bold text-orange-600">{urgency.filter(u => !u.resolved_at).length}</p>
                     <p className="text-xs text-muted-foreground mt-1">requiring attention</p>
                   </div>
                   <AlertTriangle className="h-8 w-8 text-orange-600" />
