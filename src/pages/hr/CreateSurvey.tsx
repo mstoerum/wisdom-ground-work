@@ -16,6 +16,8 @@ import { ScheduleSettings } from "@/components/hr/wizard/ScheduleSettings";
 import { ConsentSettings } from "@/components/hr/wizard/ConsentSettings";
 import { DeployConfirmationModal } from "@/components/hr/wizard/DeployConfirmationModal";
 import { SurveyPreview } from "@/components/hr/wizard/SurveyPreview";
+import { ReviewAndDeployStep } from "@/components/hr/wizard/ReviewAndDeployStep";
+import { InteractiveSurveyPreview } from "@/components/hr/wizard/InteractiveSurveyPreview";
 import { useState, useEffect, useCallback } from "react";
 import { Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +31,7 @@ const STEPS = [
   { number: 3, title: "Targeting" },
   { number: 4, title: "Schedule" },
   { number: 5, title: "Privacy" },
+  { number: 6, title: "Review & Deploy" },
 ];
 
 const CreateSurvey = () => {
@@ -241,6 +244,9 @@ const CreateSurvey = () => {
       case 5:
         fieldsToValidate = ['consent_message', 'anonymization_level', 'data_retention_days'];
         break;
+      case 6:
+        // Step 6 doesn't have validation - it's the review step
+        return;
     }
 
     const isValid = await form.trigger(fieldsToValidate);
@@ -249,11 +255,13 @@ const CreateSurvey = () => {
       return;
     }
 
-    if (currentStep < 5) {
+    if (currentStep < 6) {
       setCurrentStep(currentStep + 1);
       await saveDraft(false);
-    } else {
-      setShowDeployModal(true);
+      // Update target count when moving to step 6
+      if (currentStep === 5) {
+        calculateTargetCount();
+      }
     }
   };
 
@@ -263,6 +271,54 @@ const CreateSurvey = () => {
     }
   };
 
+  // Calculate target count for display
+  const calculateTargetCount = useCallback(async () => {
+    const values = form.getValues();
+    const targetType = values.target_type;
+
+    if (targetType === 'public_link') {
+      setTargetCount(0); // Public links don't have a fixed count
+      return;
+    }
+
+    try {
+      if (targetType === 'all') {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('is_active', true);
+        setTargetCount(profiles?.length || 0);
+      } else if (targetType === 'department' && values.target_departments) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('is_active', true)
+          .in('department', values.target_departments);
+        setTargetCount(profiles?.length || 0);
+      } else if (targetType === 'manual' && values.target_employees) {
+        setTargetCount(values.target_employees.length);
+      } else {
+        setTargetCount(0);
+      }
+    } catch (error) {
+      console.error('Error calculating target count:', error);
+      setTargetCount(0);
+    }
+  }, [form]);
+
+  // Recalculate target count when relevant values change
+  useEffect(() => {
+    if (currentStep >= 3) {
+      calculateTargetCount();
+    }
+  }, [
+    form.watch('target_type'),
+    form.watch('target_departments'),
+    form.watch('target_employees'),
+    currentStep,
+    calculateTargetCount,
+  ]);
+
   const handleDeploy = async () => {
     setIsDeploying(true);
     try {
@@ -271,7 +327,6 @@ const CreateSurvey = () => {
       if (!id) {
         toast.error('Unable to save survey before deployment');
         setIsDeploying(false);
-        setShowDeployModal(false);
         return;
       }
       
@@ -281,7 +336,7 @@ const CreateSurvey = () => {
 
       if (error) throw error;
 
-      // Store deploy result for modal to display
+      // Store deploy result for display in ReviewAndDeployStep
       setDeployResult(data);
 
       // Show appropriate success message
@@ -289,22 +344,25 @@ const CreateSurvey = () => {
         toast.success('Survey deployed! Public link created.');
       } else if (data.message) {
         toast.error(data.message);
-        setShowDeployModal(false);
       } else {
         toast.success(`Survey deployed! ${data.assignment_count || 0} employees assigned.`);
       }
       
-      // Don't navigate immediately if it's a public link - let user see the link
-      if (!data.public_link) {
-        navigate('/hr/dashboard');
-      }
+      // After deployment, user can see the result in step 6
+      // Reset deploying state after showing result
+      setTimeout(() => {
+        setIsDeploying(false);
+        // Auto-navigate for non-public links after a delay
+        if (!data.public_link && data.assignment_count !== undefined) {
+          setTimeout(() => {
+            navigate('/hr/dashboard');
+          }, 3000);
+        }
+      }, 1000);
     } catch (error: any) {
       console.error('Error deploying survey:', error);
       const message = error?.message || 'Failed to deploy survey';
       toast.error(message);
-      setIsDeploying(false);
-      setShowDeployModal(false);
-    } finally {
       setIsDeploying(false);
     }
   };
@@ -321,6 +379,17 @@ const CreateSurvey = () => {
         return <ScheduleSettings form={form} />;
       case 5:
         return <ConsentSettings form={form} />;
+      case 6:
+        return (
+          <ReviewAndDeployStep
+            formData={form.getValues()}
+            themeCount={form.watch("themes").length}
+            targetCount={targetCount}
+            onDeploy={handleDeploy}
+            isDeploying={isDeploying}
+            deployResult={deployResult}
+          />
+        );
       default:
         return null;
     }
@@ -339,30 +408,36 @@ const CreateSurvey = () => {
               <p className="text-muted-foreground mt-1">Design an AI-powered feedback conversation</p>
             </div>
           </div>
-          <Button variant="outline" onClick={() => setShowPreview(true)}>
-            <Eye className="h-4 w-4 mr-2" />
-            Preview as Employee
-          </Button>
+          {currentStep < 6 && (
+            <Button variant="outline" onClick={() => setShowPreview(true)}>
+              <Eye className="h-4 w-4 mr-2" />
+              Preview as Employee
+            </Button>
+          )}
         </div>
 
         <WizardProgress currentStep={currentStep} steps={STEPS} />
 
         <Form {...form}>
           <form onSubmit={(e) => e.preventDefault()}>
-            <Card>
-              <CardContent className="pt-6">
-                {renderStep()}
-                <WizardNavigation
-                  currentStep={currentStep}
-                  totalSteps={5}
-                  onBack={handleBack}
-                  onNext={handleNext}
-                  onSaveDraft={() => saveDraft(true)}
-                  isNextDisabled={!validateCurrentStep()}
-                  isSaving={isSaving}
-                />
-              </CardContent>
-            </Card>
+            {currentStep === 6 ? (
+              renderStep()
+            ) : (
+              <Card>
+                <CardContent className="pt-6">
+                  {renderStep()}
+                  <WizardNavigation
+                    currentStep={currentStep}
+                    totalSteps={6}
+                    onBack={handleBack}
+                    onNext={handleNext}
+                    onSaveDraft={() => saveDraft(true)}
+                    isNextDisabled={!validateCurrentStep()}
+                    isSaving={isSaving}
+                  />
+                </CardContent>
+              </Card>
+            )}
           </form>
         </Form>
 
@@ -382,7 +457,7 @@ const CreateSurvey = () => {
           deployResult={deployResult}
         />
 
-        <SurveyPreview
+        <InteractiveSurveyPreview
           open={showPreview}
           onOpenChange={setShowPreview}
           surveyData={{
