@@ -80,10 +80,8 @@ export const DepartmentComparison = ({ surveyId }: DepartmentComparisonProps) =>
           survey_themes(name),
           conversation_sessions!inner(
             survey_id,
-            survey_assignments!inner(
-              employee_id,
-              employees!inner(department)
-            )
+            employee_id,
+            profiles!inner(department)
           )
         `)
         .eq('conversation_sessions.survey_id', surveyId || '');
@@ -93,7 +91,7 @@ export const DepartmentComparison = ({ surveyId }: DepartmentComparisonProps) =>
       // Group by department
       const deptMap = new Map<string, any[]>();
       responses?.forEach(response => {
-        const dept = response.conversation_sessions?.survey_assignments?.employees?.department || 'Unknown';
+        const dept = (response as any).conversation_sessions?.profiles?.department || 'Unknown';
         if (!deptMap.has(dept)) {
           deptMap.set(dept, []);
         }
@@ -143,9 +141,9 @@ export const DepartmentComparison = ({ surveyId }: DepartmentComparisonProps) =>
           theme_id,
           survey_themes(name),
           conversation_sessions!inner(
-            survey_assignments!inner(
-              employees!inner(department)
-            )
+            survey_id,
+            employee_id,
+            profiles!inner(department)
           )
         `)
         .eq('conversation_sessions.survey_id', surveyId || '');
@@ -156,8 +154,8 @@ export const DepartmentComparison = ({ surveyId }: DepartmentComparisonProps) =>
       const themeMap = new Map<string, Map<string, any[]>>();
       
       responses?.forEach(response => {
-        const theme = response.survey_themes?.name || 'Unknown';
-        const dept = response.conversation_sessions?.survey_assignments?.employees?.department || 'Unknown';
+        const theme = (response as any).survey_themes?.name || 'Unknown';
+        const dept = (response as any).conversation_sessions?.profiles?.department || 'Unknown';
         
         if (!themeMap.has(theme)) {
           themeMap.set(theme, new Map());

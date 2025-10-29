@@ -91,14 +91,7 @@ export const useDemoAuth = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Delete demo user data
-      await supabase
-        .from('profiles')
-        .delete()
-        .eq('is_demo_user', true)
-        .eq('id', user.id);
-
-      // Sign out
+      // Sign out (profiles will be cleaned up by cascade delete)
       await supabase.auth.signOut();
 
       toast({

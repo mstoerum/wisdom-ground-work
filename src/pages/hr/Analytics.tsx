@@ -45,9 +45,8 @@ const Analytics = () => {
         .select(`
           sentiment_score,
           conversation_sessions!inner(
-            survey_assignments!inner(
-              employees!inner(department)
-            )
+            employee_id,
+            profiles!inner(department)
           )
         `);
 
@@ -56,7 +55,7 @@ const Analytics = () => {
       // Group by department
       const deptMap = new Map<string, any[]>();
       responses?.forEach(response => {
-        const dept = response.conversation_sessions?.survey_assignments?.employees?.department || 'Unknown';
+        const dept = (response as any).conversation_sessions?.profiles?.department || 'Unknown';
         if (!deptMap.has(dept)) {
           deptMap.set(dept, []);
         }

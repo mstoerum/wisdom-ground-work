@@ -43,6 +43,7 @@ export const DemoAIChat = ({ onComplete, onSkip }: DemoAIChatProps) => {
         const { data: survey, error: surveyError } = await supabase
           .from('surveys')
           .insert({
+            title: 'Demo Employee Feedback Survey',
             description: 'Interactive demo of Spradley AI conversation',
             first_message: "Hi! I'm Atlas, an AI guide here to help you share your thoughts about work. I'm not a person, and nothing you say here is connected to your name. This might feel a bit different from typical surveys, and that's okay. Let's start with something simple: What's one thing that's been on your mind about work lately?",
             themes: [],
