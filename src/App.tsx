@@ -22,6 +22,7 @@ import EmployeeProfile from "./pages/employee/Profile";
 import PublicSurvey from "./pages/PublicSurvey";
 import AcceptInvitation from "./pages/AcceptInvitation";
 import TestTrustFlow from "./pages/TestTrustFlow";
+import TestSurveyChat from "./pages/hr/TestSurveyChat";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="hr_admin">
                 <CreateSurvey />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/hr/test-survey-chat" 
+            element={
+              <ProtectedRoute requiredRole="hr_admin">
+                <TestSurveyChat />
               </ProtectedRoute>
             } 
           />
