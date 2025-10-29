@@ -115,7 +115,7 @@ zejście            <div className="flex-1">
               <DialogDescription className="text-base mt-2 max-w-2xl">
                 Experience the complete end-to-end employee survey journey exactly as employees will see it.
                 This uses the <strong>real survey components</strong> in preview mode - no data will be saved.
-              </DialogDescription八一>
+              </DialogDescription>
             </div>
           </div>
 
