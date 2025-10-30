@@ -2,7 +2,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ConversationBubble } from "./ConversationBubble";
-import { Send, Loader2, Save } from "lucide-react";
+import { VoiceInterface } from "./VoiceInterface";
+import { Send, Loader2, Save, Mic } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
@@ -13,6 +14,7 @@ import { TrustIndicators } from "@/components/trust/TrustIndicators";
 import { CulturalContext, detectCulturalContext } from "@/lib/culturalAdaptation";
 import { trackTrustMetrics } from "@/lib/trustAnalytics";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Message {
   role: "user" | "assistant";
@@ -40,6 +42,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
   const [trustFlowStep, setTrustFlowStep] = useState<TrustFlowStep>("introduction");
   const [sessionId, setSessionId] = useState<string>("");
   const [culturalContext, setCulturalContext] = useState<CulturalContext | null>(null);
+  const [isVoiceMode, setIsVoiceMode] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { isPreviewMode } = usePreviewMode();
@@ -249,11 +252,52 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     }
   }
 
+  // Check if browser supports voice
+  const [voiceSupported, setVoiceSupported] = useState(false);
+  useEffect(() => {
+    const supported = 
+      'speechSynthesis' in window &&
+      ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+    setVoiceSupported(supported);
+  }, []);
+
+  // If in voice mode, show voice interface
+  if (isVoiceMode && trustFlowStep === "chat") {
+    return (
+      <VoiceInterface
+        conversationId={conversationId}
+        onSwitchToText={() => setIsVoiceMode(false)}
+        onComplete={onComplete}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col h-[600px] bg-card rounded-lg border border-border/50">
       {/* Trust Indicators */}
       {sessionId && (
         <TrustIndicators sessionId={sessionId} />
+      )}
+
+      {/* Voice Mode Promotion Banner */}
+      {voiceSupported && !isVoiceMode && trustFlowStep === "chat" && (
+        <Alert className="mx-4 mt-4 border-[hsl(var(--lime-green))] bg-[hsl(var(--lime-green))]/10">
+          <Mic className="h-4 w-4 text-[hsl(var(--lime-green))]" />
+          <AlertDescription className="flex items-center justify-between">
+            <span className="text-sm">
+              Try our new <strong>Voice Mode</strong> for a more natural conversation experience
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsVoiceMode(true)}
+              className="ml-4"
+            >
+              <Mic className="w-3 h-3 mr-2" />
+              Switch to Voice
+            </Button>
+          </AlertDescription>
+        </Alert>
       )}
       
       {/* Progress Indicator */}
