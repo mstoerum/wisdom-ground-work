@@ -303,10 +303,10 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         </div>
       </ScrollArea>
 
-      <div className="p-4 border-t border-border/50">
+      <div className="p-6 border-t border-border/50 bg-background/95 backdrop-blur-md">
         {/* Suggested Prompts - Show only when input is empty and no messages yet */}
         {input === "" && userMessageCount === 0 && (
-          <div className="mb-3 p-3 bg-muted/30 rounded-lg border border-border/30">
+          <div className="mb-4 p-3 bg-muted/30 rounded-2xl border border-border/30">
             <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
               <span>💬</span> Not sure where to start? Try:
             </p>
@@ -320,7 +320,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
                 <button
                   key={idx}
                   onClick={() => setInput(prompt)}
-                  className="text-xs px-2 py-1 bg-background hover:bg-muted rounded border border-border/50 transition-colors"
+                  className="text-xs px-3 py-1.5 bg-background hover:bg-muted rounded-full border border-border/50 transition-colors"
                 >
                   {prompt}
                 </button>
@@ -329,22 +329,46 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           </div>
         )}
         
-        <div className="flex gap-2">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Share your thoughts..."
-            className="min-h-[60px] resize-none"
-            disabled={isLoading}
-          />
+        <div className="flex gap-4 items-end">
+          <div className="flex-1 relative">
+            <Textarea
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="How are you feeling right now?"
+              className="
+                bg-muted
+                border-0
+                rounded-3xl
+                px-6
+                py-4
+                text-base
+                leading-relaxed
+                resize-none
+                focus:ring-2
+                focus:ring-[hsl(var(--terracotta-primary))]
+                focus:ring-offset-2
+                transition-shadow
+              "
+              rows={2}
+              disabled={isLoading}
+            />
+            <p className="absolute bottom-2 right-4 text-xs text-muted-foreground">
+              Press Enter to send
+            </p>
+          </div>
+          
           <Button
             onClick={sendMessage}
             disabled={!input.trim() || isLoading}
-            size="icon"
-            className="h-[60px] w-[60px]"
+            variant="coral"
+            className="w-14 h-14 flex-shrink-0 shadow-sm hover:shadow-md"
           >
-            <Send className="h-4 w-4" />
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )}
           </Button>
         </div>
       </div>

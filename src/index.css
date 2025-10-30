@@ -8,49 +8,87 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 30 20% 97%;
-    --foreground: 25 25% 15%;
+    /* Warm Empathy Design Language - Primary Palette */
+    --background: 30 15% 96%;
+    --foreground: 30 25% 25%;
 
     --card: 0 0% 100%;
-    --card-foreground: 25 25% 15%;
+    --card-foreground: 30 25% 25%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 25 25% 15%;
+    --popover-foreground: 30 25% 25%;
 
-    --primary: 25 65% 55%;
+    /* Primary - Terracotta */
+    --primary: 10 50% 60%;
     --primary-foreground: 0 0% 100%;
+    
+    /* Secondary - Butter Yellow */
+    --secondary: 40 75% 72%;
+    --secondary-foreground: 30 30% 20%;
 
-    --secondary: 35 50% 88%;
-    --secondary-foreground: 25 25% 15%;
+    /* Muted - Warm Greige */
+    --muted: 30 12% 92%;
+    --muted-foreground: 30 8% 55%;
 
-    --muted: 30 15% 92%;
-    --muted-foreground: 25 15% 45%;
+    /* Accent - Lime Green (for positive actions) */
+    --accent: 80 100% 75%;
+    --accent-foreground: 80 30% 20%;
 
-    --accent: 15 75% 65%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 70% 55%;
+    /* Destructive - Soft Red */
+    --destructive: 0 60% 58%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 15% 85%;
-    --input: 30 15% 85%;
-    --ring: 25 65% 55%;
+    /* Borders & Inputs */
+    --border: 30 12% 88%;
+    --input: 30 12% 88%;
+    --ring: 10 50% 60%;
 
-    --success: 140 60% 50%;
+    /* Semantic Colors */
+    --success: 142 65% 55%;
     --success-foreground: 0 0% 100%;
-    --warning: 40 95% 55%;
-    --warning-foreground: 25 25% 15%;
+    --warning: 38 80% 60%;
+    --warning-foreground: 30 30% 20%;
 
-    --radius: 0.75rem;
+    /* Warm Empathy Custom Tokens */
+    --terracotta-primary: 10 50% 60%;
+    --terracotta-deep: 10 55% 50%;
+    --terracotta-light: 10 60% 85%;
+    --terracotta-pale: 10 50% 95%;
 
+    --butter-yellow: 40 75% 72%;
+    --butter-yellow-light: 40 70% 88%;
+    --butter-yellow-pale: 40 65% 95%;
+
+    --lime-green: 80 100% 75%;
+    --coral-pink: 8 100% 88%;
+    --coral-accent: 8 70% 65%;
+
+    --divider: 30 10% 90%;
+
+    /* Chart Colors */
+    --chart-terracotta: 10 50% 60%;
+    --chart-coral: 8 70% 65%;
+    --chart-yellow: 40 75% 72%;
+    --chart-lime: 80 100% 75%;
+    --chart-pink: 350 100% 88%;
+    --chart-gray: 30 8% 70%;
+    --chart-hatch: 30 10% 60%;
+
+    /* Spacing & Layout */
+    --radius: 1.5rem;
+    --radius-lg: 1.5rem;
+    --radius-xl: 2rem;
+    --radius-full: 9999px;
+
+    /* Sidebar */
     --sidebar-background: 30 15% 95%;
-    --sidebar-foreground: 25 25% 15%;
-    --sidebar-primary: 25 65% 55%;
+    --sidebar-foreground: 30 25% 25%;
+    --sidebar-primary: 10 50% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 35 50% 88%;
-    --sidebar-accent-foreground: 25 25% 15%;
-    --sidebar-border: 30 15% 85%;
-    --sidebar-ring: 25 65% 55%;
+    --sidebar-accent: 30 12% 92%;
+    --sidebar-accent-foreground: 30 25% 25%;
+    --sidebar-border: 30 12% 88%;
+    --sidebar-ring: 10 50% 60%;
   }
 
   .dark {
@@ -63,38 +101,62 @@ All colors MUST be HSL.
     --popover: 25 15% 12%;
     --popover-foreground: 30 10% 95%;
 
-    --primary: 25 65% 55%;
+    --primary: 10 50% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 25 20% 18%;
-    --secondary-foreground: 30 10% 95%;
+    --secondary: 40 75% 72%;
+    --secondary-foreground: 25 20% 8%;
 
     --muted: 25 15% 20%;
     --muted-foreground: 30 10% 65%;
 
-    --accent: 15 75% 65%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 80 100% 75%;
+    --accent-foreground: 25 20% 8%;
 
-    --destructive: 0 70% 55%;
+    --destructive: 0 60% 58%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 25 15% 22%;
     --input: 25 15% 22%;
-    --ring: 25 65% 55%;
+    --ring: 10 50% 60%;
 
-    --success: 140 60% 50%;
+    --success: 142 65% 55%;
     --success-foreground: 0 0% 100%;
-    --warning: 40 95% 55%;
-    --warning-foreground: 25 25% 15%;
+    --warning: 38 80% 60%;
+    --warning-foreground: 25 20% 8%;
+
+    /* Dark mode custom tokens */
+    --terracotta-primary: 10 50% 60%;
+    --terracotta-deep: 10 55% 50%;
+    --terracotta-light: 10 60% 30%;
+    --terracotta-pale: 10 50% 15%;
+
+    --butter-yellow: 40 75% 72%;
+    --butter-yellow-light: 40 70% 30%;
+    --butter-yellow-pale: 40 65% 15%;
+
+    --lime-green: 80 100% 75%;
+    --coral-pink: 8 100% 30%;
+    --coral-accent: 8 70% 65%;
+
+    --divider: 25 15% 18%;
+
+    --chart-terracotta: 10 50% 60%;
+    --chart-coral: 8 70% 65%;
+    --chart-yellow: 40 75% 72%;
+    --chart-lime: 80 100% 75%;
+    --chart-pink: 350 100% 40%;
+    --chart-gray: 30 8% 50%;
+    --chart-hatch: 30 10% 45%;
 
     --sidebar-background: 25 20% 10%;
     --sidebar-foreground: 30 10% 95%;
-    --sidebar-primary: 25 65% 55%;
+    --sidebar-primary: 10 50% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 25 20% 18%;
+    --sidebar-accent: 25 15% 20%;
     --sidebar-accent-foreground: 30 10% 95%;
     --sidebar-border: 25 15% 22%;
-    --sidebar-ring: 25 65% 55%;
+    --sidebar-ring: 10 50% 60%;
   }
 }
 
