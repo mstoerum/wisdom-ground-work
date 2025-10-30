@@ -72,13 +72,16 @@ serve(async (req) => {
           const { data: { user }, error: userError } = await supabase.auth.getUser(token);
           
           if (userError || !user) {
+            console.error("❌ Authentication failed:", userError?.message || "No user found");
             socket.send(JSON.stringify({
               type: "error",
-              error: "Authentication failed",
+              error: "Authentication failed. Please refresh and try again.",
             }));
             socket.close();
             return;
           }
+
+          console.log("✅ User authenticated:", user.id);
 
           userId = user.id;
 
