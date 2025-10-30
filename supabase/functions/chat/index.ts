@@ -251,6 +251,37 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
+    // Check if this is a preview mode conversation
+    const isPreviewMode = conversationId.startsWith("preview-");
+    
+    if (isPreviewMode) {
+      // Handle preview mode without database access
+      const turnCount = messages.filter((m: any) => m.role === "user").length;
+      const shouldComplete = turnCount >= CONVERSATION_COMPLETE_THRESHOLD;
+      const isFirstMessage = turnCount === 1;
+
+      // Simple conversation context for preview
+      const conversationContext = buildConversationContext([], []);
+      const systemPrompt = getSystemPrompt(conversationContext, isFirstMessage);
+
+      // Get AI response
+      const aiMessage = await callAI(
+        LOVABLE_API_KEY,
+        AI_MODEL,
+        [{ role: "system", content: systemPrompt }, ...messages],
+        0.8,
+        200
+      );
+
+      return new Response(
+        JSON.stringify({ 
+          message: aiMessage,
+          shouldComplete: shouldComplete 
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
