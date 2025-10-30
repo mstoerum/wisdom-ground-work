@@ -16,8 +16,8 @@ interface VoiceInterfaceProps {
 
 /**
  * Voice interaction interface for employee survey
- * Provides natural voice conversation with AI using Gemini Live API
- * Real-time audio streaming with low latency (<1.5s)
+ * Optimized hybrid approach with browser APIs for reliable performance
+ * Features: Real-time transcription, smart silence detection, natural TTS
  */
 export const VoiceInterface = ({
   conversationId,
@@ -211,7 +211,7 @@ export const VoiceInterface = ({
               Click the microphone to start a natural voice conversation with Atlas.
             </p>
             <p className="text-xs text-muted-foreground">
-              Powered by Gemini Live API • Real-time streaming • Low latency
+              Speak naturally • Pauses automatically detect when you're done • Hands-free
             </p>
           </div>
         )}
@@ -219,7 +219,15 @@ export const VoiceInterface = ({
         {voiceState === 'connecting' && (
           <div className="text-center space-y-2 max-w-md">
             <p className="text-sm text-muted-foreground animate-pulse">
-              Connecting to Gemini Live API...
+              Initializing voice recognition...
+            </p>
+          </div>
+        )}
+
+        {voiceState === 'processing' && (
+          <div className="text-center space-y-2 max-w-md">
+            <p className="text-sm text-muted-foreground">
+              ⏳ Processing your response...
             </p>
           </div>
         )}
