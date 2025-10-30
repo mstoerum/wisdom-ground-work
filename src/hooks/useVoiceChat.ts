@@ -236,8 +236,8 @@ export const useVoiceChat = ({
       // Start audio capture
       await startAudioCapture();
 
-      // Connect to WebSocket
-      const wsUrl = `${import.meta.env.VITE_SUPABASE_URL?.replace('https://', 'wss://').replace('http://', 'ws://')}/functions/v1/voice-chat`;
+      // Connect to WebSocket - correct format for Supabase edge functions
+      const wsUrl = `wss://rnvtbtefsskbwaadedef.supabase.co/functions/v1/voice-chat`;
       
       console.log('🔌 Connecting to WebSocket:', wsUrl);
       
@@ -245,7 +245,8 @@ export const useVoiceChat = ({
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('✅ WebSocket connected');
+        console.log('✅ WebSocket connected successfully');
+        console.log('📡 Sending init message with conversationId:', conversationId);
         
         // Send initialization message
         ws.send(JSON.stringify({
