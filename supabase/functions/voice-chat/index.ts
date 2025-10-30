@@ -202,8 +202,13 @@ serve(async (req) => {
 
     socket.onclose = () => {
       console.log("Client WebSocket closed");
-      if (geminiWs) {
-        geminiWs.close();
+      // Cleanup Gemini WebSocket if it was initialized (future: Gemini Live API)
+      if (geminiWs !== null) {
+        try {
+          (geminiWs as WebSocket).close();
+        } catch (error) {
+          console.error("Error closing Gemini WebSocket:", error);
+        }
       }
     };
 
