@@ -15,6 +15,8 @@ interface SessionData {
 interface PreviousResponse {
   content: string;
   ai_response: string;
+  theme_id?: string | null;
+  sentiment?: string | null;
 }
 
 const corsHeaders = {
@@ -49,6 +51,7 @@ serve(async (req) => {
     let sessionData: SessionData | null = null;
     let currentUserTranscript = "";
     let currentAiTranscript = "";
+    let themes: Theme[] = [];
 
     socket.onopen = () => {
       console.log("✅ Client WebSocket connected (redeploy)");
@@ -115,15 +118,25 @@ serve(async (req) => {
             return;
           }
 
-          // Load conversation context
+          // Fetch theme details for classification (same as chat function)
+          const survey = session?.surveys as any;
+          const themeIds = survey?.themes || [];
+          const { data: themesData } = await supabase
+            .from("survey_themes")
+            .select("id, name, description")
+            .in("id", themeIds);
+
+          themes = themesData || [];
+
+          // Load conversation context with theme information
           const { data: previousResponses } = await supabase
             .from("responses")
-            .select("content, ai_response")
+            .select("content, ai_response, theme_id, sentiment")
             .eq("conversation_session_id", conversationId)
             .order("created_at", { ascending: true })
-            .limit(5);
+            .limit(10);
 
-          const systemPrompt = buildSystemPrompt(previousResponses || [], sessionData);
+          const systemPrompt = buildSystemPrompt(previousResponses || [], sessionData, themes);
 
           console.log("🔌 Creating ephemeral session token...");
           
@@ -197,9 +210,9 @@ serve(async (req) => {
                   },
                   turn_detection: {
                     type: "server_vad", // Server-side voice activity detection
-                    threshold: 0.5,
+                    threshold: 0.6, // Higher threshold = less noise sensitivity (0.0-1.0)
                     prefix_padding_ms: 300,
-                    silence_duration_ms: 500, // Very responsive - 500ms of silence triggers response
+                    silence_duration_ms: 800, // Longer silence = less false triggers (800ms is better for noisy environments)
                   },
                   temperature: 0.8,
                   max_response_output_tokens: 4096,
@@ -266,15 +279,23 @@ serve(async (req) => {
                     break;
 
                   case "response.done":
-                    // Response complete - save to database
+                    // Response complete - save to database with theme detection
                     if (currentUserTranscript && currentAiTranscript) {
+                      // Detect theme (same logic as chat function)
+                      const detectedThemeId = await detectTheme(
+                        OPENAI_API_KEY,
+                        currentUserTranscript,
+                        themes || []
+                      );
+                      
                       await saveConversationExchange(
                         supabase!,
                         conversationId!,
                         sessionData!.survey_id,
                         currentUserTranscript,
                         currentAiTranscript,
-                        OPENAI_API_KEY
+                        OPENAI_API_KEY,
+                        detectedThemeId
                       );
                       
                       // Reset for next turn
@@ -383,12 +404,75 @@ serve(async (req) => {
 });
 
 /**
- * Build system prompt for Atlas personality
+ * Build conversation context from previous responses (same as chat function)
  */
-function buildSystemPrompt(previousResponses: PreviousResponse[], sessionData: SessionData): string {
-  const isFirstMessage = !previousResponses || previousResponses.length === 0;
+function buildConversationContext(previousResponses: PreviousResponse[], themes: Theme[]): string {
+  if (!previousResponses || previousResponses.length === 0) return "";
+
+  const discussedThemes = new Set(
+    previousResponses
+      .filter(r => r.theme_id)
+      .map(r => themes?.find((t: Theme) => t.id === r.theme_id)?.name)
+      .filter(Boolean)
+  );
   
-  let prompt = `You are Atlas, a compassionate AI conversation guide conducting confidential employee feedback sessions via voice.
+  const sentimentPattern = previousResponses
+    .slice(-3)
+    .map(r => r.sentiment)
+    .filter(Boolean);
+  
+  const lastSentiment = sentimentPattern[sentimentPattern.length - 1];
+  
+  return `
+CONVERSATION CONTEXT:
+- Topics already discussed: ${discussedThemes.size > 0 ? Array.from(discussedThemes).join(", ") : "None yet"}
+- Recent sentiment pattern: ${sentimentPattern.join(" → ")}
+- Exchange count: ${previousResponses.length}
+${previousResponses.length > 0 ? `- Key points mentioned earlier: "${previousResponses.slice(0, 2).map(r => r.content.substring(0, 60)).join('"; "')}"` : ""}
+
+ADAPTIVE INSTRUCTIONS:
+${lastSentiment === "negative" ? 
+  "- The employee is sharing challenges. Use empathetic, validating language. Acknowledge their feelings." : ""}
+${lastSentiment === "positive" ? 
+  "- The employee is positive. Great! Also gently explore if there are any challenges to ensure balanced feedback." : ""}
+${discussedThemes.size > 0 && discussedThemes.size < themes?.length ? 
+  `- Themes not yet covered: ${themes?.filter((t: Theme) => !Array.from(discussedThemes).includes(t.name)).map((t: Theme) => t.name).join(", ")}. Transition naturally to explore these.` : ""}
+${previousResponses.length >= 3 ? "- Reference earlier points when relevant to show you're listening and building on what they've shared." : ""}
+`;
+}
+
+/**
+ * Build system prompt for Atlas personality (matches chat function)
+ */
+function buildSystemPrompt(previousResponses: PreviousResponse[], sessionData: SessionData, themes: Theme[]): string {
+  const isFirstMessage = !previousResponses || previousResponses.length === 0;
+  const survey = sessionData?.surveys as any;
+  const firstMessage = survey?.first_message || "";
+  
+  const conversationContext = buildConversationContext(previousResponses, themes);
+  
+  const introGuidance = isFirstMessage ? `
+IMPORTANT - FIRST MESSAGE PROTOCOL:
+${firstMessage ? `Use this as your opening: "${firstMessage}"` : `Introduce yourself as Atlas, an AI conversation guide. Set expectations and build trust:
+- Acknowledge you're AI, not human (transparency builds trust)
+- Explain you're here to listen and organize their thoughts (purpose)
+- Reassure about anonymity and confidentiality (safety)
+- Acknowledge this might feel unusual (metacommunication)
+- Keep intro brief (3-4 sentences max), then ask first question`}
+
+Example first message:
+"Hi, I'm Atlas — an AI guide here to help you share your thoughts about work. I'm not a person, and nothing you say here is connected to your name. This might feel a bit different from typical surveys, and that's okay. Let's start with something simple: What's one thing that's been on your mind about work lately?"
+` : '';
+
+  // Build theme guidance
+  const themeGuidance = themes && themes.length > 0 ? `
+THEMES TO EXPLORE:
+${themes.map((t: Theme) => `- ${t.name}: ${t.description}`).join('\n')}
+
+Guide the conversation naturally through these themes. After 3-4 exchanges on one topic, transition to explore other themes. Don't force it - make it feel natural.
+` : '';
+
+  return `You are Atlas, a compassionate AI conversation guide conducting confidential employee feedback sessions via voice.
 
 Your personality:
 - Transparent about being AI (not pretending to be human)
@@ -398,37 +482,84 @@ Your personality:
 - Empathetic and validating
 - Ask ONE follow-up question at a time
 
-${isFirstMessage ? `
-IMPORTANT - FIRST MESSAGE:
-Introduce yourself warmly and briefly:
-"Hi, I'm Atlas - an AI here to listen to your thoughts about work. Everything you share is completely confidential and anonymous. What's been on your mind lately?"
-` : ''}
+${introGuidance}
 
 Your goals:
-- Create a safe space for honest feedback
-- Ask thoughtful follow-up questions to dig deeper
-- Show empathy by validating feelings
-- Guide conversation naturally through work experience
+- Create a safe, non-judgmental space for honest feedback
+- Ask thoughtful follow-up questions to understand nuances
+- Show empathy through validation and acknowledgment
+- Guide conversation naturally through work experience, challenges, and suggestions
+- Probe deeper on important topics without being repetitive
+- Recognize emotional cues and respond appropriately
+- Reference earlier points naturally when building on topics
 - Keep responses EXTREMELY SHORT for natural voice flow (1-2 sentences max!)
 - Use natural speech patterns and contractions (I'm, you're, that's, etc.)
 - Avoid lists, bullet points, or structured text - this is voice!
 
-Remember: This is a VOICE conversation. Be brief, warm, and conversational. Think of it as talking to a friend over coffee, not writing an email.`;
+Conversation flow:
+1. Start with open-ended questions about their current experience
+2. Explore challenges with curiosity and care
+3. Ask about positive aspects to balance the conversation
+4. Invite suggestions for improvement
+5. Naturally transition between themes after 3-4 exchanges on one topic
+6. Naturally conclude when sufficient depth is reached (after 8-12 exchanges)
 
-  // Add conversation context if available
-  if (previousResponses && previousResponses.length > 0) {
-    prompt += `\n\nRecent conversation context:\n`;
-    previousResponses.forEach((r) => {
-      prompt += `\nEmployee: ${r.content}\nAtlas: ${r.ai_response}\n`;
-    });
-    prompt += `\nContinue this conversation naturally. Reference what they've shared to show you're listening.`;
-  }
+${themeGuidance}
 
-  return prompt;
+${conversationContext}
+
+Remember: Your tone should be warm, professional, and genuinely interested in understanding their perspective. Adapt your approach based on their sentiment and what they've already shared. This is a VOICE conversation - be brief, warm, and conversational. Think of it as talking to a friend over coffee, not writing an email.`;
 }
 
 /**
- * Save conversation exchange to database with sentiment analysis
+ * Detect theme from user message (same as chat function)
+ */
+async function detectTheme(apiKey: string, userMessage: string, themes: Theme[]): Promise<string | null> {
+  if (!themes || themes.length === 0) return null;
+
+  try {
+    const themePrompt = `Classify this employee feedback into ONE of these themes:
+${themes.map(t => `- ${t.name}: ${t.description}`).join('\n')}
+
+Employee feedback: "${userMessage}"
+
+Reply with only the exact theme name.`;
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{ role: "user", content: themePrompt }],
+        temperature: 0.2,
+        max_tokens: 20,
+      }),
+    });
+
+    if (!response.ok) {
+      console.error("Theme detection failed:", response.status);
+      return null;
+    }
+
+    const data = await response.json() as { choices: Array<{ message: { content: string } }> };
+    const themeName = data.choices[0].message.content.trim();
+    
+    const matchedTheme = themes.find(t => 
+      themeName.toLowerCase().includes(t.name.toLowerCase())
+    );
+    
+    return matchedTheme?.id || null;
+  } catch (error) {
+    console.error("Error detecting theme:", error);
+    return null;
+  }
+}
+
+/**
+ * Save conversation exchange to database with sentiment analysis and theme detection
  */
 async function saveConversationExchange(
   supabase: SupabaseClient,
@@ -436,7 +567,8 @@ async function saveConversationExchange(
   surveyId: string,
   userContent: string,
   aiResponse: string,
-  apiKey: string
+  apiKey: string,
+  themeId?: string | null
 ): Promise<void> {
   try {
     // Analyze sentiment using OpenAI
@@ -450,6 +582,7 @@ async function saveConversationExchange(
       ai_response: aiResponse,
       sentiment: sentiment.sentiment,
       sentiment_score: sentiment.score,
+      theme_id: themeId || null,
     });
 
     console.log("✅ Saved conversation exchange to database");
