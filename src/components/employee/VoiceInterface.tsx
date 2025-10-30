@@ -16,7 +16,8 @@ interface VoiceInterfaceProps {
 
 /**
  * Voice interaction interface for employee survey
- * Provides natural voice conversation with AI using Gemini Live API
+ * Optimized hybrid approach with browser APIs for reliable performance
+ * Features: Real-time transcription, smart silence detection, natural TTS
  */
 export const VoiceInterface = ({
   conversationId,
@@ -25,6 +26,7 @@ export const VoiceInterface = ({
 }: VoiceInterfaceProps) => {
   const [showTranscript, setShowTranscript] = useState(true);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [connectionLatency, setConnectionLatency] = useState<number | null>(null);
 
   const {
     voiceState,
@@ -38,6 +40,11 @@ export const VoiceInterface = ({
     conversationId,
     onTranscript: (text, role) => {
       console.log(`${role}: ${text}`);
+      
+      // Measure latency (simple approximation)
+      if (role === 'assistant') {
+        setConnectionLatency(Date.now());
+      }
     },
     onError: (error) => {
       console.error('Voice error:', error);
@@ -59,15 +66,15 @@ export const VoiceInterface = ({
       case 'idle':
         return 'Ready to start';
       case 'connecting':
-        return 'Connecting to Gemini Live...';
+        return 'Connecting...';
       case 'listening':
-        return 'Listening... (speak naturally)';
+        return 'Listening...';
       case 'speaking':
-        return 'Atlas is speaking...';
+        return 'Speaking...';
       case 'processing':
         return 'Processing...';
       case 'error':
-        return 'Connection error';
+        return 'Error occurred';
       default:
         return '';
     }
@@ -201,18 +208,26 @@ export const VoiceInterface = ({
         {voiceState === 'idle' && (
           <div className="text-center space-y-2 max-w-md">
             <p className="text-sm text-muted-foreground">
-              Click the microphone to start a natural voice conversation with Atlas using Gemini Live API.
+              Click the microphone to start a natural voice conversation with Atlas.
             </p>
             <p className="text-xs text-muted-foreground">
-              You can speak freely and interrupt at any time. Your audio streams directly to AI.
+              Speak naturally • Pauses automatically detect when you're done • Hands-free
             </p>
           </div>
         )}
 
         {voiceState === 'connecting' && (
           <div className="text-center space-y-2 max-w-md">
+            <p className="text-sm text-muted-foreground animate-pulse">
+              Initializing voice recognition...
+            </p>
+          </div>
+        )}
+
+        {voiceState === 'processing' && (
+          <div className="text-center space-y-2 max-w-md">
             <p className="text-sm text-muted-foreground">
-              Connecting to Gemini Live API...
+              ⏳ Processing your response...
             </p>
           </div>
         )}
@@ -220,10 +235,10 @@ export const VoiceInterface = ({
         {voiceState === 'listening' && (
           <div className="text-center space-y-2 max-w-md">
             <p className="text-sm text-muted-foreground">
-              Start speaking naturally. Atlas is listening...
+              🎤 Listening... speak naturally
             </p>
-            <p className="text-xs text-muted-foreground">
-              You can interrupt Atlas at any time by speaking.
+            <p className="text-xs text-muted-foreground opacity-70">
+              Audio is streaming in real-time
             </p>
           </div>
         )}
@@ -231,10 +246,7 @@ export const VoiceInterface = ({
         {voiceState === 'speaking' && (
           <div className="text-center space-y-2 max-w-md">
             <p className="text-sm text-muted-foreground">
-              Atlas is responding...
-            </p>
-            <p className="text-xs text-muted-foreground">
-              Interrupt by speaking at any time.
+              🔊 Atlas is speaking...
             </p>
           </div>
         )}

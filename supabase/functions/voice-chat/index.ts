@@ -8,7 +8,7 @@ const corsHeaders = {
 
 /**
  * Gemini Live API WebSocket proxy for voice conversations
- * Provides bidirectional audio streaming with Google's Gemini Live API
+ * Handles bidirectional audio streaming with Gemini 2.0 Flash with Audio
  */
 serve(async (req) => {
   // Handle CORS preflight
@@ -28,7 +28,8 @@ serve(async (req) => {
     let conversationId: string | null = null;
     let supabase: any = null;
     let userId: string | null = null;
-    let isPreviewMode = false;
+    let sessionData: any = null;
+    let conversationBuffer: { user: string; assistant: string }[] = [];
 
     socket.onopen = () => {
       console.log("Client WebSocket connected");
@@ -43,164 +44,156 @@ serve(async (req) => {
           conversationId = message.conversationId;
           const token = message.token;
 
-          // Check if preview mode
-          isPreviewMode = conversationId?.startsWith("preview-") || false;
+          // Initialize Supabase client
+          const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+          const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+          supabase = createClient(supabaseUrl, supabaseKey);
 
-          if (!isPreviewMode) {
-            // Initialize Supabase client
-            const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-            const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-            supabase = createClient(supabaseUrl, supabaseKey);
-
-            // Verify user authentication
-            const { data: { user }, error: userError } = await supabase.auth.getUser(token);
-            
-            if (userError || !user) {
-              socket.send(JSON.stringify({
-                type: "error",
-                error: "Authentication failed",
-              }));
-              socket.close();
-              return;
-            }
-
-            userId = user.id;
-
-            // Verify user has access to conversation
-            const { data: session, error: sessionError } = await supabase
-              .from("conversation_sessions")
-              .select("employee_id, survey_id, surveys(first_message, themes)")
-              .eq("id", conversationId)
-              .single();
-
-            if (sessionError || !session || session.employee_id !== userId) {
-              socket.send(JSON.stringify({
-                type: "error",
-                error: "Unauthorized access to conversation",
-              }));
-              socket.close();
-              return;
-            }
-          }
-
-          // Get API key
-          const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+          // Verify user authentication
+          const { data: { user }, error: userError } = await supabase.auth.getUser(token);
           
-          if (!GEMINI_API_KEY) {
-            console.log("No GEMINI_API_KEY, using fallback mode");
+          if (userError || !user) {
             socket.send(JSON.stringify({
-              type: "ready",
-              message: "Connected (text fallback mode)",
-              mode: "fallback",
+              type: "error",
+              error: "Authentication failed",
             }));
+            socket.close();
             return;
           }
 
+          userId = user.id;
+
+          // Verify user has access to conversation
+          const { data: session, error: sessionError } = await supabase
+            .from("conversation_sessions")
+            .select("employee_id, survey_id, surveys(first_message, themes)")
+            .eq("id", conversationId)
+            .single();
+
+          if (sessionError || !session || session.employee_id !== userId) {
+            socket.send(JSON.stringify({
+              type: "error",
+              error: "Unauthorized access to conversation",
+            }));
+            socket.close();
+            return;
+          }
+
+          sessionData = session;
+
+          // Get API key
+          const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
+          
+          if (!GEMINI_API_KEY) {
+            socket.send(JSON.stringify({
+              type: "error",
+              error: "API key not configured",
+            }));
+            socket.close();
+            return;
+          }
+
+          // Connect to Gemini Live API (Gemini 2.0 Flash with multimodal audio)
+          // Using Google AI SDK WebSocket endpoint
+          const geminiWsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${GEMINI_API_KEY}`;
+          
           try {
-            // Connect to Gemini Live API
-            const geminiUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${GEMINI_API_KEY}`;
-            
-            geminiWs = new WebSocket(geminiUrl);
+            geminiWs = new WebSocket(geminiWsUrl);
 
             geminiWs.onopen = () => {
               console.log("Connected to Gemini Live API");
               
-              // Configure Gemini session
-              const config = {
+              // Initialize session with system instructions
+              const { data: previousResponses } = await supabase
+                .from("responses")
+                .select("content, ai_response")
+                .eq("conversation_session_id", conversationId)
+                .order("created_at", { ascending: true })
+                .limit(5);
+
+              const systemPrompt = buildSystemPrompt(previousResponses || [], sessionData);
+              
+              // Send setup message to Gemini
+              // Try experimental model first, fallback to stable if needed
+              const modelName = Deno.env.get("GEMINI_VOICE_MODEL") || "models/gemini-2.0-flash-exp";
+              
+              geminiWs?.send(JSON.stringify({
                 setup: {
-                  model: "models/gemini-2.0-flash-exp",
+                  model: modelName,
                   generation_config: {
                     response_modalities: ["AUDIO"],
                     speech_config: {
                       voice_config: {
                         prebuilt_voice_config: {
-                          voice_name: "Kore" // Warm, empathetic female voice
+                          voice_name: "Aoede" // Female voice option
                         }
                       }
                     }
                   },
                   system_instruction: {
-                    parts: [{
-                      text: `You are Atlas, a compassionate AI conversation guide conducting confidential employee feedback sessions via voice.
-
-Your personality:
-- Transparent about being AI (not pretending to be human)
-- Warm but professional tone
-- Concise responses (1-2 sentences, max 3) - CRITICAL for voice conversations
-- Natural, conversational language (avoid bullet points, lists, or structured text)
-- Good at being AI, not imitating humans
-
-Your goals:
-- Create a safe space for honest feedback
-- Ask thoughtful follow-up questions
-- Show empathy through validation
-- Guide conversation naturally through work experience
-- Keep responses SHORT for voice (1-2 sentences max)
-- Use natural speech patterns, not written text
-
-Remember: You're having a VOICE conversation. Be brief, natural, and conversational. Show empathy and acknowledge emotions.`
-                    }]
+                    parts: [{ text: systemPrompt }]
                   }
                 }
-              };
+              }));
 
-              geminiWs!.send(JSON.stringify(config));
-              
               socket.send(JSON.stringify({
                 type: "ready",
                 message: "Connected to Gemini Live API",
-                mode: "live",
               }));
             };
 
             geminiWs.onmessage = async (geminiEvent) => {
               try {
-                const data = JSON.parse(geminiEvent.data);
-                console.log("Gemini event:", data);
-
-                // Handle server content (AI responses)
-                if (data.serverContent) {
-                  const parts = data.serverContent.modelTurn?.parts || [];
+                const geminiData = JSON.parse(geminiEvent.data);
+                
+                // Handle server content (audio response from Gemini)
+                if (geminiData.serverContent) {
+                  const parts = geminiData.serverContent.modelTurn?.parts || [];
                   
                   for (const part of parts) {
-                    // Audio response
-                    if (part.inlineData?.mimeType === "audio/pcm") {
+                    // Forward audio data to client
+                    if (part.inlineData?.data) {
                       socket.send(JSON.stringify({
                         type: "audio_response",
                         audio: part.inlineData.data,
+                        mimeType: part.inlineData.mimeType || "audio/pcm"
                       }));
                     }
                     
-                    // Text transcript (for display)
+                    // Store transcript if available
                     if (part.text) {
-                      socket.send(JSON.stringify({
-                        type: "transcript_assistant",
-                        text: part.text,
-                      }));
-
-                      // Store in database if not preview mode
-                      if (!isPreviewMode && supabase && conversationId) {
-                        // We'll store the last user message and this response
-                        // This is a simplified version - you may want to batch these
-                      }
+                      conversationBuffer[conversationBuffer.length - 1].assistant = part.text;
                     }
                   }
-
-                  // Mark turn complete
-                  if (data.serverContent.turnComplete) {
+                  
+                  // Send turn complete signal
+                  if (geminiData.serverContent.turnComplete) {
                     socket.send(JSON.stringify({
-                      type: "turn_complete",
+                      type: "turn_complete"
                     }));
+                    
+                    // Save to database
+                    const lastExchange = conversationBuffer[conversationBuffer.length - 1];
+                    if (lastExchange && lastExchange.user && lastExchange.assistant) {
+                      await saveConversationExchange(
+                        supabase,
+                        conversationId!,
+                        sessionData.survey_id,
+                        lastExchange.user,
+                        lastExchange.assistant,
+                        Deno.env.get("LOVABLE_API_KEY")!
+                      );
+                    }
                   }
                 }
-
-                // Handle setup complete
-                if (data.setupComplete) {
-                  console.log("Gemini setup complete");
+                
+                // Handle tool calls or other responses
+                if (geminiData.toolCall) {
+                  console.log("Tool call received:", geminiData.toolCall);
                 }
-
-              } catch (error) {
-                console.error("Error processing Gemini message:", error);
+                
+              } catch (err) {
+                console.error("Error processing Gemini message:", err);
               }
             };
 
@@ -208,47 +201,57 @@ Remember: You're having a VOICE conversation. Be brief, natural, and conversatio
               console.error("Gemini WebSocket error:", error);
               socket.send(JSON.stringify({
                 type: "error",
-                error: "Gemini connection error",
+                error: "Connection to AI service failed"
               }));
             };
 
             geminiWs.onclose = () => {
               console.log("Gemini WebSocket closed");
-              socket.send(JSON.stringify({
-                type: "gemini_disconnected",
-              }));
             };
 
           } catch (error) {
-            console.error("Failed to connect to Gemini:", error);
+            console.error("Failed to connect to Gemini Live API:", error);
             socket.send(JSON.stringify({
               type: "error",
-              error: "Failed to connect to Gemini Live API",
+              error: "Failed to initialize voice AI"
             }));
+            socket.close();
           }
 
-        } else if (message.type === "audio_chunk") {
-          // Forward audio chunk to Gemini
+        } else if (message.type === "audio_input") {
+          // Forward audio input from client to Gemini
           if (geminiWs && geminiWs.readyState === WebSocket.OPEN) {
-            const audioMessage = {
+            geminiWs.send(JSON.stringify({
               realtimeInput: {
                 mediaChunks: [{
-                  mimeType: "audio/pcm",
                   data: message.audio,
+                  mimeType: message.mimeType || "audio/pcm"
                 }]
               }
-            };
-            
-            geminiWs.send(JSON.stringify(audioMessage));
-          } else {
-            console.log("Gemini WebSocket not ready, buffering audio");
+            }));
           }
-
-        } else if (message.type === "interrupt") {
-          // User interrupted - send interrupt signal to Gemini
+        } else if (message.type === "turn_complete") {
+          // Signal end of user's turn
           if (geminiWs && geminiWs.readyState === WebSocket.OPEN) {
-            // Gemini Live API handles interruptions automatically
-            console.log("User interrupted conversation");
+            // Create new conversation buffer entry
+            conversationBuffer.push({ user: "", assistant: "" });
+            
+            geminiWs.send(JSON.stringify({
+              clientContent: {
+                turns: [{
+                  role: "user",
+                  parts: [{ text: "user finished speaking" }] // Gemini will have audio context
+                }],
+                turnComplete: true
+              }
+            }));
+          }
+        } else if (message.type === "transcript_update") {
+          // Store user transcript (from client-side interim results)
+          if (conversationBuffer.length > 0) {
+            conversationBuffer[conversationBuffer.length - 1].user = message.text;
+          } else {
+            conversationBuffer.push({ user: message.text, assistant: "" });
           }
         }
 
@@ -267,7 +270,6 @@ Remember: You're having a VOICE conversation. Be brief, natural, and conversatio
 
     socket.onclose = () => {
       console.log("Client WebSocket closed");
-      
       // Cleanup Gemini WebSocket
       if (geminiWs && geminiWs.readyState === WebSocket.OPEN) {
         try {
@@ -288,3 +290,94 @@ Remember: You're having a VOICE conversation. Be brief, natural, and conversatio
     );
   }
 });
+
+/**
+ * Build system prompt for Atlas personality
+ */
+function buildSystemPrompt(previousResponses: any[], sessionData: any): string {
+  const isFirstMessage = !previousResponses || previousResponses.length === 0;
+  
+  return `You are Atlas, a compassionate AI conversation guide conducting confidential employee feedback sessions via voice.
+
+Your personality:
+- Transparent about being AI (not pretending to be human)
+- Warm but professional tone
+- Concise responses (1-2 sentences, max 3) - CRITICAL for voice conversations
+- Natural, conversational language (avoid bullet points, lists, or structured text)
+- Good at being AI, not imitating humans
+
+${isFirstMessage ? `
+IMPORTANT - FIRST MESSAGE:
+Introduce yourself as Atlas, an AI guide. Keep it brief and natural:
+"Hi, I'm Atlas — an AI here to listen to your thoughts about work. Everything you share is confidential and anonymous. What's been on your mind about work lately?"
+` : ''}
+
+Your goals:
+- Create a safe space for honest feedback
+- Ask thoughtful follow-up questions
+- Show empathy through validation
+- Guide conversation naturally through work experience
+- Keep responses SHORT for voice (1-2 sentences max)
+- Use natural speech patterns, not written text
+
+Remember: You're having a VOICE conversation. Be brief, natural, and conversational.`;
+}
+
+/**
+ * Save conversation exchange to database with sentiment analysis
+ */
+async function saveConversationExchange(
+  supabase: any,
+  conversationId: string,
+  surveyId: string,
+  userContent: string,
+  aiResponse: string,
+  apiKey: string
+): Promise<void> {
+  try {
+    // Analyze sentiment
+    const sentiment = await analyzeSentiment(apiKey, userContent);
+
+    // Store response
+    await supabase.from("responses").insert({
+      conversation_session_id: conversationId,
+      survey_id: surveyId,
+      content: userContent,
+      ai_response: aiResponse,
+      sentiment: sentiment.sentiment,
+      sentiment_score: sentiment.score,
+    });
+
+    console.log("Saved conversation exchange to database");
+  } catch (error) {
+    console.error("Error saving conversation exchange:", error);
+  }
+}
+
+/**
+ * Analyze sentiment
+ */
+async function analyzeSentiment(apiKey: string, text: string): Promise<{ sentiment: string; score: number }> {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      messages: [
+        { role: "system", content: "Analyze sentiment. Reply with only: positive, neutral, or negative" },
+        { role: "user", content: text }
+      ],
+      temperature: 0.3,
+      max_tokens: 10,
+    }),
+  });
+
+  const data = await response.json();
+  const sentiment = data.choices[0].message.content.toLowerCase().trim();
+  const score = sentiment === "positive" ? 75 : sentiment === "negative" ? 25 : 50;
+  
+  return { sentiment, score };
+}
