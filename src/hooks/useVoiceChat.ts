@@ -16,65 +16,9 @@ interface UseVoiceChatOptions {
   onError?: (error: Error) => void;
 }
 
-// Web Speech API types
-interface SpeechRecognitionEvent extends Event {
-  resultIndex: number;
-  results: SpeechRecognitionResultList;
-}
-
-interface SpeechRecognitionResultList {
-  length: number;
-  item(index: number): SpeechRecognitionResult;
-  [index: number]: SpeechRecognitionResult;
-}
-
-interface SpeechRecognitionResult {
-  isFinal: boolean;
-  length: number;
-  item(index: number): SpeechRecognitionAlternative;
-  [index: number]: SpeechRecognitionAlternative;
-}
-
-interface SpeechRecognitionAlternative {
-  transcript: string;
-  confidence: number;
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-  message: string;
-}
-
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  maxAlternatives: number;
-  onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null;
-  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
-  start(): void;
-  stop(): void;
-  abort(): void;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition: {
-      prototype: SpeechRecognition;
-      new(): SpeechRecognition;
-    };
-    webkitSpeechRecognition: {
-      prototype: SpeechRecognition;
-      new(): SpeechRecognition;
-    };
-  }
-}
-
 /**
- * Custom hook for managing voice chat using Web Speech API + Gemini
- * Hybrid approach: Browser speech-to-text → Gemini text API → Browser text-to-speech
+ * Custom hook for managing voice chat using Gemini Live API
+ * Real-time audio streaming approach with WebSockets
  */
 export const useVoiceChat = ({
   conversationId,
@@ -87,249 +31,292 @@ export const useVoiceChat = ({
   const [aiTranscript, setAiTranscript] = useState('');
   const [isSupported, setIsSupported] = useState(true);
   
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const isSpeakingRef = useRef(false);
+  const wsRef = useRef<WebSocket | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const audioQueueRef = useRef<Float32Array[]>([]);
+  const isPlayingRef = useRef(false);
   
   const { toast } = useToast();
 
   // Check browser support
   useEffect(() => {
     const supported = 
-      'speechSynthesis' in window &&
-      ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+      'WebSocket' in window &&
+      'AudioContext' in window &&
+      navigator.mediaDevices?.getUserMedia !== undefined;
     
     setIsSupported(supported);
     
     if (!supported) {
       toast({
         title: 'Voice not supported',
-        description: 'Your browser does not support voice chat. Please use Chrome, Edge, or Safari.',
+        description: 'Your browser does not support voice chat. Please use a modern browser.',
         variant: 'destructive',
       });
     }
   }, [toast]);
 
-  // Send text message to AI and get response
-  const sendTextToAI = useCallback(async (text: string) => {
+  // Play audio response from Gemini
+  const playAudioChunk = useCallback((audioData: string) => {
+    if (!audioContextRef.current) {
+      audioContextRef.current = new AudioContext({ sampleRate: 24000 });
+    }
+
+    const context = audioContextRef.current;
+    
+    // Decode base64 audio data
+    const binaryString = atob(audioData);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Convert to Float32Array (PCM16)
+    const pcmData = new Int16Array(bytes.buffer);
+    const float32Data = new Float32Array(pcmData.length);
+    for (let i = 0; i < pcmData.length; i++) {
+      float32Data[i] = pcmData[i] / 32768.0;
+    }
+    
+    // Add to queue
+    audioQueueRef.current.push(float32Data);
+    
+    // Start playback if not already playing
+    if (!isPlayingRef.current) {
+      playAudioQueue();
+    }
+  }, []);
+
+  // Play queued audio
+  const playAudioQueue = useCallback(async () => {
+    if (!audioContextRef.current || audioQueueRef.current.length === 0) {
+      isPlayingRef.current = false;
+      setVoiceState('listening');
+      return;
+    }
+
+    isPlayingRef.current = true;
+    setVoiceState('speaking');
+
+    const context = audioContextRef.current;
+    const audioData = audioQueueRef.current.shift()!;
+    
+    // Create audio buffer
+    const audioBuffer = context.createBuffer(1, audioData.length, context.sampleRate);
+    audioBuffer.getChannelData(0).set(audioData);
+    
+    // Create buffer source
+    const source = context.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(context.destination);
+    
+    // Schedule next chunk when this one ends
+    source.onended = () => {
+      playAudioQueue();
+    };
+    
+    source.start();
+  }, []);
+
+  // Send audio to server
+  const sendAudioData = useCallback((audioData: Float32Array) => {
+    if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+      return;
+    }
+
+    // Convert Float32 to Int16 PCM
+    const pcmData = new Int16Array(audioData.length);
+    for (let i = 0; i < audioData.length; i++) {
+      const s = Math.max(-1, Math.min(1, audioData[i]));
+      pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+
+    // Convert to base64
+    const bytes = new Uint8Array(pcmData.buffer);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64Audio = btoa(binary);
+
+    // Send to server
+    wsRef.current.send(JSON.stringify({
+      type: 'audio_input',
+      audio: base64Audio,
+      mimeType: 'audio/pcm'
+    }));
+  }, []);
+
+  // Initialize audio capture
+  const startAudioCapture = useCallback(async () => {
     try {
-      setVoiceState('processing');
+      // Get microphone access
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          channelCount: 1,
+          sampleRate: 16000,
+          echoCancellation: true,
+          noiseSuppression: true,
+        } 
+      });
+      mediaStreamRef.current = stream;
+
+      // Create audio context for processing
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContext({ sampleRate: 16000 });
+      }
+      const audioContext = audioContextRef.current;
+
+      // Create audio source from microphone
+      const source = audioContext.createMediaStreamSource(stream);
       
+      // Create script processor for audio data
+      const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      processorRef.current = processor;
+
+      processor.onaudioprocess = (e) => {
+        if (voiceState === 'listening') {
+          const inputData = e.inputBuffer.getChannelData(0);
+          sendAudioData(inputData);
+        }
+      };
+
+      source.connect(processor);
+      processor.connect(audioContext.destination);
+
+      console.log('Audio capture started');
+    } catch (error) {
+      console.error('Failed to start audio capture:', error);
+      throw error;
+    }
+  }, [sendAudioData, voiceState]);
+
+  // Stop audio capture
+  const stopAudioCapture = useCallback(() => {
+    // Stop microphone
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach(track => track.stop());
+      mediaStreamRef.current = null;
+    }
+
+    // Disconnect processor
+    if (processorRef.current) {
+      processorRef.current.disconnect();
+      processorRef.current = null;
+    }
+
+    console.log('Audio capture stopped');
+  }, []);
+
+  // Initialize WebSocket connection
+  const connectWebSocket = useCallback(async () => {
+    try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         throw new Error('Not authenticated');
       }
 
-      // Fetch previous messages for context
-      const { data: previousResponses } = await supabase
-        .from('responses')
-        .select('content, ai_response')
-        .eq('conversation_session_id', conversationId)
-        .order('created_at', { ascending: true });
+      const wsUrl = `${import.meta.env.VITE_SUPABASE_URL.replace('http', 'ws')}/functions/v1/voice-chat`;
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
 
-      const previousMessages = previousResponses?.flatMap(r => [
-        { role: 'user' as const, content: r.content },
-        { role: 'assistant' as const, content: r.ai_response || '' },
-      ]) || [];
-
-      // Call chat API
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            conversationId,
-            messages: [...previousMessages, { role: 'user', content: text }],
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to get AI response');
-      }
-
-      const data = await response.json();
-      return data.message;
-    } catch (error) {
-      console.error('Error getting AI response:', error);
-      throw error;
-    }
-  }, [conversationId]);
-
-  // Speak text using browser TTS
-  const speakText = useCallback((text: string) => {
-    return new Promise<void>((resolve, reject) => {
-      if (!('speechSynthesis' in window)) {
-        reject(new Error('Speech synthesis not supported'));
-        return;
-      }
-
-      // Cancel any ongoing speech
-      window.speechSynthesis.cancel();
-      
-      const utterance = new SpeechSynthesisUtterance(text);
-      synthRef.current = utterance;
-      
-      // Configure voice
-      const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find(v => 
-        v.lang.startsWith('en') && v.name.toLowerCase().includes('female')
-      ) || voices.find(v => v.lang.startsWith('en')) || voices[0];
-      
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-      }
-      
-      utterance.rate = 0.95;
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
-      
-      utterance.onstart = () => {
-        setVoiceState('speaking');
-        isSpeakingRef.current = true;
+      ws.onopen = () => {
+        console.log('WebSocket connected');
+        
+        // Send initialization message
+        ws.send(JSON.stringify({
+          type: 'init',
+          conversationId,
+          token: session.access_token,
+        }));
       };
-      
-      utterance.onend = () => {
-        setVoiceState('listening');
-        isSpeakingRef.current = false;
-        resolve();
-      };
-      
-      utterance.onerror = (event) => {
-        console.error('Speech synthesis error:', event);
-        isSpeakingRef.current = false;
-        reject(event);
-      };
-      
-      window.speechSynthesis.speak(utterance);
-    });
-  }, []);
 
-  // Initialize speech recognition
-  const initSpeechRecognition = useCallback(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-    recognition.maxAlternatives = 1;
-
-    recognition.onstart = () => {
-      console.log('Speech recognition started');
-      setVoiceState('listening');
-    };
-
-    recognition.onresult = async (event) => {
-      let interim = '';
-      let final = '';
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          final += transcript;
-        } else {
-          interim += transcript;
-        }
-      }
-
-      // Update interim transcript
-      if (interim) {
-        setUserTranscript(interim);
-      }
-
-      // Process final transcript
-      if (final) {
-        const fullText = final.trim();
-        setUserTranscript(fullText);
-        onTranscript?.(fullText, 'user');
-
-        // Stop listening while processing
-        recognition.stop();
-
+      ws.onmessage = (event) => {
         try {
-          // Get AI response
-          const aiResponse = await sendTextToAI(fullText);
-          setAiTranscript(aiResponse);
-          onTranscript?.(aiResponse, 'assistant');
+          const message = JSON.parse(event.data);
 
-          // Add to message history
-          setMessages(prev => [
-            ...prev,
-            { role: 'user', content: fullText, timestamp: new Date() },
-            { role: 'assistant', content: aiResponse, timestamp: new Date() },
-          ]);
+          switch (message.type) {
+            case 'ready':
+              console.log('Voice chat ready');
+              setVoiceState('listening');
+              startAudioCapture();
+              break;
 
-          // Speak the response
-          await speakText(aiResponse);
+            case 'audio_response':
+              // Play audio response from Gemini
+              playAudioChunk(message.audio);
+              break;
 
-          // Clear transcripts and resume listening
-          setUserTranscript('');
-          setAiTranscript('');
-          
-          if (recognitionRef.current) {
-            recognition.start();
+            case 'turn_complete':
+              // AI finished speaking, resume listening
+              setVoiceState('listening');
+              setAiTranscript('');
+              break;
+
+            case 'transcript_user':
+              // Update user transcript
+              setUserTranscript(message.text);
+              onTranscript?.(message.text, 'user');
+              break;
+
+            case 'transcript_assistant':
+              // Update assistant transcript
+              setAiTranscript(message.text);
+              onTranscript?.(message.text, 'assistant');
+              
+              // Add to message history
+              setMessages(prev => [
+                ...prev,
+                { role: 'assistant', content: message.text, timestamp: new Date() },
+              ]);
+              break;
+
+            case 'error':
+              console.error('Server error:', message.error);
+              setVoiceState('error');
+              onError?.(new Error(message.error));
+              toast({
+                title: 'Voice error',
+                description: message.error,
+                variant: 'destructive',
+              });
+              break;
           }
         } catch (error) {
-          console.error('Error processing voice input:', error);
-          setVoiceState('error');
-          onError?.(error as Error);
-          
-          // Resume listening after error
-          setTimeout(() => {
-            if (recognitionRef.current) {
-              recognition.start();
-            }
-          }, 1000);
+          console.error('Error parsing WebSocket message:', error);
         }
-      }
-    };
+      };
 
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      
-      // Ignore 'no-speech' errors, just restart
-      if (event.error === 'no-speech') {
-        recognition.start();
-        return;
-      }
-      
-      setVoiceState('error');
-      onError?.(new Error(event.error));
-      
-      toast({
-        title: 'Voice error',
-        description: `Speech recognition error: ${event.error}`,
-        variant: 'destructive',
-      });
-    };
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setVoiceState('error');
+        onError?.(new Error('Connection error'));
+        toast({
+          title: 'Connection error',
+          description: 'Failed to connect to voice service',
+          variant: 'destructive',
+        });
+      };
 
-    recognition.onend = () => {
-      console.log('Speech recognition ended');
-      
-      // Auto-restart if we're still supposed to be listening
-      if (voiceState === 'listening' && recognitionRef.current) {
-        setTimeout(() => {
-          if (recognitionRef.current) {
-            recognition.start();
-          }
-        }, 100);
-      }
-    };
+      ws.onclose = () => {
+        console.log('WebSocket closed');
+        stopAudioCapture();
+      };
 
-    return recognition;
-  }, [sendTextToAI, speakText, onTranscript, onError, toast, voiceState]);
+    } catch (error) {
+      console.error('Failed to connect WebSocket:', error);
+      throw error;
+    }
+  }, [conversationId, onTranscript, onError, toast, startAudioCapture, stopAudioCapture, playAudioChunk]);
 
   // Start voice chat session
   const startVoiceChat = useCallback(async () => {
     if (!isSupported) {
       toast({
         title: 'Not supported',
-        description: 'Voice chat requires Chrome, Edge, or Safari',
+        description: 'Voice chat requires a modern browser with WebSocket and AudioContext support',
         variant: 'destructive',
       });
       return;
@@ -337,25 +324,11 @@ export const useVoiceChat = ({
 
     try {
       setVoiceState('connecting');
-
-      // Request microphone permission
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      // Load voices for TTS
-      if (window.speechSynthesis.getVoices().length === 0) {
-        await new Promise(resolve => {
-          window.speechSynthesis.onvoiceschanged = resolve;
-        });
-      }
-
-      // Initialize and start speech recognition
-      const recognition = initSpeechRecognition();
-      recognitionRef.current = recognition;
-      recognition.start();
+      await connectWebSocket();
 
       toast({
         title: 'Voice activated',
-        description: 'Start speaking naturally. I\'m listening...',
+        description: 'Connected to Gemini Live API. Start speaking...',
       });
 
     } catch (error) {
@@ -368,20 +341,22 @@ export const useVoiceChat = ({
         variant: 'destructive',
       });
     }
-  }, [isSupported, toast, onError, initSpeechRecognition]);
+  }, [isSupported, toast, onError, connectWebSocket]);
 
   // Stop voice chat
   const stopVoiceChat = useCallback(() => {
-    // Stop speech recognition
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
+    // Close WebSocket
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
     }
 
-    // Cancel any ongoing speech
-    if (window.speechSynthesis.speaking) {
-      window.speechSynthesis.cancel();
-    }
+    // Stop audio
+    stopAudioCapture();
+
+    // Clear audio queue
+    audioQueueRef.current = [];
+    isPlayingRef.current = false;
 
     setVoiceState('idle');
     setUserTranscript('');
@@ -391,12 +366,18 @@ export const useVoiceChat = ({
       title: 'Voice chat ended',
       description: 'Your conversation has been saved.',
     });
-  }, [toast]);
+  }, [toast, stopAudioCapture]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopVoiceChat();
+      
+      // Clean up audio context
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
     };
   }, [stopVoiceChat]);
 

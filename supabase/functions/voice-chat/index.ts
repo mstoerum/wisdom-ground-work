@@ -8,7 +8,7 @@ const corsHeaders = {
 
 /**
  * Gemini Live API WebSocket proxy for voice conversations
- * Handles bidirectional audio streaming and transcription
+ * Handles bidirectional audio streaming with Gemini 2.0 Flash with Audio
  */
 serve(async (req) => {
   // Handle CORS preflight
@@ -28,6 +28,8 @@ serve(async (req) => {
     let conversationId: string | null = null;
     let supabase: any = null;
     let userId: string | null = null;
+    let sessionData: any = null;
+    let conversationBuffer: { user: string; assistant: string }[] = [];
 
     socket.onopen = () => {
       console.log("Client WebSocket connected");
@@ -77,7 +79,9 @@ serve(async (req) => {
             return;
           }
 
-          // Connect to Gemini Live API
+          sessionData = session;
+
+          // Get API key
           const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") || Deno.env.get("LOVABLE_API_KEY");
           
           if (!GEMINI_API_KEY) {
@@ -89,102 +93,163 @@ serve(async (req) => {
             return;
           }
 
-          // For now, we'll use the Lovable AI Gateway with Gemini
-          // TODO: Switch to native Gemini Live API when available
-          // const geminiUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent`;
+          // Connect to Gemini Live API (Gemini 2.0 Flash with multimodal audio)
+          // Using Google AI SDK WebSocket endpoint
+          const geminiWsUrl = `wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContent?key=${GEMINI_API_KEY}`;
           
-          // Using Lovable's gateway as a proxy for now
-          socket.send(JSON.stringify({
-            type: "ready",
-            message: "Connected to voice chat",
-          }));
+          try {
+            geminiWs = new WebSocket(geminiWsUrl);
 
-          // For Phase 1, we'll use a hybrid approach:
-          // Browser captures audio -> We transcribe with Web Speech API on client
-          // -> Send text to existing Gemini text API
-          // -> Use browser TTS for response
-          // This is a temporary solution until we can integrate Gemini Live API directly
+            geminiWs.onopen = () => {
+              console.log("Connected to Gemini Live API");
+              
+              // Initialize session with system instructions
+              const { data: previousResponses } = await supabase
+                .from("responses")
+                .select("content, ai_response")
+                .eq("conversation_session_id", conversationId)
+                .order("created_at", { ascending: true })
+                .limit(5);
 
-        } else if (message.type === "audio_chunk") {
-          // Receive audio chunk from client
-          // For now, client will handle transcription using Web Speech API
-          // In future, we'll forward to Gemini Live API
-          
-          // Placeholder: acknowledge receipt
-          console.log("Received audio chunk, size:", message.data?.length || 0);
+              const systemPrompt = buildSystemPrompt(previousResponses || [], sessionData);
+              
+              // Send setup message to Gemini
+              geminiWs?.send(JSON.stringify({
+                setup: {
+                  model: "models/gemini-2.0-flash-exp",
+                  generation_config: {
+                    response_modalities: ["AUDIO"],
+                    speech_config: {
+                      voice_config: {
+                        prebuilt_voice_config: {
+                          voice_name: "Aoede" // Female voice option
+                        }
+                      }
+                    }
+                  },
+                  system_instruction: {
+                    parts: [{ text: systemPrompt }]
+                  }
+                }
+              }));
 
-        } else if (message.type === "transcript") {
-          // Receive transcript from client (using Web Speech API on client side)
-          // Process with existing chat function logic
-          
-          const userMessage = message.text;
-          
-          // Call existing chat logic
-          const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-          if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+              socket.send(JSON.stringify({
+                type: "ready",
+                message: "Connected to Gemini Live API",
+              }));
+            };
 
-          // Fetch conversation context
-          const { data: previousResponses } = await supabase
-            .from("responses")
-            .select("content, ai_response, theme_id, sentiment")
-            .eq("conversation_session_id", conversationId)
-            .order("created_at", { ascending: true })
-            .limit(10);
+            geminiWs.onmessage = async (geminiEvent) => {
+              try {
+                const geminiData = JSON.parse(geminiEvent.data);
+                
+                // Handle server content (audio response from Gemini)
+                if (geminiData.serverContent) {
+                  const parts = geminiData.serverContent.modelTurn?.parts || [];
+                  
+                  for (const part of parts) {
+                    // Forward audio data to client
+                    if (part.inlineData?.data) {
+                      socket.send(JSON.stringify({
+                        type: "audio_response",
+                        audio: part.inlineData.data,
+                        mimeType: part.inlineData.mimeType || "audio/pcm"
+                      }));
+                    }
+                    
+                    // Store transcript if available
+                    if (part.text) {
+                      conversationBuffer[conversationBuffer.length - 1].assistant = part.text;
+                    }
+                  }
+                  
+                  // Send turn complete signal
+                  if (geminiData.serverContent.turnComplete) {
+                    socket.send(JSON.stringify({
+                      type: "turn_complete"
+                    }));
+                    
+                    // Save to database
+                    const lastExchange = conversationBuffer[conversationBuffer.length - 1];
+                    if (lastExchange && lastExchange.user && lastExchange.assistant) {
+                      await saveConversationExchange(
+                        supabase,
+                        conversationId!,
+                        sessionData.survey_id,
+                        lastExchange.user,
+                        lastExchange.assistant,
+                        Deno.env.get("LOVABLE_API_KEY")!
+                      );
+                    }
+                  }
+                }
+                
+                // Handle tool calls or other responses
+                if (geminiData.toolCall) {
+                  console.log("Tool call received:", geminiData.toolCall);
+                }
+                
+              } catch (err) {
+                console.error("Error processing Gemini message:", err);
+              }
+            };
 
-          const { data: sessionData } = await supabase
-            .from("conversation_sessions")
-            .select("survey_id, surveys(themes, first_message)")
-            .eq("id", conversationId)
-            .single();
+            geminiWs.onerror = (error) => {
+              console.error("Gemini WebSocket error:", error);
+              socket.send(JSON.stringify({
+                type: "error",
+                error: "Connection to AI service failed"
+              }));
+            };
 
-          // Build system prompt (reuse from chat function)
-          const systemPrompt = buildSystemPrompt(previousResponses, sessionData);
+            geminiWs.onclose = () => {
+              console.log("Gemini WebSocket closed");
+            };
 
-          // Call AI
-          const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${LOVABLE_API_KEY}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "google/gemini-2.5-flash",
-              messages: [
-                { role: "system", content: systemPrompt },
-                ...previousResponses.flatMap((r: any) => [
-                  { role: "user", content: r.content },
-                  { role: "assistant", content: r.ai_response },
-                ]),
-                { role: "user", content: userMessage },
-              ],
-              temperature: 0.8,
-              max_tokens: 200,
-            }),
-          });
+          } catch (error) {
+            console.error("Failed to connect to Gemini Live API:", error);
+            socket.send(JSON.stringify({
+              type: "error",
+              error: "Failed to initialize voice AI"
+            }));
+            socket.close();
+          }
 
-          const data = await response.json();
-          const aiResponse = data.choices[0].message.content;
-
-          // Analyze sentiment
-          const sentiment = await analyzeSentiment(LOVABLE_API_KEY, userMessage);
-
-          // Store response
-          await supabase.from("responses").insert({
-            conversation_session_id: conversationId,
-            survey_id: sessionData.survey_id,
-            content: userMessage,
-            ai_response: aiResponse,
-            sentiment: sentiment.sentiment,
-            sentiment_score: sentiment.score,
-          });
-
-          // Send response back to client
-          socket.send(JSON.stringify({
-            type: "transcript_assistant",
-            text: aiResponse,
-          }));
-
-          // Client will handle TTS
+        } else if (message.type === "audio_input") {
+          // Forward audio input from client to Gemini
+          if (geminiWs && geminiWs.readyState === WebSocket.OPEN) {
+            geminiWs.send(JSON.stringify({
+              realtimeInput: {
+                mediaChunks: [{
+                  data: message.audio,
+                  mimeType: message.mimeType || "audio/pcm"
+                }]
+              }
+            }));
+          }
+        } else if (message.type === "turn_complete") {
+          // Signal end of user's turn
+          if (geminiWs && geminiWs.readyState === WebSocket.OPEN) {
+            // Create new conversation buffer entry
+            conversationBuffer.push({ user: "", assistant: "" });
+            
+            geminiWs.send(JSON.stringify({
+              clientContent: {
+                turns: [{
+                  role: "user",
+                  parts: [{ text: "user finished speaking" }] // Gemini will have audio context
+                }],
+                turnComplete: true
+              }
+            }));
+          }
+        } else if (message.type === "transcript_update") {
+          // Store user transcript (from client-side interim results)
+          if (conversationBuffer.length > 0) {
+            conversationBuffer[conversationBuffer.length - 1].user = message.text;
+          } else {
+            conversationBuffer.push({ user: message.text, assistant: "" });
+          }
         }
 
       } catch (error) {
@@ -202,10 +267,10 @@ serve(async (req) => {
 
     socket.onclose = () => {
       console.log("Client WebSocket closed");
-      // Cleanup Gemini WebSocket if it was initialized (future: Gemini Live API)
-      if (geminiWs !== null) {
+      // Cleanup Gemini WebSocket
+      if (geminiWs && geminiWs.readyState === WebSocket.OPEN) {
         try {
-          (geminiWs as WebSocket).close();
+          geminiWs.close();
         } catch (error) {
           console.error("Error closing Gemini WebSocket:", error);
         }
@@ -253,6 +318,37 @@ Your goals:
 - Use natural speech patterns, not written text
 
 Remember: You're having a VOICE conversation. Be brief, natural, and conversational.`;
+}
+
+/**
+ * Save conversation exchange to database with sentiment analysis
+ */
+async function saveConversationExchange(
+  supabase: any,
+  conversationId: string,
+  surveyId: string,
+  userContent: string,
+  aiResponse: string,
+  apiKey: string
+): Promise<void> {
+  try {
+    // Analyze sentiment
+    const sentiment = await analyzeSentiment(apiKey, userContent);
+
+    // Store response
+    await supabase.from("responses").insert({
+      conversation_session_id: conversationId,
+      survey_id: surveyId,
+      content: userContent,
+      ai_response: aiResponse,
+      sentiment: sentiment.sentiment,
+      sentiment_score: sentiment.score,
+    });
+
+    console.log("Saved conversation exchange to database");
+  } catch (error) {
+    console.error("Error saving conversation exchange:", error);
+  }
 }
 
 /**
