@@ -43,9 +43,18 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
   const [sessionId, setSessionId] = useState<string>("");
   const [culturalContext, setCulturalContext] = useState<CulturalContext | null>(null);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
+  const [voiceSupported, setVoiceSupported] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { isPreviewMode } = usePreviewMode();
+
+  // Check if browser supports voice
+  useEffect(() => {
+    const supported = 
+      'speechSynthesis' in window &&
+      ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+    setVoiceSupported(supported);
+  }, []);
 
   // Initialize cultural context
   useEffect(() => {
@@ -209,7 +218,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, conversationId, messages, onComplete, toast]);
+  }, [input, isLoading, conversationId, messages, onComplete, toast, isPreviewMode]);
 
   // Handle Enter key to send message
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -251,15 +260,6 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
       );
     }
   }
-
-  // Check if browser supports voice
-  const [voiceSupported, setVoiceSupported] = useState(false);
-  useEffect(() => {
-    const supported = 
-      'speechSynthesis' in window &&
-      ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
-    setVoiceSupported(supported);
-  }, []);
 
   // If in voice mode, show voice interface
   if (isVoiceMode && trustFlowStep === "chat") {
