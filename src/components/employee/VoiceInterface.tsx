@@ -59,15 +59,15 @@ export const VoiceInterface = ({
       case 'idle':
         return 'Ready to start';
       case 'connecting':
-        return 'Connecting...';
+        return 'Connecting to Gemini Live...';
       case 'listening':
-        return 'Listening...';
+        return 'Listening... (speak naturally)';
       case 'speaking':
-        return 'Speaking...';
+        return 'Atlas is speaking...';
       case 'processing':
         return 'Processing...';
       case 'error':
-        return 'Error occurred';
+        return 'Connection error';
       default:
         return '';
     }
@@ -201,10 +201,18 @@ export const VoiceInterface = ({
         {voiceState === 'idle' && (
           <div className="text-center space-y-2 max-w-md">
             <p className="text-sm text-muted-foreground">
-              Click the microphone to start a natural voice conversation with Atlas.
+              Click the microphone to start a natural voice conversation with Atlas using Gemini Live API.
             </p>
             <p className="text-xs text-muted-foreground">
-              You can speak freely and interrupt at any time.
+              You can speak freely and interrupt at any time. Your audio streams directly to AI.
+            </p>
+          </div>
+        )}
+
+        {voiceState === 'connecting' && (
+          <div className="text-center space-y-2 max-w-md">
+            <p className="text-sm text-muted-foreground">
+              Connecting to Gemini Live API...
             </p>
           </div>
         )}
@@ -212,7 +220,21 @@ export const VoiceInterface = ({
         {voiceState === 'listening' && (
           <div className="text-center space-y-2 max-w-md">
             <p className="text-sm text-muted-foreground">
-              Start speaking whenever you're ready...
+              Start speaking naturally. Atlas is listening...
+            </p>
+            <p className="text-xs text-muted-foreground">
+              You can interrupt Atlas at any time by speaking.
+            </p>
+          </div>
+        )}
+
+        {voiceState === 'speaking' && (
+          <div className="text-center space-y-2 max-w-md">
+            <p className="text-sm text-muted-foreground">
+              Atlas is responding...
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Interrupt by speaking at any time.
             </p>
           </div>
         )}
