@@ -43,7 +43,6 @@ export const CompleteEmployeeExperiencePreview = ({
   surveyId,
 }: CompleteEmployeeExperiencePreviewProps) => {
   const [loadedSurveyData, setLoadedSurveyData] = useState<any>(null);
-  const [isLoadingSurvey, setIsLoadingSurvey] = useState(false);
 
   // Fetch full survey data if surveyId is provided
   const { data: fullSurveyData, isLoading: isLoadingQuery } = useQuery({
@@ -63,16 +62,23 @@ export const CompleteEmployeeExperiencePreview = ({
 
   // Use full survey data if available, otherwise use passed surveyData
   useEffect(() => {
-    if (fullSurveyData) {
-      setLoadedSurveyData(fullSurveyData);
-      setIsLoadingSurvey(false);
-    } else if (open && !surveyId) {
+    if (!open) {
+      // Reset when dialog closes
+      setLoadedSurveyData(null);
+      return;
+    }
+
+    if (surveyId) {
+      // If surveyId is provided, use fullSurveyData from the query
+      if (fullSurveyData) {
+        setLoadedSurveyData(fullSurveyData);
+      }
+    } else {
       // If no surveyId, construct survey data from passed props
       setLoadedSurveyData({
         id: "preview-survey",
         ...surveyData,
       });
-      setIsLoadingSurvey(false);
     }
   }, [fullSurveyData, surveyData, surveyId, open]);
 
@@ -87,7 +93,9 @@ export const CompleteEmployeeExperiencePreview = ({
     onOpenChange(false);
   };
 
-  if (isLoadingQuery || isLoadingSurvey || !loadedSurveyData) {
+  const isLoading = isLoadingQuery || !loadedSurveyData;
+
+  if (isLoading) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-[95vw] lg:max-w-6xl max-h-[95vh] h-[95vh] p-0 gap-0 flex flex-col">
