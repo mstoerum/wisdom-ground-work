@@ -71,44 +71,51 @@ export const RitualIntroduction: React.FC<RitualIntroductionProps> = ({
   };
 
   return (
-    <div className={`transition-all duration-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
-      <Card className="max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle className="text-center text-2xl font-bold">
+    <div className={`transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
+      <Card className="max-w-2xl mx-auto relative overflow-hidden">
+        {/* Warm gradient background accents */}
+        <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-gradient-to-br from-[hsl(var(--butter-yellow))] to-[hsl(var(--coral-pink))] opacity-10 blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-gradient-to-br from-[hsl(var(--terracotta-primary))] to-[hsl(var(--lime-green))] opacity-10 blur-3xl" />
+        
+        <CardHeader className="relative z-10">
+          <CardTitle className="text-center text-3xl font-bold bg-gradient-to-r from-[hsl(var(--terracotta-primary))] to-[hsl(var(--coral-accent))] bg-clip-text text-transparent">
             {steps[currentStep].title}
           </CardTitle>
-          <Progress value={(currentStep + 1) / steps.length * 100} className="mt-4" />
+          <Progress value={(currentStep + 1) / steps.length * 100} className="mt-6 h-2" />
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex justify-center mb-4">
-            {steps[currentStep].icon}
+        <CardContent className="space-y-8 relative z-10">
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[hsl(var(--terracotta-primary))] to-[hsl(var(--coral-accent))] flex items-center justify-center shadow-lg">
+              {steps[currentStep].icon}
+            </div>
           </div>
           
-          <p className="text-lg text-center text-muted-foreground leading-relaxed">
+          <p className="text-lg text-center text-foreground leading-relaxed px-4">
             {steps[currentStep].content}
           </p>
           
           {steps[currentStep].highlight && (
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-              <p className="text-sm text-blue-800 font-medium text-center">
+            <div className="bg-[hsl(var(--terracotta-pale))] p-6 rounded-2xl border-2 border-[hsl(var(--terracotta-primary))]/20">
+              <p className="text-sm text-[hsl(var(--terracotta-primary))] font-medium text-center">
                 💡 <strong>Key Point:</strong> {steps[currentStep].highlight}
               </p>
             </div>
           )}
           
           {steps[currentStep].culturalAcknowledgment && (
-            <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-              <p className="text-sm text-green-800">
+            <div className="bg-[hsl(var(--lime-green))]/10 p-6 rounded-2xl border-2 border-[hsl(var(--lime-green))]/20">
+              <p className="text-sm text-foreground">
                 🌍 <strong>Cultural Note:</strong> This approach is designed to be respectful of different communication styles and cultural backgrounds.
               </p>
             </div>
           )}
           
-          <div className="flex justify-center space-x-4">
+          <div className="flex justify-center space-x-4 pt-4">
             <Button 
               onClick={handleNext} 
               size="lg"
-              className="min-w-[120px]"
+              variant="coral"
+              className="min-w-[160px] shadow-lg hover:shadow-xl transition-all duration-300"
             >
               {currentStep < steps.length - 1 ? 'Continue' : 'Start Your Session'}
             </Button>
@@ -117,14 +124,14 @@ export const RitualIntroduction: React.FC<RitualIntroductionProps> = ({
                 onClick={handleSkip} 
                 variant="outline" 
                 size="lg"
-                className="min-w-[120px]"
+                className="min-w-[160px]"
               >
                 Skip Introduction
               </Button>
             )}
           </div>
           
-          <div className="text-center">
+          <div className="text-center pt-2">
             <p className="text-xs text-muted-foreground">
               Step {currentStep + 1} of {steps.length}
             </p>

@@ -1,7 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { HRLayout } from "@/components/hr/HRLayout";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SurveyList } from "@/components/hr/SurveyList";
@@ -11,6 +10,7 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingTour } from "@/components/hr/OnboardingTour";
+import { MetricCard } from "@/components/hr/analytics/MetricCard";
 
 const HRDashboard = () => {
   const navigate = useNavigate();
@@ -45,22 +45,30 @@ const HRDashboard = () => {
   return (
     <HRLayout>
       <OnboardingTour />
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">HR Dashboard</h1>
-            <p className="text-muted-foreground mt-1">Manage surveys and track employee feedback</p>
+      <div className="space-y-12">
+        {/* Hero Header with breathing space */}
+        <div className="flex items-center justify-between pt-4 pb-8">
+          <div className="space-y-3">
+            <h1 className="text-5xl font-bold bg-gradient-to-r from-[hsl(var(--terracotta-primary))] via-[hsl(var(--coral-accent))] to-[hsl(var(--butter-yellow))] bg-clip-text text-transparent">
+              HR Dashboard
+            </h1>
+            <p className="text-lg text-muted-foreground">Manage surveys and track employee feedback</p>
           </div>
-          <Button onClick={() => navigate('/hr/create-survey')} data-tour="create-survey">
-            <PlusCircle className="mr-2 h-4 w-4" />
+          <Button 
+            onClick={() => navigate('/hr/create-survey')} 
+            data-tour="create-survey"
+            variant="coral"
+            size="lg"
+            className="shadow-lg hover:shadow-xl transition-all duration-300"
+          >
+            <PlusCircle className="mr-2 h-5 w-5" />
             Create Survey
           </Button>
         </div>
 
         {/* Empty state alert for no employees */}
         {employeeCount === 0 && (
-          <Alert>
+          <Alert className="border-[hsl(var(--coral-accent))] bg-[hsl(var(--coral-pink))]">
             <UserPlus className="h-4 w-4" />
             <AlertDescription className="flex items-center justify-between">
               <span>No employees in your organization yet. Add employees to start sending surveys.</span>
@@ -71,66 +79,48 @@ const HRDashboard = () => {
           </Alert>
         )}
 
-        {/* Stats Cards */}
+        {/* Stats Cards - Asymmetric Layout */}
         {isLoading ? (
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-6 md:grid-cols-4">
             {[1, 2, 3, 4].map((i) => (
-              <Card key={i}>
-                <CardHeader>
-                  <Skeleton className="h-4 w-24" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-8 w-16 mb-2" />
-                  <Skeleton className="h-3 w-32" />
-                </CardContent>
-              </Card>
+              <div key={i} className="p-8 rounded-3xl bg-card">
+                <Skeleton className="h-14 w-14 rounded-2xl mb-6" />
+                <Skeleton className="h-4 w-24 mb-2" />
+                <Skeleton className="h-12 w-16 mb-3" />
+                <Skeleton className="h-3 w-32" />
+              </div>
             ))}
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Active Surveys</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{activeSurveysCount}</div>
-                <p className="text-xs text-muted-foreground mt-1">Currently running</p>
-              </CardContent>
-            </Card>
+          <div className="grid gap-6 md:grid-cols-4">
+            <MetricCard
+              title="Active Surveys"
+              value={activeSurveysCount}
+              icon={TrendingUp}
+              description="Currently running"
+            />
             
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Responses</CardTitle>
-                <Users className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{participation?.completed || 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Completed surveys</p>
-              </CardContent>
-            </Card>
+            <MetricCard
+              title="Total Responses"
+              value={participation?.completed || 0}
+              icon={Users}
+              description="Completed surveys"
+            />
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Participation Rate</CardTitle>
-                <CheckSquare className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{participation?.completionRate || 0}%</div>
-                <p className="text-xs text-muted-foreground mt-1">Average completion</p>
-              </CardContent>
-            </Card>
+            <MetricCard
+              title="Participation Rate"
+              value={participation?.completionRate || 0}
+              suffix="%"
+              icon={CheckSquare}
+              description="Average completion"
+            />
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Urgent Flags</CardTitle>
-                <AlertCircle className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{urgency?.length || 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Requiring attention</p>
-              </CardContent>
-            </Card>
+            <MetricCard
+              title="Urgent Flags"
+              value={urgency?.length || 0}
+              icon={AlertCircle}
+              description="Requiring attention"
+            />
           </div>
         )}
 

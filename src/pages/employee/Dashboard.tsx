@@ -159,10 +159,12 @@ const EmployeeDashboard = () => {
     return (
       <div className="min-h-screen bg-background p-6">
         <div className="max-w-4xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Your Feedback Hub</h1>
-              <p className="text-muted-foreground mt-1">Track your participation and see our commitments</p>
+          <div className="flex justify-between items-center mb-12">
+            <div className="space-y-2">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-[hsl(var(--terracotta-primary))] via-[hsl(var(--coral-accent))] to-[hsl(var(--butter-yellow))] bg-clip-text text-transparent">
+                Your Feedback Hub
+              </h1>
+              <p className="text-lg text-muted-foreground">Track your participation and see our commitments</p>
             </div>
             <Button onClick={handleSignOut} variant="ghost" size="sm">
               <LogOut className="h-4 w-4 mr-2" />
@@ -171,14 +173,20 @@ const EmployeeDashboard = () => {
           </div>
 
           <div className="space-y-6">
-            <div className="bg-muted/50 rounded-lg p-6 text-center">
-              <div className="bg-muted rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                <MessageSquare className="h-10 w-10 text-muted-foreground" />
+            <div className="bg-gradient-to-br from-[hsl(var(--terracotta-pale))] to-[hsl(var(--coral-pink))] rounded-3xl p-12 text-center relative overflow-hidden">
+              {/* Gradient orb accents */}
+              <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-gradient-to-br from-[hsl(var(--butter-yellow))] to-[hsl(var(--coral-pink))] opacity-30 blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full bg-gradient-to-br from-[hsl(var(--terracotta-primary))] to-[hsl(var(--coral-accent))] opacity-30 blur-3xl" />
+              
+              <div className="relative z-10">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[hsl(var(--terracotta-primary))] via-[hsl(var(--coral-pink))] to-[hsl(var(--butter-yellow))] flex items-center justify-center mx-auto mb-6 shadow-lg">
+                  <MessageSquare className="h-12 w-12 text-white" />
+                </div>
+                <h2 className="text-2xl font-bold mb-3 text-[hsl(var(--terracotta-primary))]">No Active Surveys</h2>
+                <p className="text-base text-foreground/80 max-w-md mx-auto">
+                  You don't have any surveys assigned right now. Check back later for new feedback opportunities.
+                </p>
               </div>
-              <h2 className="text-xl font-bold mb-2">No Active Surveys</h2>
-              <p className="text-muted-foreground">
-                You don't have any surveys assigned right now. Check back later for new feedback opportunities.
-              </p>
             </div>
 
             <Tabs defaultValue="updates" className="space-y-4">
@@ -214,10 +222,12 @@ const EmployeeDashboard = () => {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Feedback Session</h1>
-            <p className="text-muted-foreground mt-1">Your voice matters</p>
+        <div className="flex justify-between items-center mb-12">
+          <div className="space-y-2">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-[hsl(var(--terracotta-primary))] via-[hsl(var(--coral-accent))] to-[hsl(var(--butter-yellow))] bg-clip-text text-transparent">
+              Feedback Session
+            </h1>
+            <p className="text-lg text-muted-foreground">Your voice matters</p>
           </div>
           <Button onClick={handleSignOut} variant="ghost" size="sm">
             <LogOut className="h-4 w-4 mr-2" />

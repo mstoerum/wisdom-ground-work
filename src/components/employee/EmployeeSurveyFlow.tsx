@@ -119,16 +119,16 @@ export const EmployeeSurveyFlow = ({
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <div className="min-h-screen bg-gradient-to-b from-background via-[hsl(var(--terracotta-pale))]/5 to-background p-6">
       <div className="max-w-4xl mx-auto">
         {/* Anonymization Banner - only show in non-preview mode */}
         {!isPreviewMode && <AnonymizationBanner />}
 
         {/* Preview Mode Alert */}
         {isPreviewMode && (
-          <Alert className="mb-6 border-primary/50 bg-primary/10">
-            <PlayCircle className="h-4 w-4" />
-            <AlertDescription>
+          <Alert className="mb-6 border-[hsl(var(--coral-accent))] bg-[hsl(var(--coral-pink))] rounded-2xl">
+            <PlayCircle className="h-5 w-5 text-[hsl(var(--coral-accent))]" />
+            <AlertDescription className="text-foreground">
               <strong>Preview Mode:</strong> You are experiencing the employee survey exactly as employees will see it.
               No data will be saved during this preview.
             </AlertDescription>
@@ -136,9 +136,9 @@ export const EmployeeSurveyFlow = ({
         )}
 
         {step === "chat" && !isPreviewMode && (
-          <Alert className="mt-6 border-primary/50 bg-primary/10">
-            <PlayCircle className="h-4 w-4" />
-            <AlertDescription>
+          <Alert className="mt-6 border-[hsl(var(--terracotta-primary))] bg-[hsl(var(--terracotta-pale))] rounded-2xl">
+            <PlayCircle className="h-5 w-5 text-[hsl(var(--terracotta-primary))]" />
+            <AlertDescription className="text-foreground">
               You have an active conversation in progress. Your responses are being saved automatically.
             </AlertDescription>
           </Alert>
@@ -187,12 +187,14 @@ export const EmployeeSurveyFlow = ({
           )}
 
           {step === "complete" && (
-            <div className="text-center py-12 space-y-4">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-success/10 mb-4">
-                <span className="text-4xl">✓</span>
+            <div className="text-center py-16 space-y-6">
+              <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-[hsl(var(--lime-green))] to-[hsl(var(--butter-yellow))] mb-6 shadow-xl">
+                <span className="text-6xl">✓</span>
               </div>
-              <h2 className="text-2xl font-bold mb-2">Thank You!</h2>
-              <p className="text-muted-foreground max-w-md mx-auto">
+              <h2 className="text-4xl font-bold bg-gradient-to-r from-[hsl(var(--terracotta-primary))] to-[hsl(var(--coral-accent))] bg-clip-text text-transparent">
+                Thank You!
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-lg mx-auto leading-relaxed">
                 {isPreviewMode
                   ? "Preview complete! You've experienced the complete employee survey journey."
                   : "Your feedback has been recorded. Explore the tabs below to see how we're acting on employee feedback."}
