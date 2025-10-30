@@ -103,7 +103,8 @@ export class RealtimeChat {
 
   constructor(
     private onMessage: (message: any) => void,
-    private isPreviewMode: boolean = false
+    private isPreviewMode: boolean = false,
+    private surveyData?: { first_message?: string; themes?: Array<{ name: string; description: string }> }
   ) {
     this.audioEl = document.createElement("audio");
     this.audioEl.autoplay = true;
@@ -117,7 +118,10 @@ export class RealtimeChat {
       // Get ephemeral token from our Supabase Edge Function
       console.log('🎫 Fetching ephemeral token...');
       const { data, error } = await supabase.functions.invoke("realtime-session", {
-        body: { preview: this.isPreviewMode }
+        body: { 
+          preview: this.isPreviewMode,
+          surveyData: this.surveyData
+        }
       });
 
       if (error) {

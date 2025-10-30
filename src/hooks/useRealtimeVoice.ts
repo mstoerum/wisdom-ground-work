@@ -12,11 +12,12 @@ interface Message {
 
 interface UseRealtimeVoiceOptions {
   isPreviewMode?: boolean;
+  surveyData?: { first_message?: string; themes?: Array<{ name: string; description: string }> };
   onError?: (error: string) => void;
 }
 
 export const useRealtimeVoice = (options: UseRealtimeVoiceOptions = {}) => {
-  const { isPreviewMode = false, onError } = options;
+  const { isPreviewMode = false, surveyData, onError } = options;
   const { toast } = useToast();
   
   const [voiceState, setVoiceState] = useState<VoiceState>('idle');
@@ -121,7 +122,7 @@ export const useRealtimeVoice = (options: UseRealtimeVoiceOptions = {}) => {
       console.log('🚀 Starting voice chat...');
       setVoiceState('connecting');
       
-      chatRef.current = new RealtimeChat(handleMessage, isPreviewMode);
+      chatRef.current = new RealtimeChat(handleMessage, isPreviewMode, surveyData);
       await chatRef.current.init();
       
       toast({

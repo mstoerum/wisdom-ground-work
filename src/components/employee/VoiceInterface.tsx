@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { VoiceOrb } from './VoiceOrb';
 import { useVoiceChat } from '@/hooks/useVoiceChat';
 import { useRealtimeVoice } from '@/hooks/useRealtimeVoice';
 import { usePreviewMode } from '@/contexts/PreviewModeContext';
+import { supabase } from '@/integrations/supabase/client';
 import { Mic, MicOff, MessageSquare } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
@@ -26,14 +27,69 @@ export const VoiceInterface = ({
   onSwitchToText,
   onComplete,
 }: VoiceInterfaceProps) => {
-  const { isPreviewMode } = usePreviewMode();
+  const { isPreviewMode, previewSurveyData } = usePreviewMode();
   const [showTranscript, setShowTranscript] = useState(true);
   const [audioLevel, setAudioLevel] = useState(0);
   const [connectionLatency, setConnectionLatency] = useState<number | null>(null);
+  const [surveyDataForVoice, setSurveyDataForVoice] = useState<{ first_message?: string; themes?: Array<{ name: string; description: string }> } | undefined>();
+
+  // Fetch theme details if in preview mode and survey data is available
+  useEffect(() => {
+    if (isPreviewMode && previewSurveyData) {
+      const loadSurveyData = async () => {
+        try {
+          const firstMessage = previewSurveyData.first_message;
+          const themeIds = previewSurveyData.themes || [];
+          
+          // If themes are IDs, fetch theme details
+          if (themeIds.length > 0 && typeof themeIds[0] === 'string') {
+            const { data: themesData } = await supabase
+              .from('survey_themes')
+              .select('id, name, description')
+              .in('id', themeIds);
+            
+            if (themesData) {
+              setSurveyDataForVoice({
+                first_message: firstMessage,
+                themes: themesData.map(t => ({ name: t.name, description: t.description }))
+              });
+            } else {
+              setSurveyDataForVoice({
+                first_message: firstMessage,
+                themes: []
+              });
+            }
+          } else if (Array.isArray(themeIds) && themeIds.length > 0 && typeof themeIds[0] === 'object') {
+            // Themes are already expanded objects
+            setSurveyDataForVoice({
+              first_message: firstMessage,
+              themes: themeIds.map((t: any) => ({ name: t.name, description: t.description }))
+            });
+          } else {
+            setSurveyDataForVoice({
+              first_message: firstMessage,
+              themes: []
+            });
+          }
+        } catch (error) {
+          console.error('Error loading survey data for voice:', error);
+          setSurveyDataForVoice({
+            first_message: previewSurveyData.first_message,
+            themes: []
+          });
+        }
+      };
+
+      loadSurveyData();
+    } else {
+      setSurveyDataForVoice(undefined);
+    }
+  }, [isPreviewMode, previewSurveyData]);
 
   // Use WebRTC-based voice for preview mode, fallback to WebSocket for production
   const realtimeVoice = useRealtimeVoice({
     isPreviewMode,
+    surveyData: surveyDataForVoice,
     onError: (error) => {
       console.error('Realtime voice error:', error);
     },
