@@ -125,16 +125,57 @@ serve(async (req) => {
 
           const systemPrompt = buildSystemPrompt(previousResponses || [], sessionData);
 
-          // Connect to OpenAI Realtime API
-          const model = "gpt-4o-realtime-preview-2024-12-17";
-          const openaiWsUrl = `wss://api.openai.com/v1/realtime?model=${model}`;
-          
-          console.log("🔌 Connecting to OpenAI Realtime API...");
+          console.log("🔌 Creating ephemeral session token...");
           
           try {
-            openaiWs = new WebSocket(openaiWsUrl, {
+            // Step 1: Create ephemeral session via REST API
+            const sessionResponse = await fetch("https://api.openai.com/v1/realtime/sessions", {
+              method: "POST",
               headers: {
                 "Authorization": `Bearer ${OPENAI_API_KEY}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                model: "gpt-4o-realtime-preview-2024-12-17",
+                voice: "alloy",
+              }),
+            });
+
+            if (!sessionResponse.ok) {
+              const errorText = await sessionResponse.text();
+              console.error("❌ Failed to create session:", sessionResponse.status, errorText);
+              socket.send(JSON.stringify({
+                type: "error",
+                error: `Failed to initialize voice AI: ${sessionResponse.status}`,
+              }));
+              socket.close();
+              return;
+            }
+
+            const sessionData = await sessionResponse.json();
+            const ephemeralToken = sessionData.client_secret?.value;
+
+            if (!ephemeralToken) {
+              console.error("❌ No ephemeral token in response");
+              socket.send(JSON.stringify({
+                type: "error",
+                error: "Failed to get session token from OpenAI",
+              }));
+              socket.close();
+              return;
+            }
+
+            console.log("✅ Ephemeral token created");
+
+            // Step 2: Connect to WebSocket using ephemeral token
+            const model = "gpt-4o-realtime-preview-2024-12-17";
+            const openaiWsUrl = `wss://api.openai.com/v1/realtime?model=${model}`;
+            
+            console.log("🔌 Connecting to OpenAI Realtime API with ephemeral token...");
+            
+            openaiWs = new WebSocket(openaiWsUrl, {
+              headers: {
+                "Authorization": `Bearer ${ephemeralToken}`,
                 "OpenAI-Beta": "realtime=v1",
               },
             });
