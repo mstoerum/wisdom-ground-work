@@ -261,77 +261,79 @@ export const useVoiceChat = ({
           
           console.log('📨 Received:', data.type);
 
-          switch (data.type) {
-            case 'ready':
-              setVoiceState('listening');
-              toast({
-                title: 'Voice activated',
-                description: 'Start speaking naturally. I\'m listening...',
-              });
-              break;
+                switch (data.type) {
+                  case 'ready':
+                    setVoiceState('listening');
+                    toast({
+                      title: 'Voice activated',
+                      description: 'Start speaking naturally. I\'m listening...',
+                    });
+                    break;
 
-            case 'speech_started':
-              setVoiceState('listening');
-              setUserTranscript('');
-              currentAiTextRef.current = '';
-              break;
+                  case 'speech_started':
+                    setVoiceState('listening');
+                    setUserTranscript('');
+                    currentAiTextRef.current = '';
+                    break;
 
-            case 'speech_stopped':
-              setVoiceState('processing');
-              break;
+                  case 'speech_stopped':
+                    setVoiceState('processing');
+                    break;
 
-            case 'user_transcript':
-              setUserTranscript(data.text);
-              onTranscript?.(data.text, 'user');
-              break;
+                  case 'user_transcript':
+                    setUserTranscript(data.text);
+                    onTranscript?.(data.text, 'user');
+                    break;
 
-            case 'ai_transcript_delta':
-              currentAiTextRef.current += data.text;
-              setAiTranscript(currentAiTextRef.current);
-              break;
+                  case 'ai_transcript_delta':
+                    currentAiTextRef.current += data.text;
+                    setAiTranscript(currentAiTextRef.current);
+                    break;
 
-            case 'audio_response':
-              // Queue audio for playback
-              const audioBuffer = await base64ToAudioBuffer(data.audio);
-              if (audioBuffer) {
-                if (!isPlayingRef.current) {
-                  playAudioBuffer(audioBuffer);
-                } else {
-                  playbackQueueRef.current.push(audioBuffer);
+                  case 'audio_response': {
+                    // Queue audio for playback
+                    const audioBuffer = await base64ToAudioBuffer(data.audio);
+                    if (audioBuffer) {
+                      if (!isPlayingRef.current) {
+                        playAudioBuffer(audioBuffer);
+                      } else {
+                        playbackQueueRef.current.push(audioBuffer);
+                      }
+                    }
+                    break;
+                  }
+
+                  case 'response_complete': {
+                    // Add to message history
+                    if (userTranscript && currentAiTextRef.current) {
+                      const newMessages: Message[] = [
+                        { role: 'user', content: userTranscript, timestamp: new Date() },
+                        { role: 'assistant', content: currentAiTextRef.current, timestamp: new Date() },
+                      ];
+                      
+                      setMessages(prev => [...prev, ...newMessages]);
+                      onTranscript?.(currentAiTextRef.current, 'assistant');
+                    }
+                    
+                    // Reset transcripts
+                    setTimeout(() => {
+                      setUserTranscript('');
+                      setAiTranscript('');
+                    }, 2000);
+                    break;
+                  }
+
+                  case 'error':
+                    console.error('❌ Server error:', data.error);
+                    setVoiceState('error');
+                    onError?.(new Error(data.error));
+                    toast({
+                      title: 'Voice error',
+                      description: data.error,
+                      variant: 'destructive',
+                    });
+                    break;
                 }
-              }
-              break;
-
-            case 'response_complete':
-              // Add to message history
-              if (userTranscript && currentAiTextRef.current) {
-                const newMessages: Message[] = [
-                  { role: 'user', content: userTranscript, timestamp: new Date() },
-                  { role: 'assistant', content: currentAiTextRef.current, timestamp: new Date() },
-                ];
-                
-                setMessages(prev => [...prev, ...newMessages]);
-                onTranscript?.(currentAiTextRef.current, 'assistant');
-              }
-              
-              // Reset transcripts
-              setTimeout(() => {
-                setUserTranscript('');
-                setAiTranscript('');
-              }, 2000);
-              break;
-
-            case 'error':
-              console.error('❌ Server error:', data.error);
-              setVoiceState('error');
-              onError?.(new Error(data.error));
-              toast({
-                title: 'Voice error',
-                description: data.error,
-                variant: 'destructive',
-              });
-              break;
-          }
         } catch (error) {
           console.error('Error processing WebSocket message:', error);
         }

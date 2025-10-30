@@ -1,5 +1,21 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+
+interface SurveyData {
+  first_message?: string;
+  themes?: string[];
+}
+
+interface SessionData {
+  employee_id: string;
+  survey_id: string;
+  surveys: SurveyData;
+}
+
+interface PreviousResponse {
+  content: string;
+  ai_response: string;
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -28,9 +44,9 @@ serve(async (req) => {
     
     let openaiWs: WebSocket | null = null;
     let conversationId: string | null = null;
-    let supabase: any = null;
+    let supabase: SupabaseClient | null = null;
     let userId: string | null = null;
-    let sessionData: any = null;
+    let sessionData: SessionData | null = null;
     let currentUserTranscript = "";
     let currentAiTranscript = "";
 
@@ -325,7 +341,7 @@ serve(async (req) => {
 /**
  * Build system prompt for Atlas personality
  */
-function buildSystemPrompt(previousResponses: any[], sessionData: any): string {
+function buildSystemPrompt(previousResponses: PreviousResponse[], sessionData: SessionData): string {
   const isFirstMessage = !previousResponses || previousResponses.length === 0;
   
   let prompt = `You are Atlas, a compassionate AI conversation guide conducting confidential employee feedback sessions via voice.
@@ -358,7 +374,7 @@ Remember: This is a VOICE conversation. Be brief, warm, and conversational. Thin
   // Add conversation context if available
   if (previousResponses && previousResponses.length > 0) {
     prompt += `\n\nRecent conversation context:\n`;
-    previousResponses.forEach((r: any) => {
+    previousResponses.forEach((r) => {
       prompt += `\nEmployee: ${r.content}\nAtlas: ${r.ai_response}\n`;
     });
     prompt += `\nContinue this conversation naturally. Reference what they've shared to show you're listening.`;
@@ -371,7 +387,7 @@ Remember: This is a VOICE conversation. Be brief, warm, and conversational. Thin
  * Save conversation exchange to database with sentiment analysis
  */
 async function saveConversationExchange(
-  supabase: any,
+  supabase: SupabaseClient,
   conversationId: string,
   surveyId: string,
   userContent: string,
@@ -420,7 +436,7 @@ async function analyzeSentiment(apiKey: string, text: string): Promise<{ sentime
       }),
     });
 
-    const data = await response.json();
+    const data = await response.json() as { choices: Array<{ message: { content: string } }> };
     const sentiment = data.choices[0].message.content.toLowerCase().trim();
     const score = sentiment === "positive" ? 75 : sentiment === "negative" ? 25 : 50;
     
