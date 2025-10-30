@@ -3,21 +3,42 @@ import { ChatInterface } from '@/components/employee/ChatInterface';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getTrustAnalytics, clearTrustAnalytics } from '@/lib/trustAnalytics';
+import { useConversation } from '@/hooks/useConversation';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2 } from 'lucide-react';
 
 const TestTrustFlow = () => {
   const [showChat, setShowChat] = useState(false);
   const [analytics, setAnalytics] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const { conversationId, startConversation, endConversation } = useConversation();
 
-  const handleStartTest = () => {
-    setShowChat(true);
+  const handleStartTest = async () => {
+    setIsLoading(true);
+    try {
+      // Create a test conversation session with a test survey ID
+      // You'll need to have at least one survey in your database
+      const testSurveyId = 'test-survey-id'; // Replace with actual survey ID
+      const sessionId = await startConversation(testSurveyId, 50);
+      
+      if (sessionId) {
+        setShowChat(true);
+      }
+    } catch (error) {
+      console.error('Failed to start test:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleComplete = () => {
+  const handleComplete = async () => {
+    await endConversation(50);
     setShowChat(false);
     setAnalytics(getTrustAnalytics());
   };
 
-  const handleSaveAndExit = () => {
+  const handleSaveAndExit = async () => {
+    await endConversation();
     setShowChat(false);
   };
 
@@ -34,12 +55,25 @@ const TestTrustFlow = () => {
             <CardTitle>Sprint 1: Trust Revolution - Test Page</CardTitle>
           </CardHeader>
           <CardContent>
+            <Alert className="mb-4">
+              <AlertDescription>
+                <strong>Note:</strong> This test page creates a real conversation session. 
+                Make sure you have at least one survey created before testing.
+              </AlertDescription>
+            </Alert>
             <p className="text-muted-foreground mb-4">
               This page allows you to test the new trust-building components implemented in Sprint 1.
             </p>
             <div className="space-x-4">
-              <Button onClick={handleStartTest} disabled={showChat}>
-                Start Trust Flow Test
+              <Button onClick={handleStartTest} disabled={showChat || isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Starting...
+                  </>
+                ) : (
+                  'Start Trust Flow Test'
+                )}
               </Button>
               <Button onClick={handleClearAnalytics} variant="outline">
                 Clear Analytics
@@ -48,14 +82,14 @@ const TestTrustFlow = () => {
           </CardContent>
         </Card>
 
-        {showChat && (
+        {showChat && conversationId && (
           <Card>
             <CardHeader>
               <CardTitle>Trust Flow Test</CardTitle>
             </CardHeader>
             <CardContent>
               <ChatInterface
-                conversationId="test-conversation-123"
+                conversationId={conversationId}
                 onComplete={handleComplete}
                 onSaveAndExit={handleSaveAndExit}
                 showTrustFlow={true}
