@@ -16,13 +16,6 @@ interface UseVoiceChatOptions {
   onError?: (error: Error) => void;
 }
 
-/**
- * OpenAI Realtime API voice chat hook
- * - Ultra-low latency (300-600ms)
- * - Native audio streaming (no STT/TTS intermediary)
- * - Best-in-class voice quality
- * - Natural interruption handling
- */
 export const useVoiceChat = ({
   conversationId,
   onTranscript,
@@ -33,6 +26,7 @@ export const useVoiceChat = ({
   const [userTranscript, setUserTranscript] = useState('');
   const [aiTranscript, setAiTranscript] = useState('');
   const [isSupported, setIsSupported] = useState(true);
+  const [surveyFirstMessage, setSurveyFirstMessage] = useState<string | null>(null);
   
   const wsRef = useRef<WebSocket | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -44,6 +38,37 @@ export const useVoiceChat = ({
   const currentAiTextRef = useRef('');
   
   const { toast } = useToast();
+
+  // Load survey first message on mount
+  useEffect(() => {
+    const loadSurveyData = async () => {
+      try {
+        const { data: session } = await supabase
+          .from('conversation_sessions')
+          .select('surveys(first_message)')
+          .eq('id', conversationId)
+          .single();
+
+        if (session?.surveys?.first_message) {
+          setSurveyFirstMessage(session.surveys.first_message);
+          // Initialize messages with greeting
+          const greeting: Message = {
+            role: 'assistant',
+            content: session.surveys.first_message,
+            timestamp: new Date(),
+          };
+          setMessages([greeting]);
+          setAiTranscript(session.surveys.first_message);
+        }
+      } catch (error) {
+        console.error('Error loading survey data:', error);
+      }
+    };
+
+    if (conversationId && conversationId !== 'preview-conversation') {
+      loadSurveyData();
+    }
+  }, [conversationId]);
 
   // Check browser support
   useEffect(() => {
@@ -265,9 +290,19 @@ export const useVoiceChat = ({
                 switch (data.type) {
                   case 'ready':
                     setVoiceState('listening');
+                    // Initialize with greeting if we have it
+                    if (surveyFirstMessage && messages.length === 0) {
+                      const greeting: Message = {
+                        role: 'assistant',
+                        content: surveyFirstMessage,
+                        timestamp: new Date(),
+                      };
+                      setMessages([greeting]);
+                      setAiTranscript(surveyFirstMessage);
+                    }
                     toast({
                       title: 'Voice activated',
-                      description: 'Start speaking naturally. I\'m listening...',
+                      description: surveyFirstMessage || 'Start speaking naturally. I'm listening...',
                     });
                     break;
 
@@ -368,7 +403,7 @@ export const useVoiceChat = ({
         variant: 'destructive',
       });
     }
-  }, [isSupported, conversationId, toast, onError, onTranscript, startAudioCapture, playAudioBuffer, userTranscript, voiceState]);
+  }, [isSupported, conversationId, toast, onError, onTranscript, startAudioCapture, playAudioBuffer, userTranscript, voiceState, surveyFirstMessage, messages]);
 
   // Stop voice chat
   const stopVoiceChat = useCallback(() => {
