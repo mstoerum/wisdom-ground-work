@@ -9,7 +9,7 @@ interface SurveyData {
 interface SessionData {
   employee_id: string;
   survey_id: string;
-  surveys: SurveyData;
+  surveys: SurveyData | SurveyData[];
 }
 
 interface PreviousResponse {
@@ -51,7 +51,7 @@ serve(async (req) => {
     let currentAiTranscript = "";
 
     socket.onopen = () => {
-      console.log("✅ Client WebSocket connected");
+      console.log("✅ Client WebSocket connected (redeploy)");
     };
 
     socket.onmessage = async (event) => {
@@ -225,9 +225,9 @@ serve(async (req) => {
                     // Response complete - save to database
                     if (currentUserTranscript && currentAiTranscript) {
                       await saveConversationExchange(
-                        supabase,
+                        supabase!,
                         conversationId!,
-                        sessionData.survey_id,
+                        sessionData!.survey_id,
                         currentUserTranscript,
                         currentAiTranscript,
                         OPENAI_API_KEY
