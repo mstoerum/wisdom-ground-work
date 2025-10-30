@@ -2,12 +2,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ThemeInsight } from "@/hooks/useAnalytics";
 import { MessageSquare, TrendingUp, AlertTriangle, Layers } from "lucide-react";
+import { RoundedBarChart } from "./RoundedBarChart";
 
 interface ThemeInsightsProps {
   themes: ThemeInsight[];
+  showChart?: boolean;
 }
 
-export const ThemeInsights = ({ themes }: ThemeInsightsProps) => {
+export const ThemeInsights = ({ themes, showChart = false }: ThemeInsightsProps) => {
   const sortedThemes = [...themes].sort((a, b) => b.responseCount - a.responseCount);
 
   if (sortedThemes.length === 0) {
@@ -22,10 +24,32 @@ export const ThemeInsights = ({ themes }: ThemeInsightsProps) => {
     );
   }
 
+  if (showChart) {
+    return (
+      <Card className="hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow duration-300">
+        <CardHeader>
+          <CardTitle>Theme Mentions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RoundedBarChart 
+            data={sortedThemes.map(theme => ({
+              name: theme.name,
+              value: theme.responseCount,
+              count: theme.responseCount,
+              completed: theme.responseCount,
+              inProgress: theme.urgencyCount
+            }))}
+            showHatching={true}
+          />
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
       {sortedThemes.map((theme) => (
-        <Card key={theme.id}>
+        <Card key={theme.id} className="hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow duration-300">
           <CardHeader>
             <CardTitle className="text-lg">{theme.name}</CardTitle>
           </CardHeader>

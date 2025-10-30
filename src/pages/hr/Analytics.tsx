@@ -8,6 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, PlusCircle, BarChart2, Clock, TrendingDown } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
+import { DonutProgressRing } from "@/components/hr/analytics/DonutProgressRing";
+import { RoundedBarChart } from "@/components/hr/analytics/RoundedBarChart";
+import { ParticipationChart } from "@/components/hr/analytics/ParticipationChart";
+import { SentimentChart } from "@/components/hr/analytics/SentimentChart";
 import { useAnalytics, type AnalyticsFilters } from "@/hooks/useAnalytics";
 import { exportToCSV } from "@/lib/exportAnalytics";
 import { exportAnalyticsToPDF } from "@/lib/exportAnalyticsPDF";
@@ -276,94 +280,75 @@ const Analytics = () => {
                 <TabsTrigger value="urgency">Urgent Flags</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="overview" className="space-y-6">
-                <div className="grid gap-6 md:grid-cols-2">
-                  {/* Sentiment Distribution */}
-                  <Card>
+              <TabsContent value="overview" className="space-y-8">
+                {/* Asymmetric 60-40 Layout */}
+                <div className="grid gap-8 lg:grid-cols-5">
+                  {/* Main chart area - 60% width (3 cols) */}
+                  <Card className="lg:col-span-3 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow duration-300">
                     <CardHeader>
                       <CardTitle>Sentiment Distribution</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <ChartContainer config={{
-                        positive: { label: "Positive", color: "hsl(var(--chart-1))" },
-                        neutral: { label: "Neutral", color: "hsl(var(--chart-2))" },
-                        negative: { label: "Negative", color: "hsl(var(--chart-3))" },
-                      }} className="h-[300px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <PieChart>
-                            <Pie
-                              data={[
-                                { name: 'Positive', value: sentiment?.positive || 0, fill: 'hsl(var(--chart-1))' },
-                                { name: 'Neutral', value: sentiment?.neutral || 0, fill: 'hsl(var(--chart-2))' },
-                                { name: 'Negative', value: sentiment?.negative || 0, fill: 'hsl(var(--chart-3))' }
-                              ]}
-                              cx="50%"
-                              cy="50%"
-                              labelLine={false}
-                              label={(entry) => `${entry.name}: ${entry.value}`}
-                              outerRadius={100}
-                              fill="#8884d8"
-                              dataKey="value"
-                            >
-                              {[
-                                { name: 'Positive', value: sentiment?.positive || 0, fill: 'hsl(var(--chart-1))' },
-                                { name: 'Neutral', value: sentiment?.neutral || 0, fill: 'hsl(var(--chart-2))' },
-                                { name: 'Negative', value: sentiment?.negative || 0, fill: 'hsl(var(--chart-3))' }
-                              ].map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.fill} />
-                              ))}
-                            </Pie>
-                            <ChartTooltip content={<ChartTooltipContent />} />
-                          </PieChart>
-                        </ResponsiveContainer>
-                      </ChartContainer>
+                      <SentimentChart 
+                        positive={sentiment?.positive || 0}
+                        neutral={sentiment?.neutral || 0}
+                        negative={sentiment?.negative || 0}
+                      />
                     </CardContent>
                   </Card>
 
-                  {/* Participation by Department */}
-                  <Card>
+                  {/* Side metrics - 40% width (2 cols) */}
+                  <Card className="lg:col-span-2 hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow duration-300">
                     <CardHeader>
-                      <CardTitle>Participation by Department</CardTitle>
+                      <CardTitle>Survey Completion</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <ChartContainer config={{
-                        participation: { label: "Participation %", color: "hsl(var(--chart-1))" },
-                        avgSentiment: { label: "Avg Sentiment", color: "hsl(var(--chart-2))" }
-                      }} className="h-[300px]">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={filteredDepartmentData || []}>
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis dataKey="department" angle={-45} textAnchor="end" height={100} fontSize={12} />
-                            <YAxis />
-                            <ChartTooltip content={<ChartTooltipContent />} />
-                            <Bar dataKey="participation" fill="hsl(var(--chart-1))" name="Participation %" />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </ChartContainer>
+                      <ParticipationChart 
+                        completed={participation?.completed || 0}
+                        pending={participation?.pending || 0}
+                      />
                     </CardContent>
                   </Card>
                 </div>
 
+                {/* Department Participation - Full Width Bar Chart */}
+                <Card className="hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow duration-300">
+                  <CardHeader>
+                    <CardTitle>Participation by Department</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <RoundedBarChart 
+                      data={(filteredDepartmentData || []).map(d => ({
+                        name: d.department,
+                        value: d.participation,
+                        count: d.responseCount
+                      }))}
+                      maxValue={100}
+                      showHatching={false}
+                    />
+                  </CardContent>
+                </Card>
+
                 {/* Recent Activity Timeline */}
-                <Card>
+                <Card className="hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow duration-300">
                   <CardHeader>
                     <CardTitle>Response Activity Over Time</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ChartContainer config={{
-                      completed: { label: "Responses", color: "hsl(var(--chart-1))" },
-                      positive: { label: "Positive", color: "hsl(var(--chart-2))" },
-                      negative: { label: "Negative", color: "hsl(var(--chart-3))" }
+                      completed: { label: "Responses", color: "hsl(var(--lime-green))" },
+                      positive: { label: "Positive", color: "hsl(var(--butter-yellow))" },
+                      negative: { label: "Negative", color: "hsl(var(--coral-pink))" }
                     }} className="h-[300px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={timeSeriesData || []}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="date" />
-                          <YAxis />
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.3} />
+                          <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
+                          <YAxis stroke="hsl(var(--muted-foreground))" />
                           <ChartTooltip content={<ChartTooltipContent />} />
-                          <Area type="monotone" dataKey="completed" stackId="1" stroke="hsl(var(--chart-1))" fill="hsl(var(--chart-1))" />
-                          <Area type="monotone" dataKey="positive" stackId="2" stroke="hsl(var(--chart-2))" fill="hsl(var(--chart-2))" />
-                          <Area type="monotone" dataKey="negative" stackId="2" stroke="hsl(var(--chart-3))" fill="hsl(var(--chart-3))" />
+                          <Area type="monotone" dataKey="completed" stackId="1" stroke="hsl(var(--lime-green))" fill="hsl(var(--lime-green))" fillOpacity={0.6} />
+                          <Area type="monotone" dataKey="positive" stackId="2" stroke="hsl(var(--butter-yellow))" fill="hsl(var(--butter-yellow))" fillOpacity={0.6} />
+                          <Area type="monotone" dataKey="negative" stackId="2" stroke="hsl(var(--coral-pink))" fill="hsl(var(--coral-pink))" fillOpacity={0.6} />
                         </AreaChart>
                       </ResponsiveContainer>
                     </ChartContainer>
