@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { VoiceOrb } from './VoiceOrb';
 import { useVoiceChat } from '@/hooks/useVoiceChat';
+import { useRealtimeVoice } from '@/hooks/useRealtimeVoice';
+import { usePreviewMode } from '@/contexts/PreviewModeContext';
 import { Mic, MicOff, MessageSquare } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
@@ -24,19 +26,20 @@ export const VoiceInterface = ({
   onSwitchToText,
   onComplete,
 }: VoiceInterfaceProps) => {
+  const { isPreviewMode } = usePreviewMode();
   const [showTranscript, setShowTranscript] = useState(true);
   const [audioLevel, setAudioLevel] = useState(0);
   const [connectionLatency, setConnectionLatency] = useState<number | null>(null);
 
-  const {
-    voiceState,
-    messages,
-    userTranscript,
-    aiTranscript,
-    isSupported,
-    startVoiceChat,
-    stopVoiceChat,
-  } = useVoiceChat({
+  // Use WebRTC-based voice for preview mode, fallback to WebSocket for production
+  const realtimeVoice = useRealtimeVoice({
+    isPreviewMode,
+    onError: (error) => {
+      console.error('Realtime voice error:', error);
+    },
+  });
+
+  const legacyVoice = useVoiceChat({
     conversationId,
     onTranscript: (text, role) => {
       console.log(`${role}: ${text}`);
@@ -50,6 +53,17 @@ export const VoiceInterface = ({
       console.error('Voice error:', error);
     },
   });
+
+  // Select voice mode based on preview status
+  const {
+    voiceState,
+    messages,
+    userTranscript,
+    aiTranscript,
+    isSupported,
+    startVoiceChat,
+    stopVoiceChat,
+  } = isPreviewMode ? realtimeVoice : legacyVoice;
 
   const isActive = voiceState !== 'idle' && voiceState !== 'error';
 
