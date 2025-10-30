@@ -196,35 +196,35 @@ export const TrendAnalysis = ({ surveyId }: TrendAnalysisProps) => {
       case 'participation':
         return {
           label: 'Participation Rate',
-          color: 'hsl(var(--chart-1))',
+          color: 'hsl(var(--lime-green))',
           icon: <Users className="h-4 w-4" />,
           suffix: '%'
         };
       case 'sentiment':
         return {
           label: 'Average Sentiment',
-          color: 'hsl(var(--chart-2))',
+          color: 'hsl(var(--butter-yellow))',
           icon: <MessageSquare className="h-4 w-4" />,
           suffix: ''
         };
       case 'responses':
         return {
           label: 'Total Responses',
-          color: 'hsl(var(--chart-3))',
+          color: 'hsl(var(--coral-pink))',
           icon: <Target className="h-4 w-4" />,
           suffix: ''
         };
       case 'urgency':
         return {
           label: 'Urgent Flags',
-          color: 'hsl(var(--chart-4))',
+          color: 'hsl(var(--terracotta-primary))',
           icon: <TrendingUp className="h-4 w-4" />,
           suffix: ''
         };
       default:
         return {
           label: 'Metric',
-          color: 'hsl(var(--chart-1))',
+          color: 'hsl(var(--lime-green))',
           icon: <TrendingUp className="h-4 w-4" />,
           suffix: ''
         };
@@ -292,7 +292,7 @@ export const TrendAnalysis = ({ surveyId }: TrendAnalysisProps) => {
           const currentValue = trendData?.[trendData.length - 1]?.[metric as keyof TrendData] as number || 0;
           
           return (
-            <Card key={metric}>
+            <Card key={metric} className="hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow duration-300">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -319,7 +319,7 @@ export const TrendAnalysis = ({ surveyId }: TrendAnalysisProps) => {
       </div>
 
       {/* Main Trend Chart */}
-      <Card>
+      <Card className="hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow duration-300">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             {currentMetric.icon}
@@ -365,14 +365,14 @@ export const TrendAnalysis = ({ surveyId }: TrendAnalysisProps) => {
       {/* Additional Charts */}
       <div className="grid md:grid-cols-2 gap-6">
         {/* Participation vs Sentiment Correlation */}
-        <Card>
+        <Card className="hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow duration-300">
           <CardHeader>
             <CardTitle>Participation vs Sentiment</CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer config={{
-              participation: { label: "Participation Rate", color: "hsl(var(--chart-1))" },
-              sentiment: { label: "Average Sentiment", color: "hsl(var(--chart-2))" }
+              participation: { label: "Participation Rate", color: "hsl(var(--lime-green))" },
+              sentiment: { label: "Average Sentiment", color: "hsl(var(--butter-yellow))" }
             }} className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={trendData}>
@@ -385,14 +385,14 @@ export const TrendAnalysis = ({ surveyId }: TrendAnalysisProps) => {
                     yAxisId="left"
                     type="monotone" 
                     dataKey="participation" 
-                    stroke="hsl(var(--chart-1))"
+                    stroke="hsl(var(--lime-green))"
                     strokeWidth={2}
                   />
                   <Line 
                     yAxisId="right"
                     type="monotone" 
                     dataKey="sentiment" 
-                    stroke="hsl(var(--chart-2))"
+                    stroke="hsl(var(--butter-yellow))"
                     strokeWidth={2}
                   />
                 </LineChart>
@@ -402,13 +402,13 @@ export const TrendAnalysis = ({ surveyId }: TrendAnalysisProps) => {
         </Card>
 
         {/* Response Volume */}
-        <Card>
+        <Card className="hover:shadow-[0_4px_20px_rgba(0,0,0,0.08)] transition-shadow duration-300">
           <CardHeader>
             <CardTitle>Response Volume</CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer config={{
-              responses: { label: "Responses", color: "hsl(var(--chart-3))" }
+              responses: { label: "Responses", color: "hsl(var(--coral-pink))" }
             }} className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={trendData}>
@@ -416,7 +416,7 @@ export const TrendAnalysis = ({ surveyId }: TrendAnalysisProps) => {
                   <XAxis dataKey="period" />
                   <YAxis />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="responses" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="responses" fill="hsl(var(--coral-pink))" radius={[8, 8, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </ChartContainer>
