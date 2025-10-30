@@ -86,7 +86,7 @@ export const encodeAudioForAPI = (float32Array: Float32Array): string => {
   
   for (let i = 0; i < uint8Array.length; i += chunkSize) {
     const chunk = uint8Array.subarray(i, Math.min(i + chunkSize, uint8Array.length));
-    binary += String.fromCharCode.apply(null, Array.from(chunk));
+    binary += String.fromCharCode(...Array.from(chunk));
   }
   
   return btoa(binary);

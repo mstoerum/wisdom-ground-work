@@ -302,7 +302,7 @@ export const useVoiceChat = ({
                     }
                     toast({
                       title: 'Voice activated',
-                      description: surveyFirstMessage || 'Start speaking naturally. I'm listening...',
+                      description: surveyFirstMessage || 'Start speaking naturally. I\'m listening...',
                     });
                     break;
 
