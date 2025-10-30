@@ -114,9 +114,12 @@ serve(async (req) => {
               const systemPrompt = buildSystemPrompt(previousResponses || [], sessionData);
               
               // Send setup message to Gemini
+              // Try experimental model first, fallback to stable if needed
+              const modelName = Deno.env.get("GEMINI_VOICE_MODEL") || "models/gemini-2.0-flash-exp";
+              
               geminiWs?.send(JSON.stringify({
                 setup: {
-                  model: "models/gemini-2.0-flash-exp",
+                  model: modelName,
                   generation_config: {
                     response_modalities: ["AUDIO"],
                     speech_config: {
