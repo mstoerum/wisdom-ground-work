@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { VoiceOrb } from './VoiceOrb';
@@ -6,10 +6,13 @@ import { useVoiceChat } from '@/hooks/useVoiceChat';
 import { useRealtimeVoice } from '@/hooks/useRealtimeVoice';
 import { usePreviewMode } from '@/contexts/PreviewModeContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Mic, MicOff, MessageSquare } from 'lucide-react';
+import { Mic, MicOff, MessageSquare, Shield, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Progress } from '@/components/ui/progress';
+import { AudioLevelMeter } from './AudioLevelMeter';
+import { PrivacyIndicator, ConnectionQualityIndicator } from './PrivacyIndicator';
 
 interface VoiceInterfaceProps {
   conversationId: string;
@@ -32,6 +35,12 @@ export const VoiceInterface = ({
   const [audioLevel, setAudioLevel] = useState(0);
   const [connectionLatency, setConnectionLatency] = useState<number | null>(null);
   const [surveyDataForVoice, setSurveyDataForVoice] = useState<{ first_message?: string; themes?: Array<{ name: string; description: string }> } | undefined>();
+  const [processingStartTime, setProcessingStartTime] = useState<number | null>(null);
+  const [estimatedProcessingTime, setEstimatedProcessingTime] = useState<number | null>(null);
+  const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'fair' | 'poor'>('good');
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   // Fetch theme details if in preview mode and survey data is available
   useEffect(() => {
@@ -123,13 +132,110 @@ export const VoiceInterface = ({
 
   const isActive = voiceState !== 'idle' && voiceState !== 'error';
 
-  const handleToggleVoice = () => {
+  // Track conversation progress
+  const ESTIMATED_TOTAL_QUESTIONS = 8;
+  const userMessageCount = messages.filter(m => m.role === 'user').length;
+  const conversationProgress = Math.min((userMessageCount / ESTIMATED_TOTAL_QUESTIONS) * 100, 100);
+
+  const handleToggleVoice = useCallback(() => {
     if (isActive) {
       stopVoiceChat();
     } else {
       startVoiceChat();
     }
-  };
+  }, [isActive, startVoiceChat, stopVoiceChat]);
+
+  // Monitor audio levels for visualization
+  useEffect(() => {
+    if (voiceState === 'listening' && !audioContextRef.current) {
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          const audioContext = new AudioContext();
+          const analyser = audioContext.createAnalyser();
+          const source = audioContext.createMediaStreamSource(stream);
+          source.connect(analyser);
+          analyser.fftSize = 256;
+          
+          audioContextRef.current = audioContext;
+          analyserRef.current = analyser;
+          
+          const updateAudioLevel = () => {
+            if (!analyserRef.current) return;
+            
+            const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+            analyserRef.current.getByteFrequencyData(dataArray);
+            const average = dataArray.reduce((a, b) => a + b) / dataArray.length;
+            setAudioLevel(Math.min(average, 100));
+            
+            if (voiceState === 'listening') {
+              animationFrameRef.current = requestAnimationFrame(updateAudioLevel);
+            }
+          };
+          
+          updateAudioLevel();
+        })
+        .catch(err => console.error('Audio monitoring error:', err));
+    }
+    
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+    };
+  }, [voiceState]);
+
+  // Track processing time
+  useEffect(() => {
+    if (voiceState === 'processing') {
+      setProcessingStartTime(Date.now());
+      // Estimate processing time based on transcript length
+      const transcriptLength = userTranscript.length;
+      const estimatedMs = Math.min(Math.max(transcriptLength * 50, 1000), 5000);
+      setEstimatedProcessingTime(estimatedMs);
+    } else {
+      setProcessingStartTime(null);
+      setEstimatedProcessingTime(null);
+    }
+  }, [voiceState, userTranscript]);
+
+  // Calculate elapsed processing time
+  const [elapsedProcessingTime, setElapsedProcessingTime] = useState(0);
+  useEffect(() => {
+    if (!processingStartTime) {
+      setElapsedProcessingTime(0);
+      return;
+    }
+    
+    const interval = setInterval(() => {
+      setElapsedProcessingTime(Date.now() - processingStartTime);
+    }, 100);
+    
+    return () => clearInterval(interval);
+  }, [processingStartTime]);
+
+  // Keyboard accessibility
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Space bar to toggle voice (only when focused)
+      if (e.code === 'Space' && !isActive && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        handleToggleVoice();
+      }
+      
+      // Escape to stop voice
+      if (e.code === 'Escape' && isActive) {
+        e.preventDefault();
+        stopVoiceChat();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [isActive, voiceState, handleToggleVoice, stopVoiceChat]);
 
   const getStateMessage = () => {
     switch (voiceState) {
@@ -140,9 +246,12 @@ export const VoiceInterface = ({
       case 'listening':
         return 'Listening...';
       case 'speaking':
-        return 'Speaking...';
+        return 'Atlas is speaking...';
       case 'processing':
-        return 'Processing...';
+        const remaining = estimatedProcessingTime 
+          ? Math.max(0, Math.ceil((estimatedProcessingTime - elapsedProcessingTime) / 1000))
+          : null;
+        return remaining !== null ? `Atlas is thinking... (~${remaining}s)` : 'Atlas is thinking...';
       case 'error':
         return 'Error occurred';
       default:
@@ -170,6 +279,11 @@ export const VoiceInterface = ({
 
   return (
     <div className="min-h-[600px] flex flex-col">
+      {/* Privacy Indicator */}
+      <div className="px-4 mb-4">
+        <PrivacyIndicator />
+      </div>
+
       {/* Header with controls */}
       <div className="flex items-center justify-between mb-6 px-4">
         <div className="flex items-center gap-4">
@@ -198,6 +312,26 @@ export const VoiceInterface = ({
         )}
       </div>
 
+      {/* Conversation Progress Indicator */}
+      {isActive && userMessageCount > 0 && (
+        <div className="px-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-muted-foreground">
+              Question {userMessageCount} of ~{ESTIMATED_TOTAL_QUESTIONS}
+            </span>
+            <span className="text-xs font-medium">{Math.round(conversationProgress)}%</span>
+          </div>
+          <Progress value={conversationProgress} className="h-1.5" />
+        </div>
+      )}
+
+      {/* Connection Quality Indicator */}
+      {isActive && (
+        <div className="px-4 mb-2">
+          <ConnectionQualityIndicator quality={connectionQuality} />
+        </div>
+      )}
+
       {/* Main voice interface */}
       <div className="flex-1 flex flex-col items-center justify-center gap-8">
         {/* Voice Orb */}
@@ -211,6 +345,24 @@ export const VoiceInterface = ({
             </p>
           </div>
         </div>
+
+        {/* Audio Level Meter */}
+        {voiceState === 'listening' && (
+          <div className="flex flex-col items-center gap-2">
+            <AudioLevelMeter audioLevel={audioLevel} isActive={voiceState === 'listening'} />
+            <p className="text-xs text-muted-foreground">Microphone level</p>
+          </div>
+        )}
+
+        {/* Processing Progress */}
+        {voiceState === 'processing' && estimatedProcessingTime && (
+          <div className="w-full max-w-xs">
+            <Progress 
+              value={Math.min((elapsedProcessingTime / estimatedProcessingTime) * 100, 100)} 
+              className="h-2"
+            />
+          </div>
+        )}
 
         {/* Transcript display */}
         {showTranscript && (
@@ -265,7 +417,9 @@ export const VoiceInterface = ({
           onClick={handleToggleVoice}
           size="lg"
           variant={isActive ? 'destructive' : 'coral'}
-          className="w-20 h-20 rounded-full shadow-lg hover:shadow-xl transition-all"
+          className="w-20 h-20 rounded-full shadow-lg hover:shadow-xl transition-all focus:ring-2 focus:ring-[hsl(var(--coral-accent))] focus:ring-offset-2"
+          aria-label={isActive ? 'Stop voice chat' : 'Start voice chat'}
+          aria-pressed={isActive}
         >
           {isActive ? (
             <MicOff className="w-8 h-8" />
@@ -273,6 +427,13 @@ export const VoiceInterface = ({
             <Mic className="w-8 h-8" />
           )}
         </Button>
+        
+        {/* Keyboard shortcut hint */}
+        {voiceState === 'idle' && (
+          <p className="text-xs text-muted-foreground">
+            Press <kbd className="px-1.5 py-0.5 bg-muted rounded border border-border text-xs">Space</kbd> to start, <kbd className="px-1.5 py-0.5 bg-muted rounded border border-border text-xs">Esc</kbd> to stop
+          </p>
+        )}
 
         {/* Instructions */}
         {voiceState === 'idle' && (
@@ -297,8 +458,13 @@ export const VoiceInterface = ({
         {voiceState === 'processing' && (
           <div className="text-center space-y-2 max-w-md">
             <p className="text-sm text-muted-foreground">
-              ⏳ Processing your response...
+              💭 Atlas is analyzing your response...
             </p>
+            {estimatedProcessingTime && (
+              <p className="text-xs text-muted-foreground opacity-70">
+                Estimated time: ~{Math.ceil(estimatedProcessingTime / 1000)} seconds
+              </p>
+            )}
           </div>
         )}
 

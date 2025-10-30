@@ -50,6 +50,16 @@ export const useRealtimeVoice = (options: UseRealtimeVoiceOptions = {}) => {
       case 'session.created':
         console.log('✅ Session created');
         setVoiceState('listening');
+        // Initialize with greeting message if available
+        if (surveyData?.first_message) {
+          const greeting: Message = {
+            role: 'assistant',
+            content: surveyData.first_message,
+            timestamp: Date.now(),
+          };
+          setMessages([greeting]);
+          setAiTranscript(surveyData.first_message);
+        }
         break;
 
       case 'input_audio_buffer.speech_started':

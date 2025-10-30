@@ -226,6 +226,16 @@ export class RealtimeChat {
       });
       await this.recorder.start();
       
+      // Trigger initial greeting from AI
+      // Wait a moment for connection to stabilize, then request initial response
+      setTimeout(() => {
+        if (this.dc?.readyState === 'open') {
+          console.log('🎤 Triggering initial AI greeting...');
+          // Send response.create to trigger AI to speak first
+          this.dc.send(JSON.stringify({ type: 'response.create' }));
+        }
+      }, 1000);
+      
       console.log('✅ RealtimeChat initialization complete');
 
     } catch (error) {
