@@ -16,68 +16,12 @@ interface UseVoiceChatOptions {
   onError?: (error: Error) => void;
 }
 
-// Web Speech API types
-interface SpeechRecognitionEvent extends Event {
-  resultIndex: number;
-  results: SpeechRecognitionResultList;
-}
-
-interface SpeechRecognitionResultList {
-  length: number;
-  item(index: number): SpeechRecognitionResult;
-  [index: number]: SpeechRecognitionResult;
-}
-
-interface SpeechRecognitionResult {
-  isFinal: boolean;
-  length: number;
-  item(index: number): SpeechRecognitionAlternative;
-  [index: number]: SpeechRecognitionAlternative;
-}
-
-interface SpeechRecognitionAlternative {
-  transcript: string;
-  confidence: number;
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-  message: string;
-}
-
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  maxAlternatives: number;
-  onstart: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onend: ((this: SpeechRecognition, ev: Event) => any) | null;
-  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => any) | null;
-  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => any) | null;
-  start(): void;
-  stop(): void;
-  abort(): void;
-}
-
-declare global {
-  interface Window {
-    SpeechRecognition: {
-      prototype: SpeechRecognition;
-      new(): SpeechRecognition;
-    };
-    webkitSpeechRecognition: {
-      prototype: SpeechRecognition;
-      new(): SpeechRecognition;
-    };
-  }
-}
-
 /**
- * Optimized voice chat hook using browser APIs with improved performance
- * - Faster speech recognition with interim results
- * - Streaming API responses
- * - Optimized TTS with better voice selection
- * - Smart auto-restart and error handling
+ * OpenAI Realtime API voice chat hook
+ * - Ultra-low latency (300-600ms)
+ * - Native audio streaming (no STT/TTS intermediary)
+ * - Best-in-class voice quality
+ * - Natural interruption handling
  */
 export const useVoiceChat = ({
   conversationId,
@@ -90,19 +34,23 @@ export const useVoiceChat = ({
   const [aiTranscript, setAiTranscript] = useState('');
   const [isSupported, setIsSupported] = useState(true);
   
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const synthRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const isSpeakingRef = useRef(false);
-  const lastFinalTranscriptRef = useRef('');
-  const silenceTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const audioWorkletRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const processorRef = useRef<ScriptProcessorNode | null>(null);
+  const playbackQueueRef = useRef<AudioBuffer[]>([]);
+  const isPlayingRef = useRef(false);
+  const currentAiTextRef = useRef('');
   
   const { toast } = useToast();
 
   // Check browser support
   useEffect(() => {
     const supported = 
-      'speechSynthesis' in window &&
-      ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+      'WebSocket' in window &&
+      'AudioContext' in window &&
+      'mediaDevices' in navigator;
     
     setIsSupported(supported);
     
@@ -115,268 +63,162 @@ export const useVoiceChat = ({
     }
   }, [toast]);
 
-  // Optimized text-to-speech with better voice
-  const speakText = useCallback((text: string) => {
-    return new Promise<void>((resolve, reject) => {
-      if (!('speechSynthesis' in window)) {
-        reject(new Error('Speech synthesis not supported'));
-        return;
-      }
+  // Convert Float32Array to Int16Array (PCM16)
+  const floatTo16BitPCM = (float32Array: Float32Array): Int16Array => {
+    const int16Array = new Int16Array(float32Array.length);
+    for (let i = 0; i < float32Array.length; i++) {
+      const s = Math.max(-1, Math.min(1, float32Array[i]));
+      int16Array[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    }
+    return int16Array;
+  };
 
-      // Cancel any ongoing speech
-      window.speechSynthesis.cancel();
-      
-      const utterance = new SpeechSynthesisUtterance(text);
-      synthRef.current = utterance;
-      
-      // Select best voice (prefer Google/Microsoft female voices)
-      const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find(v => 
-        v.lang.startsWith('en') && 
-        (v.name.includes('Google') || v.name.includes('Microsoft')) &&
-        (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('zira') || v.name.toLowerCase().includes('us'))
-      ) || voices.find(v => v.lang.startsWith('en-US')) || voices[0];
-      
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
-      }
-      
-      // Optimized settings for natural conversation
-      utterance.rate = 1.0;  // Normal speed
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
-      
-      utterance.onstart = () => {
-        setVoiceState('speaking');
-        isSpeakingRef.current = true;
-      };
-      
-      utterance.onend = () => {
-        setVoiceState('listening');
-        isSpeakingRef.current = false;
-        resolve();
-      };
-      
-      utterance.onerror = (event) => {
-        console.error('Speech synthesis error:', event);
-        isSpeakingRef.current = false;
-        reject(event);
-      };
-      
-      window.speechSynthesis.speak(utterance);
-    });
-  }, []);
-
-  // Send message with streaming for faster perceived response
-  const sendTextToAI = useCallback(async (text: string) => {
+  // Convert base64 to AudioBuffer for playback
+  const base64ToAudioBuffer = async (base64: string): Promise<AudioBuffer | null> => {
     try {
-      setVoiceState('processing');
+      if (!audioContextRef.current) return null;
       
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error('Not authenticated');
+      // Decode base64
+      const binaryString = atob(base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
       }
-
-      // Fetch previous messages for context (limit to recent for speed)
-      const { data: previousResponses } = await supabase
-        .from('responses')
-        .select('content, ai_response')
-        .eq('conversation_session_id', conversationId)
-        .order('created_at', { ascending: true })
-        .limit(5);  // Only last 5 for faster processing
-
-      const previousMessages = previousResponses?.flatMap(r => [
-        { role: 'user' as const, content: r.content },
-        { role: 'assistant' as const, content: r.ai_response || '' },
-      ]) || [];
-
-      // Call chat API
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            conversationId,
-            messages: [...previousMessages, { role: 'user', content: text }],
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to get AI response');
+      
+      // Convert Int16 PCM to Float32 for Web Audio API
+      const int16Array = new Int16Array(bytes.buffer);
+      const float32Array = new Float32Array(int16Array.length);
+      for (let i = 0; i < int16Array.length; i++) {
+        float32Array[i] = int16Array[i] / (int16Array[i] < 0 ? 0x8000 : 0x7fff);
       }
-
-      const data = await response.json();
-      return data.message;
+      
+      // Create AudioBuffer (24kHz mono - OpenAI output format)
+      const audioBuffer = audioContextRef.current.createBuffer(1, float32Array.length, 24000);
+      audioBuffer.getChannelData(0).set(float32Array);
+      
+      return audioBuffer;
     } catch (error) {
-      console.error('Error getting AI response:', error);
+      console.error('Error converting audio:', error);
+      return null;
+    }
+  };
+
+  // Play audio buffer
+  const playAudioBuffer = useCallback(async (audioBuffer: AudioBuffer) => {
+    if (!audioContextRef.current) return;
+    
+    const source = audioContextRef.current.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioContextRef.current.destination);
+    
+    source.onended = () => {
+      // Play next in queue or update state
+      if (playbackQueueRef.current.length > 0) {
+        const nextBuffer = playbackQueueRef.current.shift();
+        if (nextBuffer) {
+          playAudioBuffer(nextBuffer);
+        }
+      } else {
+        isPlayingRef.current = false;
+        if (voiceState === 'speaking') {
+          setVoiceState('listening');
+        }
+      }
+    };
+    
+    source.start(0);
+    isPlayingRef.current = true;
+    setVoiceState('speaking');
+  }, [voiceState]);
+
+  // Start audio capture
+  const startAudioCapture = useCallback(async () => {
+    try {
+      // Create audio context
+      audioContextRef.current = new AudioContext({ sampleRate: 16000 });
+      
+      // Get microphone stream
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          sampleRate: 16000,
+          channelCount: 1,
+        }
+      });
+      
+      audioStreamRef.current = stream;
+      
+      // Create audio source
+      const source = audioContextRef.current.createMediaStreamSource(stream);
+      audioWorkletRef.current = source;
+      
+      // Create script processor to capture audio chunks
+      const processor = audioContextRef.current.createScriptProcessor(4096, 1, 1);
+      processorRef.current = processor;
+      
+      processor.onaudioprocess = (e) => {
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+        
+        const inputData = e.inputBuffer.getChannelData(0);
+        const pcm16 = floatTo16BitPCM(inputData);
+        
+        // Convert to base64 and send to server
+        const uint8Array = new Uint8Array(pcm16.buffer);
+        const base64 = btoa(String.fromCharCode(...uint8Array));
+        
+        wsRef.current.send(JSON.stringify({
+          type: 'audio_input',
+          audio: base64,
+        }));
+      };
+      
+      source.connect(processor);
+      processor.connect(audioContextRef.current.destination);
+      
+      console.log('✅ Audio capture started');
+      
+    } catch (error) {
+      console.error('Failed to start audio capture:', error);
       throw error;
     }
-  }, [conversationId]);
+  }, []);
 
-  // Initialize speech recognition with optimizations
-  const initSpeechRecognition = useCallback(() => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
+  // Stop audio capture
+  const stopAudioCapture = useCallback(() => {
+    if (processorRef.current) {
+      processorRef.current.disconnect();
+      processorRef.current = null;
+    }
     
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-    recognition.maxAlternatives = 1;
-
-    recognition.onstart = () => {
-      console.log('🎤 Speech recognition started');
-      setVoiceState('listening');
-      lastFinalTranscriptRef.current = '';
-    };
-
-    recognition.onresult = async (event) => {
-      let interimTranscript = '';
-      let finalTranscript = '';
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += transcript + ' ';
-        } else {
-          interimTranscript += transcript;
-        }
-      }
-
-      // Show interim results for better UX
-      if (interimTranscript) {
-        setUserTranscript(interimTranscript);
-      }
-
-      // Process final transcript
-      if (finalTranscript.trim()) {
-        const fullText = finalTranscript.trim();
-        
-        // Avoid duplicate processing
-        if (fullText === lastFinalTranscriptRef.current) {
-          return;
-        }
-        
-        lastFinalTranscriptRef.current = fullText;
-        setUserTranscript(fullText);
-        onTranscript?.(fullText, 'user');
-
-        // Clear any existing silence timer
-        if (silenceTimerRef.current) {
-          clearTimeout(silenceTimerRef.current);
-        }
-
-        // Wait for silence (user stopped speaking) before processing
-        silenceTimerRef.current = setTimeout(async () => {
-          // Stop listening while processing
-          recognition.stop();
-
-          try {
-            // Get AI response
-            const aiResponse = await sendTextToAI(fullText);
-            setAiTranscript(aiResponse);
-            onTranscript?.(aiResponse, 'assistant');
-
-            // Add to message history
-            setMessages(prev => [
-              ...prev,
-              { role: 'user', content: fullText, timestamp: new Date() },
-              { role: 'assistant', content: aiResponse, timestamp: new Date() },
-            ]);
-
-            // Speak the response
-            await speakText(aiResponse);
-
-            // Clear transcripts and resume listening
-            setUserTranscript('');
-            setAiTranscript('');
-            lastFinalTranscriptRef.current = '';
-            
-            if (recognitionRef.current) {
-              try {
-                recognition.start();
-              } catch (e) {
-                // Ignore if already started
-                console.log('Recognition already started');
-              }
-            }
-          } catch (error) {
-            console.error('Error processing voice input:', error);
-            setVoiceState('error');
-            onError?.(error as Error);
-            
-            // Resume listening after error
-            setTimeout(() => {
-              if (recognitionRef.current) {
-                try {
-                  recognition.start();
-                } catch (e) {
-                  console.log('Recognition restart failed');
-                }
-              }
-            }, 1000);
-          }
-        }, 1200);  // 1.2 second pause = user finished speaking
-      }
-    };
-
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      
-      // Ignore no-speech and aborted errors (normal)
-      if (event.error === 'no-speech' || event.error === 'aborted') {
-        return;
-      }
-      
-      if (event.error === 'not-allowed') {
-        setVoiceState('error');
-        onError?.(new Error('Microphone access denied'));
-        toast({
-          title: 'Microphone access denied',
-          description: 'Please allow microphone access to use voice mode.',
-          variant: 'destructive',
-        });
-        return;
-      }
-      
-      toast({
-        title: 'Voice error',
-        description: `Speech recognition error: ${event.error}`,
-        variant: 'destructive',
-      });
-    };
-
-    recognition.onend = () => {
-      console.log('🛑 Speech recognition ended');
-      
-      // Auto-restart if we're still supposed to be listening
-      if (voiceState === 'listening' && recognitionRef.current && !isSpeakingRef.current) {
-        setTimeout(() => {
-          if (recognitionRef.current) {
-            try {
-              recognition.start();
-              console.log('🔄 Auto-restarted recognition');
-            } catch (error) {
-              console.log('Failed to auto-restart:', error);
-            }
-          }
-        }, 100);
-      }
-    };
-
-    return recognition;
-  }, [sendTextToAI, speakText, onTranscript, onError, toast, voiceState]);
+    if (audioWorkletRef.current) {
+      audioWorkletRef.current.disconnect();
+      audioWorkletRef.current = null;
+    }
+    
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach(track => track.stop());
+      audioStreamRef.current = null;
+    }
+    
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
+    }
+    
+    playbackQueueRef.current = [];
+    isPlayingRef.current = false;
+    
+    console.log('🛑 Audio capture stopped');
+  }, []);
 
   // Start voice chat session
   const startVoiceChat = useCallback(async () => {
     if (!isSupported) {
       toast({
         title: 'Not supported',
-        description: 'Voice chat requires Chrome, Edge, or Safari',
+        description: 'Voice chat requires a modern browser with WebSocket support',
         variant: 'destructive',
       });
       return;
@@ -385,26 +227,135 @@ export const useVoiceChat = ({
     try {
       setVoiceState('connecting');
 
-      // Request microphone permission
-      await navigator.mediaDevices.getUserMedia({ audio: true });
-
-      // Load voices for TTS
-      if (window.speechSynthesis.getVoices().length === 0) {
-        await new Promise(resolve => {
-          window.speechSynthesis.onvoiceschanged = resolve;
-          setTimeout(resolve, 100);  // Fallback timeout
-        });
+      // Get auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
       }
 
-      // Initialize and start speech recognition
-      const recognition = initSpeechRecognition();
-      recognitionRef.current = recognition;
-      recognition.start();
+      // Start audio capture
+      await startAudioCapture();
 
-      toast({
-        title: 'Voice activated',
-        description: 'Start speaking naturally. I\'m listening...',
-      });
+      // Connect to WebSocket
+      const wsUrl = `${import.meta.env.VITE_SUPABASE_URL?.replace('https://', 'wss://').replace('http://', 'ws://')}/functions/v1/voice-chat`;
+      
+      console.log('🔌 Connecting to WebSocket:', wsUrl);
+      
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log('✅ WebSocket connected');
+        
+        // Send initialization message
+        ws.send(JSON.stringify({
+          type: 'init',
+          conversationId,
+          token: session.access_token,
+        }));
+      };
+
+      ws.onmessage = async (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          
+          console.log('📨 Received:', data.type);
+
+                switch (data.type) {
+                  case 'ready':
+                    setVoiceState('listening');
+                    toast({
+                      title: 'Voice activated',
+                      description: 'Start speaking naturally. I\'m listening...',
+                    });
+                    break;
+
+                  case 'speech_started':
+                    setVoiceState('listening');
+                    setUserTranscript('');
+                    currentAiTextRef.current = '';
+                    break;
+
+                  case 'speech_stopped':
+                    setVoiceState('processing');
+                    break;
+
+                  case 'user_transcript':
+                    setUserTranscript(data.text);
+                    onTranscript?.(data.text, 'user');
+                    break;
+
+                  case 'ai_transcript_delta':
+                    currentAiTextRef.current += data.text;
+                    setAiTranscript(currentAiTextRef.current);
+                    break;
+
+                  case 'audio_response': {
+                    // Queue audio for playback
+                    const audioBuffer = await base64ToAudioBuffer(data.audio);
+                    if (audioBuffer) {
+                      if (!isPlayingRef.current) {
+                        playAudioBuffer(audioBuffer);
+                      } else {
+                        playbackQueueRef.current.push(audioBuffer);
+                      }
+                    }
+                    break;
+                  }
+
+                  case 'response_complete': {
+                    // Add to message history
+                    if (userTranscript && currentAiTextRef.current) {
+                      const newMessages: Message[] = [
+                        { role: 'user', content: userTranscript, timestamp: new Date() },
+                        { role: 'assistant', content: currentAiTextRef.current, timestamp: new Date() },
+                      ];
+                      
+                      setMessages(prev => [...prev, ...newMessages]);
+                      onTranscript?.(currentAiTextRef.current, 'assistant');
+                    }
+                    
+                    // Reset transcripts
+                    setTimeout(() => {
+                      setUserTranscript('');
+                      setAiTranscript('');
+                    }, 2000);
+                    break;
+                  }
+
+                  case 'error':
+                    console.error('❌ Server error:', data.error);
+                    setVoiceState('error');
+                    onError?.(new Error(data.error));
+                    toast({
+                      title: 'Voice error',
+                      description: data.error,
+                      variant: 'destructive',
+                    });
+                    break;
+                }
+        } catch (error) {
+          console.error('Error processing WebSocket message:', error);
+        }
+      };
+
+      ws.onerror = (error) => {
+        console.error('❌ WebSocket error:', error);
+        setVoiceState('error');
+        onError?.(new Error('WebSocket connection failed'));
+        toast({
+          title: 'Connection error',
+          description: 'Failed to connect to voice service',
+          variant: 'destructive',
+        });
+      };
+
+      ws.onclose = () => {
+        console.log('🔌 WebSocket closed');
+        if (voiceState !== 'idle') {
+          setVoiceState('idle');
+        }
+      };
 
     } catch (error) {
       console.error('Failed to start voice chat:', error);
@@ -416,52 +367,39 @@ export const useVoiceChat = ({
         variant: 'destructive',
       });
     }
-  }, [isSupported, toast, onError, initSpeechRecognition]);
+  }, [isSupported, conversationId, toast, onError, onTranscript, startAudioCapture, playAudioBuffer, userTranscript, voiceState]);
 
   // Stop voice chat
   const stopVoiceChat = useCallback(() => {
-    // Clear silence timer
-    if (silenceTimerRef.current) {
-      clearTimeout(silenceTimerRef.current);
-      silenceTimerRef.current = null;
+    // Close WebSocket
+    if (wsRef.current) {
+      wsRef.current.close();
+      wsRef.current = null;
     }
 
-    // Stop speech recognition
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-    }
-
-    // Cancel any ongoing speech
-    if (window.speechSynthesis.speaking) {
-      window.speechSynthesis.cancel();
-    }
+    // Stop audio
+    stopAudioCapture();
 
     setVoiceState('idle');
     setUserTranscript('');
     setAiTranscript('');
-    lastFinalTranscriptRef.current = '';
+    currentAiTextRef.current = '';
     
     toast({
       title: 'Voice chat ended',
       description: 'Your conversation has been saved.',
     });
-  }, [toast]);
+  }, [toast, stopAudioCapture]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (silenceTimerRef.current) {
-        clearTimeout(silenceTimerRef.current);
+      if (wsRef.current) {
+        wsRef.current.close();
       }
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-      }
-      if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
-      }
+      stopAudioCapture();
     };
-  }, []);
+  }, [stopAudioCapture]);
 
   return {
     voiceState,
