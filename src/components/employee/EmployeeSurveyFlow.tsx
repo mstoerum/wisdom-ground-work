@@ -10,6 +10,7 @@ import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
 import { useConversation } from "@/hooks/useConversation";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { PlayCircle } from "lucide-react";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 
@@ -136,13 +137,12 @@ export const EmployeeSurveyFlow = ({
 
         {/* Preview Mode Alert */}
         {isPreviewMode && (
-          <Alert className="mb-6 border-[hsl(var(--coral-accent))] bg-[hsl(var(--coral-pink))] rounded-2xl">
-            <PlayCircle className="h-5 w-5 text-[hsl(var(--coral-accent))]" />
-            <AlertDescription className="text-foreground">
-              <strong>Preview Mode:</strong> You are experiencing the employee survey exactly as employees will see it.
-              No data will be saved during this preview.
-            </AlertDescription>
-          </Alert>
+          <div className="mb-4">
+            <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1 w-fit">
+              <PlayCircle className="h-3.5 w-3.5" />
+              Preview Mode
+            </Badge>
+          </div>
         )}
 
         {step === "chat" && !isPreviewMode && (

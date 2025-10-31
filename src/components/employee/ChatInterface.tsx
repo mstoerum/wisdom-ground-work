@@ -442,8 +442,8 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         <TrustIndicators sessionId={sessionId} />
       )}
 
-      {/* Voice Mode Promotion Banner */}
-      {!skipTrustFlow && voiceSupported && !isVoiceMode && trustFlowStep === "chat" && (
+      {/* Voice Mode Promotion Banner - Only show for real employees, not in preview/demo */}
+      {!skipTrustFlow && !isPreviewMode && voiceSupported && !isVoiceMode && trustFlowStep === "chat" && (
         <Alert className="mx-4 mt-4 border-[hsl(var(--lime-green))] bg-[hsl(var(--lime-green))]/10">
           <Mic className="h-4 w-4 text-[hsl(var(--lime-green))]" />
           <AlertDescription className="flex items-center justify-between">

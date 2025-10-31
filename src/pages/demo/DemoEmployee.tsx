@@ -57,44 +57,16 @@ export default function DemoEmployee() {
           </div>
         </div>
 
-        <div className="container mx-auto px-4 py-16 max-w-4xl">
+        <div className="container mx-auto px-4 py-16 max-w-2xl">
           <Card className="p-8 text-center">
-            <div className="mb-6">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 mb-6 shadow-xl">
-                <span className="text-5xl">✓</span>
-              </div>
-              <h2 className="text-3xl font-bold mb-3">Demo Complete!</h2>
-              <p className="text-lg text-muted-foreground max-w-md mx-auto mb-8">
-                You've experienced the complete employee survey journey. See how this data transforms into actionable insights for HR.
-              </p>
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 mb-6 shadow-xl">
+              <span className="text-5xl">✓</span>
             </div>
-
-            <div className="bg-muted/50 rounded-lg p-6 mb-8">
-              <h3 className="font-semibold mb-4 text-lg">What You Just Experienced:</h3>
-              <ul className="space-y-3 text-sm text-muted-foreground text-left max-w-md mx-auto">
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 font-bold">✓</span>
-                  <span><strong>Privacy-First Consent:</strong> Clear information about data handling and retention</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 font-bold">✓</span>
-                  <span><strong>Anonymization Ritual:</strong> Visual demonstration of identity protection</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 font-bold">✓</span>
-                  <span><strong>Mood Tracking:</strong> Before and after emotional state capture</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 font-bold">✓</span>
-                  <span><strong>Natural Conversation:</strong> AI-powered empathetic dialogue</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-green-600 font-bold">✓</span>
-                  <span><strong>Thoughtful Closing:</strong> Reflection and completion ritual</span>
-                </li>
-              </ul>
-            </div>
-
+            <h2 className="text-3xl font-bold mb-3">Demo Complete!</h2>
+            <p className="text-lg text-muted-foreground max-w-md mx-auto mb-8">
+              You've experienced the complete employee survey journey with voice-enabled AI conversation.
+            </p>
+            
             <div className="space-y-3">
               <Button onClick={() => navigate('/demo/hr')} size="lg" className="w-full sm:w-auto">
                 <BarChart3 className="h-4 w-4 mr-2" />
@@ -102,11 +74,9 @@ export default function DemoEmployee() {
               </Button>
               <div className="flex gap-3 justify-center">
                 <Button onClick={() => setSurveyCompleted(false)} variant="outline">
-                  <Sparkles className="h-4 w-4 mr-2" />
                   Try Again
                 </Button>
                 <Button onClick={() => navigate('/demo')} variant="ghost">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
                   Back to Demo Menu
                 </Button>
               </div>
@@ -120,18 +90,15 @@ export default function DemoEmployee() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       {/* Demo Banner */}
-      <div className="bg-primary/10 border-b">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">Demo Mode - Employee View</span>
-            <Badge variant="secondary" className="ml-2">
-              Interactive Demo
-            </Badge>
-          </div>
+      <div className="border-b bg-muted/30">
+        <div className="container mx-auto px-6 py-2 flex items-center justify-between">
+          <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1">
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            Demo Mode
+          </Badge>
           <Button variant="ghost" size="sm" onClick={() => navigate('/demo')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Demo Menu
+            Back
           </Button>
         </div>
       </div>
@@ -147,7 +114,7 @@ export default function DemoEmployee() {
           surveyDetails={demoSurveyData}
           onComplete={handleComplete}
           onExit={handleExit}
-          quickPreview={false}
+          quickPreview={true}
         />
       </PreviewModeProvider>
     </div>
