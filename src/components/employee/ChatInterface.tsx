@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { soundEffects } from "@/utils/soundEffects";
 import { RitualIntroduction } from "@/components/trust/RitualIntroduction";
 import { AnonymizationRitual } from "@/components/trust/AnonymizationRitual";
 import { TrustIndicators } from "@/components/trust/TrustIndicators";
@@ -169,7 +170,13 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
 
       mediaRecorder.start();
       setIsRecording(true);
+      
+      // Play recording start sound
+      soundEffects.playRecordStart();
     } catch (error) {
+      // Play error sound
+      soundEffects.playError();
+      
       toast({
         title: "Microphone access denied",
         description: "Please allow microphone access to use voice input",
@@ -182,6 +189,12 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
+      
+      // Play recording stop sound
+      soundEffects.playRecordStop();
+      
+      // Play processing sound as transcription begins
+      soundEffects.playProcessing();
     }
   };
 
@@ -209,14 +222,21 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         if (!response.ok) throw new Error("Transcription failed");
 
         const { text } = await response.json();
+        
+        // Play success sound
+        soundEffects.playSuccess();
+        
         setInput(text);
         
-        toast({
-          title: "Transcription complete",
-          description: "Your voice has been converted to text",
-        });
+        // Auto-send after brief delay to allow user to see transcription
+        setTimeout(() => {
+          sendMessage();
+        }, 500);
       };
     } catch (error) {
+      // Play error sound
+      soundEffects.playError();
+      
       toast({
         title: "Transcription failed",
         description: "Please try again or type your message",
@@ -423,13 +443,16 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
               timestamp={message.timestamp}
             />
           ))}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-muted rounded-lg p-4">
-                <Loader2 className="h-4 w-4 animate-spin" />
-              </div>
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-muted rounded-lg p-4 flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm text-muted-foreground">
+                {isRecording ? "Recording..." : "Transcribing..."}
+              </span>
             </div>
-          )}
+          </div>
+        )}
           <div ref={scrollRef} />
         </div>
       </ScrollArea>
@@ -466,7 +489,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder={isRecording ? "Recording..." : "Type or record your message"}
+              placeholder={isRecording ? "🎤 Recording..." : isLoading ? "Transcribing..." : "Type or record your message"}
               className="
                 bg-muted
                 border-0
@@ -490,15 +513,26 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           </div>
           
           {/* Voice Recording Button */}
-          <Button
-            onClick={isRecording ? stopRecording : startRecording}
-            disabled={isLoading}
-            variant={isRecording ? "destructive" : "outline"}
-            className={`w-14 h-14 flex-shrink-0 ${isRecording ? 'animate-pulse' : ''}`}
-            type="button"
-          >
-            <Mic className={`w-5 h-5 ${isRecording ? 'text-white' : ''}`} />
-          </Button>
+          <div className="relative">
+            <Button
+              onClick={isRecording ? stopRecording : startRecording}
+              disabled={isLoading}
+              variant={isRecording ? "destructive" : "outline"}
+              className={`
+                w-14 h-14 flex-shrink-0 transition-all
+                ${isRecording ? 'animate-pulse scale-110 shadow-lg shadow-red-500/50' : ''}
+                ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
+              `}
+              type="button"
+            >
+              <Mic className={`w-5 h-5 ${isRecording ? 'text-white' : ''}`} />
+            </Button>
+            {isRecording && (
+              <div className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1 shadow-lg">
+                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+              </div>
+            )}
+          </div>
           
           {/* Send Button */}
           <Button
