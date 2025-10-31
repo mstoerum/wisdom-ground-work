@@ -3,7 +3,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ConversationBubble } from "@/components/employee/ConversationBubble";
-import { Send, Loader2, Eye, X, ChevronDown, ChevronUp, Info } from "lucide-react";
+import { VoiceInterface } from "@/components/employee/VoiceInterface";
+import { PreviewModeProvider } from "@/contexts/PreviewModeContext";
+import { Send, Loader2, Eye, X, ChevronDown, ChevronUp, Info, Mic, MessageSquare } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -91,6 +93,7 @@ export const InteractiveSurveyPreview = ({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showDetails, setShowDetails] = useState(true); // Default open for better UX on desktop
+  const [previewMode, setPreviewMode] = useState<'text' | 'voice'>('text');
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Fetch theme details
@@ -193,30 +196,71 @@ export const InteractiveSurveyPreview = ({
             </div>
           </div>
           
-          {/* Quick Info Badges */}
-          {consent_config && (
-            <div className="flex flex-wrap gap-2 mt-4">
-              <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1">
-                <Shield className="h-3.5 w-3.5" />
-                {consent_config.anonymization_level === "anonymous" ? "Fully Anonymous" : "Identified"}
-              </Badge>
-              <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1">
-                <Clock className="h-3.5 w-3.5" />
-                Data retained for {consent_config.data_retention_days || 60} days
-              </Badge>
-              {themeDetails.length > 0 && (
-                <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1">
-                  {themeDetails.length} {themeDetails.length === 1 ? 'Theme' : 'Themes'}
-                </Badge>
-              )}
+          {/* Mode Toggle and Info Badges */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
+            {/* Mode Toggle */}
+            <div className="flex gap-2">
+              <Button
+                variant={previewMode === 'text' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPreviewMode('text')}
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Text Mode
+              </Button>
+              <Button
+                variant={previewMode === 'voice' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setPreviewMode('voice')}
+              >
+                <Mic className="w-4 h-4 mr-2" />
+                Voice Mode
+              </Button>
             </div>
-          )}
+
+            {/* Quick Info Badges */}
+            {consent_config && (
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1">
+                  <Shield className="h-3.5 w-3.5" />
+                  {consent_config.anonymization_level === "anonymous" ? "Fully Anonymous" : "Identified"}
+                </Badge>
+                <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1">
+                  <Clock className="h-3.5 w-3.5" />
+                  Data retained for {consent_config.data_retention_days || 60} days
+                </Badge>
+                {themeDetails.length > 0 && (
+                  <Badge variant="outline" className="flex items-center gap-1.5 px-3 py-1">
+                    {themeDetails.length} {themeDetails.length === 1 ? 'Theme' : 'Themes'}
+                  </Badge>
+                )}
+              </div>
+            )}
+          </div>
         </DialogHeader>
 
         {/* Main Content Area - Split Layout */}
         <div className="flex-1 flex flex-col lg:flex-row min-h-0 overflow-hidden">
-          {/* Left Side - Chat Interface (Hero) */}
+          {/* Left Side - Preview Interface (Text or Voice) */}
           <div className="flex-1 flex flex-col min-w-0 min-h-[500px] lg:min-h-0">
+            {previewMode === 'voice' ? (
+              <PreviewModeProvider
+                isPreviewMode={true}
+                previewSurveyId="preview-voice-session"
+                previewSurveyData={{
+                  first_message,
+                  themes: themeDetails,
+                  title
+                }}
+              >
+                <VoiceInterface
+                  conversationId="preview-voice-session"
+                  onComplete={() => {}}
+                />
+              </PreviewModeProvider>
+            ) : (
+              // Original text chat interface
+              <>
             {/* Chat Container with generous padding */}
             <div className="flex-1 flex flex-col bg-gradient-to-br from-background to-muted/20 rounded-lg m-6 lg:m-8 border border-border/50 shadow-sm min-h-0">
               {/* Progress Indicator */}
@@ -313,6 +357,8 @@ export const InteractiveSurveyPreview = ({
                 </div>
               </div>
             </div>
+            </>
+            )}
           </div>
 
           {/* Right Side - Details Panel (Collapsible on mobile) */}

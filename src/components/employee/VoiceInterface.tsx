@@ -279,6 +279,35 @@ export const VoiceInterface = ({
 
   return (
     <div className="min-h-[600px] flex flex-col">
+      {/* Preview Mode Indicator */}
+      {isPreviewMode && (
+        <Alert className="mx-4 mb-4 border-[hsl(var(--coral-accent))] bg-[hsl(var(--coral-pink))]/10">
+          <Info className="h-4 w-4 text-[hsl(var(--coral-accent))]" />
+          <AlertDescription>
+            <strong>Voice Preview Mode:</strong> Experience the voice interface exactly as employees will. 
+            Atlas will introduce itself and explore the selected themes naturally. No data is saved during preview.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Show selected themes in preview */}
+      {isPreviewMode && surveyDataForVoice?.themes && surveyDataForVoice.themes.length > 0 && (
+        <div className="px-4 mb-4">
+          <Card className="p-4 border-[hsl(var(--lime-green))]/20 bg-[hsl(var(--lime-green))]/5">
+            <p className="text-xs font-medium text-muted-foreground mb-2">
+              Conversation Themes:
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {surveyDataForVoice.themes.map((theme, idx) => (
+                <span key={idx} className="text-xs px-2 py-1 bg-background rounded border border-border">
+                  {theme.name}
+                </span>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
       {/* Privacy Indicator */}
       <div className="px-4 mb-4">
         <PrivacyIndicator />
