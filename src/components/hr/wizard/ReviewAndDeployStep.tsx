@@ -3,11 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { SurveyFormData } from "@/lib/surveySchema";
-import { Calendar, Users, Shield, Target, Link2, CheckCircle2, Eye, Rocket, AlertCircle, Copy, TestTube } from "lucide-react";
+import { Calendar, Users, Shield, Target, Link2, CheckCircle2, Eye, Rocket, AlertCircle, Copy } from "lucide-react";
 import { format } from "date-fns";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useState } from "react";
-import { InteractiveSurveyPreview } from "./InteractiveSurveyPreview";
 import { CompleteEmployeeExperiencePreview } from "./CompleteEmployeeExperiencePreview";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -40,7 +39,6 @@ export const ReviewAndDeployStep = ({
   deployResult,
 }: ReviewAndDeployStepProps) => {
   const navigate = useNavigate();
-  const [showPreview, setShowPreview] = useState(false);
   const [showCompletePreview, setShowCompletePreview] = useState(false);
   const [showDeployConfirmation, setShowDeployConfirmation] = useState(false);
 
@@ -170,20 +168,7 @@ export const ReviewAndDeployStep = ({
                 className="bg-primary"
               >
                 <Eye className="h-4 w-4 mr-2" />
-                Complete Experience Preview
-              </Button>
-              {surveyId && (
-                <Button 
-                  variant="outline" 
-                  onClick={() => navigate(`/hr/test-survey-chat?draft_id=${surveyId}`)}
-                >
-                  <TestTube className="h-4 w-4 mr-2" />
-                  Test Chat Experience
-                </Button>
-              )}
-              <Button variant="outline" onClick={() => setShowPreview(true)}>
-                <Eye className="h-4 w-4 mr-2" />
-                Quick Preview
+                Complete Employee Survey Preview
               </Button>
             </div>
           </div>
@@ -194,7 +179,7 @@ export const ReviewAndDeployStep = ({
               <Eye className="h-5 w-5 text-primary mt-0.5" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-foreground mb-1">
-                  Complete Employee Experience Preview
+                  Complete Employee Survey Preview
                 </p>
                 <p className="text-sm text-muted-foreground mb-3">
                   Experience the complete end-to-end employee journey: consent, anonymization ritual, mood selection, 
@@ -211,38 +196,6 @@ export const ReviewAndDeployStep = ({
                 </Button>
               </div>
             </div>
-          </div>
-          {surveyId && (
-            <div className="bg-muted/30 rounded-lg p-4 border border-primary/20">
-              <div className="flex items-start gap-3">
-                <TestTube className="h-5 w-5 text-primary mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground mb-1">
-                    Full Chat Test Experience (Advanced)
-                  </p>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Test the complete chat interface in a new page where you can interact with the AI conversation 
-                    just like your employees will. This helps you verify the chat flow, test different responses, 
-                    and ensure everything works smoothly before deploying.
-                  </p>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => navigate(`/hr/test-survey-chat?draft_id=${surveyId}`)}
-                  >
-                    <TestTube className="h-3 w-3 mr-2" />
-                    Open Test Page
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-          <div className="bg-muted/30 rounded-lg p-4 border border-dashed">
-            <p className="text-sm text-muted-foreground text-center">
-              <strong>Complete Preview:</strong> See the full employee journey from consent to completion. 
-              <strong>Quick Preview:</strong> Quick modal preview of the chat interface. 
-              {surveyId && " <strong>Test Chat:</strong> Full interactive test page with real AI responses."}
-            </p>
           </div>
         </CardContent>
       </Card>
@@ -350,24 +303,6 @@ export const ReviewAndDeployStep = ({
       {!showDeployConfirmation ? (
         <div className="flex justify-end gap-3 pt-4 border-t">
           <Button
-            variant="outline"
-            onClick={() => setShowPreview(true)}
-            disabled={isDeploying}
-          >
-            <Eye className="h-4 w-4 mr-2" />
-            Quick Preview
-          </Button>
-          {surveyId && (
-            <Button
-              variant="outline"
-              onClick={() => navigate(`/hr/test-survey-chat?draft_id=${surveyId}`)}
-              disabled={isDeploying}
-            >
-              <TestTube className="h-4 w-4 mr-2" />
-              Test Chat
-            </Button>
-          )}
-          <Button
             onClick={() => setShowDeployConfirmation(true)}
             disabled={isDeploying}
             size="lg"
@@ -424,22 +359,6 @@ export const ReviewAndDeployStep = ({
           </CardContent>
         </Card>
       )}
-
-      {/* Interactive Preview Dialog */}
-      <InteractiveSurveyPreview
-        open={showPreview}
-        onOpenChange={setShowPreview}
-        surveyData={{
-          title: formData.title,
-          first_message: formData.first_message,
-          themes: formData.themes || [],
-          consent_config: {
-            anonymization_level: formData.anonymization_level,
-            data_retention_days: Number(formData.data_retention_days),
-            consent_message: formData.consent_message,
-          },
-        }}
-      />
 
       {/* Complete Employee Experience Preview Dialog */}
       <CompleteEmployeeExperiencePreview
