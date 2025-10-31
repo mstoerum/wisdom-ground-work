@@ -5,7 +5,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { ConversationBubble } from "@/components/employee/ConversationBubble";
 import { VoiceInterface } from "@/components/employee/VoiceInterface";
 import { PreviewModeProvider } from "@/contexts/PreviewModeContext";
-import { Send, Loader2, Eye, X, ChevronDown, ChevronUp, Info, Mic, MessageSquare } from "lucide-react";
+import { SurveyModeSelector } from "./SurveyModeSelector";
+import { Send, Loader2, Eye, X, ChevronDown, ChevronUp, Info, Mic, MessageSquare, ArrowLeft, Lock } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useToast } from "@/hooks/use-toast";
 
 interface Message {
   role: "user" | "assistant";
@@ -93,8 +95,10 @@ export const InteractiveSurveyPreview = ({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showDetails, setShowDetails] = useState(true); // Default open for better UX on desktop
-  const [previewMode, setPreviewMode] = useState<'text' | 'voice'>('text');
+  const [previewMode, setPreviewMode] = useState<'text' | 'voice' | null>(null); // null = mode not selected yet
+  const [modeSelected, setModeSelected] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   // Fetch theme details
   const { data: themeDetails = [] } = useQuery({
@@ -114,19 +118,20 @@ export const InteractiveSurveyPreview = ({
   // Initialize conversation when dialog opens
   useEffect(() => {
     if (open) {
-      const greeting: Message = {
-        role: "assistant",
-        content: first_message || "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.",
-        timestamp: new Date(),
-      };
-      setMessages([greeting]);
-      setInput("");
+      // Reset to mode selection when opening
+      if (!modeSelected) {
+        setPreviewMode(null);
+        setMessages([]);
+        setInput("");
+      }
     } else {
-      // Reset when closed
+      // Reset everything when closed
+      setModeSelected(false);
+      setPreviewMode(null);
       setMessages([]);
       setInput("");
     }
-  }, [open, first_message]);
+  }, [open]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -177,45 +182,143 @@ export const InteractiveSurveyPreview = ({
   const estimatedQuestions = Math.max(6, themeDetails.length * 2 + 2);
   const progressPercent = Math.min((userMessageCount / estimatedQuestions) * 100, 100);
 
+  // Handle mode selection
+  const handleModeSelection = useCallback((mode: 'text' | 'voice') => {
+    setPreviewMode(mode);
+    setModeSelected(true);
+    
+    // Initialize conversation with greeting
+    const greeting: Message = {
+      role: "assistant",
+      content: first_message || "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.",
+      timestamp: new Date(),
+    };
+    setMessages([greeting]);
+
+    // Show success toast
+    toast({
+      title: `${mode === 'voice' ? '?? Voice' : '?? Text'} mode selected`,
+      description: mode === 'voice' 
+        ? 'Click the microphone to start speaking'
+        : 'Type your responses to continue the conversation',
+    });
+  }, [first_message, toast]);
+
+  // Handle mode change (back to selector)
+  const handleChangeMode = useCallback(() => {
+    if (messages.length > 1) {
+      // Warn if conversation has started
+      const confirmed = window.confirm(
+        'Changing modes will reset your preview conversation. Continue?'
+      );
+      if (!confirmed) return;
+    }
+    
+    setModeSelected(false);
+    setPreviewMode(null);
+    setMessages([]);
+    setInput("");
+  }, [messages.length]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    if (!open || !modeSelected) return;
+
+    const handleKeyPress = (e: KeyboardEvent) => {      
+      // Escape: Close dialog (with confirmation if conversation started)
+      if (e.key === 'Escape' && messages.length > 1) {
+        e.preventDefault();
+        const confirmExit = window.confirm(
+          'Are you sure you want to exit? Your preview progress will be lost.'
+        );
+        if (confirmExit) {
+          onOpenChange(false);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [open, modeSelected, messages.length, onOpenChange]);
+
+  // Auto-focus textarea when text mode is selected
+  useEffect(() => {
+    if (modeSelected && previewMode === 'text') {
+      const textarea = document.querySelector('textarea[placeholder*="Type your response"]');
+      if (textarea instanceof HTMLTextAreaElement) {
+        setTimeout(() => textarea.focus(), 300);
+      }
+    }
+  }, [modeSelected, previewMode]);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[95vw] lg:max-w-6xl max-h-[95vh] p-0 gap-0 overflow-hidden flex flex-col">
+        {!modeSelected ? (
+          // STEP 1: Show mode selector first
+          <SurveyModeSelector
+            surveyTitle={title}
+            firstMessage={first_message}
+            onSelectMode={handleModeSelection}
+          />
+        ) : (
+          // STEP 2: Show the actual preview interface after mode selection
+          <>
         {/* Header with improved spacing */}
         <DialogHeader className="px-8 pt-8 pb-6 border-b bg-muted/30">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1">
-              <DialogTitle className="text-2xl font-bold flex items-center gap-3 mb-2">
-                <div className="p-2 bg-primary/10 rounded-lg">
-                  <Eye className="h-6 w-6 text-primary" />
-                </div>
-                <span>Interactive Preview: {title}</span>
-              </DialogTitle>
-              <DialogDescription className="text-base mt-2 max-w-2xl">
-                Experience the survey exactly as your employees will see it. Type responses to simulate the conversation flow.
+              <div className="flex items-center gap-3 mb-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleChangeMode}
+                  className="mr-2"
+                  aria-label="Change preview mode"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <Eye className="h-6 w-6 text-primary" />
+                  </div>
+                  <span>{title}</span>
+                  {/* Preview Mode Watermark Badge */}
+                  <Badge variant="outline" className="ml-auto bg-yellow-50 border-yellow-400 text-yellow-800 dark:bg-yellow-900/20 dark:border-yellow-600 dark:text-yellow-200">
+                    <Eye className="mr-1.5 h-3.5 w-3.5" />
+                    Preview - No Data Saved
+                  </Badge>
+                </DialogTitle>
+              </div>
+              <DialogDescription className="text-base mt-2 max-w-2xl ml-12">
+                {previewMode === 'voice' 
+                  ? 'Experience the voice conversation exactly as your employees will. Speak naturally to respond.'
+                  : 'Experience the survey exactly as your employees will see it. Type responses to simulate the conversation flow.'}
               </DialogDescription>
             </div>
           </div>
           
-          {/* Mode Toggle and Info Badges */}
-          <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
-            {/* Mode Toggle */}
-            <div className="flex gap-2">
-              <Button
-                variant={previewMode === 'text' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setPreviewMode('text')}
-              >
-                <MessageSquare className="w-4 h-4 mr-2" />
-                Text Mode
-              </Button>
-              <Button
-                variant={previewMode === 'voice' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setPreviewMode('voice')}
-              >
-                <Mic className="w-4 h-4 mr-2" />
-                Voice Mode
-              </Button>
+          {/* Mode Badge and Info */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mt-4 ml-12">
+            {/* Current Mode Indicator */}
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="flex items-center gap-1.5 px-3 py-1.5">
+                {previewMode === 'voice' ? (
+                  <>
+                    <Mic className="h-3.5 w-3.5" />
+                    Voice Mode
+                  </>
+                ) : (
+                  <>
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    Text Mode
+                  </>
+                )}
+              </Badge>
+              <Badge variant="outline" className="flex items-center gap-1.5 px-2 py-1 bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-700 dark:text-green-300">
+                <Lock className="h-3 w-3" />
+                Private & Encrypted
+              </Badge>
             </div>
 
             {/* Quick Info Badges */}
@@ -270,7 +373,7 @@ export const InteractiveSurveyPreview = ({
                     <span className="text-sm font-medium text-muted-foreground">
                       Preview Mode
                     </span>
-                    <span className="text-xs text-muted-foreground">•</span>
+                    <span className="text-xs text-muted-foreground">?</span>
                     <span className="text-sm text-muted-foreground">
                       {userMessageCount} {userMessageCount === 1 ? 'message' : 'messages'} sent
                     </span>
@@ -295,9 +398,14 @@ export const InteractiveSurveyPreview = ({
                   ))}
                   {isLoading && (
                     <div className="flex justify-start">
-                      <div className="bg-muted rounded-lg p-4 flex items-center gap-3">
-                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">AI is thinking...</span>
+                      <div className="bg-muted rounded-xl p-4 flex items-center gap-3 shadow-sm">
+                        <div className="relative">
+                          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Atlas is thinking...</p>
+                          <p className="text-xs text-muted-foreground">Crafting a thoughtful response</p>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -312,7 +420,7 @@ export const InteractiveSurveyPreview = ({
                   <div className="mb-4 p-4 bg-primary/5 rounded-xl border border-primary/20">
                     <p className="text-sm font-medium text-foreground mb-3 flex items-center gap-2">
                       <Info className="h-4 w-4 text-primary" />
-                      Try typing a response to see how the AI responds
+                      Try a sample response or type your own
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {[
@@ -339,14 +447,16 @@ export const InteractiveSurveyPreview = ({
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={handleKeyPress}
                     placeholder="Type your response to preview the conversation..."
-                    className="min-h-[80px] text-base resize-none flex-1"
+                    className="min-h-[80px] text-base resize-none flex-1 focus-visible:ring-2 focus-visible:ring-primary"
                     disabled={isLoading}
+                    aria-label="Type your survey response"
                   />
                   <Button
                     onClick={sendMessage}
                     disabled={!input.trim() || isLoading}
                     size="icon"
-                    className="h-[80px] w-[80px] shrink-0"
+                    className="h-[80px] w-[80px] shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+                    aria-label="Send message"
                   >
                     {isLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
@@ -440,11 +550,22 @@ export const InteractiveSurveyPreview = ({
                         About This Preview
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-2">
                       <p className="text-xs text-muted-foreground leading-relaxed">
                         This preview simulates the employee experience. The AI responses are mock examples. 
                         In the actual survey, AI responses will be dynamically generated based on employee input and survey themes.
                       </p>
+                      <div className="pt-2 border-t border-border/30">
+                        <p className="text-xs font-medium text-foreground mb-1">Keyboard Shortcuts:</p>
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted-foreground">
+                            <kbd className="px-1.5 py-0.5 bg-muted rounded border border-border text-xs">Enter</kbd> Send message
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            <kbd className="px-1.5 py-0.5 bg-muted rounded border border-border text-xs">Esc</kbd> Close preview
+                          </p>
+                        </div>
+                      </div>
                     </CardContent>
                   </Card>
                 </div>
@@ -452,6 +573,8 @@ export const InteractiveSurveyPreview = ({
             </Collapsible>
           </div>
         </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
