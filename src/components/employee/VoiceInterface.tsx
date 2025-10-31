@@ -419,7 +419,7 @@ export const VoiceInterface = ({
                 <p className="text-xs text-muted-foreground uppercase tracking-wide">
                   Conversation History
                 </p>
-                {messages.slice(-4).map((msg, idx) => (
+                {messages.slice(-4).reverse().map((msg, idx) => (
                   <div
                     key={idx}
                     className={`rounded-2xl p-3 ${
