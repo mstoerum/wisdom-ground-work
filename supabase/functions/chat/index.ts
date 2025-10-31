@@ -242,7 +242,7 @@ serve(async (req) => {
       throw new Error("Missing authorization header");
     }
 
-    const { conversationId, messages, testMode, themes: themeIds } = await req.json();
+    const { conversationId, messages, testMode, themes: requestThemeIds } = await req.json();
     const lastMessage = messages[messages.length - 1];
     
     // Input validation
@@ -261,8 +261,8 @@ serve(async (req) => {
       const isFirstMessage = turnCount === 1;
 
       // Fetch theme details if provided (for preview mode)
-      let themes = [];
-      if (themeIds && themeIds.length > 0) {
+      let themes: any[] = [];
+      if (requestThemeIds && requestThemeIds.length > 0) {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
         const supabase = createClient(supabaseUrl, supabaseKey);
@@ -270,7 +270,7 @@ serve(async (req) => {
         const { data } = await supabase
           .from("survey_themes")
           .select("id, name, description")
-          .in("id", themeIds);
+          .in("id", requestThemeIds);
         
         themes = data || [];
       }
