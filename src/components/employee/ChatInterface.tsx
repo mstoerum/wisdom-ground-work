@@ -463,7 +463,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         </Alert>
       )}
       
-      {/* Progress Indicator */}
+      {/* Progress Indicator with Voice Mode Toggle */}
       <div className="p-3 border-b border-border/50">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-4">
@@ -474,6 +474,18 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
             </span>
           </div>
           <div className="flex items-center gap-2">
+            {/* Voice Mode Toggle - Always visible */}
+            {voiceSupported && (
+              <Button
+                onClick={() => setIsVoiceMode(true)}
+                variant="outline"
+                size="sm"
+                className="h-7 border-[hsl(var(--lime-green))]/50 hover:bg-[hsl(var(--lime-green))]/10"
+              >
+                <Mic className="h-3 w-3 mr-1 text-[hsl(var(--lime-green))]" />
+                Voice Mode
+              </Button>
+            )}
             <span className="text-sm font-medium">{Math.round(progressPercent)}%</span>
             <Button
               onClick={handleSaveAndExit}
