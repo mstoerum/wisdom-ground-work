@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 interface AnonymizationRitualProps {
   sessionId: string;
   onComplete: () => void;
+  minimal?: boolean;
 }
 
-export const AnonymizationRitual = ({ sessionId, onComplete }: AnonymizationRitualProps) => {
+export const AnonymizationRitual = ({ sessionId, onComplete, minimal = false }: AnonymizationRitualProps) => {
   const [step, setStep] = useState(0);
   
   // Generate a readable session ID from the actual session ID
@@ -50,15 +51,17 @@ export const AnonymizationRitual = ({ sessionId, onComplete }: AnonymizationRitu
 
   return (
     <Card className="p-8 max-w-md mx-auto bg-gradient-to-br from-card to-card/50 border-border/50">
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-          <Shield className="h-8 w-8 text-primary" />
+      {!minimal && (
+        <div className="text-center mb-6">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
+            <Shield className="h-8 w-8 text-primary" />
+          </div>
+          <h2 className="text-2xl font-semibold mb-2">Protecting Your Privacy</h2>
+          <p className="text-sm text-muted-foreground">
+            Setting up your anonymous feedback session
+          </p>
         </div>
-        <h2 className="text-2xl font-semibold mb-2">Protecting Your Privacy</h2>
-        <p className="text-sm text-muted-foreground">
-          Setting up your anonymous feedback session
-        </p>
-      </div>
+      )}
 
       <div className="space-y-4 mb-6">
         {steps.map((stepItem, index) => {
@@ -92,15 +95,17 @@ export const AnonymizationRitual = ({ sessionId, onComplete }: AnonymizationRitu
 
       {step >= 3 && (
         <div className="space-y-4 animate-fade-in">
-          <div className="bg-muted/50 rounded-lg p-4 text-center">
-            <p className="text-xs text-muted-foreground mb-2">Your Anonymous Session ID</p>
-            <p className="text-2xl font-mono font-bold text-primary tracking-wider">
-              #{displaySessionId}
-            </p>
-            <p className="text-xs text-muted-foreground mt-2">
-              HR will see session #{displaySessionId}, not your name
-            </p>
-          </div>
+          {!minimal && (
+            <div className="bg-muted/50 rounded-lg p-4 text-center">
+              <p className="text-xs text-muted-foreground mb-2">Your Anonymous Session ID</p>
+              <p className="text-2xl font-mono font-bold text-primary tracking-wider">
+                #{displaySessionId}
+              </p>
+              <p className="text-xs text-muted-foreground mt-2">
+                HR will see session #{displaySessionId}, not your name
+              </p>
+            </div>
+          )}
 
           <Button onClick={onComplete} className="w-full" size="lg">
             Start Conversation

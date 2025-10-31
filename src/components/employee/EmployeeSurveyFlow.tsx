@@ -20,6 +20,7 @@ interface EmployeeSurveyFlowProps {
   surveyDetails: any;
   onComplete?: () => void;
   onExit?: () => void;
+  quickPreview?: boolean;
 }
 
 /**
@@ -31,6 +32,7 @@ export const EmployeeSurveyFlow = ({
   surveyDetails,
   onComplete,
   onExit,
+  quickPreview = false,
 }: EmployeeSurveyFlowProps) => {
   const { isPreviewMode } = usePreviewMode();
   const [step, setStep] = useState<ConversationStep>("consent");
@@ -55,8 +57,16 @@ export const EmployeeSurveyFlow = ({
     setStep("anonymization");
   };
 
-  const handleAnonymizationComplete = () => {
-    setStep("mood");
+  const handleAnonymizationComplete = async () => {
+    if (quickPreview) {
+      // In quick preview mode, skip mood dial and go directly to chat
+      const sessionId = await startConversation(surveyId, 50);
+      if (sessionId) {
+        setStep("chat");
+      }
+    } else {
+      setStep("mood");
+    }
   };
 
   const handleDecline = async () => {
@@ -160,6 +170,7 @@ export const EmployeeSurveyFlow = ({
             <AnonymizationRitual
               sessionId={surveyId || "PREVIEW-SESSION"}
               onComplete={handleAnonymizationComplete}
+              minimal={quickPreview}
             />
           )}
 
