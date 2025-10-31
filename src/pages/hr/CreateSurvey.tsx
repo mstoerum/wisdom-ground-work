@@ -15,9 +15,8 @@ import { EmployeeTargeting } from "@/components/hr/wizard/EmployeeTargeting";
 import { ScheduleSettings } from "@/components/hr/wizard/ScheduleSettings";
 import { ConsentSettings } from "@/components/hr/wizard/ConsentSettings";
 import { DeployConfirmationModal } from "@/components/hr/wizard/DeployConfirmationModal";
-import { SurveyPreview } from "@/components/hr/wizard/SurveyPreview";
 import { ReviewAndDeployStep } from "@/components/hr/wizard/ReviewAndDeployStep";
-import { InteractiveSurveyPreview } from "@/components/hr/wizard/InteractiveSurveyPreview";
+import { CompleteEmployeeExperiencePreview } from "@/components/hr/wizard/CompleteEmployeeExperiencePreview";
 import { useState, useEffect, useCallback } from "react";
 import { Eye } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -458,7 +457,7 @@ const CreateSurvey = () => {
           deployResult={deployResult}
         />
 
-        <InteractiveSurveyPreview
+        <CompleteEmployeeExperiencePreview
           open={showPreview}
           onOpenChange={setShowPreview}
           surveyData={{
