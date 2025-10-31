@@ -114,28 +114,16 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
       .eq("conversation_session_id", conversationId)
       .order("created_at", { ascending: true });
 
-    // Fetch first message from survey
-    const { data: session } = await supabase
-      .from("conversation_sessions")
-      .select("surveys(first_message)")
-      .eq("id", conversationId)
-      .single();
-
-    const greeting: Message = {
-      role: "assistant",
-      content: session?.surveys?.first_message || "Hi! I'm here to listen. How are you feeling about work today?",
-      timestamp: new Date()
-    };
-
-    // Reconstruct message history if resuming
+    // Reconstruct message history if resuming (NO initial greeting)
     if (existingResponses && existingResponses.length > 0) {
       const history = existingResponses.flatMap(r => [
         { role: "user" as const, content: r.content, timestamp: new Date(r.created_at) },
         { role: "assistant" as const, content: r.ai_response || "", timestamp: new Date(r.created_at) }
       ]);
-      setMessages([greeting, ...history]);
+      setMessages(history);
     } else {
-      setMessages([greeting]);
+      // Start with empty messages - AI will introduce itself on first interaction
+      setMessages([]);
     }
   }, [conversationId]);
 

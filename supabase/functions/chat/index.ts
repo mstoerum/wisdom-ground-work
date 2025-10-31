@@ -360,7 +360,9 @@ serve(async (req) => {
 
     const turnCount = messages.filter((m: any) => m.role === "user").length;
     const shouldComplete = turnCount >= CONVERSATION_COMPLETE_THRESHOLD;
-    const isFirstMessage = turnCount === 1;
+    // Only consider it first message if there are no prior assistant responses
+    const hasExistingAssistantMessages = messages.some((m: any) => m.role === "assistant");
+    const isFirstMessage = turnCount === 1 && !hasExistingAssistantMessages;
 
     // Build conversation context
     const conversationContext = buildConversationContext(previousResponses || [], themes || []);
