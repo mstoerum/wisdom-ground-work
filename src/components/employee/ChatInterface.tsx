@@ -380,7 +380,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
   }
 
   return (
-    <div className="flex flex-col min-h-[400px] max-h-[70vh] bg-card rounded-lg border border-border/50">
+    <div className="flex flex-col min-h-[500px] max-h-[80vh] bg-card rounded-lg border border-border/50">
       {/* Trust Indicators */}
       {!skipTrustFlow && sessionId && (
         <TrustIndicators sessionId={sessionId} />
@@ -433,8 +433,8 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         <Progress value={progressPercent} className="h-1.5" />
       </div>
       
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
+      <ScrollArea className="flex-1 p-4 overflow-y-auto">
+        <div className="space-y-3">
           {messages.map((message, index) => (
             <ConversationBubble
               key={index}
