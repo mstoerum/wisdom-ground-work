@@ -131,6 +131,74 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     loadConversation();
   }, [loadConversation]);
 
+  // Auto-trigger AI introduction when chat is empty
+  useEffect(() => {
+    const triggerIntroduction = async () => {
+      // Only trigger if:
+      // 1. Chat is empty (no messages)
+      // 2. Trust flow is complete (in chat phase)
+      // 3. Not already loading
+      if (messages.length === 0 && trustFlowStep === "chat" && !isLoading) {
+        setIsLoading(true);
+        
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session && !isPreviewMode) {
+            console.error("No session for introduction");
+            setIsLoading(false);
+            return;
+          }
+
+          // Send a special trigger message to request introduction
+          const response = await fetch(
+            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+              },
+              body: JSON.stringify({
+                conversationId,
+                messages: [{ role: "user", content: "[START_CONVERSATION]" }],
+                testMode: isPreviewMode,
+                themes: isPreviewMode ? previewSurveyData?.themes : undefined,
+              }),
+            }
+          );
+
+          if (!response.ok) {
+            throw new Error("Failed to get introduction");
+          }
+
+          const { message: aiResponse } = await response.json();
+          
+          // Add only the AI introduction to messages (not the trigger)
+          const introMessage: Message = {
+            role: "assistant",
+            content: aiResponse,
+            timestamp: new Date()
+          };
+          
+          setMessages([introMessage]);
+          soundEffects.playSuccess();
+        } catch (error) {
+          console.error("Error getting AI introduction:", error);
+          // Fallback to a default greeting if AI fails
+          setMessages([{
+            role: "assistant",
+            content: "Hi! I'm Atlas, your AI guide. How can I help you today?",
+            timestamp: new Date()
+          }]);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    triggerIntroduction();
+  }, [messages.length, trustFlowStep, isLoading, conversationId, isPreviewMode, previewSurveyData]);
+
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });

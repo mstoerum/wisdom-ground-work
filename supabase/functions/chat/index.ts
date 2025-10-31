@@ -244,9 +244,14 @@ serve(async (req) => {
 
     const { conversationId, messages, testMode, themes: requestThemeIds } = await req.json();
     const lastMessage = messages[messages.length - 1];
+
+    // Check if this is an auto-triggered introduction request
+    const isIntroductionTrigger = lastMessage.content === "[START_CONVERSATION]" && messages.length === 1;
     
-    // Input validation
-    validateInput(conversationId, messages, lastMessage.content);
+    // Input validation (skip for introduction trigger)
+    if (!isIntroductionTrigger) {
+      validateInput(conversationId, messages, lastMessage.content);
+    }
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -258,7 +263,9 @@ serve(async (req) => {
       // Handle preview mode without database access
       const turnCount = messages.filter((m: any) => m.role === "user").length;
       const shouldComplete = turnCount >= CONVERSATION_COMPLETE_THRESHOLD;
-      const isFirstMessage = turnCount === 1;
+      
+      // Force isFirstMessage=true for introduction trigger
+      const isFirstMessage = isIntroductionTrigger || (turnCount === 1 && !messages.some((m: any) => m.role === "assistant"));
 
       // Fetch theme details if provided (for preview mode)
       let themes: any[] = [];
@@ -279,11 +286,16 @@ serve(async (req) => {
       const conversationContext = buildConversationContext([], themes);
       const systemPrompt = getSystemPrompt(conversationContext, isFirstMessage);
 
+      // Filter out the [START_CONVERSATION] trigger from messages sent to AI
+      const filteredMessages = isIntroductionTrigger 
+        ? [] 
+        : messages.map((m: any) => ({ role: m.role, content: m.content }));
+
       // Get AI response
       const aiMessage = await callAI(
         LOVABLE_API_KEY,
         AI_MODEL,
-        [{ role: "system", content: systemPrompt }, ...messages],
+        [{ role: "system", content: systemPrompt }, ...filteredMessages],
         0.8,
         200
       );
@@ -360,75 +372,84 @@ serve(async (req) => {
 
     const turnCount = messages.filter((m: any) => m.role === "user").length;
     const shouldComplete = turnCount >= CONVERSATION_COMPLETE_THRESHOLD;
-    // Only consider it first message if there are no prior assistant responses
+    
+    // Force isFirstMessage=true for introduction trigger
     const hasExistingAssistantMessages = messages.some((m: any) => m.role === "assistant");
-    const isFirstMessage = turnCount === 1 && !hasExistingAssistantMessages;
+    const isFirstMessage = isIntroductionTrigger || (turnCount === 1 && !hasExistingAssistantMessages);
 
     // Build conversation context
     const conversationContext = buildConversationContext(previousResponses || [], themes || []);
     const systemPrompt = getSystemPrompt(conversationContext, isFirstMessage);
 
+    // Filter out the [START_CONVERSATION] trigger from messages sent to AI
+    const filteredMessages = isIntroductionTrigger 
+      ? [] 
+      : messages.map((m: any) => ({ role: m.role, content: m.content }));
+
     // Get AI response
     const aiMessage = await callAI(
       LOVABLE_API_KEY,
       AI_MODEL,
-      [{ role: "system", content: systemPrompt }, ...messages],
+      [{ role: "system", content: systemPrompt }, ...filteredMessages],
       0.8,
       200
     );
 
-    // Analyze sentiment
-    const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, lastMessage.content);
+    // IMPORTANT: Don't save the [START_CONVERSATION] trigger to database
+    if (!isIntroductionTrigger) {
+      // Analyze sentiment
+      const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, lastMessage.content);
 
-    // Detect theme
-    const detectedThemeId = await detectTheme(LOVABLE_API_KEY, lastMessage.content, themes || []);
+      // Detect theme
+      const detectedThemeId = await detectTheme(LOVABLE_API_KEY, lastMessage.content, themes || []);
 
-    // Detect urgency
-    const isUrgent = await detectUrgency(LOVABLE_API_KEY, lastMessage.content);
+      // Detect urgency
+      const isUrgent = await detectUrgency(LOVABLE_API_KEY, lastMessage.content);
 
-    // Store response in database
-    const { data: insertedResponse, error: insertError } = await supabase
-      .from("responses")
-      .insert({
-        conversation_session_id: conversationId,
-        survey_id: session?.survey_id,
-        content: lastMessage.content,
-        ai_response: aiMessage,
-        sentiment,
-        sentiment_score: sentimentScore,
-        theme_id: detectedThemeId,
-        urgency_escalated: isUrgent,
-        created_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
+      // Store response in database
+      const { data: insertedResponse, error: insertError } = await supabase
+        .from("responses")
+        .insert({
+          conversation_session_id: conversationId,
+          survey_id: session?.survey_id,
+          content: lastMessage.content,
+          ai_response: aiMessage,
+          sentiment,
+          sentiment_score: sentimentScore,
+          theme_id: detectedThemeId,
+          urgency_escalated: isUrgent,
+          created_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
 
-    if (insertError) {
-      console.error("Error inserting response:", insertError);
-    }
+      if (insertError) {
+        console.error("Error inserting response:", insertError);
+      }
 
-    // If urgent, create escalation log entry
-    if (isUrgent && insertedResponse) {
-      await supabase.from("escalation_log").insert({
-        response_id: insertedResponse.id,
-        escalation_type: 'ai_detected',
-        escalated_at: new Date().toISOString(),
+      // If urgent, create escalation log entry
+      if (isUrgent && insertedResponse) {
+        await supabase.from("escalation_log").insert({
+          response_id: insertedResponse.id,
+          escalation_type: 'ai_detected',
+          escalated_at: new Date().toISOString(),
+        });
+      }
+
+      // Log to audit logs
+      await supabase.from("audit_logs").insert({
+        user_id: user.id,
+        action_type: "chat_message_sent",
+        resource_type: "conversation_session",
+        resource_id: conversationId,
+        metadata: {
+          survey_id: session?.survey_id,
+          theme_id: detectedThemeId,
+          sentiment: sentiment,
+          urgency_escalated: isUrgent,
+        },
       });
     }
-
-    // Log to audit logs
-    await supabase.from("audit_logs").insert({
-      user_id: user.id,
-      action_type: "chat_message_sent",
-      resource_type: "conversation_session",
-      resource_id: conversationId,
-      metadata: {
-        survey_id: session?.survey_id,
-        theme_id: detectedThemeId,
-        sentiment: sentiment,
-        urgency_escalated: isUrgent,
-      },
-    });
 
     return new Response(
       JSON.stringify({ 
