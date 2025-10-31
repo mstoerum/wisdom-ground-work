@@ -242,7 +242,7 @@ serve(async (req) => {
       throw new Error("Missing authorization header");
     }
 
-    const { conversationId, messages } = await req.json();
+    const { conversationId, messages, testMode, themes: themeIds } = await req.json();
     const lastMessage = messages[messages.length - 1];
     
     // Input validation
@@ -252,7 +252,7 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     // Check if this is a preview mode conversation
-    const isPreviewMode = conversationId.startsWith("preview-");
+    const isPreviewMode = testMode || conversationId.startsWith("preview-");
     
     if (isPreviewMode) {
       // Handle preview mode without database access
@@ -260,8 +260,23 @@ serve(async (req) => {
       const shouldComplete = turnCount >= CONVERSATION_COMPLETE_THRESHOLD;
       const isFirstMessage = turnCount === 1;
 
-      // Simple conversation context for preview
-      const conversationContext = buildConversationContext([], []);
+      // Fetch theme details if provided (for preview mode)
+      let themes = [];
+      if (themeIds && themeIds.length > 0) {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        
+        const { data } = await supabase
+          .from("survey_themes")
+          .select("id, name, description")
+          .in("id", themeIds);
+        
+        themes = data || [];
+      }
+
+      // Build conversation context with themes for preview
+      const conversationContext = buildConversationContext([], themes);
       const systemPrompt = getSystemPrompt(conversationContext, isFirstMessage);
 
       // Get AI response

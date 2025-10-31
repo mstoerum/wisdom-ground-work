@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ConversationBubble } from "./ConversationBubble";
 import { VoiceInterface } from "./VoiceInterface";
-import { Send, Loader2, Save, Mic } from "lucide-react";
+import { Send, Loader2, Save, Mic, ArrowRight } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,7 +47,12 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
   const [voiceSupported, setVoiceSupported] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { isPreviewMode } = usePreviewMode();
+  const { isPreviewMode, previewSurveyData } = usePreviewMode();
+  
+  // Voice recording state
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // Check if browser supports voice
   useEffect(() => {
@@ -142,6 +147,86 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Voice recording functions
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        transcribeAudio(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (error) {
+      toast({
+        title: "Microphone access denied",
+        description: "Please allow microphone access to use voice input",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const transcribeAudio = async (audioBlob: Blob) => {
+    setIsLoading(true);
+    try {
+      const reader = new FileReader();
+      reader.readAsDataURL(audioBlob);
+      reader.onloadend = async () => {
+        const base64Audio = (reader.result as string).split(',')[1];
+
+        const { data: { session } } = await supabase.auth.getSession();
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-audio`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${session?.access_token}`,
+            },
+            body: JSON.stringify({ audio: base64Audio }),
+          }
+        );
+
+        if (!response.ok) throw new Error("Transcription failed");
+
+        const { text } = await response.json();
+        setInput(text);
+        
+        toast({
+          title: "Transcription complete",
+          description: "Your voice has been converted to text",
+        });
+      };
+    } catch (error) {
+      toast({
+        title: "Transcription failed",
+        description: "Please try again or type your message",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Send message to AI
   const sendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
@@ -177,7 +262,8 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
               role: m.role,
               content: m.content
             })),
-            testMode: isPreviewMode, // Flag for preview mode to prevent data persistence
+            testMode: isPreviewMode,
+            themes: isPreviewMode ? previewSurveyData?.themes : undefined,
           }),
         }
       );
@@ -374,13 +460,13 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           </div>
         )}
         
-        <div className="flex gap-4 items-end">
+        <div className="flex gap-2 items-end">
           <div className="flex-1 relative">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="How are you feeling right now?"
+              placeholder={isRecording ? "Recording..." : "Type or record your message"}
               className="
                 bg-muted
                 border-0
@@ -396,13 +482,25 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
                 transition-shadow
               "
               rows={2}
-              disabled={isLoading}
+              disabled={isLoading || isRecording}
             />
             <p className="absolute bottom-2 right-4 text-xs text-muted-foreground">
               Press Enter to send
             </p>
           </div>
           
+          {/* Voice Recording Button */}
+          <Button
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={isLoading}
+            variant={isRecording ? "destructive" : "outline"}
+            className={`w-14 h-14 flex-shrink-0 ${isRecording ? 'animate-pulse' : ''}`}
+            type="button"
+          >
+            <Mic className={`w-5 h-5 ${isRecording ? 'text-white' : ''}`} />
+          </Button>
+          
+          {/* Send Button */}
           <Button
             onClick={sendMessage}
             disabled={!input.trim() || isLoading}
