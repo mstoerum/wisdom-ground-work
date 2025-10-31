@@ -76,11 +76,6 @@ export const useRealtimeVoice = (options: UseRealtimeVoiceOptions = {}) => {
       case 'conversation.item.input_audio_transcription.completed':
         console.log('📝 User transcript:', event.transcript);
         setUserTranscript(event.transcript);
-        setMessages(prev => [...prev, {
-          role: 'user',
-          content: event.transcript,
-          timestamp: Date.now(),
-        }]);
         break;
 
       case 'response.created':
@@ -96,12 +91,36 @@ export const useRealtimeVoice = (options: UseRealtimeVoiceOptions = {}) => {
 
       case 'response.audio_transcript.done':
         console.log('✅ AI transcript complete:', event.transcript);
-        setMessages(prev => [...prev, {
-          role: 'assistant',
-          content: event.transcript,
-          timestamp: Date.now(),
-        }]);
-        setAiTranscript('');
+        const aiContent = event.transcript;
+        
+        // Add both user and AI messages to history
+        setMessages(prev => {
+          const newMessages = [];
+          
+          // Add user message if we have it
+          if (userTranscript) {
+            newMessages.push({
+              role: 'user' as const,
+              content: userTranscript,
+              timestamp: Date.now(),
+            });
+          }
+          
+          // Add AI response
+          newMessages.push({
+            role: 'assistant' as const,
+            content: aiContent,
+            timestamp: Date.now(),
+          });
+          
+          return [...prev, ...newMessages];
+        });
+        
+        // Clear live transcripts after a brief delay (so user can see them)
+        setTimeout(() => {
+          setUserTranscript('');
+          setAiTranscript('');
+        }, 2000);
         break;
 
       case 'response.done':
