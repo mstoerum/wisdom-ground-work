@@ -167,6 +167,34 @@ export class RealtimeChat {
       this.dc.addEventListener("message", (e) => {
         const event = JSON.parse(e.data);
         console.log("📨 Received event:", event.type);
+        
+        // Send session.update after session.created to enable transcription
+        if (event.type === 'session.created') {
+          console.log('✅ Session created, sending session.update to enable transcription...');
+          this.dc?.send(JSON.stringify({
+            type: 'session.update',
+            session: {
+              modalities: ["audio", "text"],
+              voice: "alloy",
+              input_audio_format: "pcm16",
+              output_audio_format: "pcm16",
+              input_audio_transcription: {
+                model: "whisper-1"
+              },
+              turn_detection: {
+                type: "server_vad",
+                threshold: 0.5,
+                prefix_padding_ms: 300,
+                silence_duration_ms: 200,
+                create_response: true,
+                interrupt_response: true
+              },
+              temperature: 0.8,
+              max_response_output_tokens: "inf"
+            }
+          }));
+        }
+        
         this.onMessage(event);
       });
 

@@ -76,9 +76,23 @@ export const useRealtimeVoice = (options: UseRealtimeVoiceOptions = {}) => {
         break;
 
       case 'conversation.item.input_audio_transcription.completed':
-        console.log('📝 User transcript:', event.transcript);
+      case 'input_audio_transcription.completed':
+        console.log('📝 User transcript completed:', event.transcript);
         userTranscriptRef.current = event.transcript;
         setUserTranscript(event.transcript);
+        break;
+
+      case 'conversation.item.input_audio_transcription.delta':
+      case 'input_audio_transcription.delta':
+      case 'input_audio_buffer.transcript.delta':
+        console.log('📝 User transcript delta:', event.delta);
+        const newTranscript = userTranscriptRef.current + event.delta;
+        userTranscriptRef.current = newTranscript;
+        setUserTranscript(newTranscript);
+        break;
+
+      case 'session.updated':
+        console.log('✅ Session updated with transcription enabled');
         break;
 
       case 'response.created':
