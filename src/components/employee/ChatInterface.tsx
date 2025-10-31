@@ -27,6 +27,7 @@ interface ChatInterfaceProps {
   onComplete: () => void;
   onSaveAndExit: () => void;
   showTrustFlow?: boolean;
+  skipTrustFlow?: boolean;
 }
 
 // Constants
@@ -35,7 +36,7 @@ const PROGRESS_COMPLETE_THRESHOLD = 100;
 
 type TrustFlowStep = "introduction" | "anonymization" | "chat" | "complete";
 
-export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showTrustFlow = true }: ChatInterfaceProps) => {
+export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showTrustFlow = true, skipTrustFlow = false }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -58,7 +59,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
 
   // Initialize cultural context
   useEffect(() => {
-    if (showTrustFlow) {
+    if (showTrustFlow && !skipTrustFlow) {
       const context = detectCulturalContext();
       setCulturalContext(context);
       trackTrustMetrics('session_started', {
@@ -68,7 +69,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     } else {
       setTrustFlowStep("chat");
     }
-  }, [showTrustFlow, conversationId]);
+  }, [showTrustFlow, skipTrustFlow, conversationId]);
 
   // Track trust indicators being viewed
   useEffect(() => {
@@ -242,7 +243,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
   const progressPercent = Math.min((userMessageCount / ESTIMATED_TOTAL_QUESTIONS) * 100, PROGRESS_COMPLETE_THRESHOLD);
 
   // Show trust flow if enabled and not in chat step
-  if (showTrustFlow && trustFlowStep !== "chat") {
+  if (showTrustFlow && !skipTrustFlow && trustFlowStep !== "chat") {
     if (trustFlowStep === "introduction") {
       return (
         <RitualIntroduction 
@@ -273,14 +274,14 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
   }
 
   return (
-    <div className="flex flex-col h-[600px] bg-card rounded-lg border border-border/50">
+    <div className="flex flex-col min-h-[400px] max-h-[70vh] bg-card rounded-lg border border-border/50">
       {/* Trust Indicators */}
-      {sessionId && (
+      {!skipTrustFlow && sessionId && (
         <TrustIndicators sessionId={sessionId} />
       )}
 
       {/* Voice Mode Promotion Banner */}
-      {voiceSupported && !isVoiceMode && trustFlowStep === "chat" && (
+      {!skipTrustFlow && voiceSupported && !isVoiceMode && trustFlowStep === "chat" && (
         <Alert className="mx-4 mt-4 border-[hsl(var(--lime-green))] bg-[hsl(var(--lime-green))]/10">
           <Mic className="h-4 w-4 text-[hsl(var(--lime-green))]" />
           <AlertDescription className="flex items-center justify-between">
@@ -301,7 +302,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
       )}
       
       {/* Progress Indicator */}
-      <div className="p-4 border-b border-border/50">
+      <div className="p-3 border-b border-border/50">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
@@ -326,7 +327,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         <Progress value={progressPercent} className="h-1.5" />
       </div>
       
-      <ScrollArea className="flex-1 p-6">
+      <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
           {messages.map((message, index) => (
             <ConversationBubble
@@ -347,9 +348,9 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         </div>
       </ScrollArea>
 
-      <div className="p-6 border-t border-border/50 bg-background/95 backdrop-blur-md">
+      <div className="p-4 border-t border-border/50 bg-background/95 backdrop-blur-md">
         {/* Suggested Prompts - Show only when input is empty and no messages yet */}
-        {input === "" && userMessageCount === 0 && (
+        {!skipTrustFlow && input === "" && userMessageCount === 0 && (
           <div className="mb-4 p-3 bg-muted/30 rounded-2xl border border-border/30">
             <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
               <span>💬</span> Not sure where to start? Try:
