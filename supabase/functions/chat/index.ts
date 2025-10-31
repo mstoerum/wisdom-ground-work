@@ -236,13 +236,10 @@ serve(async (req) => {
   }
 
   try {
-    // Get authorization header
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader) {
-      throw new Error("Missing authorization header");
-    }
-
     const { conversationId, messages, testMode, themes: requestThemeIds } = await req.json();
+    
+    // Get authorization header (optional for preview/demo mode)
+    const authHeader = req.headers.get("authorization");
     const lastMessage = messages[messages.length - 1];
 
     // Check if this is an auto-triggered introduction request
@@ -313,7 +310,11 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify user authentication
+    // Verify user authentication (required for non-preview mode)
+    if (!authHeader) {
+      throw new Error("Missing authorization header");
+    }
+    
     const { data: { user }, error: userError } = await supabase.auth.getUser(
       authHeader.replace("Bearer ", "")
     );
