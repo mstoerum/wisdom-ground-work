@@ -1,7 +1,7 @@
 project_id = "rnvtbtefsskbwaadedef"
 
 [functions.chat]
-verify_jwt = true
+verify_jwt = false
 
 [functions.deploy-survey]
 verify_jwt = true
