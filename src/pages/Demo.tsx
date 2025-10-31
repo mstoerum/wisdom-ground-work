@@ -34,20 +34,20 @@ export default function Demo() {
               <h2 className="text-2xl font-semibold">Employee View</h2>
             </div>
             <p className="text-muted-foreground mb-6">
-              Experience our empathetic AI conversation that makes sharing feedback feel natural and safe.
+              Experience the complete employee survey journey from consent to completion - exactly as your employees will.
             </p>
             <ul className="space-y-3 mb-8 text-sm">
               <li className="flex items-start gap-2">
                 <Shield className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />
-                <span>See how anonymization builds trust</span>
+                <span>Privacy-first consent & anonymization ritual</span>
               </li>
               <li className="flex items-start gap-2">
                 <MessageSquare className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
-                <span>Interactive AI-powered conversation</span>
+                <span>Real AI-powered empathetic conversation</span>
               </li>
               <li className="flex items-start gap-2">
                 <Sparkles className="h-4 w-4 text-purple-600 mt-0.5 shrink-0" />
-                <span>Mood tracking and closing ritual</span>
+                <span>Mood tracking & thoughtful closing ritual</span>
               </li>
             </ul>
             <Button 
@@ -55,7 +55,7 @@ export default function Demo() {
               className="w-full"
               size="lg"
             >
-              Try as Employee
+              Try Complete Experience
             </Button>
           </Card>
 
