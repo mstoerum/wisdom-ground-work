@@ -27,6 +27,7 @@ export const useRealtimeVoice = (options: UseRealtimeVoiceOptions = {}) => {
   const [isSupported, setIsSupported] = useState(true);
   
   const chatRef = useRef<RealtimeChat | null>(null);
+  const userTranscriptRef = useRef<string>('');
 
   // Check browser support
   useEffect(() => {
@@ -66,6 +67,7 @@ export const useRealtimeVoice = (options: UseRealtimeVoiceOptions = {}) => {
         console.log('🎤 User started speaking');
         setVoiceState('listening');
         setUserTranscript('');
+        userTranscriptRef.current = '';
         break;
 
       case 'input_audio_buffer.speech_stopped':
@@ -75,6 +77,7 @@ export const useRealtimeVoice = (options: UseRealtimeVoiceOptions = {}) => {
 
       case 'conversation.item.input_audio_transcription.completed':
         console.log('📝 User transcript:', event.transcript);
+        userTranscriptRef.current = event.transcript;
         setUserTranscript(event.transcript);
         break;
 
@@ -98,10 +101,10 @@ export const useRealtimeVoice = (options: UseRealtimeVoiceOptions = {}) => {
           const newMessages = [];
           
           // Add user message if we have it
-          if (userTranscript) {
+          if (userTranscriptRef.current) {
             newMessages.push({
               role: 'user' as const,
-              content: userTranscript,
+              content: userTranscriptRef.current,
               timestamp: Date.now(),
             });
           }
@@ -120,6 +123,7 @@ export const useRealtimeVoice = (options: UseRealtimeVoiceOptions = {}) => {
         setTimeout(() => {
           setUserTranscript('');
           setAiTranscript('');
+          userTranscriptRef.current = '';
         }, 2000);
         break;
 
@@ -180,6 +184,7 @@ export const useRealtimeVoice = (options: UseRealtimeVoiceOptions = {}) => {
     setVoiceState('idle');
     setUserTranscript('');
     setAiTranscript('');
+    userTranscriptRef.current = '';
     
     toast({
       title: "Disconnected",
