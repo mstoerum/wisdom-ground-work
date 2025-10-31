@@ -216,12 +216,12 @@ serve(async (req) => {
                   },
                   turn_detection: {
                     type: "server_vad", // Server-side voice activity detection
-                    threshold: 0.6, // Higher threshold = less noise sensitivity (0.0-1.0)
-                    prefix_padding_ms: 300,
-                    silence_duration_ms: 800, // Longer silence = less false triggers (800ms is better for noisy environments)
+                    threshold: 0.5, // More sensitive to detect speech earlier, less likely to miss quiet speaking
+                    prefix_padding_ms: 500, // Capture more audio at the start, preventing word cutoff
+                    silence_duration_ms: 3000, // Allow 3-second pauses for thinking and natural breathing
                   },
                   temperature: 0.8,
-                  max_response_output_tokens: 4096,
+                  max_response_output_tokens: "inf", // Remove token limit to allow unlimited AI responses
                 }
               }));
 

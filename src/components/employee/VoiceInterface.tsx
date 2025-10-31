@@ -442,7 +442,7 @@ export const VoiceInterface = ({
               Click the microphone to start a natural voice conversation with Atlas.
             </p>
             <p className="text-xs text-muted-foreground">
-              Speak naturally • Pauses automatically detect when you're done • Hands-free
+              Speak naturally • Take your time • Pauses are okay • The system waits for you to finish
             </p>
           </div>
         )}
@@ -471,10 +471,10 @@ export const VoiceInterface = ({
         {voiceState === 'listening' && (
           <div className="text-center space-y-2 max-w-md">
             <p className="text-sm text-muted-foreground">
-              🎤 Listening... speak naturally
+              🎤 Listening... take your time
             </p>
             <p className="text-xs text-muted-foreground opacity-70">
-              Audio is streaming in real-time
+              Speak naturally • You can pause to think • I'll wait for you to finish
             </p>
           </div>
         )}
