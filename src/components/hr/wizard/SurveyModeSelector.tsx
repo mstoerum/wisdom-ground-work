@@ -2,7 +2,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Mic, Clock, Zap, Edit3, Volume2, Info } from "lucide-react";
-import { motion } from "framer-motion";
 import {
   Dialog,
   DialogContent,
@@ -51,11 +50,7 @@ export const SurveyModeSelector = ({
         {/* Mode Cards */}
         <div className="grid md:grid-cols-2 gap-6">
           {/* Text Mode Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
+          <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
             <Card 
               className="h-full hover:border-primary/50 transition-all cursor-pointer group relative"
               onClick={() => onSelectMode('text')}
@@ -134,14 +129,10 @@ export const SurveyModeSelector = ({
                 </Button>
               </CardContent>
             </Card>
-          </motion.div>
+          </div>
 
           {/* Voice Mode Card */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
+          <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
             <Card 
               className="h-full hover:border-primary/50 transition-all cursor-pointer group relative border-primary/30 shadow-lg"
               onClick={() => onSelectMode('voice')}
@@ -231,7 +222,7 @@ export const SurveyModeSelector = ({
                 </Button>
               </CardContent>
             </Card>
-          </motion.div>
+          </div>
         </div>
 
         {/* Comparison Helper */}
