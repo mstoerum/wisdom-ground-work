@@ -16,6 +16,7 @@ import { CulturalContext, detectCulturalContext } from "@/lib/culturalAdaptation
 import { trackTrustMetrics } from "@/lib/trustAnalytics";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Message {
   role: "user" | "assistant";
@@ -140,6 +141,9 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
       // 3. Not already loading
       if (messages.length === 0 && trustFlowStep === "chat" && !isLoading) {
         setIsLoading(true);
+        
+        // Show loading state immediately
+        console.log('Atlas is preparing introduction...');
         
         try {
           const { data: { session } } = await supabase.auth.getSession();
@@ -437,6 +441,18 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
 
   return (
     <div className="flex flex-col min-h-[500px] max-h-[80vh] bg-card rounded-lg border border-border/50">
+      {/* ARIA Live Region for Screen Readers */}
+      <div 
+        role="status" 
+        aria-live="polite" 
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {isRecording && 'Recording your message. Click the microphone again to send.'}
+        {isLoading && 'Atlas is typing a response. Please wait.'}
+        {messages.length > 0 && messages[messages.length - 1].role === 'assistant' && 'Atlas has responded. Check the conversation for the message.'}
+      </div>
+
       {/* Trust Indicators */}
       {!skipTrustFlow && sessionId && (
         <TrustIndicators sessionId={sessionId} />
@@ -503,6 +519,24 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
       
       <ScrollArea className="flex-1 p-4 overflow-y-auto">
         <div className="space-y-3">
+          {/* Loading skeleton when AI is preparing introduction */}
+          {isLoading && messages.length === 0 && (
+            <div className="flex justify-start">
+              <div className="bg-[hsl(var(--coral-pink))]/30 rounded-2xl p-4 max-w-md space-y-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Skeleton className="h-3 w-12" />
+                </div>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+                <Skeleton className="h-4 w-4/6" />
+                <p className="text-xs text-muted-foreground mt-2 flex items-center gap-2">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Atlas is preparing...
+                </p>
+              </div>
+            </div>
+          )}
+
           {messages.map((message, index) => (
             <ConversationBubble
               key={index}
@@ -511,16 +545,18 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
               timestamp={message.timestamp}
             />
           ))}
-        {isLoading && (
-          <div className="flex justify-start">
-            <div className="bg-muted rounded-lg p-4 flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span className="text-sm text-muted-foreground">
-                {isRecording ? "Recording..." : "Transcribing..."}
-              </span>
+          
+          {/* Loading state for ongoing conversation */}
+          {isLoading && messages.length > 0 && (
+            <div className="flex justify-start">
+              <div className="bg-muted rounded-lg p-4 flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm text-muted-foreground">
+                  {isRecording ? "Recording..." : "Atlas is typing..."}
+                </span>
+              </div>
             </div>
-          </div>
-        )}
+          )}
           <div ref={scrollRef} />
         </div>
       </ScrollArea>
@@ -554,6 +590,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         <div className="flex gap-2 items-end">
           <div className="flex-1 relative">
             <Textarea
+              aria-label="Type your message to Atlas"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
@@ -592,6 +629,8 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
                 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
               `}
               type="button"
+              aria-label={isRecording ? 'Stop recording. Click to send your recorded message.' : 'Start recording. Click to record a voice message.'}
+              aria-pressed={isRecording}
             >
               <Mic className={`w-5 h-5 ${isRecording ? 'text-white' : ''}`} />
             </Button>
@@ -608,6 +647,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
             disabled={!input.trim() || isLoading}
             variant="coral"
             className="w-14 h-14 flex-shrink-0 shadow-sm hover:shadow-md"
+            aria-label="Send message to Atlas"
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />

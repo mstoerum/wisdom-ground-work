@@ -6,13 +6,17 @@ import { useVoiceChat } from '@/hooks/useVoiceChat';
 import { useRealtimeVoice } from '@/hooks/useRealtimeVoice';
 import { usePreviewMode } from '@/contexts/PreviewModeContext';
 import { supabase } from '@/integrations/supabase/client';
-import { Mic, MicOff, MessageSquare, Shield, Info } from 'lucide-react';
+import { Mic, MicOff, MessageSquare, Info } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { AudioLevelMeter } from './AudioLevelMeter';
 import { PrivacyIndicator, ConnectionQualityIndicator } from './PrivacyIndicator';
+import { VoiceStateIndicator } from './VoiceStateIndicator';
+import { KeyboardShortcuts } from './KeyboardShortcuts';
+import { PrivacyBadge } from './PrivacyBadge';
+import { VoiceErrorPanel } from './VoiceErrorPanel';
 
 interface VoiceInterfaceProps {
   conversationId: string;
@@ -261,24 +265,47 @@ export const VoiceInterface = ({
 
   if (!isSupported) {
     return (
-      <Card className="p-8 max-w-2xl mx-auto">
-        <Alert variant="destructive">
-          <AlertDescription>
-            Voice chat is not supported in your browser. Please use text mode instead.
-          </AlertDescription>
-        </Alert>
-        {onSwitchToText && (
-          <Button onClick={onSwitchToText} className="mt-4 w-full">
-            <MessageSquare className="w-4 h-4 mr-2" />
-            Switch to Text Mode
-          </Button>
-        )}
-      </Card>
+      <div className="p-8 max-w-2xl mx-auto">
+        <VoiceErrorPanel 
+          error="Browser does not support voice features. Missing Web Audio API or MediaDevices." 
+          onRetry={() => window.location.reload()}
+          onSwitchToText={onSwitchToText}
+        />
+      </div>
     );
   }
 
+
   return (
-    <div className="min-h-[600px] flex flex-col">
+    <div className="min-h-[600px] flex flex-col relative">
+      {/* ARIA Live Region for Screen Readers */}
+      <div 
+        role="status" 
+        aria-live="polite" 
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {voiceState === 'connecting' && 'Connecting to voice assistant. Please wait.'}
+        {voiceState === 'listening' && 'Microphone is listening. Speak now.'}
+        {voiceState === 'processing' && `Atlas is thinking. ${estimatedProcessingTime ? `Estimated ${Math.ceil(estimatedProcessingTime / 1000)} seconds` : ''}`}
+        {voiceState === 'speaking' && 'Atlas is speaking. Please listen.'}
+        {voiceState === 'idle' && !isSupported && 'An error occurred. Please check the troubleshooting panel.'}
+      </div>
+
+      {/* Persistent Privacy Badge (top-right) */}
+      {isActive && (
+        <div className="fixed top-4 right-4 z-10">
+          <PrivacyBadge isRecording={voiceState === 'listening'} />
+        </div>
+      )}
+
+      {/* Connection Quality Indicator (always visible when active) */}
+      {isActive && (
+        <div className="fixed top-16 right-4 z-10">
+          <ConnectionQualityIndicator quality={connectionQuality} />
+        </div>
+      )}
+
       {/* Preview Mode Indicator */}
       {isPreviewMode && (
         <Alert className="mx-4 mb-4 border-[hsl(var(--coral-accent))] bg-[hsl(var(--coral-pink))]/10">
@@ -354,32 +381,23 @@ export const VoiceInterface = ({
         </div>
       )}
 
-      {/* Connection Quality Indicator */}
-      {isActive && (
-        <div className="px-4 mb-2">
-          <ConnectionQualityIndicator quality={connectionQuality} />
-        </div>
-      )}
-
       {/* Main voice interface */}
-      <div className="flex-1 flex flex-col items-center justify-center gap-8">
+      <div className="flex-1 flex flex-col items-center justify-center gap-6">
+        {/* Enhanced Voice State Indicator (prominent) */}
+        <VoiceStateIndicator 
+          state={voiceState} 
+          estimatedTime={estimatedProcessingTime ? Math.max(0, Math.ceil((estimatedProcessingTime - elapsedProcessingTime) / 1000)) : null}
+        />
+
         {/* Voice Orb */}
         <div className="relative">
           <VoiceOrb state={voiceState} audioLevel={audioLevel} />
-          
-          {/* State indicator */}
-          <div className="absolute -bottom-4 left-1/2 transform -translate-x-1/2 whitespace-nowrap">
-            <p className="text-sm font-medium text-muted-foreground">
-              {getStateMessage()}
-            </p>
-          </div>
         </div>
 
-        {/* Audio Level Meter */}
-        {voiceState === 'listening' && (
+        {/* Audio Level Meter - Always visible when active */}
+        {isActive && (
           <div className="flex flex-col items-center gap-2">
-            <AudioLevelMeter audioLevel={audioLevel} isActive={voiceState === 'listening'} />
-            <p className="text-xs text-muted-foreground">Microphone level</p>
+            <AudioLevelMeter audioLevel={audioLevel} isActive={isActive} />
           </div>
         )}
 
@@ -447,7 +465,7 @@ export const VoiceInterface = ({
           size="lg"
           variant={isActive ? 'destructive' : 'coral'}
           className="w-20 h-20 rounded-full shadow-lg hover:shadow-xl transition-all focus:ring-2 focus:ring-[hsl(var(--coral-accent))] focus:ring-offset-2"
-          aria-label={isActive ? 'Stop voice chat' : 'Start voice chat'}
+          aria-label={isActive ? 'Stop voice chat. Press Escape or click to stop.' : 'Start voice chat. Press Space or click to start.'}
           aria-pressed={isActive}
         >
           {isActive ? (
@@ -457,12 +475,8 @@ export const VoiceInterface = ({
           )}
         </Button>
         
-        {/* Keyboard shortcut hint */}
-        {voiceState === 'idle' && (
-          <p className="text-xs text-muted-foreground">
-            Press <kbd className="px-1.5 py-0.5 bg-muted rounded border border-border text-xs">Space</kbd> to start, <kbd className="px-1.5 py-0.5 bg-muted rounded border border-border text-xs">Esc</kbd> to stop
-          </p>
-        )}
+        {/* Keyboard shortcut hints */}
+        <KeyboardShortcuts isVoiceActive={isActive} />
 
         {/* Instructions */}
         {voiceState === 'idle' && (
