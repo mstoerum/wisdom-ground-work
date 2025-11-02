@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, BarChart2, Clock, TrendingDown, Shield, Brain, Globe, RefreshCw } from "lucide-react";
+import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, BarChart2, Clock, TrendingDown, Shield, Brain, Globe, RefreshCw, Database, CheckCircle2 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { DonutProgressRing } from "@/components/hr/analytics/DonutProgressRing";
@@ -295,6 +295,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
           firstKey === 'analytics-themes' ||
           firstKey === 'analytics-urgency' ||
           firstKey === 'department-data' ||
+          firstKey === 'demo-department-data' ||
           firstKey === 'time-series-data' ||
           firstKey === 'surveys-list'
         );
@@ -311,7 +312,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
       
       // Wait a moment for React Query to update all dependent queries
       // (e.g., enhanced-analytics depends on responses and sessions)
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Force a re-render by updating the refresh key
       // This ensures the component re-evaluates useRealData with fresh data
@@ -382,11 +383,75 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
 
         <div className="container mx-auto px-4 py-8 max-w-7xl">
           <div className="space-y-6">
-            {/* Mock Data Generator - Always visible */}
-            <MockDataGenerator 
-              surveyId={DEMO_SURVEY_ID_STRING} 
-              onDataGenerated={handleDataGenerated}
-            />
+            {/* Prominent call-to-action when no real data exists */}
+            {!useRealData && (
+              <Card className="border-2 border-primary bg-gradient-to-br from-primary/5 to-primary/10">
+                <CardContent className="p-8">
+                  <div className="flex flex-col items-center text-center space-y-4">
+                    <div className="rounded-full bg-primary/10 p-4">
+                      <Database className="h-12 w-12 text-primary" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-bold mb-2">Generate Mock Data to See the System in Action</h2>
+                      <p className="text-muted-foreground max-w-2xl">
+                        The analytics below are currently showing placeholder data. Generate realistic mock conversations to see how the HR Analytics dashboard processes and analyzes actual employee feedback data.
+                      </p>
+                    </div>
+                    <div className="w-full max-w-2xl pt-2">
+                      <MockDataGenerator 
+                        surveyId={DEMO_SURVEY_ID_STRING} 
+                        onDataGenerated={handleDataGenerated}
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Show compact generator when real data exists */}
+            {useRealData && (
+              <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    <div>
+                      <p className="font-medium text-green-900 dark:text-green-100">
+                        Using Real Generated Data
+                      </p>
+                      <p className="text-sm text-green-800 dark:text-green-200">
+                        Analytics are computed from {realAnalytics.sessions.length} actual conversation sessions with {realAnalytics.responses.length} responses
+                      </p>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={async () => {
+                      await queryClient.invalidateQueries({ 
+                        predicate: (query) => {
+                          const key = query.queryKey;
+                          return (
+                            (Array.isArray(key) && key[0] === 'conversation-responses') ||
+                            (Array.isArray(key) && key[0] === 'conversation-sessions') ||
+                            (Array.isArray(key) && key[0] === 'enhanced-analytics')
+                          );
+                        }
+                      });
+                      await Promise.all([
+                        realAnalytics.refetch(),
+                        basicAnalytics.refetch(),
+                      ]);
+                      setDataRefreshKey(prev => prev + 1);
+                      toast.success("Analytics refreshed!");
+                    }}
+                    className="border-green-300 hover:bg-green-100"
+                  >
+                    <RefreshCw className="h-3 w-3 mr-2" />
+                    Refresh Analytics
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
@@ -399,11 +464,13 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                     </>
                   ) : (
                     <>
-                      Comprehensive insights from {participation.completed} completed conversations
-                      <span className="ml-2 text-xs text-muted-foreground">(Mock data - generate real data above)</span>
+                      <span className="inline-flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">Placeholder Data</Badge>
+                        Preview showing {participation.completed} sample conversations
+                      </span>
                     </>
                   )}
-                  {qualityMetrics && (
+                  {qualityMetrics && useRealData && (
                     <span className="ml-2">
                       ? <span className={
                         qualityMetrics.average_confidence_score >= 75 ? 'text-green-600 font-medium' :
@@ -429,7 +496,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
             </div>
 
             {/* Key Metrics */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            <div className={`grid gap-4 md:grid-cols-2 lg:grid-cols-5 ${!useRealData ? 'opacity-60' : ''}`}>
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -547,7 +614,24 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
               </Select>
             </div>
 
-            <Tabs defaultValue="quality" className="space-y-6">
+            {/* Placeholder Data Warning */}
+            {!useRealData && (
+              <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg p-4">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+                  <div className="text-sm">
+                    <p className="font-medium text-amber-900 dark:text-amber-100">
+                      Currently Viewing Placeholder Analytics
+                    </p>
+                    <p className="text-amber-800 dark:text-amber-200">
+                      These charts show sample data for demonstration purposes. Generate mock data above to see real analytics computed from actual conversation data.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <Tabs defaultValue="quality" className={`space-y-6 ${!useRealData ? 'opacity-60' : ''}`}>
               <div className="overflow-x-auto">
                 <TabsList className="h-auto inline-flex flex-wrap gap-1 p-1 min-w-full md:min-w-0">
                   <TabsTrigger value="quality" className="flex items-center gap-1.5 text-xs sm:text-sm">
