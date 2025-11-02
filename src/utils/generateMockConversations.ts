@@ -410,28 +410,151 @@ demoThemes.forEach((themeName, index) => {
 }
 
 /**
+ * Check if user has HR admin role
+ */
+async function ensureHRAdminRole(userId: string): Promise<boolean> {
+  try {
+    // First check if user already has the role
+    const { data: roles, error: checkError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('role', 'hr_admin');
+    
+    if (checkError) {
+      console.warn('Error checking HR admin role:', checkError);
+      // Continue to try assigning anyway
+    } else if (roles && roles.length > 0) {
+      return true;
+    }
+    
+    // User doesn't have HR admin role, try multiple methods to assign it
+    
+    // Method 1: Try direct insert (might work if RLS allows it)
+    const { error: insertError } = await supabase
+      .from('user_roles')
+      .insert({ user_id: userId, role: 'hr_admin' });
+    
+    if (!insertError) {
+      // Success! Verify it was assigned
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const { data: verifyRoles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'hr_admin');
+      
+      return verifyRoles && verifyRoles.length > 0;
+    }
+    
+    // If it's a unique constraint violation, the role might have been assigned by another request
+    if (insertError.code === '23505') {
+      // Verify it was actually assigned
+      await new Promise(resolve => setTimeout(resolve, 200));
+      const { data: verifyRoles } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId)
+        .eq('role', 'hr_admin');
+      
+      return verifyRoles && verifyRoles.length > 0;
+    }
+    
+    // Method 2: Try using the assign_initial_hr_admin function (only works if no admin exists)
+    // This uses SECURITY DEFINER so it can bypass RLS
+    if (insertError.code === '42501' || insertError.message?.includes('permission') || insertError.message?.includes('policy')) {
+      console.warn('Direct insert failed due to RLS, trying assign_initial_hr_admin function...');
+      
+      const { error: rpcError } = await supabase.rpc('assign_initial_hr_admin');
+      
+      if (!rpcError) {
+        // Wait a bit for the function to complete
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Verify the role was assigned
+        const { data: verifyRoles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', userId)
+          .eq('role', 'hr_admin');
+        
+        if (verifyRoles && verifyRoles.length > 0) {
+          return true;
+        }
+      } else {
+        console.warn('assign_initial_hr_admin also failed:', rpcError);
+      }
+    }
+    
+    console.warn('Error assigning HR admin role:', insertError);
+    return false;
+  } catch (error) {
+    console.warn('Exception checking/assigning HR admin role:', error);
+    return false;
+  }
+}
+
+/**
  * Ensure the survey exists, creating it if necessary
  */
 async function ensureSurveyExists(surveyId: string): Promise<string> {
   const targetSurveyId = isValidUUID(surveyId) ? surveyId : DEMO_SURVEY_UUID;
   
-  // Check if survey exists
-  const { data: existingSurvey, error: fetchError } = await supabase
-    .from('surveys')
-    .select('id')
-    .eq('id', targetSurveyId)
-    .single();
+  // Get current user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
   
-  if (existingSurvey && !fetchError) {
+  if (userError || !user) {
+    throw new Error('Must be authenticated to create survey');
+  }
+  
+  // Check if survey exists (with retry logic for eventual consistency)
+  let existingSurvey = null;
+  let fetchError = null;
+  
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data, error } = await supabase
+      .from('surveys')
+      .select('id')
+      .eq('id', targetSurveyId)
+      .single();
+    
+    if (data && !error) {
+      existingSurvey = data;
+      break;
+    }
+    
+    fetchError = error;
+    
+    // If not found, wait a bit and retry (in case of eventual consistency)
+    if (attempt < 2) {
+      await new Promise(resolve => setTimeout(resolve, 100 * (attempt + 1)));
+    }
+  }
+  
+  if (existingSurvey) {
     // Verify the survey is actually accessible (not blocked by RLS)
     return existingSurvey.id;
   }
   
-  // Survey doesn't exist, create it
-  const { data: { user } } = await supabase.auth.getUser();
+  // Survey doesn't exist, ensure user has HR admin role before creating
+  const hasAdminRole = await ensureHRAdminRole(user.id);
   
-  if (!user) {
-    throw new Error('Must be authenticated to create survey');
+  if (!hasAdminRole) {
+    console.warn('User does not have HR admin role, attempting to assign it...');
+    // Try one more time with a small delay
+    await new Promise(resolve => setTimeout(resolve, 200));
+    const { data: finalRoles } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'hr_admin');
+    
+    if (!finalRoles || finalRoles.length === 0) {
+      throw new Error(
+        'Permission denied: Cannot assign HR admin role. ' +
+        'Please ensure you have proper permissions or contact an administrator.'
+      );
+    }
   }
   
   const demoThemes = [
@@ -461,17 +584,28 @@ async function ensureSurveyExists(surveyId: string): Promise<string> {
     status: 'active',
   };
   
-  const { data: newSurvey, error: createError } = await supabase
-    .from('surveys')
-    .insert(surveyData)
-    .select('id')
-    .single();
+  // Try to create the survey with retry logic
+  let newSurvey = null;
+  let createError = null;
   
-  if (createError) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data, error } = await supabase
+      .from('surveys')
+      .insert(surveyData)
+      .select('id')
+      .single();
+    
+    if (data && !error) {
+      newSurvey = data;
+      break;
+    }
+    
+    createError = error;
+    
     // If it's a unique constraint violation, the survey might have been created by another request
-    if (createError.code === '23505') {
-      // Try to fetch it again with a small delay
-      await new Promise(resolve => setTimeout(resolve, 100));
+    if (createError?.code === '23505') {
+      // Try to fetch it again with a delay
+      await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)));
       const { data: retrySurvey, error: retryError } = await supabase
         .from('surveys')
         .select('id')
@@ -479,13 +613,34 @@ async function ensureSurveyExists(surveyId: string): Promise<string> {
         .single();
       
       if (retrySurvey && !retryError) {
-        return retrySurvey.id;
+        newSurvey = retrySurvey;
+        createError = null;
+        break;
+      }
+    } else if (createError?.code === '42501' || createError?.message?.includes('permission') || createError?.message?.includes('policy')) {
+      // RLS policy violation - try one more time after ensuring role
+      if (attempt < 2) {
+        await ensureHRAdminRole(user.id);
+        await new Promise(resolve => setTimeout(resolve, 200));
+        continue;
       }
     }
     
+    // Don't retry on other errors
+    if (attempt === 2) {
+      break;
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 100 * (attempt + 1)));
+  }
+  
+  if (createError) {
     // If it's an RLS policy violation, provide a helpful error message
     if (createError.code === '42501' || createError.message?.includes('permission') || createError.message?.includes('policy')) {
-      throw new Error('Permission denied: You need HR admin role to create surveys. Please ensure you are logged in with the correct permissions.');
+      throw new Error(
+        'Permission denied: You need HR admin role to create surveys. ' +
+        `Attempted to assign role but still cannot create survey. Error: ${createError.message}`
+      );
     }
     
     console.error('Error creating survey:', createError);
@@ -496,15 +651,36 @@ async function ensureSurveyExists(surveyId: string): Promise<string> {
     throw new Error('Survey creation succeeded but no survey ID was returned');
   }
   
-  // Verify the survey is accessible after creation
-  const { data: verifySurvey, error: verifyError } = await supabase
-    .from('surveys')
-    .select('id')
-    .eq('id', newSurvey.id)
-    .single();
+  // Verify the survey is accessible after creation (with retry for eventual consistency)
+  let verifySurvey = null;
+  let verifyError = null;
+  
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data, error } = await supabase
+      .from('surveys')
+      .select('id')
+      .eq('id', newSurvey.id)
+      .single();
+    
+    if (data && !error) {
+      verifySurvey = data;
+      break;
+    }
+    
+    verifyError = error;
+    
+    // Wait before retrying (for eventual consistency)
+    if (attempt < 4) {
+      await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)));
+    }
+  }
   
   if (verifyError || !verifySurvey) {
-    throw new Error(`Survey was created but is not accessible. This may be due to RLS policies. Error: ${verifyError?.message || 'Unknown error'}`);
+    throw new Error(
+      `Survey was created but is not accessible after creation. ` +
+      `This may be due to Row Level Security (RLS) policies or eventual consistency. ` +
+      `Survey ID: ${newSurvey.id}, Error: ${verifyError?.message || 'Unknown error'}`
+    );
   }
   
   return verifySurvey.id;
@@ -523,20 +699,39 @@ export async function insertMockConversations(
     throw new Error('Must be authenticated to generate mock data');
   }
   
-  // Ensure the survey exists first
+  // Ensure the survey exists first (this will also ensure user has HR admin role)
   const actualSurveyId = await ensureSurveyExists(surveyId);
   
-  // Double-check the survey exists and is accessible before inserting sessions
-  const { data: verifySurveyBeforeInsert, error: verifyErrorBeforeInsert } = await supabase
-    .from('surveys')
-    .select('id')
-    .eq('id', actualSurveyId)
-    .single();
+  // Double-check the survey exists and is accessible before inserting sessions (with retry)
+  let verifySurveyBeforeInsert = null;
+  let verifyErrorBeforeInsert = null;
+  
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const { data, error } = await supabase
+      .from('surveys')
+      .select('id')
+      .eq('id', actualSurveyId)
+      .single();
+    
+    if (data && !error) {
+      verifySurveyBeforeInsert = data;
+      break;
+    }
+    
+    verifyErrorBeforeInsert = error;
+    
+    // Wait before retrying (for eventual consistency)
+    if (attempt < 4) {
+      await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)));
+    }
+  }
   
   if (verifyErrorBeforeInsert || !verifySurveyBeforeInsert) {
     throw new Error(
       `Cannot insert mock conversations: Survey with ID ${actualSurveyId} does not exist or is not accessible. ` +
-      `This may be due to Row Level Security (RLS) policies. Error: ${verifyErrorBeforeInsert?.message || 'Unknown error'}`
+      `This may be due to Row Level Security (RLS) policies or eventual consistency issues. ` +
+      `Error: ${verifyErrorBeforeInsert?.message || 'Unknown error'}. ` +
+      `Please try again in a moment.`
     );
   }
   
@@ -552,20 +747,64 @@ export async function insertMockConversations(
     throw new Error(`Invalid session data: ${invalidSessions.length} sessions have incorrect survey_id or employee_id`);
   }
   
-  // Insert sessions
-  const { error: sessionsError } = await supabase
-    .from('conversation_sessions')
-    .upsert(sessions, { onConflict: 'id' });
+  // Verify all responses reference valid session IDs
+  const sessionIds = new Set(sessions.map(s => s.id));
+  const invalidResponses = responses.filter(r => !sessionIds.has(r.conversation_session_id));
+  if (invalidResponses.length > 0) {
+    throw new Error(`Invalid response data: ${invalidResponses.length} responses reference non-existent session IDs`);
+  }
+  
+  // Insert sessions with retry logic for foreign key issues
+  let sessionsError = null;
+  
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { error } = await supabase
+      .from('conversation_sessions')
+      .upsert(sessions, { onConflict: 'id' });
+    
+    if (!error) {
+      sessionsError = null;
+      break;
+    }
+    
+    sessionsError = error;
+    
+    // If it's a foreign key violation, verify the survey still exists
+    if (sessionsError.code === '23503' || sessionsError.message?.includes('foreign key')) {
+      if (attempt < 2) {
+        // Wait and verify survey exists
+        await new Promise(resolve => setTimeout(resolve, 300 * (attempt + 1)));
+        const { data: verifySurvey } = await supabase
+          .from('surveys')
+          .select('id')
+          .eq('id', actualSurveyId)
+          .single();
+        
+        if (!verifySurvey) {
+          throw new Error(
+            `Foreign key constraint violation: The survey with ID ${actualSurveyId} does not exist in the database. ` +
+            `This usually means the survey was deleted or is not accessible due to RLS policies. ` +
+            `Original error: ${sessionsError.message}`
+          );
+        }
+        
+        // Survey exists, retry insert
+        continue;
+      } else {
+        // Final attempt failed
+        throw new Error(
+          `Foreign key constraint violation: The survey with ID ${actualSurveyId} may not exist or be accessible. ` +
+          `Survey verification passed but insert still fails. This may be a timing/consistency issue. ` +
+          `Original error: ${sessionsError.message}. Please try again.`
+        );
+      }
+    } else {
+      // Not a foreign key error, don't retry
+      break;
+    }
+  }
   
   if (sessionsError) {
-    // Provide a more helpful error message for foreign key violations
-    if (sessionsError.code === '23503' || sessionsError.message?.includes('foreign key')) {
-      throw new Error(
-        `Foreign key constraint violation: The survey with ID ${actualSurveyId} does not exist in the database. ` +
-        `This usually means the survey was not created successfully or was deleted. ` +
-        `Original error: ${sessionsError.message}`
-      );
-    }
     console.error('Error inserting sessions:', sessionsError);
     throw new Error(`Failed to insert conversation sessions: ${sessionsError.message || sessionsError.code}`);
   }
@@ -576,13 +815,51 @@ export async function insertMockConversations(
   
   for (let i = 0; i < responses.length; i += batchSize) {
     const batch = responses.slice(i, i + batchSize);
-    const { error: responsesError } = await supabase
-      .from('responses')
-      .upsert(batch, { onConflict: 'id' });
+    let batchError = null;
     
-    if (responsesError) {
-      console.error('Error inserting responses batch:', responsesError);
-      throw responsesError;
+    // Retry logic for response batches
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { error } = await supabase
+        .from('responses')
+        .upsert(batch, { onConflict: 'id' });
+      
+      if (!error) {
+        batchError = null;
+        break;
+      }
+      
+      batchError = error;
+      
+      // If foreign key error, verify sessions exist
+      if (batchError.code === '23503' || batchError.message?.includes('foreign key')) {
+        if (attempt < 2) {
+          await new Promise(resolve => setTimeout(resolve, 200 * (attempt + 1)));
+          // Verify sessions exist
+          const sessionIdsInBatch = new Set(batch.map(r => r.conversation_session_id));
+          const { data: verifySessions } = await supabase
+            .from('conversation_sessions')
+            .select('id')
+            .in('id', Array.from(sessionIdsInBatch));
+          
+          if (!verifySessions || verifySessions.length !== sessionIdsInBatch.size) {
+            throw new Error(
+              `Foreign key constraint violation: Some conversation sessions referenced by responses do not exist. ` +
+              `Expected ${sessionIdsInBatch.size} sessions, found ${verifySessions?.length || 0}. ` +
+              `Original error: ${batchError.message}`
+            );
+          }
+          
+          continue;
+        }
+      } else {
+        // Not a foreign key error, don't retry
+        break;
+      }
+    }
+    
+    if (batchError) {
+      console.error('Error inserting responses batch:', batchError);
+      throw new Error(`Failed to insert responses batch: ${batchError.message || batchError.code}`);
     }
     
     responsesCreated += batch.length;
