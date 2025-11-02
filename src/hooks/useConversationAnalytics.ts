@@ -130,6 +130,14 @@ export function useConversationAnalytics(filters: AnalyticsFilters = {}): Enhanc
           themes: [],
           patterns: [],
           narrative: null,
+          rootCauses: [],
+          interventions: [],
+          quickWins: [],
+          impactPredictions: [],
+          qualityMetrics: null,
+          qualityInsights: [],
+          nlpAnalysis: null,
+          culturalMap: null,
         };
       }
 
