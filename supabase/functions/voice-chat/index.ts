@@ -155,7 +155,7 @@ serve(async (req) => {
                 "Content-Type": "application/json",
               },
               body: JSON.stringify({
-                model: "gpt-4o-realtime-preview-2024-12-17",
+                model: "gpt-4o-realtime-preview",
                 voice: "alloy",
               }),
             });
@@ -187,7 +187,7 @@ serve(async (req) => {
             console.log("✅ Ephemeral token created");
 
             // Step 2: Connect to WebSocket using ephemeral token
-            const model = "gpt-4o-realtime-preview-2024-12-17";
+            const model = "gpt-4o-realtime-preview";
             const openaiWsUrl = `wss://api.openai.com/v1/realtime?model=${model}`;
             
             console.log("🔌 Connecting to OpenAI Realtime API with ephemeral token...");
