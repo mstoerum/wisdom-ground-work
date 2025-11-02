@@ -25,6 +25,9 @@ import { NarrativeSummary } from "@/components/hr/analytics/NarrativeSummary";
 import { EnhancedThemeAnalysis } from "@/components/hr/analytics/EnhancedThemeAnalysis";
 import { PatternDiscovery } from "@/components/hr/analytics/PatternDiscovery";
 import { ActionableIntelligenceCenter } from "@/components/hr/analytics/ActionableIntelligenceCenter";
+import { ConversationQualityDashboard } from "@/components/hr/analytics/ConversationQualityDashboard";
+import { NLPInsights } from "@/components/hr/analytics/NLPInsights";
+import { CulturalPatterns } from "@/components/hr/analytics/CulturalPatterns";
 
 const Analytics = () => {
   const navigate = useNavigate();
@@ -42,6 +45,10 @@ const Analytics = () => {
     interventions,
     quickWins,
     impactPredictions,
+    qualityMetrics,
+    qualityInsights,
+    nlpAnalysis,
+    culturalMap,
     isLoading: isConversationLoading 
   } = useConversationAnalytics(filters);
 
@@ -287,9 +294,12 @@ const Analytics = () => {
               </Select>
             </div>
 
-            <Tabs defaultValue="actionable" className="space-y-6">
-              <TabsList>
+            <Tabs defaultValue="quality" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-5 lg:flex lg:flex-wrap">
+                <TabsTrigger value="quality">Quality & Confidence</TabsTrigger>
                 <TabsTrigger value="actionable">Action Center</TabsTrigger>
+                <TabsTrigger value="nlp">NLP Insights</TabsTrigger>
+                <TabsTrigger value="culture">Culture Map</TabsTrigger>
                 <TabsTrigger value="insights">Insights Hub</TabsTrigger>
                 <TabsTrigger value="themes">Theme Analysis</TabsTrigger>
                 <TabsTrigger value="voices">Employee Voices</TabsTrigger>
@@ -301,6 +311,15 @@ const Analytics = () => {
                 <TabsTrigger value="urgency">Urgent Flags</TabsTrigger>
               </TabsList>
 
+              {/* Conversation Quality & Confidence Tab - MOST IMPORTANT */}
+              <TabsContent value="quality" className="space-y-6">
+                <ConversationQualityDashboard
+                  qualityMetrics={qualityMetrics}
+                  qualityInsights={qualityInsights}
+                  isLoading={isConversationLoading}
+                />
+              </TabsContent>
+
               {/* Actionable Intelligence Center Tab */}
               <TabsContent value="actionable" className="space-y-6">
                 <ActionableIntelligenceCenter
@@ -308,6 +327,22 @@ const Analytics = () => {
                   interventions={interventions}
                   quickWins={quickWins}
                   impactPredictions={impactPredictions}
+                  isLoading={isConversationLoading}
+                />
+              </TabsContent>
+
+              {/* NLP Insights Tab */}
+              <TabsContent value="nlp" className="space-y-6">
+                <NLPInsights
+                  nlpAnalysis={nlpAnalysis}
+                  isLoading={isConversationLoading}
+                />
+              </TabsContent>
+
+              {/* Cultural Patterns Tab */}
+              <TabsContent value="culture" className="space-y-6">
+                <CulturalPatterns
+                  culturalMap={culturalMap}
                   isLoading={isConversationLoading}
                 />
               </TabsContent>

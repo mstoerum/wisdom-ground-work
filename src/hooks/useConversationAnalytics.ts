@@ -34,6 +34,22 @@ import {
   type QuickWin,
   type ImpactPrediction,
 } from "@/lib/actionableIntelligence";
+import {
+  calculateAggregateQuality,
+  calculateSessionQuality,
+  generateQualityInsights,
+  type AggregateQualityMetrics,
+  type ConversationQualityMetrics,
+  type QualityInsight,
+} from "@/lib/conversationQuality";
+import {
+  performNLPAnalysis,
+  type NLPAnalysis,
+} from "@/lib/advancedNLP";
+import {
+  buildCulturalMap,
+  type CulturalMap,
+} from "@/lib/culturalPatterns";
 import { useAnalytics, type AnalyticsFilters } from "./useAnalytics";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -48,6 +64,10 @@ export interface EnhancedAnalyticsData {
   interventions: InterventionRecommendation[];
   quickWins: QuickWin[];
   impactPredictions: ImpactPrediction[];
+  qualityMetrics: AggregateQualityMetrics | null;
+  qualityInsights: QualityInsight[];
+  nlpAnalysis: NLPAnalysis | null;
+  culturalMap: CulturalMap | null;
   isLoading: boolean;
   refetch: () => void;
 }
@@ -160,6 +180,19 @@ export function useConversationAnalytics(filters: AnalyticsFilters = {}): Enhanc
       // Predict impact
       const impactPredictions = predictImpact(interventions, themes);
 
+      // Calculate conversation quality metrics
+      const qualityMetrics = calculateAggregateQuality(sessions, responses);
+      const sessionQualityMetrics = sessions.map(s => 
+        calculateSessionQuality(s, responses)
+      );
+      const qualityInsights = generateQualityInsights(qualityMetrics, sessionQualityMetrics);
+
+      // Perform NLP analysis
+      const nlpAnalysis = performNLPAnalysis(responses);
+
+      // Build cultural map
+      const culturalMap = buildCulturalMap(responses, sessions, themes);
+
       return {
         quotes,
         themes,
@@ -169,6 +202,10 @@ export function useConversationAnalytics(filters: AnalyticsFilters = {}): Enhanc
         interventions,
         quickWins,
         impactPredictions,
+        qualityMetrics,
+        qualityInsights,
+        nlpAnalysis,
+        culturalMap,
       };
     },
     enabled: !!responsesQuery.data && !!sessionsQuery.data,
@@ -192,6 +229,10 @@ export function useConversationAnalytics(filters: AnalyticsFilters = {}): Enhanc
     interventions: enhancedDataQuery.data?.interventions || [],
     quickWins: enhancedDataQuery.data?.quickWins || [],
     impactPredictions: enhancedDataQuery.data?.impactPredictions || [],
+    qualityMetrics: enhancedDataQuery.data?.qualityMetrics || null,
+    qualityInsights: enhancedDataQuery.data?.qualityInsights || [],
+    nlpAnalysis: enhancedDataQuery.data?.nlpAnalysis || null,
+    culturalMap: enhancedDataQuery.data?.culturalMap || null,
     isLoading: responsesQuery.isLoading || sessionsQuery.isLoading || enhancedDataQuery.isLoading,
     refetch,
   };
