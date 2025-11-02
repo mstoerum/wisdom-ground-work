@@ -13,12 +13,17 @@ import { RoundedBarChart } from "@/components/hr/analytics/RoundedBarChart";
 import { ParticipationChart } from "@/components/hr/analytics/ParticipationChart";
 import { SentimentChart } from "@/components/hr/analytics/SentimentChart";
 import { useAnalytics, type AnalyticsFilters } from "@/hooks/useAnalytics";
+import { useConversationAnalytics } from "@/hooks/useConversationAnalytics";
 import { exportToCSV } from "@/lib/exportAnalytics";
 import { exportAnalyticsToPDF } from "@/lib/exportAnalyticsPDF";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { EmployeeVoiceGallery } from "@/components/hr/analytics/EmployeeVoiceGallery";
+import { NarrativeSummary } from "@/components/hr/analytics/NarrativeSummary";
+import { EnhancedThemeAnalysis } from "@/components/hr/analytics/EnhancedThemeAnalysis";
+import { PatternDiscovery } from "@/components/hr/analytics/PatternDiscovery";
 
 const Analytics = () => {
   const navigate = useNavigate();
@@ -27,6 +32,13 @@ const Analytics = () => {
   const [selectedTheme, setSelectedTheme] = useState("all");
   
   const { participation, sentiment, themes, urgency, isLoading, refetch } = useAnalytics(filters);
+  const { 
+    quotes, 
+    narrative, 
+    themes: enhancedThemes, 
+    patterns,
+    isLoading: isConversationLoading 
+  } = useConversationAnalytics(filters);
 
   const { data: surveys } = useQuery({
     queryKey: ['surveys-list'],
@@ -270,15 +282,83 @@ const Analytics = () => {
               </Select>
             </div>
 
-            <Tabs defaultValue="overview" className="space-y-6">
+            <Tabs defaultValue="insights" className="space-y-6">
               <TabsList>
+                <TabsTrigger value="insights">Insights Hub</TabsTrigger>
+                <TabsTrigger value="themes">Theme Analysis</TabsTrigger>
+                <TabsTrigger value="voices">Employee Voices</TabsTrigger>
+                <TabsTrigger value="patterns">Pattern Discovery</TabsTrigger>
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="sentiment">Sentiment Analysis</TabsTrigger>
-                <TabsTrigger value="themes">Theme Insights</TabsTrigger>
                 <TabsTrigger value="trends">Trends & Patterns</TabsTrigger>
                 <TabsTrigger value="departments">Department View</TabsTrigger>
                 <TabsTrigger value="urgency">Urgent Flags</TabsTrigger>
               </TabsList>
+
+              {/* New Insights Hub Tab */}
+              <TabsContent value="insights" className="space-y-6">
+                <NarrativeSummary 
+                  narrative={narrative} 
+                  isLoading={isConversationLoading}
+                />
+                
+                {enhancedThemes.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Top Themes Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid gap-4 md:grid-cols-3">
+                        {enhancedThemes.slice(0, 3).map(theme => (
+                          <div key={theme.theme_id} className="p-4 rounded-lg border">
+                            <h4 className="font-semibold mb-2">{theme.theme_name}</h4>
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Sentiment</span>
+                                <span className="font-medium">{theme.avg_sentiment.toFixed(1)}/100</span>
+                              </div>
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Responses</span>
+                                <span className="font-medium">{theme.response_count}</span>
+                              </div>
+                              {theme.sub_themes.length > 0 && (
+                                <div className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground">Sub-themes</span>
+                                  <span className="font-medium">{theme.sub_themes.length}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              {/* Enhanced Theme Analysis Tab */}
+              <TabsContent value="themes" className="space-y-6">
+                <EnhancedThemeAnalysis 
+                  themes={enhancedThemes} 
+                  isLoading={isConversationLoading}
+                />
+              </TabsContent>
+
+              {/* Employee Voice Gallery Tab */}
+              <TabsContent value="voices" className="space-y-6">
+                <EmployeeVoiceGallery 
+                  quotes={quotes} 
+                  isLoading={isConversationLoading}
+                />
+              </TabsContent>
+
+              {/* Pattern Discovery Tab */}
+              <TabsContent value="patterns" className="space-y-6">
+                <PatternDiscovery 
+                  patterns={patterns} 
+                  isLoading={isConversationLoading}
+                />
+              </TabsContent>
 
               <TabsContent value="overview" className="space-y-8">
                 {/* Asymmetric 60-40 Layout */}
@@ -407,7 +487,7 @@ const Analytics = () => {
                           <p className="text-sm text-green-800 dark:text-green-200">
                             "The AI conversation helped me process my thoughts and feel more optimistic about work."
                           </p>
-                          <p className="text-xs text-green-600 dark:text-green-300 mt-1">— Anonymous Employee</p>
+                          <p className="text-xs text-green-600 dark:text-green-300 mt-1">? Anonymous Employee</p>
                         </div>
                       </div>
                     </CardContent>
@@ -464,7 +544,7 @@ const Analytics = () => {
                             {theme.name === "Work Environment" && "The office environment is modern and comfortable. Great facilities and amenities."}
                             {theme.name === "Communication" && "Communication from leadership could be more transparent. Sometimes important decisions are made without much explanation."}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-2">— Anonymous Employee Response</p>
+                          <p className="text-xs text-muted-foreground mt-2">? Anonymous Employee Response</p>
                         </div>
                       </div>
                     </Card>
@@ -505,7 +585,7 @@ const Analytics = () => {
                       <TrendingUp className="h-4 w-4 text-green-600" />
                     </div>
                     <div className="text-2xl font-bold text-green-600">+14%</div>
-                    <p className="text-xs text-muted-foreground">Q3 2024 → Q1 2025</p>
+                    <p className="text-xs text-muted-foreground">Q3 2024 ? Q1 2025</p>
                   </Card>
 
                   <Card className="p-6">
@@ -514,7 +594,7 @@ const Analytics = () => {
                       <TrendingUp className="h-4 w-4 text-green-600" />
                     </div>
                     <div className="text-2xl font-bold text-green-600">+10.1</div>
-                    <p className="text-xs text-muted-foreground">Q3 2024 → Q1 2025</p>
+                    <p className="text-xs text-muted-foreground">Q3 2024 ? Q1 2025</p>
                   </Card>
 
                   <Card className="p-6">
@@ -523,7 +603,7 @@ const Analytics = () => {
                       <TrendingDown className="h-4 w-4 text-green-600" />
                     </div>
                     <div className="text-2xl font-bold text-green-600">-8</div>
-                    <p className="text-xs text-muted-foreground">Q3 2024 → Q1 2025</p>
+                    <p className="text-xs text-muted-foreground">Q3 2024 ? Q1 2025</p>
                   </Card>
                 </div>
               </TabsContent>
@@ -617,7 +697,7 @@ const Analytics = () => {
                             <h3 className="font-semibold text-lg mb-2">{flag.responses?.content || 'No content'}</h3>
                             <p className="text-sm text-muted-foreground">
                               Escalated on {new Date(flag.escalated_at).toLocaleDateString()}
-                              {flag.resolved_at && ` • Resolved on ${new Date(flag.resolved_at).toLocaleDateString()}`}
+                              {flag.resolved_at && ` ? Resolved on ${new Date(flag.resolved_at).toLocaleDateString()}`}
                             </p>
                           </div>
                         </div>
