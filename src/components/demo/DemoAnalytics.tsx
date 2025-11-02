@@ -383,10 +383,10 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
 
         <div className="container mx-auto px-4 py-8 max-w-7xl">
           <div className="space-y-6">
-            {/* Prominent call-to-action when no real data exists */}
-            {!useRealData && (
-              <Card className="border-2 border-primary bg-gradient-to-br from-primary/5 to-primary/10">
-                <CardContent className="p-8">
+            {/* Mock Data Generator - Always visible but style changes based on data state */}
+            <Card className={`${!useRealData ? 'border-2 border-primary bg-gradient-to-br from-primary/5 to-primary/10' : 'border-2 border-dashed'}`}>
+              <CardContent className={!useRealData ? "p-8" : "p-6"}>
+                {!useRealData ? (
                   <div className="flex flex-col items-center text-center space-y-4">
                     <div className="rounded-full bg-primary/10 p-4">
                       <Database className="h-12 w-12 text-primary" />
@@ -404,54 +404,55 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                       />
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Show compact generator when real data exists */}
-            {useRealData && (
-              <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                    <div>
-                      <p className="font-medium text-green-900 dark:text-green-100">
-                        Using Real Generated Data
-                      </p>
-                      <p className="text-sm text-green-800 dark:text-green-200">
-                        Analytics are computed from {realAnalytics.sessions.length} actual conversation sessions with {realAnalytics.responses.length} responses
-                      </p>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        <div>
+                          <p className="font-medium text-green-900 dark:text-green-100">
+                            Using Real Generated Data
+                          </p>
+                          <p className="text-sm text-green-800 dark:text-green-200">
+                            Analytics are computed from {realAnalytics.sessions.length} actual conversation sessions with {realAnalytics.responses.length} responses
+                          </p>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={async () => {
+                          await queryClient.invalidateQueries({ 
+                            predicate: (query) => {
+                              const key = query.queryKey;
+                              return (
+                                (Array.isArray(key) && key[0] === 'conversation-responses') ||
+                                (Array.isArray(key) && key[0] === 'conversation-sessions') ||
+                                (Array.isArray(key) && key[0] === 'enhanced-analytics')
+                              );
+                            }
+                          });
+                          await Promise.all([
+                            realAnalytics.refetch(),
+                            basicAnalytics.refetch(),
+                          ]);
+                          setDataRefreshKey(prev => prev + 1);
+                          toast.success("Analytics refreshed!");
+                        }}
+                        className="border-green-300 hover:bg-green-100"
+                      >
+                        <RefreshCw className="h-3 w-3 mr-2" />
+                        Refresh Analytics
+                      </Button>
                     </div>
+                    <MockDataGenerator 
+                      surveyId={DEMO_SURVEY_ID_STRING} 
+                      onDataGenerated={handleDataGenerated}
+                    />
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={async () => {
-                      await queryClient.invalidateQueries({ 
-                        predicate: (query) => {
-                          const key = query.queryKey;
-                          return (
-                            (Array.isArray(key) && key[0] === 'conversation-responses') ||
-                            (Array.isArray(key) && key[0] === 'conversation-sessions') ||
-                            (Array.isArray(key) && key[0] === 'enhanced-analytics')
-                          );
-                        }
-                      });
-                      await Promise.all([
-                        realAnalytics.refetch(),
-                        basicAnalytics.refetch(),
-                      ]);
-                      setDataRefreshKey(prev => prev + 1);
-                      toast.success("Analytics refreshed!");
-                    }}
-                    className="border-green-300 hover:bg-green-100"
-                  >
-                    <RefreshCw className="h-3 w-3 mr-2" />
-                    Refresh Analytics
-                  </Button>
-                </div>
-              </div>
-            )}
+                )}
+              </CardContent>
+            </Card>
 
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
