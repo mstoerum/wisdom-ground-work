@@ -211,7 +211,7 @@ function generateSession(
   const endedAt = new Date(new Date(startedAt).getTime() + durationMinutes * 60000).toISOString();
 
   return {
-    id: `demo-session-${index}`,
+    id: crypto.randomUUID(),
     survey_id: surveyId,
     employee_id: null, // Anonymous in demo
     initial_mood: initialMood,
@@ -279,7 +279,7 @@ function generateResponses(
       : null;
     
     const response: MockResponse = {
-      id: `demo-response-${responseIndex}-${i}`,
+      id: crypto.randomUUID(),
       survey_id: surveyId,
       conversation_session_id: session.id,
       content: variedContent,
@@ -331,10 +331,11 @@ export async function generateMockConversations(
       const themeNames = Array.isArray(survey.themes) ? survey.themes : [];
       
       // Now fetch the actual theme records by name
+      const themeNamesArray = themeNames.filter((name): name is string => typeof name === 'string');
       const { data: themes, error: themesError } = await supabase
         .from('survey_themes')
         .select('id, name')
-        .in('name', themeNames)
+        .in('name', themeNamesArray)
         .eq('is_active', true);
       
       if (!themesError && themes) {
