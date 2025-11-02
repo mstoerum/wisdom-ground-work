@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { HRLayout } from "@/components/hr/HRLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, BarChart2, Clock, TrendingDown, Shield, Brain, Globe } from "lucide-react";
+import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, BarChart2, Clock, TrendingDown, Shield, Brain, Globe, RefreshCw } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { DonutProgressRing } from "@/components/hr/analytics/DonutProgressRing";
@@ -42,6 +42,9 @@ import { ActionableIntelligenceCenter } from "@/components/hr/analytics/Actionab
 import { ConversationQualityDashboard } from "@/components/hr/analytics/ConversationQualityDashboard";
 import { NLPInsights } from "@/components/hr/analytics/NLPInsights";
 import { CulturalPatterns } from "@/components/hr/analytics/CulturalPatterns";
+import { useConversationAnalytics } from "@/hooks/useConversationAnalytics";
+import { MockDataGenerator } from "./MockDataGenerator";
+import { supabase } from "@/integrations/supabase/client";
 
 interface DemoAnalyticsProps {
   onBackToMenu: () => void;
@@ -50,27 +53,90 @@ interface DemoAnalyticsProps {
 export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
   const [selectedDepartment, setSelectedDepartment] = useState("all");
   const [selectedTheme, setSelectedTheme] = useState("all");
+  const [hasRealData, setHasRealData] = useState(false);
+  const [dataRefreshKey, setDataRefreshKey] = useState(0);
 
-  // Generate comprehensive mock data
-  const participation = generateMockParticipation();
-  const sentiment = generateMockSentiment();
+  const DEMO_SURVEY_ID = 'demo-survey-001';
+
+  // Check if real conversation data exists
+  useEffect(() => {
+    const checkForRealData = async () => {
+      try {
+        const { count, error } = await supabase
+          .from('conversation_sessions')
+          .select('*', { count: 'exact', head: true })
+          .eq('survey_id', DEMO_SURVEY_ID);
+        
+        if (!error && count && count > 0) {
+          setHasRealData(true);
+        }
+      } catch (error) {
+        console.error('Error checking for real data:', error);
+      }
+    };
+    
+    checkForRealData();
+  }, [dataRefreshKey]);
+
+  // Try to use real conversation analytics if data exists
+  const realAnalytics = useConversationAnalytics({
+    surveyId: hasRealData ? DEMO_SURVEY_ID : undefined,
+  });
+
+  // Fallback to mock data if no real data
+  const useRealData = hasRealData && realAnalytics.responses.length > 0;
+
+  // Generate comprehensive mock data (as fallback)
+  const participation = useRealData 
+    ? {
+        totalAssigned: 45,
+        completed: realAnalytics.sessions.length,
+        pending: 0,
+        completionRate: Math.round((realAnalytics.sessions.length / 45) * 100),
+        avgDuration: realAnalytics.sessions.reduce((sum, s) => {
+          if (s.started_at && s.ended_at) {
+            const duration = (new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / 60000;
+            return sum + duration;
+          }
+          return sum;
+        }, 0) / realAnalytics.sessions.length || 12.3
+      }
+    : generateMockParticipation();
+
+  const sentiment = useRealData && realAnalytics.responses.length > 0
+    ? {
+        positive: realAnalytics.responses.filter(r => r.sentiment === 'positive').length,
+        neutral: realAnalytics.responses.filter(r => r.sentiment === 'neutral').length,
+        negative: realAnalytics.responses.filter(r => r.sentiment === 'negative').length,
+        avgScore: realAnalytics.responses.reduce((sum, r) => sum + (r.sentiment_score || 50), 0) / realAnalytics.responses.length || 50,
+        moodImprovement: realAnalytics.sessions.reduce((sum, s) => {
+          if (s.initial_mood !== null && s.final_mood !== null) {
+            return sum + (s.final_mood - s.initial_mood);
+          }
+          return sum;
+        }, 0) / realAnalytics.sessions.length || 0
+      }
+    : generateMockSentiment();
+
   const themes = generateMockThemes();
   const urgency = generateMockUrgencyFlags();
   const timeSeriesData = generateTimeSeriesData();
   const departmentData = generateDepartmentData();
   const trendData = generateTrendData();
-  const qualityMetrics = generateMockQualityMetrics();
-  const qualityInsights = generateMockQualityInsights();
-  const enhancedThemes = generateMockEnhancedThemes();
-  const quotes = generateMockQuotes();
-  const narrative = generateMockNarrative();
-  const patterns = generateMockPatterns();
-  const rootCauses = generateMockRootCauses();
-  const interventions = generateMockInterventions();
-  const quickWins = generateMockQuickWins();
-  const impactPredictions = generateMockImpactPredictions();
-  const nlpAnalysis = generateMockNLPAnalysis();
-  const culturalMap = generateMockCulturalMap();
+  
+  // Use real analytics data when available
+  const qualityMetrics = useRealData ? realAnalytics.qualityMetrics : generateMockQualityMetrics();
+  const qualityInsights = useRealData ? realAnalytics.qualityInsights : generateMockQualityInsights();
+  const enhancedThemes = useRealData ? realAnalytics.themes : generateMockEnhancedThemes();
+  const quotes = useRealData ? realAnalytics.quotes : generateMockQuotes();
+  const narrative = useRealData ? realAnalytics.narrative : generateMockNarrative();
+  const patterns = useRealData ? realAnalytics.patterns : generateMockPatterns();
+  const rootCauses = useRealData ? realAnalytics.rootCauses : generateMockRootCauses();
+  const interventions = useRealData ? realAnalytics.interventions : generateMockInterventions();
+  const quickWins = useRealData ? realAnalytics.quickWins : generateMockQuickWins();
+  const impactPredictions = useRealData ? realAnalytics.impactPredictions : generateMockImpactPredictions();
+  const nlpAnalysis = useRealData ? realAnalytics.nlpAnalysis : generateMockNLPAnalysis();
+  const culturalMap = useRealData ? realAnalytics.culturalMap : generateMockCulturalMap();
 
   // Format time series data for display
   const formattedTimeSeriesData = (timeSeriesData || []).map(d => ({
@@ -94,6 +160,11 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
     console.log("Exporting PDF...");
   };
 
+  const handleDataGenerated = () => {
+    setDataRefreshKey(prev => prev + 1);
+    toast.success("Refreshing analytics with new data...");
+  };
+
   return (
     <HRLayout>
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -102,24 +173,56 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
           <div className="container mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">Demo Mode - HR Analytics</span>
-              <Badge variant="secondary">247 Employees • Q1 2025</Badge>
+              {useRealData ? (
+                <Badge variant="default" className="bg-green-600">
+                  Using Real Data ({realAnalytics.sessions.length} conversations)
+                </Badge>
+              ) : (
+                <Badge variant="secondary">Mock Data ? Q1 2025</Badge>
+              )}
             </div>
-            <Button variant="ghost" size="sm" onClick={onBackToMenu}>
-              Back to Demo Menu
-            </Button>
+            <div className="flex items-center gap-2">
+              {useRealData && (
+                <Button variant="ghost" size="sm" onClick={() => setDataRefreshKey(prev => prev + 1)}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh
+                </Button>
+              )}
+              <Button variant="ghost" size="sm" onClick={onBackToMenu}>
+                Back to Demo Menu
+              </Button>
+            </div>
           </div>
         </div>
 
         <div className="container mx-auto px-4 py-8 max-w-7xl">
           <div className="space-y-6">
+            {/* Mock Data Generator - Show when no real data */}
+            {!useRealData && (
+              <MockDataGenerator 
+                surveyId={DEMO_SURVEY_ID} 
+                onDataGenerated={handleDataGenerated}
+              />
+            )}
+
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 className="text-3xl font-bold">Employee Feedback Analytics</h1>
                 <p className="text-muted-foreground mt-1">
-                  Comprehensive insights from {participation.completed} completed conversations
+                  {useRealData ? (
+                    <>
+                      Real insights from {participation.completed} completed conversations
+                      {realAnalytics.isLoading && <span className="ml-2 text-xs">(Loading...)</span>}
+                    </>
+                  ) : (
+                    <>
+                      Comprehensive insights from {participation.completed} completed conversations
+                      <span className="ml-2 text-xs text-muted-foreground">(Mock data - generate real data above)</span>
+                    </>
+                  )}
                   {qualityMetrics && (
                     <span className="ml-2">
-                      • <span className={
+                      ? <span className={
                         qualityMetrics.average_confidence_score >= 75 ? 'text-green-600 font-medium' :
                         qualityMetrics.average_confidence_score >= 50 ? 'text-yellow-600 font-medium' : 'text-red-600 font-medium'
                       }>
@@ -548,7 +651,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                           <p className="text-sm text-green-800 dark:text-green-200">
                             "The AI conversation helped me process my thoughts and feel more optimistic about work."
                           </p>
-                          <p className="text-xs text-green-600 dark:text-green-300 mt-1">— Anonymous Employee</p>
+                          <p className="text-xs text-green-600 dark:text-green-300 mt-1">? Anonymous Employee</p>
                         </div>
                       </div>
                     </CardContent>
@@ -605,7 +708,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                             {theme.name === "Work Environment" && "The office environment is modern and comfortable. Great facilities and amenities."}
                             {theme.name === "Communication" && "Communication from leadership could be more transparent. Sometimes important decisions are made without much explanation."}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-2">— Anonymous Employee Response</p>
+                          <p className="text-xs text-muted-foreground mt-2">? Anonymous Employee Response</p>
                         </div>
                       </div>
                     </Card>
@@ -646,7 +749,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                       <TrendingUp className="h-4 w-4 text-green-600" />
                     </div>
                     <div className="text-2xl font-bold text-green-600">+14%</div>
-                    <p className="text-xs text-muted-foreground">Q3 2024 → Q1 2025</p>
+                    <p className="text-xs text-muted-foreground">Q3 2024 ? Q1 2025</p>
                   </Card>
 
                   <Card className="p-6">
@@ -655,7 +758,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                       <TrendingUp className="h-4 w-4 text-green-600" />
                     </div>
                     <div className="text-2xl font-bold text-green-600">+10.1</div>
-                    <p className="text-xs text-muted-foreground">Q3 2024 → Q1 2025</p>
+                    <p className="text-xs text-muted-foreground">Q3 2024 ? Q1 2025</p>
                   </Card>
 
                   <Card className="p-6">
@@ -664,7 +767,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                       <TrendingDown className="h-4 w-4 text-green-600" />
                     </div>
                     <div className="text-2xl font-bold text-green-600">-8</div>
-                    <p className="text-xs text-muted-foreground">Q3 2024 → Q1 2025</p>
+                    <p className="text-xs text-muted-foreground">Q3 2024 ? Q1 2025</p>
                   </Card>
                 </div>
               </TabsContent>
@@ -758,7 +861,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                             <h3 className="font-semibold text-lg mb-2">{flag.responses?.content || 'No content'}</h3>
                             <p className="text-sm text-muted-foreground">
                               Escalated on {new Date(flag.escalated_at).toLocaleDateString()}
-                              {flag.resolved_at && ` • Resolved on ${new Date(flag.resolved_at).toLocaleDateString()}`}
+                              {flag.resolved_at && ` ? Resolved on ${new Date(flag.resolved_at).toLocaleDateString()}`}
                             </p>
                           </div>
                         </div>
