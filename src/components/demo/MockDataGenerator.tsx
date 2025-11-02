@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Database, CheckCircle2, AlertCircle } from "lucide-react";
 import { insertMockConversations } from "@/utils/generateMockConversations";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useDemoAuth } from "@/hooks/useDemoAuth";
 
 interface MockDataGeneratorProps {
   surveyId?: string;
@@ -15,12 +17,45 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedStats, setGeneratedStats] = useState<{ sessionsCreated: number; responsesCreated: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { createDemoUser, isLoading: isCreatingDemoUser } = useDemoAuth();
+
+  const ensureAuthenticated = async (): Promise<boolean> => {
+    // Check if user is already authenticated
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    
+    if (!userError && user) {
+      return true;
+    }
+
+    // User is not authenticated, create a demo HR user
+    toast.info('Setting up demo session...');
+    const demoUser = await createDemoUser('hr');
+    
+    if (!demoUser) {
+      throw new Error('Failed to create demo user. Please try again.');
+    }
+
+    // Wait a moment for the session to be established
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Verify authentication was successful
+    const { data: { user: verifyUser }, error: verifyError } = await supabase.auth.getUser();
+    
+    if (verifyError || !verifyUser) {
+      throw new Error('Authentication setup failed. Please refresh the page and try again.');
+    }
+
+    return true;
+  };
 
   const handleGenerate = async () => {
     setIsGenerating(true);
     setError(null);
     
     try {
+      // Ensure user is authenticated before generating mock data
+      await ensureAuthenticated();
+      
       const stats = await insertMockConversations(surveyId);
       setGeneratedStats(stats);
       toast.success(`Successfully generated ${stats.sessionsCreated} conversations with ${stats.responsesCreated} responses!`);
@@ -90,14 +125,14 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
 
         <Button
           onClick={handleGenerate}
-          disabled={isGenerating || !!generatedStats}
+          disabled={isGenerating || isCreatingDemoUser || !!generatedStats}
           className="w-full"
           size="lg"
         >
-          {isGenerating ? (
+          {isGenerating || isCreatingDemoUser ? (
             <>
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Generating Mock Data...
+              {isCreatingDemoUser ? 'Setting up demo session...' : 'Generating Mock Data...'}
             </>
           ) : generatedStats ? (
             <>
