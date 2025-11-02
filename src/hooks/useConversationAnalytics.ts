@@ -219,11 +219,13 @@ export function useConversationAnalytics(filters: AnalyticsFilters = {}): Enhanc
     enabled: !!responsesQuery.data && !!sessionsQuery.data,
   });
 
-  const refetch = () => {
-    responsesQuery.refetch();
-    sessionsQuery.refetch();
-    themesQuery.refetch();
-    enhancedDataQuery.refetch();
+  const refetch = async () => {
+    await Promise.all([
+      responsesQuery.refetch(),
+      sessionsQuery.refetch(),
+      themesQuery.refetch(),
+      enhancedDataQuery.refetch(),
+    ]);
   };
 
   return {
