@@ -167,8 +167,7 @@ export async function fetchConversationSessions(
       started_at,
       ended_at,
       anonymization_level,
-      status,
-      profiles(department)
+      status
     `)
     .order('started_at', { ascending: false });
 
@@ -201,7 +200,7 @@ export async function fetchConversationSessions(
     ended_at: s.ended_at,
     anonymization_level: s.anonymization_level,
     status: s.status,
-    department: s.profiles?.department || null,
+    department: null, // Department fetched separately if needed
   }));
 }
 
