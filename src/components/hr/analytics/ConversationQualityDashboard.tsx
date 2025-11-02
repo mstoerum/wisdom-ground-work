@@ -282,22 +282,22 @@ export function ConversationQualityDashboard({
         <CardContent>
           <div className="grid gap-4 md:grid-cols-4">
             <div className="p-3 rounded-lg border">
-              <div className="text-lg font-bold">{qualityMetrics.confidence_factors.high_depth_sessions}</div>
+              <div className="text-lg font-bold">{qualityMetrics.confidence_factors?.high_depth_sessions ?? 0}</div>
               <div className="text-xs text-muted-foreground">High Depth Sessions</div>
               <div className="text-xs text-muted-foreground mt-1">3+ themes explored</div>
             </div>
             <div className="p-3 rounded-lg border">
-              <div className="text-lg font-bold">{qualityMetrics.confidence_factors.high_engagement_sessions}</div>
+              <div className="text-lg font-bold">{qualityMetrics.confidence_factors?.high_engagement_sessions ?? 0}</div>
               <div className="text-xs text-muted-foreground">High Engagement</div>
               <div className="text-xs text-muted-foreground mt-1">8+ exchanges</div>
             </div>
             <div className="p-3 rounded-lg border">
-              <div className="text-lg font-bold">{qualityMetrics.confidence_factors.completed_sessions}</div>
+              <div className="text-lg font-bold">{qualityMetrics.confidence_factors?.completed_sessions ?? 0}</div>
               <div className="text-xs text-muted-foreground">Completed</div>
               <div className="text-xs text-muted-foreground mt-1">Not abandoned</div>
             </div>
             <div className="p-3 rounded-lg border">
-              <div className="text-lg font-bold">{qualityMetrics.confidence_factors.mood_tracked_sessions}</div>
+              <div className="text-lg font-bold">{qualityMetrics.confidence_factors?.mood_tracked_sessions ?? 0}</div>
               <div className="text-xs text-muted-foreground">Mood Tracked</div>
               <div className="text-xs text-muted-foreground mt-1">Initial & final mood</div>
             </div>
