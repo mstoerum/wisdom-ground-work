@@ -16,7 +16,7 @@ import { useAnalytics, type AnalyticsFilters } from "@/hooks/useAnalytics";
 import { useConversationAnalytics } from "@/hooks/useConversationAnalytics";
 import { exportToCSV } from "@/lib/exportAnalytics";
 import { exportAnalyticsToPDF } from "@/lib/exportAnalyticsPDF";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -31,12 +31,11 @@ import { CulturalPatterns } from "@/components/hr/analytics/CulturalPatterns";
 
 const Analytics = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [filters, setFilters] = useState<AnalyticsFilters>({});
   const [selectedDepartment, setSelectedDepartment] = useState("all");
   const [selectedTheme, setSelectedTheme] = useState("all");
   
-  const { participation, sentiment, themes, urgency, isLoading, refetch } = useAnalytics(filters);
+  const { participation, sentiment, themes, urgency, isLoading } = useAnalytics(filters);
   const { 
     quotes, 
     narrative, 
@@ -50,8 +49,7 @@ const Analytics = () => {
     qualityInsights,
     nlpAnalysis,
     culturalMap,
-    isLoading: isConversationLoading,
-    refetch: refetchConversationAnalytics
+    isLoading: isConversationLoading
   } = useConversationAnalytics(filters);
 
   const { data: surveys } = useQuery({
@@ -179,40 +177,6 @@ const Analytics = () => {
     }
   };
 
-  const handleRefresh = async () => {
-    toast.info("Refreshing analytics data...");
-    
-    // Invalidate all analytics-related queries
-    await queryClient.invalidateQueries({ 
-      predicate: (query) => {
-        const key = query.queryKey;
-        if (!Array.isArray(key)) return false;
-        const firstKey = key[0];
-        return (
-          firstKey === 'conversation-responses' ||
-          firstKey === 'conversation-sessions' ||
-          firstKey === 'enhanced-analytics' ||
-          firstKey === 'survey-themes' ||
-          firstKey === 'analytics-participation' ||
-          firstKey === 'analytics-sentiment' ||
-          firstKey === 'analytics-themes' ||
-          firstKey === 'analytics-urgency' ||
-          firstKey === 'department-data' ||
-          firstKey === 'time-series-data' ||
-          firstKey === 'surveys-list'
-        );
-      }
-    });
-    
-    // Refetch all analytics hooks
-    await Promise.all([
-      refetch(),
-      refetchConversationAnalytics(),
-    ]);
-    
-    toast.success("Analytics data refreshed!");
-  };
-
   // Filter data based on selections
   const filteredThemes = selectedTheme === "all" ? themes : themes?.filter(t => t.id === selectedTheme);
   const filteredDepartmentData = selectedDepartment === "all" ? departmentData : departmentData?.filter(d => d.department === selectedDepartment);
@@ -241,10 +205,6 @@ const Analytics = () => {
                 </p>
               </div>
               <div className="flex gap-2 flex-shrink-0">
-                <Button onClick={handleRefresh} variant="outline" size="sm" disabled={isLoading || isConversationLoading}>
-                  <RefreshCw className={`h-4 w-4 mr-2 ${(isLoading || isConversationLoading) ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
                 <Button onClick={handleExport} variant="outline" size="sm">
                   <Download className="h-4 w-4 mr-2" />
                   Export CSV
