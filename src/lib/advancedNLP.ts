@@ -90,7 +90,9 @@ export function detectEmotion(response: ConversationResponse): EmotionAnalysis {
   
   // If no emotion detected, infer from sentiment
   if (detectedEmotions.length === 0) {
-    const sentimentScore = response.sentiment_score || 50;
+    // Convert sentiment_score from 0-1 range to 0-100 range if needed
+    const rawScore = response.sentiment_score || 50;
+    const sentimentScore = rawScore <= 1 ? rawScore * 100 : rawScore;
     if (sentimentScore >= 70) {
       detectedEmotions.push({ emotion: 'satisfied', score: 0.5 });
     } else if (sentimentScore <= 30) {
@@ -104,8 +106,12 @@ export function detectEmotion(response: ConversationResponse): EmotionAnalysis {
   const primaryEmotion = detectedEmotions.sort((a, b) => b.score - a.score)[0];
   
   // Calculate intensity based on sentiment score and keyword matches
+  // Convert sentiment_score from 0-1 range to 0-100 range if needed
+  const sentimentScore = response.sentiment_score !== null && response.sentiment_score !== undefined
+    ? (response.sentiment_score <= 1 ? response.sentiment_score * 100 : response.sentiment_score)
+    : 50;
   const intensity = primaryEmotion
-    ? Math.min(100, (primaryEmotion.score * 100) + (response.sentiment_score || 50) * 0.5)
+    ? Math.min(100, (primaryEmotion.score * 100) + sentimentScore * 0.5)
     : 50;
   
   return {

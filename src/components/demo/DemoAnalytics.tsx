@@ -99,7 +99,12 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
         positive: realAnalytics.responses.filter(r => r.sentiment === 'positive').length,
         neutral: realAnalytics.responses.filter(r => r.sentiment === 'neutral').length,
         negative: realAnalytics.responses.filter(r => r.sentiment === 'negative').length,
-        avgScore: realAnalytics.responses.reduce((sum, r) => sum + (r.sentiment_score || 50), 0) / realAnalytics.responses.length || 50,
+        avgScore: realAnalytics.responses.reduce((sum, r) => {
+          const score = r.sentiment_score !== null && r.sentiment_score !== undefined
+            ? (r.sentiment_score <= 1 ? r.sentiment_score * 100 : r.sentiment_score)
+            : 50;
+          return sum + score;
+        }, 0) / realAnalytics.responses.length || 50,
         moodImprovement: realAnalytics.sessions.reduce((sum, s) => {
           if (s.initial_mood !== null && s.final_mood !== null) {
             return sum + (s.final_mood - s.initial_mood);

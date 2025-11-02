@@ -88,8 +88,14 @@ const calculateSentimentMetrics = (responses: any[]): SentimentMetrics => {
     else if (r.sentiment === 'negative') negative++;
     else neutral++;
 
-    // Aggregate scores
-    if (r.sentiment_score) totalScore += Number(r.sentiment_score);
+    // Aggregate scores - convert from 0-1 range to 0-100 range
+    if (r.sentiment_score !== null && r.sentiment_score !== undefined) {
+      const score = Number(r.sentiment_score);
+      // If score is <= 1, it's in 0-1 range, convert to 0-100
+      // If score is > 1, assume it's already in 0-100 range
+      const normalizedScore = score <= 1 ? score * 100 : score;
+      totalScore += normalizedScore;
+    }
 
     // Calculate mood improvement
     const session = r.conversation_sessions;
@@ -125,7 +131,10 @@ const calculateThemeInsights = (responses: any[]): ThemeInsight[] => {
     };
 
     existing.responseCount++;
-    existing.avgSentiment += Number(r.sentiment_score || 0);
+    // Convert sentiment score from 0-1 range to 0-100 range if needed
+    const score = Number(r.sentiment_score || 0);
+    const normalizedScore = score <= 1 ? score * 100 : score;
+    existing.avgSentiment += normalizedScore;
     if (r.urgency_escalated) existing.urgencyCount++;
 
     themeMap.set(r.theme_id, existing);

@@ -191,15 +191,16 @@ function randomDate(daysAgo: number = 30): string {
   return date.toISOString();
 }
 
-// Calculate sentiment score from sentiment category (0-1 range for decimal(3,2))
+// Calculate sentiment score from sentiment category (0-100 range for display)
+// Note: Database stores as decimal(3,2) but we'll store as 0-100 range (0.70-0.95 becomes 70-95)
 function getSentimentScore(sentiment: 'positive' | 'neutral' | 'negative'): number {
   switch (sentiment) {
     case 'positive':
-      return 0.7 + Math.random() * 0.25; // 0.70 to 0.95
+      return 70 + Math.random() * 25; // 70 to 95
     case 'neutral':
-      return 0.4 + Math.random() * 0.25; // 0.40 to 0.65
+      return 40 + Math.random() * 25; // 40 to 65
     case 'negative':
-      return 0.1 + Math.random() * 0.3; // 0.10 to 0.40
+      return 10 + Math.random() * 30; // 10 to 40
   }
 }
 
@@ -286,6 +287,10 @@ function generateResponses(
       ? aiResponses[randomInt(0, aiResponses.length - 1)]
       : null;
     
+    // Convert sentiment score to database format (0-1 range for decimal(3,2))
+    // Database expects 0-1 range, so divide by 100
+    const dbSentimentScore = sentimentScore / 100;
+    
     const response: MockResponse = {
       id: crypto.randomUUID(),
       survey_id: surveyId,
@@ -299,7 +304,7 @@ function generateResponses(
         follow_up_needed: Math.random() < 0.4
       } : null,
       sentiment: sentiment,
-      sentiment_score: sentimentScore,
+      sentiment_score: dbSentimentScore, // Store as 0-1 range for database
       theme_id: themeId,
       created_at: createdAt,
       is_paraphrased: false,
@@ -367,13 +372,6 @@ export async function generateMockConversations(
     'Workplace Culture'
   ];
   
-demoThemes.forEach((themeName, index) => {
-  if (!themeIds[themeName]) {
-    // Fallback: leave as null when not found to avoid invalid UUIDs in DB
-    themeIds[themeName] = null;
-  }
-});
-  
   // Also try to fetch all active themes and match by name
   try {
     const { data: allThemes } = await supabase
@@ -389,8 +387,44 @@ demoThemes.forEach((themeName, index) => {
       });
     }
   } catch (error) {
-    // Ignore errors, we'll use placeholders
+    console.warn('Error fetching all themes:', error);
   }
+  
+  // Create missing themes if needed
+  const missingThemes = demoThemes.filter(themeName => !themeIds[themeName]);
+  if (missingThemes.length > 0) {
+    console.log(`Creating ${missingThemes.length} missing themes:`, missingThemes);
+    
+    for (const themeName of missingThemes) {
+      try {
+        const { data: newTheme, error: createError } = await supabase
+          .from('survey_themes')
+          .insert({
+            name: themeName,
+            description: `Theme for ${themeName} feedback`,
+            is_active: true,
+          })
+          .select('id')
+          .single();
+        
+        if (!createError && newTheme) {
+          themeIds[themeName] = newTheme.id;
+          console.log(`Created theme: ${themeName} (${newTheme.id})`);
+        } else {
+          console.warn(`Failed to create theme ${themeName}:`, createError);
+        }
+      } catch (error) {
+        console.warn(`Error creating theme ${themeName}:`, error);
+      }
+    }
+  }
+  
+  // Final check: ensure all demo themes have IDs
+  demoThemes.forEach((themeName) => {
+    if (!themeIds[themeName]) {
+      console.warn(`Theme ${themeName} still has no ID after creation attempts`);
+    }
+  });
   
   const sessions: MockConversationSession[] = [];
   const allResponses: MockResponse[] = [];

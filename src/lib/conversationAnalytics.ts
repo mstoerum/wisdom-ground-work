@@ -311,8 +311,10 @@ export function extractSubThemes(
       .map(r => r.sentiment_score)
       .filter((s): s is number => s !== null);
     
-    const avgSentiment = sentiments.length > 0
-      ? sentiments.reduce((sum, s) => sum + s, 0) / sentiments.length
+    // Convert sentiment scores from 0-1 range to 0-100 range if needed
+    const normalizedSentiments = sentiments.map(s => s <= 1 ? s * 100 : s);
+    const avgSentiment = normalizedSentiments.length > 0
+      ? normalizedSentiments.reduce((sum, s) => sum + s, 0) / normalizedSentiments.length
       : 50;
 
     return {
@@ -350,7 +352,9 @@ export function identifySentimentDrivers(
 
   responses.forEach(response => {
     const content = response.content.toLowerCase();
-    const sentimentScore = response.sentiment_score || 50;
+    // Convert sentiment_score from 0-1 range to 0-100 range if needed
+    const rawScore = response.sentiment_score || 50;
+    const sentimentScore = rawScore <= 1 ? rawScore * 100 : rawScore;
 
     [...positivePhrases, ...negativePhrases].forEach(phrase => {
       if (content.includes(phrase)) {
@@ -460,9 +464,13 @@ export function generateNarrativeSummary(
   
   const positiveResponses = responses.filter(r => r.sentiment === 'positive').length;
   const negativeResponses = responses.filter(r => r.sentiment === 'negative').length;
-  const avgSentiment = responses
-    .map(r => r.sentiment_score || 50)
-    .reduce((sum, s) => sum + s, 0) / totalResponses;
+  // Convert sentiment scores from 0-1 range to 0-100 range if needed
+  const normalizedSentiments = responses
+    .map(r => {
+      const score = r.sentiment_score || 50;
+      return score <= 1 ? score * 100 : score;
+    });
+  const avgSentiment = normalizedSentiments.reduce((sum, s) => sum + s, 0) / totalResponses;
 
   const topConcernThemes = themes
     .filter(t => t.avg_sentiment < 50)
