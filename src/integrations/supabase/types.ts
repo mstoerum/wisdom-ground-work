@@ -802,6 +802,7 @@ export type Database = {
       }
     }
     Functions: {
+      assign_demo_hr_admin: { Args: never; Returns: undefined }
       assign_initial_hr_admin: { Args: never; Returns: undefined }
       has_any_admin: { Args: never; Returns: boolean }
       has_role: {
