@@ -174,6 +174,13 @@ function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+// UUID helpers for demo
+const DEMO_SURVEY_UUID = '00000000-0000-0000-0000-000000000001';
+
+function isValidUUID(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 // Generate a random date within the last 30 days
 function randomDate(daysAgo: number = 30): string {
   const now = new Date();
@@ -200,7 +207,7 @@ function getSentimentScore(sentiment: 'positive' | 'neutral' | 'negative'): numb
 function generateSession(
   surveyId: string,
   index: number,
-  themeIds: Record<string, string>
+  themeIds: Record<string, string | null>
 ): MockConversationSession {
   const initialMood = randomInt(30, 80);
   const moodChange = randomInt(-15, 20); // Conversations can improve or slightly worsen mood
@@ -229,7 +236,7 @@ function generateSession(
 function generateResponses(
   session: MockConversationSession,
   surveyId: string,
-  themeIds: Record<string, string>,
+  themeIds: Record<string, string | null>,
   responseIndex: number
 ): MockResponse[] {
   const responses: MockResponse[] = [];
@@ -247,7 +254,7 @@ function generateResponses(
   
   for (let i = 0; i < numExchanges; i++) {
     const themeName = selectedThemes[currentThemeIndex % selectedThemes.length];
-    const themeId = themeIds[themeName] || null;
+    const themeId = themeIds[themeName] ?? null;
     
     // Mix sentiments within conversation, but lean toward conversation tone
     let sentiment: 'positive' | 'neutral' | 'negative';
@@ -315,15 +322,16 @@ function generateResponses(
 export async function generateMockConversations(
   surveyId: string = 'demo-survey-001'
 ): Promise<{ sessions: MockConversationSession[], responses: MockResponse[] }> {
+  const targetSurveyId = isValidUUID(surveyId) ? surveyId : DEMO_SURVEY_UUID;
   // Get theme IDs from survey_themes table (they're referenced by name in surveys.themes JSONB)
-  const themeIds: Record<string, string> = {};
+  const themeIds: Record<string, string | null> = {};
   
   try {
     // First, get the survey to see what themes it uses
     const { data: survey, error: surveyError } = await supabase
       .from('surveys')
       .select('themes')
-      .eq('id', surveyId)
+      .eq('id', targetSurveyId)
       .single();
     
     if (!surveyError && survey?.themes) {
@@ -357,12 +365,12 @@ export async function generateMockConversations(
     'Workplace Culture'
   ];
   
-  demoThemes.forEach((themeName, index) => {
-    if (!themeIds[themeName]) {
-      // Try to find theme by name, or create a placeholder
-      themeIds[themeName] = `demo-theme-${index + 1}`;
-    }
-  });
+demoThemes.forEach((themeName, index) => {
+  if (!themeIds[themeName]) {
+    // Fallback: leave as null when not found to avoid invalid UUIDs in DB
+    themeIds[themeName] = null;
+  }
+});
   
   // Also try to fetch all active themes and match by name
   try {
@@ -388,10 +396,10 @@ export async function generateMockConversations(
   
   // Generate 45 conversations
   for (let i = 1; i <= 45; i++) {
-    const session = generateSession(surveyId, i, themeIds);
+    const session = generateSession(targetSurveyId, i, themeIds);
     sessions.push(session);
     
-    const responses = generateResponses(session, surveyId, themeIds, responseCounter);
+    const responses = generateResponses(session, targetSurveyId, themeIds, responseCounter);
     allResponses.push(...responses);
     responseCounter += responses.length;
   }
