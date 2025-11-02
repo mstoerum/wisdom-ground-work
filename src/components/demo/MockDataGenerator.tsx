@@ -17,6 +17,7 @@ interface MockDataGeneratorProps {
 export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerated }: MockDataGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedStats, setGeneratedStats] = useState<{ sessionsCreated: number; responsesCreated: number } | null>(null);
+  const [totalGenerated, setTotalGenerated] = useState({ sessions: 0, responses: 0 });
   const [error, setError] = useState<string | null>(null);
   const { createDemoUser, isLoading: isCreatingDemoUser } = useDemoAuth();
   const queryClient = useQueryClient();
@@ -60,7 +61,16 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
       
       const stats = await insertMockConversations(surveyId);
       setGeneratedStats(stats);
+      setTotalGenerated(prev => ({
+        sessions: prev.sessions + stats.sessionsCreated,
+        responses: prev.responses + stats.responsesCreated
+      }));
       toast.success(`Successfully generated ${stats.sessionsCreated} conversations with ${stats.responsesCreated} responses!`);
+      
+      // Clear the success message after 5 seconds to indicate button is ready again
+      setTimeout(() => {
+        setGeneratedStats(null);
+      }, 5000);
       
       // Invalidate all analytics-related queries to ensure fresh data is fetched
       toast.info("Refreshing analytics with new data...");
@@ -110,7 +120,10 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
               Mock Data Generator
             </CardTitle>
             <CardDescription className="mt-1">
-              Generate 45 realistic employee conversations to test HR analytics with substantial data
+              {totalGenerated.sessions > 0 
+                ? `Generate additional mock conversations (${totalGenerated.sessions} sessions, ${totalGenerated.responses} responses already created)`
+                : 'Generate 45 realistic employee conversations to test HR analytics with substantial data'
+              }
             </CardDescription>
           </div>
           {generatedStats && (
@@ -143,19 +156,22 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
           <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <span className="font-medium text-green-900 dark:text-green-100">Data Generated Successfully</span>
+              <span className="font-medium text-green-900 dark:text-green-100">Latest Generation Successful</span>
             </div>
             <div className="text-sm text-green-800 dark:text-green-200 space-y-1">
               <p>• {generatedStats.sessionsCreated} conversation sessions created</p>
               <p>• {generatedStats.responsesCreated} responses generated</p>
-              <p className="mt-2 text-xs">The analytics dashboard will now use this real conversation data instead of mock data.</p>
+              {totalGenerated.sessions > generatedStats.sessionsCreated && (
+                <p className="mt-2 font-medium">Total: {totalGenerated.sessions} sessions, {totalGenerated.responses} responses</p>
+              )}
+              <p className="mt-2 text-xs">Watch the analytics below update in real-time with the new data!</p>
             </div>
           </div>
         )}
 
         <Button
           onClick={handleGenerate}
-          disabled={isGenerating || isCreatingDemoUser || !!generatedStats}
+          disabled={isGenerating || isCreatingDemoUser}
           className="w-full"
           size="lg"
         >
@@ -164,10 +180,10 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               {isCreatingDemoUser ? 'Setting up demo session...' : 'Generating Mock Data...'}
             </>
-          ) : generatedStats ? (
+          ) : totalGenerated.sessions > 0 ? (
             <>
-              <CheckCircle2 className="h-4 w-4 mr-2" />
-              Data Already Generated
+              <Database className="h-4 w-4 mr-2" />
+              Generate 45 More Conversations
             </>
           ) : (
             <>
