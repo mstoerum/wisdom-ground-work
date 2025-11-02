@@ -207,7 +207,8 @@ function getSentimentScore(sentiment: 'positive' | 'neutral' | 'negative'): numb
 function generateSession(
   surveyId: string,
   index: number,
-  themeIds: Record<string, string | null>
+  themeIds: Record<string, string | null>,
+  employeeId: string | null = null // Will be set by caller for RLS compliance
 ): MockConversationSession {
   const initialMood = randomInt(30, 80);
   const moodChange = randomInt(-15, 20); // Conversations can improve or slightly worsen mood
@@ -220,12 +221,12 @@ function generateSession(
   return {
     id: crypto.randomUUID(),
     survey_id: surveyId,
-    employee_id: null, // Anonymous in demo
+    employee_id: employeeId, // Set to current user ID for RLS compliance (even though anonymization_level is 'anonymous')
     initial_mood: initialMood,
     final_mood: finalMood,
     started_at: startedAt,
     ended_at: endedAt,
-    anonymization_level: 'anonymous',
+    anonymization_level: 'anonymous', // Data is anonymous despite having employee_id (for RLS)
     status: 'completed',
     consent_given: true,
     consent_timestamp: new Date(new Date(startedAt).getTime() - 60000).toISOString(),
@@ -320,7 +321,8 @@ function generateResponses(
  * Generate 45 mock conversations with realistic data
  */
 export async function generateMockConversations(
-  surveyId: string = 'demo-survey-001'
+  surveyId: string = 'demo-survey-001',
+  employeeId: string | null = null // Current user ID for RLS compliance
 ): Promise<{ sessions: MockConversationSession[], responses: MockResponse[] }> {
   const targetSurveyId = isValidUUID(surveyId) ? surveyId : DEMO_SURVEY_UUID;
   // Get theme IDs from survey_themes table (they're referenced by name in surveys.themes JSONB)
@@ -396,7 +398,7 @@ demoThemes.forEach((themeName, index) => {
   
   // Generate 45 conversations
   for (let i = 1; i <= 45; i++) {
-    const session = generateSession(targetSurveyId, i, themeIds);
+    const session = generateSession(targetSurveyId, i, themeIds, employeeId);
     sessions.push(session);
     
     const responses = generateResponses(session, targetSurveyId, themeIds, responseCounter);
@@ -420,7 +422,8 @@ async function ensureSurveyExists(surveyId: string): Promise<string> {
     .eq('id', targetSurveyId)
     .single();
   
-  if (existingSurvey) {
+  if (existingSurvey && !fetchError) {
+    // Verify the survey is actually accessible (not blocked by RLS)
     return existingSurvey.id;
   }
   
@@ -467,22 +470,44 @@ async function ensureSurveyExists(surveyId: string): Promise<string> {
   if (createError) {
     // If it's a unique constraint violation, the survey might have been created by another request
     if (createError.code === '23505') {
-      // Try to fetch it again
-      const { data: retrySurvey } = await supabase
+      // Try to fetch it again with a small delay
+      await new Promise(resolve => setTimeout(resolve, 100));
+      const { data: retrySurvey, error: retryError } = await supabase
         .from('surveys')
         .select('id')
         .eq('id', targetSurveyId)
         .single();
       
-      if (retrySurvey) {
+      if (retrySurvey && !retryError) {
         return retrySurvey.id;
       }
     }
+    
+    // If it's an RLS policy violation, provide a helpful error message
+    if (createError.code === '42501' || createError.message?.includes('permission') || createError.message?.includes('policy')) {
+      throw new Error('Permission denied: You need HR admin role to create surveys. Please ensure you are logged in with the correct permissions.');
+    }
+    
     console.error('Error creating survey:', createError);
-    throw createError;
+    throw new Error(`Failed to create survey: ${createError.message || createError.code}`);
   }
   
-  return newSurvey.id;
+  if (!newSurvey || !newSurvey.id) {
+    throw new Error('Survey creation succeeded but no survey ID was returned');
+  }
+  
+  // Verify the survey is accessible after creation
+  const { data: verifySurvey, error: verifyError } = await supabase
+    .from('surveys')
+    .select('id')
+    .eq('id', newSurvey.id)
+    .single();
+  
+  if (verifyError || !verifySurvey) {
+    throw new Error(`Survey was created but is not accessible. This may be due to RLS policies. Error: ${verifyError?.message || 'Unknown error'}`);
+  }
+  
+  return verifySurvey.id;
 }
 
 /**
@@ -491,10 +516,41 @@ async function ensureSurveyExists(surveyId: string): Promise<string> {
 export async function insertMockConversations(
   surveyId: string = 'demo-survey-001'
 ): Promise<{ sessionsCreated: number, responsesCreated: number }> {
+  // Get current user ID for RLS compliance (needed for conversation_sessions INSERT policy)
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  
+  if (userError || !user) {
+    throw new Error('Must be authenticated to generate mock data');
+  }
+  
   // Ensure the survey exists first
   const actualSurveyId = await ensureSurveyExists(surveyId);
   
-  const { sessions, responses } = await generateMockConversations(actualSurveyId);
+  // Double-check the survey exists and is accessible before inserting sessions
+  const { data: verifySurveyBeforeInsert, error: verifyErrorBeforeInsert } = await supabase
+    .from('surveys')
+    .select('id')
+    .eq('id', actualSurveyId)
+    .single();
+  
+  if (verifyErrorBeforeInsert || !verifySurveyBeforeInsert) {
+    throw new Error(
+      `Cannot insert mock conversations: Survey with ID ${actualSurveyId} does not exist or is not accessible. ` +
+      `This may be due to Row Level Security (RLS) policies. Error: ${verifyErrorBeforeInsert?.message || 'Unknown error'}`
+    );
+  }
+  
+  // Generate mock conversations with current user ID for RLS compliance
+  // Note: anonymization_level is still 'anonymous' even though employee_id is set
+  const { sessions, responses } = await generateMockConversations(actualSurveyId, user.id);
+  
+  // Verify all sessions have the correct survey_id and employee_id
+  const invalidSessions = sessions.filter(s => 
+    s.survey_id !== actualSurveyId || s.employee_id !== user.id
+  );
+  if (invalidSessions.length > 0) {
+    throw new Error(`Invalid session data: ${invalidSessions.length} sessions have incorrect survey_id or employee_id`);
+  }
   
   // Insert sessions
   const { error: sessionsError } = await supabase
@@ -502,8 +558,16 @@ export async function insertMockConversations(
     .upsert(sessions, { onConflict: 'id' });
   
   if (sessionsError) {
+    // Provide a more helpful error message for foreign key violations
+    if (sessionsError.code === '23503' || sessionsError.message?.includes('foreign key')) {
+      throw new Error(
+        `Foreign key constraint violation: The survey with ID ${actualSurveyId} does not exist in the database. ` +
+        `This usually means the survey was not created successfully or was deleted. ` +
+        `Original error: ${sessionsError.message}`
+      );
+    }
     console.error('Error inserting sessions:', sessionsError);
-    throw sessionsError;
+    throw new Error(`Failed to insert conversation sessions: ${sessionsError.message || sessionsError.code}`);
   }
   
   // Insert responses in batches to avoid overwhelming the database
