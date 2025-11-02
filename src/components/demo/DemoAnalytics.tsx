@@ -74,12 +74,15 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
   // Include dataRefreshKey to force re-fetch when it changes
   const realAnalytics = useConversationAnalytics({
     surveyId: DEMO_SURVEY_ID,
-  });
+    // Force refetch by including key in dependency (hack to ensure fresh data)
+    _refreshKey: dataRefreshKey,
+  } as any);
 
   // Fetch basic analytics (themes, urgency) for demo survey
   const basicAnalytics = useAnalytics({
     surveyId: DEMO_SURVEY_ID,
-  });
+    _refreshKey: dataRefreshKey,
+  } as any);
 
   // Check if we have real data based on actual responses/sessions from the hook
   // This will re-evaluate after refetch when dataRefreshKey changes
@@ -278,8 +281,9 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
   };
 
   const handleDataGenerated = async () => {
-    // The MockDataGenerator already invalidated queries, but we'll invalidate again
-    // to ensure everything is covered, including any queries specific to this component
+    console.log('[DemoAnalytics] handleDataGenerated called - refreshing analytics');
+    
+    // Step 1: Invalidate ALL related queries to clear cache
     await queryClient.invalidateQueries({ 
       predicate: (query) => {
         const key = query.queryKey;
@@ -302,23 +306,21 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
       }
     });
     
-    // Force refetch of analytics data and wait for it to complete
-    // This ensures the hooks pick up the new data
+    // Step 2: Force re-render to create new hook instances with fresh queries
+    setDataRefreshKey(prev => prev + 1);
+    
+    // Step 3: Wait for queries to refetch
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Step 4: Explicitly refetch analytics
     try {
       await Promise.all([
         realAnalytics.refetch(),
         basicAnalytics.refetch(),
       ]);
       
-      // Wait a moment for React Query to update all dependent queries
-      // (e.g., enhanced-analytics depends on responses and sessions)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Force a re-render by updating the refresh key
-      // This ensures the component re-evaluates useRealData with fresh data
-      setDataRefreshKey(prev => prev + 1);
-      
-      toast.success("Analytics refreshed with new data!");
+      console.log('[DemoAnalytics] Analytics refreshed - sessions:', realAnalytics.sessions.length, 'responses:', realAnalytics.responses.length);
+      toast.success("Analytics refreshed with generated mock data!");
     } catch (error) {
       console.error("Error refreshing analytics:", error);
       toast.error("Failed to refresh analytics. Please refresh the page.");
@@ -335,10 +337,10 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
               <span className="text-sm font-medium">Demo Mode - HR Analytics</span>
               {useRealData ? (
                 <Badge variant="default" className="bg-green-600">
-                  Using Real Data ({realAnalytics.sessions.length} conversations)
+                  Analyzing Generated Mock Data ({realAnalytics.sessions.length} conversations)
                 </Badge>
               ) : (
-                <Badge variant="secondary">Mock Data ? Q1 2025</Badge>
+                <Badge variant="secondary">Placeholder Data</Badge>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -411,10 +413,10 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                         <CheckCircle2 className="h-5 w-5 text-green-600" />
                         <div>
                           <p className="font-medium text-green-900 dark:text-green-100">
-                            Using Real Generated Data
+                            Analyzing Generated Mock Data
                           </p>
                           <p className="text-sm text-green-800 dark:text-green-200">
-                            Analytics are computed from {realAnalytics.sessions.length} actual conversation sessions with {realAnalytics.responses.length} responses
+                            Analytics computed from {realAnalytics.sessions.length} generated conversation sessions with {realAnalytics.responses.length} responses
                           </p>
                         </div>
                       </div>

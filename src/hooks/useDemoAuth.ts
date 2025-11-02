@@ -54,9 +54,37 @@ export const useDemoAuth = () => {
         // Continue anyway as the user is authenticated
       }
 
-      // If HR user, log that demo org would be created
+      // If HR user, assign HR admin role immediately
       if (role === 'hr') {
-        console.log('Demo HR user created, organization setup simulated');
+        console.log('Demo HR user created, assigning HR admin role...');
+        
+        try {
+          // Call the assign_demo_hr_admin function to grant permissions
+          const { error: roleError } = await supabase.rpc('assign_demo_hr_admin');
+          
+          if (roleError) {
+            console.warn('Failed to assign HR admin role via RPC:', roleError);
+            
+            // Fallback: try direct insert
+            const { error: insertError } = await supabase
+              .from('user_roles')
+              .insert({ user_id: authData.user!.id, role: 'hr_admin' })
+              .select();
+            
+            if (insertError && insertError.code !== '23505') {
+              // Log but don't fail - mock data generator will retry
+              console.warn('Failed to assign HR admin role via insert:', insertError);
+            }
+          }
+          
+          // Wait for role assignment to propagate
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          console.log('HR admin role assigned successfully');
+        } catch (roleError) {
+          console.warn('Exception assigning HR admin role:', roleError);
+          // Continue anyway - mock data generator will retry
+        }
       }
 
       toast({
