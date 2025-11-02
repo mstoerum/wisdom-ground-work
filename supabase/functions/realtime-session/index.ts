@@ -83,6 +83,14 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Handle HEAD requests for connection quality checks
+  if (req.method === 'HEAD') {
+    return new Response(null, { 
+      status: 200, 
+      headers: corsHeaders 
+    });
+  }
+
   try {
     console.log('📞 Realtime session request received');
     
