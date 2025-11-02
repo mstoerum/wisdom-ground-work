@@ -157,25 +157,30 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
   };
 
   const handleDataGenerated = async () => {
+    toast.info("Refreshing analytics with new data...");
+    
     // Invalidate all React Query caches related to conversation analytics
+    // Use predicate to match all queries that start with these keys
     await queryClient.invalidateQueries({ 
-      queryKey: ['conversation-responses'] 
-    });
-    await queryClient.invalidateQueries({ 
-      queryKey: ['conversation-sessions'] 
-    });
-    await queryClient.invalidateQueries({ 
-      queryKey: ['enhanced-analytics'] 
-    });
-    await queryClient.invalidateQueries({ 
-      queryKey: ['survey-themes'] 
+      predicate: (query) => {
+        const key = query.queryKey;
+        return (
+          (Array.isArray(key) && key[0] === 'conversation-responses') ||
+          (Array.isArray(key) && key[0] === 'conversation-sessions') ||
+          (Array.isArray(key) && key[0] === 'enhanced-analytics') ||
+          (Array.isArray(key) && key[0] === 'survey-themes')
+        );
+      }
     });
     
-    // Force refetch of analytics data
-    realAnalytics.refetch();
+    // Force refetch of analytics data and wait for it to complete
+    await realAnalytics.refetch();
+    
+    // Wait a bit more to ensure all derived queries have updated
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     setDataRefreshKey(prev => prev + 1);
-    toast.success("Refreshing analytics with new data...");
+    toast.success("Analytics refreshed with new data!");
   };
 
   return (
@@ -200,11 +205,18 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                   variant="ghost" 
                   size="sm" 
                   onClick={async () => {
-                    await queryClient.invalidateQueries({ queryKey: ['conversation-responses'] });
-                    await queryClient.invalidateQueries({ queryKey: ['conversation-sessions'] });
-                    await queryClient.invalidateQueries({ queryKey: ['enhanced-analytics'] });
-                    await queryClient.invalidateQueries({ queryKey: ['survey-themes'] });
-                    realAnalytics.refetch();
+                    await queryClient.invalidateQueries({ 
+                      predicate: (query) => {
+                        const key = query.queryKey;
+                        return (
+                          (Array.isArray(key) && key[0] === 'conversation-responses') ||
+                          (Array.isArray(key) && key[0] === 'conversation-sessions') ||
+                          (Array.isArray(key) && key[0] === 'enhanced-analytics') ||
+                          (Array.isArray(key) && key[0] === 'survey-themes')
+                        );
+                      }
+                    });
+                    await realAnalytics.refetch();
                     setDataRefreshKey(prev => prev + 1);
                   }}
                 >
