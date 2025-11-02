@@ -47,8 +47,11 @@ export function ConversationQualityDashboard({
         <CardContent className="p-12 text-center">
           <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-semibold mb-2">No Quality Data Available</h3>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mb-4">
             Quality metrics will appear here once conversation data is available.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Quality metrics measure conversation depth, engagement, and completion to determine how reliable the analytics are.
           </p>
         </CardContent>
       </Card>
@@ -117,7 +120,7 @@ export function ConversationQualityDashboard({
                   {getConfidenceBadge()}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Based on conversation quality and depth
+                  Based on conversation quality and depth. Higher confidence means analytics are more reliable.
                 </p>
               </div>
             </div>

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, PlusCircle, BarChart2, Clock, TrendingDown } from "lucide-react";
+import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, PlusCircle, BarChart2, Clock, TrendingDown, Shield, Brain, Globe } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { DonutProgressRing } from "@/components/hr/analytics/DonutProgressRing";
@@ -186,19 +186,30 @@ const Analytics = () => {
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
         <div className="container mx-auto px-4 py-8 max-w-7xl">
           <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
                 <h1 className="text-3xl font-bold">Employee Feedback Analytics</h1>
                 <p className="text-muted-foreground mt-1">
                   Comprehensive insights from {participation?.completed || 0} completed conversations
+                  {qualityMetrics && (
+                    <span className="ml-2">
+                      ? <span className={
+                        qualityMetrics.average_confidence_score >= 75 ? 'text-green-600 font-medium' :
+                        qualityMetrics.average_confidence_score >= 50 ? 'text-yellow-600 font-medium' : 'text-red-600 font-medium'
+                      }>
+                        {qualityMetrics.average_confidence_score >= 75 ? 'High' :
+                         qualityMetrics.average_confidence_score >= 50 ? 'Medium' : 'Low'} Confidence
+                      </span>
+                    </span>
+                  )}
                 </p>
               </div>
-              <div className="flex gap-2">
-                <Button onClick={handleExport} variant="outline">
+              <div className="flex gap-2 flex-shrink-0">
+                <Button onClick={handleExport} variant="outline" size="sm">
                   <Download className="h-4 w-4 mr-2" />
                   Export CSV
                 </Button>
-                <Button onClick={handlePDFExport} variant="outline">
+                <Button onClick={handlePDFExport} variant="outline" size="sm">
                   <FileText className="h-4 w-4 mr-2" />
                   Export PDF
                 </Button>
@@ -206,7 +217,7 @@ const Analytics = () => {
             </div>
 
             {/* Key Metrics */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               <Card>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -265,10 +276,57 @@ const Analytics = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Confidence Metric Card */}
+              {qualityMetrics && (
+                <Card className={`border-l-4 ${
+                  qualityMetrics.average_confidence_score >= 75 ? 'border-green-500' :
+                  qualityMetrics.average_confidence_score >= 50 ? 'border-yellow-500' : 'border-red-500'
+                }`}>
+                  <CardContent className="p-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-muted-foreground">Analytics Confidence</p>
+                        <p className={`text-3xl font-bold ${
+                          qualityMetrics.average_confidence_score >= 75 ? 'text-green-600' :
+                          qualityMetrics.average_confidence_score >= 50 ? 'text-yellow-600' : 'text-red-600'
+                        }`}>
+                          {qualityMetrics.average_confidence_score}/100
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {qualityMetrics.average_confidence_score >= 75 ? 'High' :
+                           qualityMetrics.average_confidence_score >= 50 ? 'Medium' : 'Low'} confidence
+                        </p>
+                      </div>
+                      <Shield className={`h-8 w-8 ${
+                        qualityMetrics.average_confidence_score >= 75 ? 'text-green-600' :
+                        qualityMetrics.average_confidence_score >= 50 ? 'text-yellow-600' : 'text-red-600'
+                      }`} />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
 
             {/* Filters */}
             <div className="flex flex-wrap gap-4">
+              {surveys && surveys.length > 0 && (
+                <Select 
+                  value={filters.surveyId || "all"} 
+                  onValueChange={(value) => setFilters({ ...filters, surveyId: value === "all" ? undefined : value })}
+                >
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="All surveys" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All surveys</SelectItem>
+                    {surveys.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
               <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
                 <SelectTrigger className="w-[200px]">
                   <SelectValue placeholder="All departments" />
@@ -295,21 +353,63 @@ const Analytics = () => {
             </div>
 
             <Tabs defaultValue="quality" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-5 lg:flex lg:flex-wrap">
-                <TabsTrigger value="quality">Quality & Confidence</TabsTrigger>
-                <TabsTrigger value="actionable">Action Center</TabsTrigger>
-                <TabsTrigger value="nlp">NLP Insights</TabsTrigger>
-                <TabsTrigger value="culture">Culture Map</TabsTrigger>
-                <TabsTrigger value="insights">Insights Hub</TabsTrigger>
-                <TabsTrigger value="themes">Theme Analysis</TabsTrigger>
-                <TabsTrigger value="voices">Employee Voices</TabsTrigger>
-                <TabsTrigger value="patterns">Pattern Discovery</TabsTrigger>
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="sentiment">Sentiment Analysis</TabsTrigger>
-                <TabsTrigger value="trends">Trends & Patterns</TabsTrigger>
-                <TabsTrigger value="departments">Department View</TabsTrigger>
-                <TabsTrigger value="urgency">Urgent Flags</TabsTrigger>
-              </TabsList>
+              <div className="overflow-x-auto">
+                <TabsList className="h-auto inline-flex flex-wrap gap-1 p-1 min-w-full md:min-w-0">
+                  <TabsTrigger value="quality" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                    <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Quality & Confidence</span>
+                    <span className="sm:hidden">Quality</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="overview" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                    <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" />
+                    Overview
+                  </TabsTrigger>
+                  <TabsTrigger value="actionable" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                    <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Action Center</span>
+                    <span className="sm:hidden">Actions</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="insights" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                    <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Insights Hub</span>
+                    <span className="sm:hidden">Insights</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="themes" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                    <BarChart2 className="h-3 w-3 sm:h-4 sm:w-4" />
+                    Themes
+                  </TabsTrigger>
+                  <TabsTrigger value="voices" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                    <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                    Voices
+                  </TabsTrigger>
+                  <TabsTrigger value="nlp" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                    <Brain className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden md:inline">NLP Insights</span>
+                    <span className="md:hidden">NLP</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="culture" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                    <Globe className="h-3 w-3 sm:h-4 sm:w-4" />
+                    Culture
+                  </TabsTrigger>
+                  <TabsTrigger value="patterns" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                    <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                    Patterns
+                  </TabsTrigger>
+                  <TabsTrigger value="sentiment" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                    <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                    Sentiment
+                  </TabsTrigger>
+                  <TabsTrigger value="departments" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                    <Users className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Departments</span>
+                    <span className="sm:hidden">Depts</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="urgency" className="flex items-center gap-1.5 text-xs sm:text-sm">
+                    <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4" />
+                    Urgent
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
               {/* Conversation Quality & Confidence Tab - MOST IMPORTANT */}
               <TabsContent value="quality" className="space-y-6">
