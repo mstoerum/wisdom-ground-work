@@ -364,6 +364,19 @@ serve(async (req) => {
               type: "response.create",
             }));
           }
+        } else if (message.type === "interrupt") {
+          // Handle interruption from client
+          console.log('⚠️ Client requested interruption');
+          
+          if (openaiWs && openaiWs.readyState === WebSocket.OPEN) {
+            openaiWs.send(JSON.stringify({
+              type: "response.cancel",
+            }));
+            
+            // Clear transcripts
+            currentUserTranscript = "";
+            currentAiTranscript = "";
+          }
         } else if (message.type === "conversation.item.truncate") {
           // Interrupt current response
           if (openaiWs && openaiWs.readyState === WebSocket.OPEN) {

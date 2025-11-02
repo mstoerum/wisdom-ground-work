@@ -299,6 +299,31 @@ export class RealtimeChat {
     this.dc.send(JSON.stringify({type: 'response.create'}));
   }
 
+  /**
+   * Interrupt AI response and clear audio playback
+   * Called when user starts speaking while AI is speaking
+   */
+  interruptResponse() {
+    console.log('🛑 Interrupting AI response...');
+    
+    // Stop audio playback
+    if (this.audioEl.srcObject) {
+      const stream = this.audioEl.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+      this.audioEl.srcObject = null;
+    }
+    this.audioEl.pause();
+    this.audioEl.currentTime = 0;
+    
+    // Send cancellation event to OpenAI
+    if (this.dc?.readyState === 'open') {
+      this.dc.send(JSON.stringify({
+        type: 'response.cancel'
+      }));
+      console.log('✅ Cancellation sent to OpenAI');
+    }
+  }
+
   disconnect() {
     console.log('🔌 Disconnecting RealtimeChat...');
     this.recorder?.stop();

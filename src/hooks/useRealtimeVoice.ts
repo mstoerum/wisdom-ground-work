@@ -65,6 +65,19 @@ export const useRealtimeVoice = (options: UseRealtimeVoiceOptions = {}) => {
 
       case 'input_audio_buffer.speech_started':
         console.log('🎤 User started speaking');
+        
+        // Interrupt AI if currently speaking
+        if (voiceState === 'speaking') {
+          console.log('⚠️ User interrupted AI response');
+          chatRef.current?.interruptResponse();
+          
+          toast({
+            title: "Interrupted",
+            description: "You can speak now",
+            duration: 2000,
+          });
+        }
+        
         setVoiceState('listening');
         setUserTranscript('');
         userTranscriptRef.current = '';

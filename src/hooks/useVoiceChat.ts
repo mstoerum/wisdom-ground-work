@@ -307,6 +307,10 @@ export const useVoiceChat = ({
                     break;
 
                   case 'speech_started':
+                    // If AI is speaking, interrupt
+                    if (voiceState === 'speaking') {
+                      interruptResponse();
+                    }
                     setVoiceState('listening');
                     setUserTranscript('');
                     currentAiTextRef.current = '';
@@ -404,6 +408,39 @@ export const useVoiceChat = ({
       });
     }
   }, [isSupported, conversationId, toast, onError, onTranscript, startAudioCapture, playAudioBuffer, userTranscript, voiceState, surveyFirstMessage, messages]);
+
+  // Interrupt AI response
+  const interruptResponse = useCallback(() => {
+    console.log('🛑 Interrupting AI response...');
+    
+    // Clear playback queue
+    playbackQueueRef.current = [];
+    
+    // Stop current audio source
+    if (isPlayingRef.current && audioContextRef.current) {
+      // Create a new audio context to force stop
+      audioContextRef.current.close();
+      audioContextRef.current = new AudioContext({ sampleRate: 16000 });
+    }
+    
+    isPlayingRef.current = false;
+    
+    // Send interruption signal to backend
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'interrupt'
+      }));
+    }
+    
+    // Update state
+    setVoiceState('listening');
+    
+    toast({
+      title: "Interrupted",
+      description: "You can speak now",
+      duration: 2000,
+    });
+  }, [toast]);
 
   // Stop voice chat
   const stopVoiceChat = useCallback(() => {

@@ -41,10 +41,52 @@ export const VoiceInterface = ({
   const [surveyDataForVoice, setSurveyDataForVoice] = useState<{ first_message?: string; themes?: Array<{ name: string; description: string }> } | undefined>();
   const [processingStartTime, setProcessingStartTime] = useState<number | null>(null);
   const [estimatedProcessingTime, setEstimatedProcessingTime] = useState<number | null>(null);
-  const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'fair' | 'poor'>('good');
+  const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'fair' | 'poor' | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+
+  // Connection quality check
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const start = Date.now();
+        
+        // Ping Supabase endpoint
+        await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/realtime-session`,
+          {
+            method: 'HEAD',
+            headers: {
+              'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
+            }
+          }
+        );
+        
+        const latency = Date.now() - start;
+        setConnectionLatency(latency);
+        
+        // Categorize quality
+        if (latency < 100) setConnectionQuality('excellent');
+        else if (latency < 300) setConnectionQuality('good');
+        else if (latency < 500) setConnectionQuality('fair');
+        else setConnectionQuality('poor');
+        
+      } catch (error) {
+        console.error('Connection check failed:', error);
+        setConnectionQuality('poor');
+        setConnectionLatency(999);
+      }
+    };
+    
+    // Check on mount
+    checkConnection();
+    
+    // Check every 5 seconds
+    const interval = setInterval(checkConnection, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   // Fetch theme details if in preview mode and survey data is available
   useEffect(() => {
@@ -299,12 +341,13 @@ export const VoiceInterface = ({
         </div>
       )}
 
-      {/* Connection Quality Indicator (always visible when active) */}
-      {isActive && (
-        <div className="fixed top-16 right-4 z-10">
-          <ConnectionQualityIndicator quality={connectionQuality} />
-        </div>
-      )}
+      {/* Connection Quality Indicator (always visible) */}
+      <div className="fixed top-16 right-4 z-10">
+        <ConnectionQualityIndicator 
+          quality={connectionQuality} 
+          latency={connectionLatency}
+        />
+      </div>
 
       {/* Preview Mode Indicator */}
       {isPreviewMode && (

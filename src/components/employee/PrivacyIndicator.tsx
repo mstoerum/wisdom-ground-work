@@ -18,26 +18,61 @@ export const PrivacyIndicator = () => {
 };
 
 /**
- * Connection quality indicator
+ * Connection quality indicator with latency display
  */
+import { Wifi, WifiOff, Loader2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 interface ConnectionQualityIndicatorProps {
-  quality: 'excellent' | 'good' | 'fair' | 'poor';
+  quality: 'excellent' | 'good' | 'fair' | 'poor' | null;
+  latency?: number | null;
 }
 
-export const ConnectionQualityIndicator = ({ quality }: ConnectionQualityIndicatorProps) => {
-  const qualityConfig = {
-    excellent: { color: 'lime-green', label: 'Excellent Connection', icon: '✓' },
-    good: { color: 'lime-green', label: 'Good Connection', icon: '✓' },
-    fair: { color: 'butter-yellow', label: 'Fair Connection', icon: '⚠' },
-    poor: { color: 'red', label: 'Poor Connection', icon: '⚠' },
+export const ConnectionQualityIndicator = ({ quality, latency }: ConnectionQualityIndicatorProps) => {
+  const getQualityIcon = () => {
+    if (!quality) return <Loader2 className="h-3 w-3 animate-spin" />;
+    
+    switch (quality) {
+      case 'excellent':
+      case 'good':
+        return <Wifi className="h-3 w-3 text-[hsl(var(--lime-green))]" />;
+      case 'fair':
+        return <Wifi className="h-3 w-3 text-[hsl(var(--butter-yellow))]" />;
+      case 'poor':
+        return <WifiOff className="h-3 w-3 text-destructive" />;
+    }
+  };
+  
+  const getQualityColor = () => {
+    if (!quality) return 'text-muted-foreground';
+    
+    switch (quality) {
+      case 'excellent':
+      case 'good':
+        return 'text-[hsl(var(--lime-green))]';
+      case 'fair':
+        return 'text-[hsl(var(--butter-yellow))]';
+      case 'poor':
+        return 'text-destructive';
+    }
   };
 
-  const config = qualityConfig[quality];
-
   return (
-    <div className={`flex items-center gap-2 text-xs text-[hsl(var(--${config.color}))]`}>
-      <span>{config.icon}</span>
-      <span>{config.label}</span>
-    </div>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex items-center gap-2 px-2 py-1 bg-background/80 backdrop-blur-sm rounded-md border">
+            {getQualityIcon()}
+            <span className={`text-xs ${getQualityColor()}`}>
+              {latency ? `${latency}ms` : 'Checking...'}
+            </span>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Connection quality: {quality || 'Unknown'}</p>
+          {latency && <p>Latency: {latency}ms</p>}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 };
