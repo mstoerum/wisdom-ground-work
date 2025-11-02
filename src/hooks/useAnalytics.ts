@@ -263,11 +263,13 @@ export const useAnalytics = (filters: AnalyticsFilters = {}) => {
   });
 
   // Refetch all analytics queries
-  const refetch = () => {
-    participationQuery.refetch();
-    sentimentQuery.refetch();
-    themesQuery.refetch();
-    urgencyQuery.refetch();
+  const refetch = async () => {
+    await Promise.all([
+      participationQuery.refetch(),
+      sentimentQuery.refetch(),
+      themesQuery.refetch(),
+      urgencyQuery.refetch(),
+    ]);
   };
 
   return {

@@ -71,6 +71,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
   const DEMO_SURVEY_ID = isValidUUID(DEMO_SURVEY_ID_STRING) ? DEMO_SURVEY_ID_STRING : DEMO_SURVEY_UUID;
 
   // Always fetch analytics for demo survey (hook will return empty arrays if no data)
+  // Include dataRefreshKey to force re-fetch when it changes
   const realAnalytics = useConversationAnalytics({
     surveyId: DEMO_SURVEY_ID,
   });
@@ -81,6 +82,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
   });
 
   // Check if we have real data based on actual responses/sessions from the hook
+  // This will re-evaluate after refetch when dataRefreshKey changes
   const useRealData = realAnalytics.responses.length > 0 && realAnalytics.sessions.length > 0;
 
   // Generate comprehensive mock data (as fallback)
@@ -276,10 +278,8 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
   };
 
   const handleDataGenerated = async () => {
-    toast.info("Refreshing analytics with new data...");
-    
-    // Invalidate all React Query caches related to conversation analytics
-    // Use predicate to match all queries that start with these keys
+    // The MockDataGenerator already invalidated queries, but we'll invalidate again
+    // to ensure everything is covered, including any queries specific to this component
     await queryClient.invalidateQueries({ 
       predicate: (query) => {
         const key = query.queryKey;
@@ -294,22 +294,34 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
           firstKey === 'analytics-sentiment' ||
           firstKey === 'analytics-themes' ||
           firstKey === 'analytics-urgency' ||
-          firstKey === 'demo-department-data'
+          firstKey === 'department-data' ||
+          firstKey === 'time-series-data' ||
+          firstKey === 'surveys-list'
         );
       }
     });
     
     // Force refetch of analytics data and wait for it to complete
-    await Promise.all([
-      realAnalytics.refetch(),
-      basicAnalytics.refetch(),
-    ]);
-    
-    // Wait a bit more to ensure all derived queries have updated
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    setDataRefreshKey(prev => prev + 1);
-    toast.success("Analytics refreshed with new data!");
+    // This ensures the hooks pick up the new data
+    try {
+      await Promise.all([
+        realAnalytics.refetch(),
+        basicAnalytics.refetch(),
+      ]);
+      
+      // Wait a moment for React Query to update all dependent queries
+      // (e.g., enhanced-analytics depends on responses and sessions)
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Force a re-render by updating the refresh key
+      // This ensures the component re-evaluates useRealData with fresh data
+      setDataRefreshKey(prev => prev + 1);
+      
+      toast.success("Analytics refreshed with new data!");
+    } catch (error) {
+      console.error("Error refreshing analytics:", error);
+      toast.error("Failed to refresh analytics. Please refresh the page.");
+    }
   };
 
   return (

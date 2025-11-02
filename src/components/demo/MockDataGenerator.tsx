@@ -85,10 +85,11 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
         }
       });
       
-      // Call the callback after cache invalidation
-      onDataGenerated?.();
+      // Wait a moment for invalidation to propagate
+      await new Promise(resolve => setTimeout(resolve, 100));
       
-      toast.success("Analytics refreshed with new data!");
+      // Call the callback which will handle refetching
+      onDataGenerated?.();
     } catch (err: any) {
       const errorMessage = err?.message || 'Failed to generate mock data';
       setError(errorMessage);
