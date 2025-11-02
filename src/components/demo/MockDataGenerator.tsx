@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +22,41 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
   const [error, setError] = useState<string | null>(null);
   const { createDemoUser, isLoading: isCreatingDemoUser } = useDemoAuth();
   const queryClient = useQueryClient();
+
+  // Check for existing data on mount
+  useEffect(() => {
+    const checkExistingData = async () => {
+      try {
+        const DEMO_SURVEY_UUID = '00000000-0000-0000-0000-000000000001';
+        const targetSurveyId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(surveyId) 
+          ? surveyId 
+          : DEMO_SURVEY_UUID;
+
+        // Count existing sessions and responses
+        const { count: sessionCount } = await supabase
+          .from('conversation_sessions')
+          .select('*', { count: 'exact', head: true })
+          .eq('survey_id', targetSurveyId);
+
+        const { count: responseCount } = await supabase
+          .from('responses')
+          .select('*', { count: 'exact', head: true })
+          .eq('survey_id', targetSurveyId);
+
+        if (sessionCount && sessionCount > 0) {
+          setTotalGenerated({
+            sessions: sessionCount || 0,
+            responses: responseCount || 0
+          });
+        }
+      } catch (error) {
+        console.warn('Could not check for existing data:', error);
+        // Silently fail - user can still generate data
+      }
+    };
+
+    checkExistingData();
+  }, [surveyId]);
 
   const ensureAuthenticated = async (): Promise<boolean> => {
     // Check if user is already authenticated
