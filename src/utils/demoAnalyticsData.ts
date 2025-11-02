@@ -312,3 +312,295 @@ export const generateTrendData = () => [
   { period: "Q4 2024", participation: 73, avgSentiment: 62.1, urgentFlags: 8 },
   { period: "Q1 2025", participation: 81, avgSentiment: 68.2, urgentFlags: 4 }
 ];
+
+// Generate mock quality metrics
+export const generateMockQualityMetrics = () => ({
+  total_sessions: 201,
+  completed_sessions: 201,
+  average_quality_score: 78.5,
+  average_confidence_score: 82,
+  high_confidence_count: 156,
+  medium_confidence_count: 38,
+  low_confidence_count: 7,
+  excellent_quality: 89,
+  good_quality: 87,
+  fair_quality: 22,
+  poor_quality: 3,
+  average_exchanges: 12.3,
+  average_duration: 12.3,
+  average_themes_explored: 3.2,
+  average_follow_up_effectiveness: 75.8,
+  high_confidence_percentage: 77.6,
+  medium_confidence_percentage: 18.9,
+  low_confidence_percentage: 3.5
+});
+
+// Generate mock quality insights
+export const generateMockQualityInsights = () => [
+  {
+    type: "strength",
+    title: "High Engagement Quality",
+    description: "Most conversations show strong engagement with detailed responses",
+    metric: "78.5%",
+    recommendation: "Continue current conversation approach"
+  },
+  {
+    type: "opportunity",
+    title: "Follow-up Effectiveness",
+    description: "Follow-up questions could be more targeted to dive deeper",
+    metric: "75.8%",
+    recommendation: "Enhance AI follow-up questions based on response patterns"
+  }
+];
+
+// Generate mock enhanced themes
+export const generateMockEnhancedThemes = () => [
+  {
+    theme_id: "theme-1",
+    theme_name: "Work-Life Balance",
+    avg_sentiment: 42.3,
+    response_count: 156,
+    quotes: [],
+    sub_themes: [
+      { 
+        name: "After-hours expectations", 
+        avg_sentiment: 25, 
+        frequency: 45,
+        representative_quotes: [
+          "Manager sends emails at 10pm expecting immediate responses",
+          "Weekend work has become the norm"
+        ]
+      },
+      { 
+        name: "Weekend work", 
+        avg_sentiment: 38, 
+        frequency: 32,
+        representative_quotes: [
+          "Regularly working weekends to meet deadlines"
+        ]
+      }
+    ],
+    sentiment_drivers: [
+      { 
+        phrase: "Email expectations", 
+        sentiment_impact: -25, 
+        frequency: 45,
+        context: ["After-hours communication", "Immediate response expectations"]
+      }
+    ],
+    follow_up_effectiveness: 72.5
+  },
+  {
+    theme_id: "theme-2",
+    theme_name: "Career Growth",
+    avg_sentiment: 78.9,
+    response_count: 134,
+    quotes: [],
+    sub_themes: [
+      { 
+        name: "Development opportunities", 
+        avg_sentiment: 82, 
+        frequency: 89,
+        representative_quotes: [
+          "Career development workshops have been really helpful",
+          "Great learning opportunities available"
+        ]
+      },
+      { 
+        name: "Promotion paths", 
+        avg_sentiment: 72, 
+        frequency: 45,
+        representative_quotes: [
+          "Clear promotion paths and opportunities"
+        ]
+      }
+    ],
+    sentiment_drivers: [
+      { 
+        phrase: "Workshop availability", 
+        sentiment_impact: 15, 
+        frequency: 67,
+        context: ["Regular training sessions", "Skill development programs"]
+      }
+    ],
+    follow_up_effectiveness: 81.2
+  }
+];
+
+// Generate mock quotes
+export const generateMockQuotes = () => [
+  {
+    id: "quote-1",
+    text: "I love the collaborative environment here. My team is incredibly supportive.",
+    sentiment: "positive" as const,
+    sentiment_score: 85,
+    theme_id: "theme-3",
+    theme_name: "Team Collaboration",
+    session_id: "session-1",
+    created_at: "2025-01-20T14:30:00Z",
+    department: "Engineering"
+  },
+  {
+    id: "quote-2",
+    text: "The constant after-hours expectations are really affecting my work-life balance.",
+    sentiment: "negative" as const,
+    sentiment_score: 25,
+    theme_id: "theme-1",
+    theme_name: "Work-Life Balance",
+    session_id: "session-2",
+    created_at: "2025-01-20T12:20:00Z",
+    department: "Marketing"
+  },
+  {
+    id: "quote-3",
+    text: "The career development opportunities have been amazing. I've learned so much in the past year.",
+    sentiment: "positive" as const,
+    sentiment_score: 78,
+    theme_id: "theme-2",
+    theme_name: "Career Growth",
+    session_id: "session-3",
+    created_at: "2025-01-20T13:45:00Z",
+    department: "Sales"
+  },
+  {
+    id: "quote-4",
+    text: "My manager keeps sending emails at 10pm expecting immediate responses. It's affecting my family time.",
+    sentiment: "negative" as const,
+    sentiment_score: 22,
+    theme_id: "theme-1",
+    theme_name: "Work-Life Balance",
+    session_id: "session-4",
+    created_at: "2025-01-19T16:30:00Z",
+    department: "Operations"
+  }
+];
+
+// Generate mock narrative summary
+export const generateMockNarrative = () => ({
+  overview: "Overall employee sentiment shows improvement, with strong collaboration and career growth themes. Work-life balance remains a key concern requiring attention.",
+  key_insights: [
+    "Team collaboration is highly valued",
+    "Career development opportunities are appreciated",
+    "Work-life balance needs improvement"
+  ],
+  top_concerns: [
+    "After-hours communication expectations",
+    "Work-life balance boundaries"
+  ],
+  positive_aspects: [
+    "Strong team collaboration",
+    "Career development opportunities"
+  ],
+  recommended_actions: [
+    "Establish after-hours communication policy",
+    "Improve work-life balance boundaries"
+  ]
+});
+
+// Generate mock patterns
+export const generateMockPatterns = () => [
+  {
+    pattern: "Work-life balance and communication correlation",
+    frequency: 89,
+    affected_themes: ["Work-Life Balance", "Communication"],
+    representative_quotes: [],
+    correlation_strength: 0.78
+  }
+];
+
+// Generate mock root causes
+export const generateMockRootCauses = () => [
+  {
+    id: "rc-1",
+    theme_id: "theme-1",
+    theme_name: "Work-Life Balance",
+    cause: "Unclear boundaries around after-hours communication",
+    evidence: ["45 responses mention late-night emails", "32 mention weekend work expectations"],
+    frequency: 77,
+    impact_score: 85,
+    affected_employees: 77,
+    representative_quotes: [
+      "Manager sends emails at 10pm expecting immediate responses",
+      "Weekend work has become the norm"
+    ]
+  }
+];
+
+// Generate mock interventions
+export const generateMockInterventions = () => [
+  {
+    id: "int-1",
+    title: "Establish After-Hours Communication Policy",
+    description: "Create clear guidelines for when employees are expected to respond to communications",
+    rationale: "Addresses root cause of work-life balance concerns",
+    root_causes: ["rc-1"],
+    estimated_impact: 15,
+    effort_level: "low",
+    timeline: "2-3 weeks",
+    priority: "high",
+    quick_win: true,
+    related_themes: ["Work-Life Balance", "Communication"],
+    action_steps: [
+      "Draft communication policy",
+      "Get leadership approval",
+      "Communicate to all employees"
+    ],
+    success_metrics: ["Reduction in after-hours email mentions", "Improved work-life balance sentiment"]
+  }
+];
+
+// Generate mock quick wins
+export const generateMockQuickWins = () => [
+  {
+    id: "qw-1",
+    title: "Weekly Team Check-ins",
+    description: "Add brief weekly check-ins to improve communication",
+    effort: "very_low",
+    impact: "medium",
+    implementation_time: "1 week",
+    affected_theme: "Communication",
+    evidence: ["Employees want more regular updates"]
+  }
+];
+
+// Generate mock impact predictions
+export const generateMockImpactPredictions = () => [
+  {
+    theme_id: "theme-1",
+    theme_name: "Work-Life Balance",
+    current_sentiment: 42.3,
+    predicted_sentiment: 58.5,
+    improvement: 16.2,
+    confidence: 82,
+    interventions: ["int-1"]
+  }
+];
+
+// Generate mock NLP analysis
+export const generateMockNLPAnalysis = () => ({
+  key_phrases: [
+    { phrase: "work-life balance", frequency: 156, sentiment: -0.35 },
+    { phrase: "career growth", frequency: 134, sentiment: 0.78 }
+  ],
+  topics: [
+    { topic: "Collaboration", weight: 0.32 },
+    { topic: "Work-life balance", weight: 0.28 }
+  ],
+  emotion_distribution: {
+    joy: 0.35,
+    concern: 0.28,
+    satisfaction: 0.25,
+    frustration: 0.12
+  }
+});
+
+// Generate mock cultural map
+export const generateMockCulturalMap = () => ({
+  values: [
+    { value: "Collaboration", strength: 0.85, mentions: 142 },
+    { value: "Innovation", strength: 0.72, mentions: 98 }
+  ],
+  concerns: [
+    { concern: "Work-life balance", severity: 0.65, mentions: 156 }
+  ]
+});
