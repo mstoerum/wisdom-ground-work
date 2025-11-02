@@ -50,7 +50,7 @@ export function CulturalPatterns({ culturalMap, isLoading }: CulturalPatternsPro
 
   const getTrendIcon = () => {
     switch (culturalMap.cultural_evolution.trend) {
-      case 'urgent':
+      case 'improving':
         return <TrendingUp className="h-5 w-5 text-green-600" />;
       case 'declining':
         return <TrendingDown className="h-5 w-5 text-red-600" />;

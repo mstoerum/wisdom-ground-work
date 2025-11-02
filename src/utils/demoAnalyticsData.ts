@@ -332,23 +332,31 @@ export const generateMockQualityMetrics = () => ({
   average_follow_up_effectiveness: 75.8,
   high_confidence_percentage: 77.6,
   medium_confidence_percentage: 18.9,
-  low_confidence_percentage: 3.5
+  low_confidence_percentage: 3.5,
+  confidence_factors: {
+    high_depth_sessions: 142,
+    high_engagement_sessions: 167,
+    completed_sessions: 201,
+    mood_tracked_sessions: 189
+  }
 });
 
 // Generate mock quality insights
 export const generateMockQualityInsights = () => [
   {
-    type: "strength",
+    type: "strength" as const,
     title: "High Engagement Quality",
     description: "Most conversations show strong engagement with detailed responses",
-    metric: "78.5%",
+    impact: "high" as const,
+    affected_sessions: 156,
     recommendation: "Continue current conversation approach"
   },
   {
-    type: "opportunity",
+    type: "recommendation" as const,
     title: "Follow-up Effectiveness",
     description: "Follow-up questions could be more targeted to dive deeper",
-    metric: "75.8%",
+    impact: "medium" as const,
+    affected_sessions: 45,
     recommendation: "Enhance AI follow-up questions based on response patterns"
   }
 ];
@@ -535,9 +543,9 @@ export const generateMockInterventions = () => [
     rationale: "Addresses root cause of work-life balance concerns",
     root_causes: ["rc-1"],
     estimated_impact: 15,
-    effort_level: "low",
+    effort_level: "low" as const,
     timeline: "2-3 weeks",
-    priority: "high",
+    priority: "high" as const,
     quick_win: true,
     related_themes: ["Work-Life Balance", "Communication"],
     action_steps: [
@@ -555,8 +563,8 @@ export const generateMockQuickWins = () => [
     id: "qw-1",
     title: "Weekly Team Check-ins",
     description: "Add brief weekly check-ins to improve communication",
-    effort: "very_low",
-    impact: "medium",
+    effort: "very_low" as const,
+    impact: "medium" as const,
     implementation_time: "1 week",
     affected_theme: "Communication",
     evidence: ["Employees want more regular updates"]
@@ -583,24 +591,166 @@ export const generateMockNLPAnalysis = () => ({
     { phrase: "career growth", frequency: 134, sentiment: 0.78 }
   ],
   topics: [
-    { topic: "Collaboration", weight: 0.32 },
-    { topic: "Work-life balance", weight: 0.28 }
+    { 
+      id: "topic-1",
+      label: "Collaboration", 
+      keywords: ["teamwork", "collaboration", "support"],
+      frequency: 142,
+      avg_sentiment: 0.72,
+      trend: "stable" as const,
+      related_themes: ["Team Collaboration"],
+      context_examples: ["Great teamwork", "Supportive colleagues"],
+      representative_quotes: ["Great teamwork", "Supportive colleagues"],
+      related_clusters: ["topic-2"],
+      confidence: 0.85
+    },
+    { 
+      id: "topic-2",
+      label: "Work-life balance", 
+      keywords: ["balance", "overtime", "flexibility"],
+      frequency: 156,
+      avg_sentiment: -0.35,
+      trend: "declining" as const,
+      related_themes: ["Work-Life Balance"],
+      context_examples: ["Too many late nights", "Need better balance"],
+      representative_quotes: ["Too many late nights", "Need better balance"],
+      related_clusters: ["topic-1"],
+      confidence: 0.78
+    }
   ],
-  emotion_distribution: {
-    joy: 0.35,
-    concern: 0.28,
-    satisfaction: 0.25,
-    frustration: 0.12
-  }
+  emotions: [
+    { response_id: "resp-1", emotion: "grateful" as const, intensity: 0.35, confidence: 0.85, keywords: ["happy", "satisfied"] },
+    { response_id: "resp-2", emotion: "concerned" as const, intensity: 0.28, confidence: 0.78, keywords: ["worried", "concerned"] },
+    { response_id: "resp-3", emotion: "satisfied" as const, intensity: 0.25, confidence: 0.82, keywords: ["satisfied", "content"] },
+    { response_id: "resp-4", emotion: "frustrated" as const, intensity: 0.12, confidence: 0.75, keywords: ["frustrated", "annoyed"] }
+  ],
+  semantic_patterns: [
+    { 
+      pattern: "Work-life balance concerns", 
+      semantic_variants: ["work life balance", "worklife balance", "balance between work and life"],
+      frequency: 156, 
+      sentiment_impact: -25,
+      contexts: ["After-hours expectations", "Weekend work"]
+    }
+  ],
+  emerging_topics: [
+    {
+      id: "et-1",
+      label: "Remote work flexibility",
+      keywords: ["remote", "flexibility", "hybrid"],
+      frequency: 67,
+      avg_sentiment: 0.62,
+      trend: "improving" as const,
+      related_themes: ["Work-Life Balance"],
+      context_examples: ["Want more remote options"],
+      representative_quotes: ["Remote work would help balance"],
+      related_clusters: ["topic-2"],
+      confidence: 0.72
+    }
+  ],
+  quality_score: 78.5
 });
 
 // Generate mock cultural map
 export const generateMockCulturalMap = () => ({
-  values: [
-    { value: "Collaboration", strength: 0.85, mentions: 142 },
-    { value: "Innovation", strength: 0.72, mentions: 98 }
+  overall_culture_score: 72.5,
+  cultural_strengths: [
+    {
+      id: "cs-1",
+      strength_name: "Strong Collaboration",
+      description: "Team members work well together",
+      evidence: ["Great teamwork", "Supportive environment"],
+      frequency: 142,
+      impact: "high" as const,
+      protective_factor: true
+    }
   ],
-  concerns: [
-    { concern: "Work-life balance", severity: 0.65, mentions: 156 }
+  cultural_risks: [
+    {
+      id: "cr-1",
+      risk_name: "Work-life balance concerns",
+      description: "Employees struggling with work-life balance",
+      evidence: ["Late night emails", "Weekend work"],
+      frequency: 156,
+      severity: "high" as const,
+      trend: "increasing" as const,
+      affected_departments: ["Engineering", "Sales"],
+      affected_groups: ["Engineering", "Sales"],
+      recommended_actions: ["Establish after-hours policy", "Improve boundaries"]
+    }
+  ],
+  patterns: [
+    {
+      id: "cp-1",
+      pattern_name: "Collaboration strength",
+      category: "strength" as const,
+      description: "Strong team collaboration",
+      frequency: 142,
+      affected_themes: ["Team Collaboration"],
+      sentiment_impact: 15,
+      evidence: ["Great teamwork"],
+      example_quotes: ["Team is very supportive"],
+      affected_groups: ["Engineering", "Marketing"],
+      confidence: 0.85,
+      implications: ["Positive impact on team morale and productivity", "Supports strong team culture"]
+    }
+  ],
+  cultural_evolution: {
+    trend: "stable" as const,
+    change_rate: 0.05,
+    indicators: ["Increased focus on flexibility", "Emerging work-life balance value"]
+  },
+  value_alignment: {
+    stated_values: ["Collaboration", "Innovation"],
+    lived_values: ["Collaboration"],
+    gaps: ["Work-life balance"],
+    alignment_score: 75.5
+  },
+  group_profiles: [
+    {
+      id: "gp-1",
+      group_name: "Engineering",
+      dominant_values: ["Collaboration", "Innovation"],
+      sentiment_profile: { avg_sentiment: 72.5, sentiment_distribution: { positive: 0.65, neutral: 0.25, negative: 0.10 } },
+      key_concerns: ["Work-life balance"],
+      employee_count: 45,
+      overall_sentiment: 72.5,
+      cultural_strengths: [{
+        id: "cs-gp-1",
+        strength_name: "Strong collaboration",
+        description: "Engineering team works well together",
+        evidence: ["Great teamwork"],
+        frequency: 45,
+        impact: "high" as const,
+        protective_factor: true
+      }],
+      cultural_risks: [{
+        id: "cr-gp-1",
+        risk_name: "Work-life balance concerns",
+        description: "Engineers struggling with work-life balance",
+        evidence: ["Late nights", "Weekend work"],
+        frequency: 23,
+        severity: "medium" as const,
+        trend: "increasing" as const,
+        affected_departments: ["Engineering"],
+        affected_groups: ["Engineering"],
+        recommended_actions: ["Set boundaries"]
+      }],
+      unique_patterns: [{
+        id: "up-gp-1",
+        pattern_name: "High collaboration with overwork",
+        category: "weakness" as const,
+        description: "Strong teamwork but at cost of work-life balance",
+        frequency: 23,
+        affected_themes: ["Team Collaboration", "Work-Life Balance"],
+        sentiment_impact: -5,
+        evidence: ["Great teamwork but long hours"],
+        example_quotes: ["Love the team, but we work too much"],
+        affected_groups: ["Engineering"],
+        confidence: 0.75,
+        implications: ["Need to balance collaboration with boundaries"]
+      }],
+      comparison_to_average: { sentiment_diff: 5.2, strengths_diff: 2, risks_diff: -1 }
+    }
   ]
 });

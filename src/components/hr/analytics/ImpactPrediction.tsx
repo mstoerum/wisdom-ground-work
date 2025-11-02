@@ -8,7 +8,7 @@ import {
   Loader2,
   AlertCircle
 } from "lucide-react";
-import { ImpactPrediction } from "@/lib/actionableIntelligence";
+import type { ImpactPrediction } from "@/lib/actionableIntelligence";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, Cell } from "recharts";
 
 interface ImpactPredictionProps {

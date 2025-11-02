@@ -281,7 +281,7 @@ export function extractCulturalStrengths(patterns: CulturalPattern[]): CulturalS
       description: pattern.description,
       evidence: pattern.evidence,
       frequency: pattern.frequency,
-      impact: pattern.sentiment_impact > 20 ? 'high' : pattern.sentiment_impact > 10 ? 'medium' : 'low',
+      impact: (pattern.sentiment_impact > 20 ? 'high' : pattern.sentiment_impact > 10 ? 'medium' : 'low') as 'high' | 'medium' | 'low',
       protective_factor: pattern.sentiment_impact > 15, // Protects against negative sentiment
     }))
     .sort((a, b) => b.frequency - a.frequency);
