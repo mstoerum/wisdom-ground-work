@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Database, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, Database, CheckCircle2, AlertCircle, Trash2 } from "lucide-react";
 import { insertMockConversations } from "@/utils/generateMockConversations";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,7 @@ interface MockDataGeneratorProps {
 
 export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerated }: MockDataGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const [generatedStats, setGeneratedStats] = useState<{ sessionsCreated: number; responsesCreated: number } | null>(null);
   const [totalGenerated, setTotalGenerated] = useState({ sessions: 0, responses: 0 });
   const [error, setError] = useState<string | null>(null);
@@ -49,6 +50,77 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
     }
 
     return true;
+  };
+
+  const handleClearData = async () => {
+    setIsClearing(true);
+    setError(null);
+    
+    try {
+      // Get demo survey UUID
+      const DEMO_SURVEY_UUID = '00000000-0000-0000-0000-000000000001';
+      const targetSurveyId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(surveyId) 
+        ? surveyId 
+        : DEMO_SURVEY_UUID;
+      
+      // Delete responses first (due to foreign key constraints)
+      const { error: responsesError } = await supabase
+        .from('responses')
+        .delete()
+        .eq('survey_id', targetSurveyId);
+      
+      if (responsesError) {
+        throw new Error(`Failed to delete responses: ${responsesError.message}`);
+      }
+      
+      // Delete conversation sessions
+      const { error: sessionsError } = await supabase
+        .from('conversation_sessions')
+        .delete()
+        .eq('survey_id', targetSurveyId);
+      
+      if (sessionsError) {
+        throw new Error(`Failed to delete sessions: ${sessionsError.message}`);
+      }
+      
+      // Reset counters
+      setTotalGenerated({ sessions: 0, responses: 0 });
+      setGeneratedStats(null);
+      
+      toast.success("All mock data cleared successfully!");
+      
+      // Invalidate queries to refresh UI
+      await queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey;
+          if (!Array.isArray(key)) return false;
+          const firstKey = key[0];
+          return (
+            firstKey === 'conversation-responses' ||
+            firstKey === 'conversation-sessions' ||
+            firstKey === 'enhanced-analytics' ||
+            firstKey === 'survey-themes' ||
+            firstKey === 'analytics-participation' ||
+            firstKey === 'analytics-sentiment' ||
+            firstKey === 'analytics-themes' ||
+            firstKey === 'analytics-urgency' ||
+            firstKey === 'department-data' ||
+            firstKey === 'demo-department-data' ||
+            firstKey === 'time-series-data' ||
+            firstKey === 'surveys-list'
+          );
+        }
+      });
+      
+      onDataGenerated?.();
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Failed to clear mock data';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Error clearing mock data:', err);
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   const handleGenerate = async () => {
@@ -140,6 +212,11 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
           <p>• Generates 3-8 responses per conversation (150-360 total responses)</p>
           <p>• Includes realistic mood tracking, AI responses, and sentiment analysis</p>
           <p>• Covers all demo survey themes: Work-Life Balance, Team Collaboration, Career Development, Management Support, Workplace Culture</p>
+          {totalGenerated.sessions > 0 && (
+            <p className="text-primary font-medium pt-2">
+              ⚠️ Note: Each generation adds NEW data (doesn't replace existing data). Analytics show all accumulated conversations.
+            </p>
+          )}
         </div>
 
         {error && (
@@ -169,29 +246,53 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
           </div>
         )}
 
-        <Button
-          onClick={handleGenerate}
-          disabled={isGenerating || isCreatingDemoUser}
-          className="w-full"
-          size="lg"
-        >
-          {isGenerating || isCreatingDemoUser ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              {isCreatingDemoUser ? 'Setting up demo session...' : 'Generating Mock Data...'}
-            </>
-          ) : totalGenerated.sessions > 0 ? (
-            <>
-              <Database className="h-4 w-4 mr-2" />
-              Generate 45 More Conversations
-            </>
-          ) : (
-            <>
-              <Database className="h-4 w-4 mr-2" />
-              Generate 45 Mock Conversations
-            </>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleGenerate}
+            disabled={isGenerating || isCreatingDemoUser || isClearing}
+            className="flex-1"
+            size="lg"
+          >
+            {isGenerating || isCreatingDemoUser ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {isCreatingDemoUser ? 'Setting up demo session...' : 'Generating Mock Data...'}
+              </>
+            ) : totalGenerated.sessions > 0 ? (
+              <>
+                <Database className="h-4 w-4 mr-2" />
+                Generate 45 More Conversations
+              </>
+            ) : (
+              <>
+                <Database className="h-4 w-4 mr-2" />
+                Generate 45 Mock Conversations
+              </>
+            )}
+          </Button>
+          
+          {totalGenerated.sessions > 0 && (
+            <Button
+              onClick={handleClearData}
+              disabled={isGenerating || isCreatingDemoUser || isClearing}
+              variant="outline"
+              size="lg"
+              className="border-red-300 hover:bg-red-50 hover:text-red-700"
+            >
+              {isClearing ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Clearing...
+                </>
+              ) : (
+                <>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear All Data
+                </>
+              )}
+            </Button>
           )}
-        </Button>
+        </div>
       </CardContent>
     </Card>
   );
