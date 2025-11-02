@@ -82,9 +82,9 @@ export function NLPInsights({ nlpAnalysis, isLoading }: NLPInsightsProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {nlpAnalysis.emerging_topics.map((topic) => (
-                <div key={topic.id} className="p-3 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20">
+                <div key={topic.id} className="p-4 rounded-lg border border-blue-200 bg-blue-50 dark:bg-blue-950/20">
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="font-semibold">{topic.label}</h4>
                     <Badge variant="outline" className="bg-blue-100 text-blue-700">
@@ -112,9 +112,9 @@ export function NLPInsights({ nlpAnalysis, isLoading }: NLPInsightsProps) {
           <CardTitle>Top Topic Clusters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {nlpAnalysis.topics.slice(0, 10).map((topic) => (
-              <div key={topic.id} className="p-3 rounded-lg border">
+              <div key={topic.id} className="p-4 rounded-lg border">
                 <div className="flex items-start justify-between mb-2">
                   <h4 className="font-semibold">{topic.label}</h4>
                   <div className="flex items-center gap-2">
@@ -152,9 +152,9 @@ export function NLPInsights({ nlpAnalysis, isLoading }: NLPInsightsProps) {
             <CardTitle>Semantic Patterns</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {nlpAnalysis.semantic_patterns.map((pattern, idx) => (
-                <div key={idx} className="p-3 rounded-lg border">
+                <div key={idx} className="p-4 rounded-lg border">
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="font-semibold">"{pattern.pattern}"</h4>
                     <Badge variant="outline">{pattern.frequency} times</Badge>

@@ -237,7 +237,7 @@ export function EmployeeVoiceGallery({ quotes, isLoading }: EmployeeVoiceGallery
       </Card>
 
       {/* Quotes Display */}
-      <div className="space-y-6">
+      <div className="space-y-8">
         {/* Positive Quotes */}
         {quotesBySentiment.positive.length > 0 && (
           <div>
@@ -245,7 +245,7 @@ export function EmployeeVoiceGallery({ quotes, isLoading }: EmployeeVoiceGallery
               <TrendingUp className="h-5 w-5 text-green-600" />
               Positive Feedback ({quotesBySentiment.positive.length})
             </h3>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2">
               {quotesBySentiment.positive.map(quote => (
                 <Card key={quote.id} className={`${getSentimentColor(quote.sentiment)} border-l-4`}>
                   <CardContent className="p-4">
@@ -285,7 +285,7 @@ export function EmployeeVoiceGallery({ quotes, isLoading }: EmployeeVoiceGallery
               <Minus className="h-5 w-5 text-gray-600" />
               Neutral Observations ({quotesBySentiment.neutral.length})
             </h3>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2">
               {quotesBySentiment.neutral.map(quote => (
                 <Card key={quote.id} className={`${getSentimentColor(quote.sentiment)} border-l-4`}>
                   <CardContent className="p-4">
@@ -325,7 +325,7 @@ export function EmployeeVoiceGallery({ quotes, isLoading }: EmployeeVoiceGallery
               <TrendingDown className="h-5 w-5 text-red-600" />
               Concerns & Feedback ({quotesBySentiment.negative.length})
             </h3>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-6 md:grid-cols-2">
               {quotesBySentiment.negative.map(quote => (
                 <Card key={quote.id} className={`${getSentimentColor(quote.sentiment)} border-l-4`}>
                   <CardContent className="p-4">

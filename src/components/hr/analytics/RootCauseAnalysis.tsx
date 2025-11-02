@@ -94,7 +94,7 @@ export function RootCauseAnalysis({ rootCauses, isLoading }: RootCauseAnalysisPr
       </Card>
 
       {/* Root Causes by Theme */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         {sortedThemes.map(([themeName, causes]) => {
           const maxImpact = Math.max(...causes.map(c => c.impact_score));
           
@@ -126,7 +126,7 @@ export function RootCauseAnalysis({ rootCauses, isLoading }: RootCauseAnalysisPr
                   .map((cause, index) => (
                     <div 
                       key={cause.id}
-                      className="p-4 rounded-lg border bg-orange-50 dark:bg-orange-950/20"
+                      className="p-4 rounded-lg border bg-orange-50 dark:bg-orange-950/20 space-y-3"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">

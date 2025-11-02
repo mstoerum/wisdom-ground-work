@@ -128,7 +128,7 @@ export function ImpactPrediction({ predictions, isLoading }: ImpactPredictionPro
       </Card>
 
       {/* Detailed Predictions */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         {predictions
           .sort((a, b) => b.improvement - a.improvement)
           .map((prediction) => (
@@ -153,9 +153,9 @@ export function ImpactPrediction({ predictions, isLoading }: ImpactPredictionPro
                   </Badge>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-4">
                 {/* Progress Bars */}
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div>
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-xs font-medium">Current Sentiment</span>
@@ -199,7 +199,7 @@ export function ImpactPrediction({ predictions, isLoading }: ImpactPredictionPro
                     <ul className="space-y-1">
                       {prediction.interventions.map((intervention, idx) => (
                         <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
-                          <span className="text-blue-600 mt-0.5">•</span>
+                          <span className="text-blue-600 mt-0.5">?</span>
                           <span>{intervention}</span>
                         </li>
                       ))}
@@ -208,7 +208,7 @@ export function ImpactPrediction({ predictions, isLoading }: ImpactPredictionPro
                 )}
 
                 {/* Confidence Indicator */}
-                <div className="p-2 rounded bg-muted">
+                <div className="p-3 rounded bg-muted">
                   <div className="flex items-center gap-2">
                     <AlertCircle className={`h-4 w-4 ${getConfidenceColor(prediction.confidence)}`} />
                     <span className="text-xs text-muted-foreground">

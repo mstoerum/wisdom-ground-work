@@ -104,11 +104,11 @@ export function CulturalPatterns({ culturalMap, isLoading }: CulturalPatternsPro
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2">
               {culturalMap.cultural_strengths.map((strength) => (
                 <div 
                   key={strength.id}
-                  className="p-3 rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/20"
+                  className="p-4 rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/20"
                 >
                   <div className="flex items-start justify-between mb-2">
                     <h4 className="font-semibold">{strength.strength_name}</h4>
@@ -138,7 +138,7 @@ export function CulturalPatterns({ culturalMap, isLoading }: CulturalPatternsPro
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {culturalMap.cultural_risks.map((risk) => (
                 <div 
                   key={risk.id}
@@ -193,7 +193,7 @@ export function CulturalPatterns({ culturalMap, isLoading }: CulturalPatternsPro
             <CardTitle>Group Culture Profiles</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="space-y-6">
               {culturalMap.group_profiles.map((profile) => (
                 <div key={profile.group_name} className="p-4 rounded-lg border">
                   <div className="flex items-start justify-between mb-3">
@@ -209,7 +209,7 @@ export function CulturalPatterns({ culturalMap, isLoading }: CulturalPatternsPro
                     </div>
                   </div>
                   
-                  <div className="grid gap-3 md:grid-cols-2 mb-3">
+                  <div className="grid gap-4 md:grid-cols-2 mb-4">
                     <div>
                       <p className="text-xs font-medium mb-1">Strengths:</p>
                       <div className="flex flex-wrap gap-1">

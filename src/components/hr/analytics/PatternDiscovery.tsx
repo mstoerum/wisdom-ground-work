@@ -81,7 +81,7 @@ export function PatternDiscovery({ patterns, isLoading }: PatternDiscoveryProps)
       </Card>
 
       {/* Pattern List */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         {sortedPatterns.map((pattern, index) => {
           const isHighFrequency = pattern.frequency >= 5;
           const isStrongCorrelation = pattern.correlation_strength >= 0.3;

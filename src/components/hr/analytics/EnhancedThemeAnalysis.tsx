@@ -73,7 +73,7 @@ export function EnhancedThemeAnalysis({ themes, isLoading }: EnhancedThemeAnalys
   const sortedThemes = [...themes].sort((a, b) => b.response_count - a.response_count);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {sortedThemes.map((theme) => {
         const isExpanded = expandedThemes.has(theme.theme_id);
         const sentimentIcon = theme.avg_sentiment >= 70 

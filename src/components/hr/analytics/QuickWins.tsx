@@ -91,7 +91,7 @@ export function QuickWins({ quickWins, isLoading }: QuickWinsProps) {
       </Card>
 
       {/* Quick Wins Grid */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-6 md:grid-cols-2">
         {quickWins.map((quickWin) => (
           <Card 
             key={quickWin.id}

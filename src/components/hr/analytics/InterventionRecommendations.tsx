@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { 
   Lightbulb, 
   Target,
@@ -96,17 +97,18 @@ export function InterventionRecommendations({
               </p>
             </div>
             <div className="flex gap-2">
-              <select
-                value={selectedPriority}
-                onChange={(e) => setSelectedPriority(e.target.value)}
-                className="px-3 py-1.5 text-sm border rounded-md bg-background"
-              >
-                <option value="all">All Priorities</option>
-                <option value="critical">Critical</option>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
+              <Select value={selectedPriority} onValueChange={setSelectedPriority}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="All Priorities" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Priorities</SelectItem>
+                  <SelectItem value="critical">Critical</SelectItem>
+                  <SelectItem value="high">High</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="low">Low</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
@@ -139,7 +141,7 @@ export function InterventionRecommendations({
       </Card>
 
       {/* Interventions List */}
-      <div className="space-y-4">
+      <div className="space-y-6">
         {filteredInterventions.map((intervention) => (
           <Card 
             key={intervention.id}
@@ -185,7 +187,7 @@ export function InterventionRecommendations({
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Rationale */}
-              <div className="p-3 rounded-lg bg-muted">
+              <div className="p-4 rounded-lg bg-muted">
                 <h5 className="text-sm font-semibold mb-2 flex items-center gap-2">
                   <Lightbulb className="h-4 w-4" />
                   Why This Matters

@@ -68,11 +68,11 @@ export function NarrativeSummary({ narrative, isLoading }: NarrativeSummaryProps
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {narrative.key_insights.map((insight, index) => (
                 <div 
                   key={index}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-muted/50"
+                  className="flex items-start gap-3 p-4 rounded-lg bg-muted/50"
                 >
                   <Badge variant="outline" className="mt-0.5">
                     {index + 1}
@@ -95,11 +95,11 @@ export function NarrativeSummary({ narrative, isLoading }: NarrativeSummaryProps
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {narrative.top_concerns.map((concern, index) => (
                 <div 
                   key={index}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-900"
+                  className="flex items-start gap-3 p-4 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-900"
                 >
                   <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5 flex-shrink-0" />
                   <p className="text-sm flex-1">{concern}</p>
@@ -120,11 +120,11 @@ export function NarrativeSummary({ narrative, isLoading }: NarrativeSummaryProps
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {narrative.positive_aspects.map((aspect, index) => (
                 <div 
                   key={index}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900"
+                  className="flex items-start gap-3 p-4 rounded-lg bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900"
                 >
                   <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
                   <p className="text-sm flex-1">{aspect}</p>
@@ -145,11 +145,11 @@ export function NarrativeSummary({ narrative, isLoading }: NarrativeSummaryProps
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {narrative.recommended_actions.map((action, index) => (
                 <div 
                   key={index}
-                  className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900"
+                  className="flex items-start gap-3 p-4 rounded-lg bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900"
                 >
                   <Target className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
                   <p className="text-sm flex-1">{action}</p>
