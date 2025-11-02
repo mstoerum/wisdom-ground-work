@@ -24,6 +24,16 @@ import {
   type PatternInsight,
   type NarrativeSummary,
 } from "@/lib/conversationAnalytics";
+import {
+  analyzeRootCauses,
+  generateInterventions,
+  identifyQuickWins,
+  predictImpact,
+  type RootCause,
+  type InterventionRecommendation,
+  type QuickWin,
+  type ImpactPrediction,
+} from "@/lib/actionableIntelligence";
 import { useAnalytics, type AnalyticsFilters } from "./useAnalytics";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -34,6 +44,10 @@ export interface EnhancedAnalyticsData {
   themes: ThemeInsight[];
   patterns: PatternInsight[];
   narrative: NarrativeSummary | null;
+  rootCauses: RootCause[];
+  interventions: InterventionRecommendation[];
+  quickWins: QuickWin[];
+  impactPredictions: ImpactPrediction[];
   isLoading: boolean;
   refetch: () => void;
 }
@@ -134,11 +148,27 @@ export function useConversationAnalytics(filters: AnalyticsFilters = {}): Enhanc
       // Generate narrative summary
       const narrative = generateNarrativeSummary(responses, sessions, themes);
 
+      // Analyze root causes
+      const rootCauses = analyzeRootCauses(themes, responses, sessions);
+
+      // Generate interventions
+      const interventions = generateInterventions(rootCauses, themes, patterns);
+
+      // Identify quick wins
+      const quickWins = identifyQuickWins(interventions, themes);
+
+      // Predict impact
+      const impactPredictions = predictImpact(interventions, themes);
+
       return {
         quotes,
         themes,
         patterns,
         narrative,
+        rootCauses,
+        interventions,
+        quickWins,
+        impactPredictions,
       };
     },
     enabled: !!responsesQuery.data && !!sessionsQuery.data,
@@ -158,6 +188,10 @@ export function useConversationAnalytics(filters: AnalyticsFilters = {}): Enhanc
     themes: enhancedDataQuery.data?.themes || [],
     patterns: enhancedDataQuery.data?.patterns || [],
     narrative: enhancedDataQuery.data?.narrative || null,
+    rootCauses: enhancedDataQuery.data?.rootCauses || [],
+    interventions: enhancedDataQuery.data?.interventions || [],
+    quickWins: enhancedDataQuery.data?.quickWins || [],
+    impactPredictions: enhancedDataQuery.data?.impactPredictions || [],
     isLoading: responsesQuery.isLoading || sessionsQuery.isLoading || enhancedDataQuery.isLoading,
     refetch,
   };

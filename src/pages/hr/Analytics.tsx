@@ -24,6 +24,7 @@ import { EmployeeVoiceGallery } from "@/components/hr/analytics/EmployeeVoiceGal
 import { NarrativeSummary } from "@/components/hr/analytics/NarrativeSummary";
 import { EnhancedThemeAnalysis } from "@/components/hr/analytics/EnhancedThemeAnalysis";
 import { PatternDiscovery } from "@/components/hr/analytics/PatternDiscovery";
+import { ActionableIntelligenceCenter } from "@/components/hr/analytics/ActionableIntelligenceCenter";
 
 const Analytics = () => {
   const navigate = useNavigate();
@@ -37,6 +38,10 @@ const Analytics = () => {
     narrative, 
     themes: enhancedThemes, 
     patterns,
+    rootCauses,
+    interventions,
+    quickWins,
+    impactPredictions,
     isLoading: isConversationLoading 
   } = useConversationAnalytics(filters);
 
@@ -282,8 +287,9 @@ const Analytics = () => {
               </Select>
             </div>
 
-            <Tabs defaultValue="insights" className="space-y-6">
+            <Tabs defaultValue="actionable" className="space-y-6">
               <TabsList>
+                <TabsTrigger value="actionable">Action Center</TabsTrigger>
                 <TabsTrigger value="insights">Insights Hub</TabsTrigger>
                 <TabsTrigger value="themes">Theme Analysis</TabsTrigger>
                 <TabsTrigger value="voices">Employee Voices</TabsTrigger>
@@ -294,6 +300,17 @@ const Analytics = () => {
                 <TabsTrigger value="departments">Department View</TabsTrigger>
                 <TabsTrigger value="urgency">Urgent Flags</TabsTrigger>
               </TabsList>
+
+              {/* Actionable Intelligence Center Tab */}
+              <TabsContent value="actionable" className="space-y-6">
+                <ActionableIntelligenceCenter
+                  rootCauses={rootCauses}
+                  interventions={interventions}
+                  quickWins={quickWins}
+                  impactPredictions={impactPredictions}
+                  isLoading={isConversationLoading}
+                />
+              </TabsContent>
 
               {/* New Insights Hub Tab */}
               <TabsContent value="insights" className="space-y-6">
