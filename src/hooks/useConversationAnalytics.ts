@@ -80,12 +80,15 @@ export function useConversationAnalytics(filters: AnalyticsFilters = {}): Enhanc
   const responsesQuery = useQuery({
     queryKey: ['conversation-responses', filters],
     queryFn: async () => {
-      return fetchConversationResponses(
+      console.log('[useConversationAnalytics] Fetching responses for survey:', filters.surveyId);
+      const responses = await fetchConversationResponses(
         filters.surveyId,
         filters.themeId,
         filters.startDate,
         filters.endDate
       );
+      console.log('[useConversationAnalytics] Fetched', responses.length, 'responses');
+      return responses;
     },
   });
 
@@ -93,11 +96,14 @@ export function useConversationAnalytics(filters: AnalyticsFilters = {}): Enhanc
   const sessionsQuery = useQuery({
     queryKey: ['conversation-sessions', filters],
     queryFn: async () => {
-      return fetchConversationSessions(
+      console.log('[useConversationAnalytics] Fetching sessions for survey:', filters.surveyId);
+      const sessions = await fetchConversationSessions(
         filters.surveyId,
         filters.startDate,
         filters.endDate
       );
+      console.log('[useConversationAnalytics] Fetched', sessions.length, 'sessions');
+      return sessions;
     },
   });
 
@@ -124,7 +130,10 @@ export function useConversationAnalytics(filters: AnalyticsFilters = {}): Enhanc
       const sessions = sessionsQuery.data || [];
       const themeNames = themesQuery.data || [];
 
+      console.log('[useConversationAnalytics] Processing enhanced analytics - responses:', responses.length, 'sessions:', sessions.length);
+
       if (responses.length === 0 || sessions.length === 0) {
+        console.log('[useConversationAnalytics] No data to process, returning empty analytics');
         return {
           quotes: [],
           themes: [],

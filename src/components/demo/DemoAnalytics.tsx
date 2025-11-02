@@ -282,6 +282,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
 
   const handleDataGenerated = async () => {
     console.log('[DemoAnalytics] handleDataGenerated called - refreshing analytics');
+    console.log('[DemoAnalytics] Using survey ID:', DEMO_SURVEY_ID);
     
     // Step 1: Invalidate ALL related queries to clear cache
     await queryClient.invalidateQueries({ 
@@ -306,21 +307,63 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
       }
     });
     
-    // Step 2: Force re-render to create new hook instances with fresh queries
+    // Step 2: Wait a moment for cache to clear
+    await new Promise(resolve => setTimeout(resolve, 300));
+    
+    // Step 3: Verify data was actually created in database
+    try {
+      const { count: sessionCount, error: sessionError } = await supabase
+        .from('conversation_sessions')
+        .select('*', { count: 'exact', head: true })
+        .eq('survey_id', DEMO_SURVEY_ID);
+      
+      const { count: responseCount, error: responseError } = await supabase
+        .from('responses')
+        .select('*', { count: 'exact', head: true })
+        .eq('survey_id', DEMO_SURVEY_ID);
+      
+      console.log('[DemoAnalytics] Database verification - sessions:', sessionCount, 'responses:', responseCount);
+      
+      if (sessionError || responseError) {
+        console.error('[DemoAnalytics] Error verifying data:', sessionError || responseError);
+      }
+      
+      if (!sessionCount || sessionCount === 0) {
+        toast.error("Mock data was not created correctly. Please try again.");
+        return;
+      }
+    } catch (error) {
+      console.error('[DemoAnalytics] Error verifying database:', error);
+    }
+    
+    // Step 4: Force re-render to create new hook instances with fresh queries
     setDataRefreshKey(prev => prev + 1);
     
-    // Step 3: Wait for queries to refetch
+    // Step 5: Wait for queries to refetch
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Step 4: Explicitly refetch analytics
+    // Step 6: Explicitly refetch analytics
     try {
-      await Promise.all([
+      const results = await Promise.all([
         realAnalytics.refetch(),
         basicAnalytics.refetch(),
       ]);
       
       console.log('[DemoAnalytics] Analytics refreshed - sessions:', realAnalytics.sessions.length, 'responses:', realAnalytics.responses.length);
-      toast.success("Analytics refreshed with generated mock data!");
+      console.log('[DemoAnalytics] Refetch results:', results);
+      
+      // Verify we actually got data
+      if (realAnalytics.sessions.length === 0 || realAnalytics.responses.length === 0) {
+        console.warn('[DemoAnalytics] WARNING: Analytics hooks returned empty arrays after refetch!');
+        toast.warning("Data was generated but analytics are not showing it. Refreshing page...");
+        
+        // Force a page refresh as last resort
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      } else {
+        toast.success(`Analytics refreshed with ${realAnalytics.sessions.length} conversations!`);
+      }
     } catch (error) {
       console.error("Error refreshing analytics:", error);
       toast.error("Failed to refresh analytics. Please refresh the page.");
@@ -448,7 +491,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                       </Button>
                     </div>
                     <MockDataGenerator 
-                      surveyId={DEMO_SURVEY_ID_STRING} 
+                      surveyId={DEMO_SURVEY_ID} 
                       onDataGenerated={handleDataGenerated}
                     />
                   </div>
