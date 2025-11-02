@@ -191,15 +191,15 @@ function randomDate(daysAgo: number = 30): string {
   return date.toISOString();
 }
 
-// Calculate sentiment score from sentiment category
+// Calculate sentiment score from sentiment category (0-1 range for decimal(3,2))
 function getSentimentScore(sentiment: 'positive' | 'neutral' | 'negative'): number {
   switch (sentiment) {
     case 'positive':
-      return randomInt(70, 95);
+      return 0.7 + Math.random() * 0.25; // 0.70 to 0.95
     case 'neutral':
-      return randomInt(40, 65);
+      return 0.4 + Math.random() * 0.25; // 0.40 to 0.65
     case 'negative':
-      return randomInt(10, 40);
+      return 0.1 + Math.random() * 0.3; // 0.10 to 0.40
   }
 }
 
@@ -428,14 +428,11 @@ async function ensureHRAdminRole(userId: string): Promise<boolean> {
       return true;
     }
     
-    // User doesn't have HR admin role, try multiple methods to assign it
-    
-    // Method 1: Try using the dedicated demo function (preferred for demo mode)
-    // This always assigns the role regardless of whether other admins exist
+    // User doesn't have HR admin role, try to assign it using existing function
     try {
-      const { error: demoRpcError } = await supabase.rpc('assign_demo_hr_admin');
+      const { error: rpcError } = await supabase.rpc('assign_initial_hr_admin');
       
-      if (!demoRpcError) {
+      if (!rpcError) {
         // Wait a bit for the function to complete
         await new Promise(resolve => setTimeout(resolve, 200));
         
@@ -450,10 +447,10 @@ async function ensureHRAdminRole(userId: string): Promise<boolean> {
           return true;
         }
       } else {
-        console.warn('assign_demo_hr_admin failed, trying fallback methods:', demoRpcError);
+        console.warn('assign_initial_hr_admin failed, trying fallback methods:', rpcError);
       }
     } catch (rpcError) {
-      console.warn('assign_demo_hr_admin RPC call failed:', rpcError);
+      console.warn('assign_initial_hr_admin RPC call failed:', rpcError);
       // Continue to fallback methods
     }
     
