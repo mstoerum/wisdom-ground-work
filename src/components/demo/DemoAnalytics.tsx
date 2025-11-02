@@ -43,9 +43,10 @@ import { ConversationQualityDashboard } from "@/components/hr/analytics/Conversa
 import { NLPInsights } from "@/components/hr/analytics/NLPInsights";
 import { CulturalPatterns } from "@/components/hr/analytics/CulturalPatterns";
 import { useConversationAnalytics } from "@/hooks/useConversationAnalytics";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import { MockDataGenerator } from "./MockDataGenerator";
 import { supabase } from "@/integrations/supabase/client";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 
 interface DemoAnalyticsProps {
   onBackToMenu: () => void;
@@ -74,11 +75,27 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
     surveyId: DEMO_SURVEY_ID,
   });
 
+  // Fetch basic analytics (themes, urgency) for demo survey
+  const basicAnalytics = useAnalytics({
+    surveyId: DEMO_SURVEY_ID,
+  });
+
   // Check if we have real data based on actual responses/sessions from the hook
   const useRealData = realAnalytics.responses.length > 0 && realAnalytics.sessions.length > 0;
 
   // Generate comprehensive mock data (as fallback)
-  const participation = useRealData 
+  const participation = useRealData && basicAnalytics.participation
+    ? {
+        ...basicAnalytics.participation,
+        avgDuration: realAnalytics.sessions.reduce((sum, s) => {
+          if (s.started_at && s.ended_at) {
+            const duration = (new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / 60000;
+            return sum + duration;
+          }
+          return sum;
+        }, 0) / realAnalytics.sessions.length || basicAnalytics.participation.avgDuration || 12.3
+      }
+    : useRealData
     ? {
         totalAssigned: 45,
         completed: realAnalytics.sessions.length,
@@ -94,7 +111,9 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
       }
     : generateMockParticipation();
 
-  const sentiment = useRealData && realAnalytics.responses.length > 0
+  const sentiment = useRealData && basicAnalytics.sentiment
+    ? basicAnalytics.sentiment
+    : useRealData && realAnalytics.responses.length > 0
     ? {
         positive: realAnalytics.responses.filter(r => r.sentiment === 'positive').length,
         neutral: realAnalytics.responses.filter(r => r.sentiment === 'neutral').length,
@@ -114,10 +133,110 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
       }
     : generateMockSentiment();
 
-  const themes = generateMockThemes();
-  const urgency = generateMockUrgencyFlags();
-  const timeSeriesData = generateTimeSeriesData();
-  const departmentData = generateDepartmentData();
+  // Use real themes and urgency when available, otherwise use mock data
+  const themes = useRealData && basicAnalytics.themes.length > 0 
+    ? basicAnalytics.themes.map(t => ({
+        id: t.id,
+        name: t.name,
+        responseCount: t.responseCount,
+        avgSentiment: Math.round(t.avgSentiment),
+        urgencyCount: t.urgencyCount,
+      }))
+    : generateMockThemes();
+  
+  const urgency = useRealData && basicAnalytics.urgency.length > 0
+    ? basicAnalytics.urgency
+    : generateMockUrgencyFlags();
+
+  // Calculate time series data from real sessions/responses
+  const timeSeriesData = useRealData && realAnalytics.sessions.length > 0
+    ? (() => {
+        // Group sessions by date
+        const dateGroups = new Map<string, { sessions: typeof realAnalytics.sessions, responses: typeof realAnalytics.responses }>();
+        
+        realAnalytics.sessions.forEach(session => {
+          if (session.started_at) {
+            const date = new Date(session.started_at).toISOString().split('T')[0];
+            if (!dateGroups.has(date)) {
+              dateGroups.set(date, { sessions: [], responses: [] });
+            }
+            dateGroups.get(date)!.sessions.push(session);
+          }
+        });
+
+        realAnalytics.responses.forEach(response => {
+          const session = realAnalytics.sessions.find(s => s.id === response.conversation_session_id);
+          if (session?.started_at) {
+            const date = new Date(session.started_at).toISOString().split('T')[0];
+            if (dateGroups.has(date)) {
+              dateGroups.get(date)!.responses.push(response);
+            }
+          }
+        });
+
+        return Array.from(dateGroups.entries())
+          .map(([date, data]) => ({
+            date: new Date(date),
+            completed: data.sessions.length,
+            positive: data.responses.filter(r => r.sentiment === 'positive').length,
+            negative: data.responses.filter(r => r.sentiment === 'negative').length,
+          }))
+          .sort((a, b) => a.date.getTime() - b.date.getTime());
+      })()
+    : generateTimeSeriesData();
+
+  // Calculate department data from real responses
+  const { data: realDepartmentData } = useQuery({
+    queryKey: ['demo-department-data', DEMO_SURVEY_ID, useRealData],
+    queryFn: async () => {
+      if (!useRealData) return null;
+
+      const { data: responses, error } = await supabase
+        .from('responses')
+        .select(`
+          sentiment_score,
+          conversation_sessions!inner(
+            employee_id,
+            profiles!inner(department)
+          )
+        `)
+        .eq('survey_id', DEMO_SURVEY_ID);
+
+      if (error) throw error;
+
+      // Group by department
+      const deptMap = new Map<string, any[]>();
+      responses?.forEach(response => {
+        const dept = (response as any).conversation_sessions?.profiles?.department || 'Unknown';
+        if (!deptMap.has(dept)) {
+          deptMap.set(dept, []);
+        }
+        deptMap.get(dept)!.push(response);
+      });
+
+      // Calculate metrics for each department
+      return Array.from(deptMap.entries()).map(([department, deptResponses]) => ({
+        department,
+        participation: Math.round((deptResponses.length / Math.max(realAnalytics.responses.length, 1)) * 100),
+        avgSentiment: deptResponses.length > 0 
+          ? Math.round(deptResponses.reduce((sum, r) => {
+              const score = r.sentiment_score !== null && r.sentiment_score !== undefined
+                ? (r.sentiment_score <= 1 ? r.sentiment_score * 100 : r.sentiment_score)
+                : 50;
+              return sum + score;
+            }, 0) / deptResponses.length)
+          : 0,
+        responseCount: deptResponses.length
+      }));
+    },
+    enabled: useRealData,
+  });
+
+  const departmentData = useRealData && realDepartmentData && realDepartmentData.length > 0
+    ? realDepartmentData
+    : generateDepartmentData();
+
+  // Trend data - keep mock for now as we don't have historical quarterly data
   const trendData = generateTrendData();
   
   // Use real analytics data when available
@@ -168,13 +287,21 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
           (Array.isArray(key) && key[0] === 'conversation-responses') ||
           (Array.isArray(key) && key[0] === 'conversation-sessions') ||
           (Array.isArray(key) && key[0] === 'enhanced-analytics') ||
-          (Array.isArray(key) && key[0] === 'survey-themes')
+          (Array.isArray(key) && key[0] === 'survey-themes') ||
+          (Array.isArray(key) && key[0] === 'analytics-participation') ||
+          (Array.isArray(key) && key[0] === 'analytics-sentiment') ||
+          (Array.isArray(key) && key[0] === 'analytics-themes') ||
+          (Array.isArray(key) && key[0] === 'analytics-urgency') ||
+          (Array.isArray(key) && key[0] === 'demo-department-data')
         );
       }
     });
     
     // Force refetch of analytics data and wait for it to complete
-    await realAnalytics.refetch();
+    await Promise.all([
+      realAnalytics.refetch(),
+      basicAnalytics.refetch(),
+    ]);
     
     // Wait a bit more to ensure all derived queries have updated
     await new Promise(resolve => setTimeout(resolve, 500));
@@ -212,11 +339,19 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                           (Array.isArray(key) && key[0] === 'conversation-responses') ||
                           (Array.isArray(key) && key[0] === 'conversation-sessions') ||
                           (Array.isArray(key) && key[0] === 'enhanced-analytics') ||
-                          (Array.isArray(key) && key[0] === 'survey-themes')
+                          (Array.isArray(key) && key[0] === 'survey-themes') ||
+                          (Array.isArray(key) && key[0] === 'analytics-participation') ||
+                          (Array.isArray(key) && key[0] === 'analytics-sentiment') ||
+                          (Array.isArray(key) && key[0] === 'analytics-themes') ||
+                          (Array.isArray(key) && key[0] === 'analytics-urgency') ||
+                          (Array.isArray(key) && key[0] === 'demo-department-data')
                         );
                       }
                     });
-                    await realAnalytics.refetch();
+                    await Promise.all([
+                      realAnalytics.refetch(),
+                      basicAnalytics.refetch(),
+                    ]);
                     setDataRefreshKey(prev => prev + 1);
                   }}
                 >
