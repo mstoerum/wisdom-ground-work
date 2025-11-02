@@ -382,13 +382,11 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
 
         <div className="container mx-auto px-4 py-8 max-w-7xl">
           <div className="space-y-6">
-            {/* Mock Data Generator - Show when no real data */}
-            {!useRealData && (
-              <MockDataGenerator 
-                surveyId={DEMO_SURVEY_ID_STRING} 
-                onDataGenerated={handleDataGenerated}
-              />
-            )}
+            {/* Mock Data Generator - Always visible */}
+            <MockDataGenerator 
+              surveyId={DEMO_SURVEY_ID_STRING} 
+              onDataGenerated={handleDataGenerated}
+            />
 
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
