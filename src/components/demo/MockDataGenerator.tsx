@@ -131,12 +131,28 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
       // Ensure user is authenticated before generating mock data
       await ensureAuthenticated();
       
+      // Clear old demo data first if it exists
+      if (totalGenerated.sessions > 0) {
+        toast.info("Clearing old demo data...");
+        
+        const DEMO_SURVEY_UUID = '00000000-0000-0000-0000-000000000001';
+        const targetSurveyId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(surveyId) 
+          ? surveyId 
+          : DEMO_SURVEY_UUID;
+        
+        // Delete responses first (due to foreign key constraints)
+        await supabase.from('responses').delete().eq('survey_id', targetSurveyId);
+        
+        // Delete conversation sessions
+        await supabase.from('conversation_sessions').delete().eq('survey_id', targetSurveyId);
+      }
+      
       const stats = await insertMockConversations(surveyId);
       setGeneratedStats(stats);
-      setTotalGenerated(prev => ({
-        sessions: prev.sessions + stats.sessionsCreated,
-        responses: prev.responses + stats.responsesCreated
-      }));
+      setTotalGenerated({
+        sessions: stats.sessionsCreated,
+        responses: stats.responsesCreated
+      });
       toast.success(`Successfully generated ${stats.sessionsCreated} conversations with ${stats.responsesCreated} responses!`);
       
       // Clear the success message after 5 seconds to indicate button is ready again
@@ -193,7 +209,7 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
             </CardTitle>
             <CardDescription className="mt-1">
               {totalGenerated.sessions > 0 
-                ? `Generate additional mock conversations (${totalGenerated.sessions} sessions, ${totalGenerated.responses} responses already created)`
+                ? `Regenerate fresh mock data (will replace current ${totalGenerated.sessions} sessions with new data)`
                 : 'Generate 45 realistic employee conversations to test HR analytics with substantial data'
               }
             </CardDescription>
@@ -208,13 +224,13 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="text-sm text-muted-foreground space-y-1">
-          <p>• Creates 45 conversation sessions with varied sentiment and themes</p>
-          <p>• Generates 3-8 responses per conversation (150-360 total responses)</p>
-          <p>• Includes realistic mood tracking, AI responses, and sentiment analysis</p>
-          <p>• Covers all demo survey themes: Work-Life Balance, Team Collaboration, Career Development, Management Support, Workplace Culture</p>
+          <p>? Creates 45 conversation sessions with varied sentiment and themes</p>
+          <p>? Generates 3-8 responses per conversation (150-360 total responses)</p>
+          <p>? Includes realistic mood tracking, AI responses, and sentiment analysis</p>
+          <p>? Covers all demo survey themes: Work-Life Balance, Team Collaboration, Career Development, Management Support, Workplace Culture</p>
           {totalGenerated.sessions > 0 && (
-            <p className="text-primary font-medium pt-2">
-              ⚠️ Note: Each generation adds NEW data (doesn't replace existing data). Analytics show all accumulated conversations.
+            <p className="text-amber-600 dark:text-amber-400 font-medium pt-2">
+              ?? Note: Generating new data will automatically clear existing demo data first.
             </p>
           )}
         </div>
@@ -236,11 +252,8 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
               <span className="font-medium text-green-900 dark:text-green-100">Latest Generation Successful</span>
             </div>
             <div className="text-sm text-green-800 dark:text-green-200 space-y-1">
-              <p>• {generatedStats.sessionsCreated} conversation sessions created</p>
-              <p>• {generatedStats.responsesCreated} responses generated</p>
-              {totalGenerated.sessions > generatedStats.sessionsCreated && (
-                <p className="mt-2 font-medium">Total: {totalGenerated.sessions} sessions, {totalGenerated.responses} responses</p>
-              )}
+              <p>? {generatedStats.sessionsCreated} conversation sessions created</p>
+              <p>? {generatedStats.responsesCreated} responses generated</p>
               <p className="mt-2 text-xs">Watch the analytics below update in real-time with the new data!</p>
             </div>
           </div>
@@ -261,7 +274,7 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
             ) : totalGenerated.sessions > 0 ? (
               <>
                 <Database className="h-4 w-4 mr-2" />
-                Generate 45 More Conversations
+                Regenerate Fresh Data (45 Conversations)
               </>
             ) : (
               <>
