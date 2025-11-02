@@ -283,16 +283,18 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
     await queryClient.invalidateQueries({ 
       predicate: (query) => {
         const key = query.queryKey;
+        if (!Array.isArray(key)) return false;
+        const firstKey = key[0];
         return (
-          (Array.isArray(key) && key[0] === 'conversation-responses') ||
-          (Array.isArray(key) && key[0] === 'conversation-sessions') ||
-          (Array.isArray(key) && key[0] === 'enhanced-analytics') ||
-          (Array.isArray(key) && key[0] === 'survey-themes') ||
-          (Array.isArray(key) && key[0] === 'analytics-participation') ||
-          (Array.isArray(key) && key[0] === 'analytics-sentiment') ||
-          (Array.isArray(key) && key[0] === 'analytics-themes') ||
-          (Array.isArray(key) && key[0] === 'analytics-urgency') ||
-          (Array.isArray(key) && key[0] === 'demo-department-data')
+          firstKey === 'conversation-responses' ||
+          firstKey === 'conversation-sessions' ||
+          firstKey === 'enhanced-analytics' ||
+          firstKey === 'survey-themes' ||
+          firstKey === 'analytics-participation' ||
+          firstKey === 'analytics-sentiment' ||
+          firstKey === 'analytics-themes' ||
+          firstKey === 'analytics-urgency' ||
+          firstKey === 'demo-department-data'
         );
       }
     });
