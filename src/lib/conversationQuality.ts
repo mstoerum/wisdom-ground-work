@@ -133,9 +133,11 @@ export function calculateSessionQuality(
   const elaborationScore = Math.min(100, (averageResponseLength / 200) * 100); // 200 chars = 100 score
   
   // Openness Score: Based on sentiment variance and response depth
+  // Convert sentiment scores from 0-1 range to 0-100 range if needed
   const sentimentScores = sessionResponses
     .map(r => r.sentiment_score)
-    .filter((s): s is number => s !== null);
+    .filter((s): s is number => s !== null)
+    .map(s => s <= 1 ? s * 100 : s); // Normalize to 0-100 range
   
   const sentimentVariance = sentimentScores.length > 1
     ? Math.sqrt(

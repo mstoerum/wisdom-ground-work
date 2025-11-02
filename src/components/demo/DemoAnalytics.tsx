@@ -45,6 +45,7 @@ import { CulturalPatterns } from "@/components/hr/analytics/CulturalPatterns";
 import { useConversationAnalytics } from "@/hooks/useConversationAnalytics";
 import { MockDataGenerator } from "./MockDataGenerator";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface DemoAnalyticsProps {
   onBackToMenu: () => void;
@@ -53,38 +54,28 @@ interface DemoAnalyticsProps {
 export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
   const [selectedDepartment, setSelectedDepartment] = useState("all");
   const [selectedTheme, setSelectedTheme] = useState("all");
-  const [hasRealData, setHasRealData] = useState(false);
   const [dataRefreshKey, setDataRefreshKey] = useState(0);
+  const queryClient = useQueryClient();
 
-  const DEMO_SURVEY_ID = 'demo-survey-001';
+  // Demo survey ID - convert to UUID format if needed (same logic as generateMockConversations)
+  const DEMO_SURVEY_ID_STRING = 'demo-survey-001';
+  const DEMO_SURVEY_UUID = '00000000-0000-0000-0000-000000000001';
+  
+  // Check if string is valid UUID
+  const isValidUUID = (value: string): boolean => {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+  };
+  
+  // Use UUID format (same as what generateMockConversations uses internally)
+  const DEMO_SURVEY_ID = isValidUUID(DEMO_SURVEY_ID_STRING) ? DEMO_SURVEY_ID_STRING : DEMO_SURVEY_UUID;
 
-  // Check if real conversation data exists
-  useEffect(() => {
-    const checkForRealData = async () => {
-      try {
-        const { count, error } = await supabase
-          .from('conversation_sessions')
-          .select('*', { count: 'exact', head: true })
-          .eq('survey_id', DEMO_SURVEY_ID);
-        
-        if (!error && count && count > 0) {
-          setHasRealData(true);
-        }
-      } catch (error) {
-        console.error('Error checking for real data:', error);
-      }
-    };
-    
-    checkForRealData();
-  }, [dataRefreshKey]);
-
-  // Try to use real conversation analytics if data exists
+  // Always fetch analytics for demo survey (hook will return empty arrays if no data)
   const realAnalytics = useConversationAnalytics({
-    surveyId: hasRealData ? DEMO_SURVEY_ID : undefined,
+    surveyId: DEMO_SURVEY_ID,
   });
 
-  // Fallback to mock data if no real data
-  const useRealData = hasRealData && realAnalytics.responses.length > 0;
+  // Check if we have real data based on actual responses/sessions from the hook
+  const useRealData = realAnalytics.responses.length > 0 && realAnalytics.sessions.length > 0;
 
   // Generate comprehensive mock data (as fallback)
   const participation = useRealData 
@@ -108,7 +99,12 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
         positive: realAnalytics.responses.filter(r => r.sentiment === 'positive').length,
         neutral: realAnalytics.responses.filter(r => r.sentiment === 'neutral').length,
         negative: realAnalytics.responses.filter(r => r.sentiment === 'negative').length,
-        avgScore: realAnalytics.responses.reduce((sum, r) => sum + (r.sentiment_score || 50), 0) / realAnalytics.responses.length || 50,
+        avgScore: realAnalytics.responses.reduce((sum, r) => {
+          const score = r.sentiment_score !== null && r.sentiment_score !== undefined
+            ? (r.sentiment_score <= 1 ? r.sentiment_score * 100 : r.sentiment_score)
+            : 50;
+          return sum + score;
+        }, 0) / realAnalytics.responses.length || 50,
         moodImprovement: realAnalytics.sessions.reduce((sum, s) => {
           if (s.initial_mood !== null && s.final_mood !== null) {
             return sum + (s.final_mood - s.initial_mood);
@@ -160,7 +156,24 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
     console.log("Exporting PDF...");
   };
 
-  const handleDataGenerated = () => {
+  const handleDataGenerated = async () => {
+    // Invalidate all React Query caches related to conversation analytics
+    await queryClient.invalidateQueries({ 
+      queryKey: ['conversation-responses'] 
+    });
+    await queryClient.invalidateQueries({ 
+      queryKey: ['conversation-sessions'] 
+    });
+    await queryClient.invalidateQueries({ 
+      queryKey: ['enhanced-analytics'] 
+    });
+    await queryClient.invalidateQueries({ 
+      queryKey: ['survey-themes'] 
+    });
+    
+    // Force refetch of analytics data
+    realAnalytics.refetch();
+    
     setDataRefreshKey(prev => prev + 1);
     toast.success("Refreshing analytics with new data...");
   };
@@ -183,7 +196,18 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
             </div>
             <div className="flex items-center gap-2">
               {useRealData && (
-                <Button variant="ghost" size="sm" onClick={() => setDataRefreshKey(prev => prev + 1)}>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={async () => {
+                    await queryClient.invalidateQueries({ queryKey: ['conversation-responses'] });
+                    await queryClient.invalidateQueries({ queryKey: ['conversation-sessions'] });
+                    await queryClient.invalidateQueries({ queryKey: ['enhanced-analytics'] });
+                    await queryClient.invalidateQueries({ queryKey: ['survey-themes'] });
+                    realAnalytics.refetch();
+                    setDataRefreshKey(prev => prev + 1);
+                  }}
+                >
                   <RefreshCw className="h-4 w-4 mr-2" />
                   Refresh
                 </Button>
@@ -200,7 +224,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
             {/* Mock Data Generator - Show when no real data */}
             {!useRealData && (
               <MockDataGenerator 
-                surveyId={DEMO_SURVEY_ID} 
+                surveyId={DEMO_SURVEY_ID_STRING} 
                 onDataGenerated={handleDataGenerated}
               />
             )}

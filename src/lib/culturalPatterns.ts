@@ -134,9 +134,11 @@ export function detectCulturalPatterns(
     });
     
     if (matchingResponses.length > 0) {
+      // Convert sentiment scores from 0-1 range to 0-100 range if needed
       const sentiments = matchingResponses
         .map(r => r.sentiment_score)
-        .filter((s): s is number => s !== null);
+        .filter((s): s is number => s !== null)
+        .map(s => s <= 1 ? s * 100 : s);
       
       const avgSentiment = sentiments.length > 0
         ? sentiments.reduce((sum, s) => sum + s, 0) / sentiments.length
@@ -177,9 +179,11 @@ export function detectCulturalPatterns(
     });
     
     if (matchingResponses.length > 0) {
+      // Convert sentiment scores from 0-1 range to 0-100 range if needed
       const sentiments = matchingResponses
         .map(r => r.sentiment_score)
-        .filter((s): s is number => s !== null);
+        .filter((s): s is number => s !== null)
+        .map(s => s <= 1 ? s * 100 : s);
       
       const avgSentiment = sentiments.length > 0
         ? sentiments.reduce((sum, s) => sum + s, 0) / sentiments.length
