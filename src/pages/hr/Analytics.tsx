@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, PlusCircle, BarChart2, Clock, TrendingDown, Shield, Brain, Globe } from "lucide-react";
+import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, PlusCircle, BarChart2, Clock, TrendingDown, Shield, Brain, Globe, RefreshCw } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { DonutProgressRing } from "@/components/hr/analytics/DonutProgressRing";
@@ -35,7 +35,7 @@ const Analytics = () => {
   const [selectedDepartment, setSelectedDepartment] = useState("all");
   const [selectedTheme, setSelectedTheme] = useState("all");
   
-  const { participation, sentiment, themes, urgency, isLoading, refetch } = useAnalytics(filters);
+  const { participation, sentiment, themes, urgency, isLoading } = useAnalytics(filters);
   const { 
     quotes, 
     narrative, 
@@ -49,7 +49,7 @@ const Analytics = () => {
     qualityInsights,
     nlpAnalysis,
     culturalMap,
-    isLoading: isConversationLoading 
+    isLoading: isConversationLoading
   } = useConversationAnalytics(filters);
 
   const { data: surveys } = useQuery({

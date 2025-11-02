@@ -7,6 +7,7 @@ import { insertMockConversations } from "@/utils/generateMockConversations";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useDemoAuth } from "@/hooks/useDemoAuth";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface MockDataGeneratorProps {
   surveyId?: string;
@@ -18,6 +19,7 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
   const [generatedStats, setGeneratedStats] = useState<{ sessionsCreated: number; responsesCreated: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { createDemoUser, isLoading: isCreatingDemoUser } = useDemoAuth();
+  const queryClient = useQueryClient();
 
   const ensureAuthenticated = async (): Promise<boolean> => {
     // Check if user is already authenticated
@@ -59,6 +61,34 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
       const stats = await insertMockConversations(surveyId);
       setGeneratedStats(stats);
       toast.success(`Successfully generated ${stats.sessionsCreated} conversations with ${stats.responsesCreated} responses!`);
+      
+      // Invalidate all analytics-related queries to ensure fresh data is fetched
+      toast.info("Refreshing analytics with new data...");
+      await queryClient.invalidateQueries({ 
+        predicate: (query) => {
+          const key = query.queryKey;
+          if (!Array.isArray(key)) return false;
+          const firstKey = key[0];
+          return (
+            firstKey === 'conversation-responses' ||
+            firstKey === 'conversation-sessions' ||
+            firstKey === 'enhanced-analytics' ||
+            firstKey === 'survey-themes' ||
+            firstKey === 'analytics-participation' ||
+            firstKey === 'analytics-sentiment' ||
+            firstKey === 'analytics-themes' ||
+            firstKey === 'analytics-urgency' ||
+            firstKey === 'department-data' ||
+            firstKey === 'time-series-data' ||
+            firstKey === 'surveys-list'
+          );
+        }
+      });
+      
+      // Wait a moment for invalidation to propagate
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Call the callback which will handle refetching
       onDataGenerated?.();
     } catch (err: any) {
       const errorMessage = err?.message || 'Failed to generate mock data';
