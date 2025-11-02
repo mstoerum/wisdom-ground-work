@@ -408,12 +408,93 @@ demoThemes.forEach((themeName, index) => {
 }
 
 /**
+ * Ensure the survey exists, creating it if necessary
+ */
+async function ensureSurveyExists(surveyId: string): Promise<string> {
+  const targetSurveyId = isValidUUID(surveyId) ? surveyId : DEMO_SURVEY_UUID;
+  
+  // Check if survey exists
+  const { data: existingSurvey, error: fetchError } = await supabase
+    .from('surveys')
+    .select('id')
+    .eq('id', targetSurveyId)
+    .single();
+  
+  if (existingSurvey) {
+    return existingSurvey.id;
+  }
+  
+  // Survey doesn't exist, create it
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    throw new Error('Must be authenticated to create survey');
+  }
+  
+  const demoThemes = [
+    'Work-Life Balance',
+    'Team Collaboration',
+    'Career Development',
+    'Management Support',
+    'Workplace Culture'
+  ];
+  
+  const surveyData = {
+    id: targetSurveyId,
+    title: 'Quarterly Feedback Survey - Demo',
+    description: 'Demo survey for testing HR analytics with mock conversation data',
+    created_by: user.id,
+    themes: demoThemes,
+    schedule: {
+      target_type: 'all',
+      schedule_type: 'one_time',
+    },
+    consent_config: {
+      anonymization_level: 'anonymous',
+      data_retention_days: 60,
+      consent_message: 'Your responses will be kept confidential and used to improve our workplace.'
+    },
+    first_message: 'Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.',
+    status: 'active',
+  };
+  
+  const { data: newSurvey, error: createError } = await supabase
+    .from('surveys')
+    .insert(surveyData)
+    .select('id')
+    .single();
+  
+  if (createError) {
+    // If it's a unique constraint violation, the survey might have been created by another request
+    if (createError.code === '23505') {
+      // Try to fetch it again
+      const { data: retrySurvey } = await supabase
+        .from('surveys')
+        .select('id')
+        .eq('id', targetSurveyId)
+        .single();
+      
+      if (retrySurvey) {
+        return retrySurvey.id;
+      }
+    }
+    console.error('Error creating survey:', createError);
+    throw createError;
+  }
+  
+  return newSurvey.id;
+}
+
+/**
  * Insert mock conversations into the database
  */
 export async function insertMockConversations(
   surveyId: string = 'demo-survey-001'
 ): Promise<{ sessionsCreated: number, responsesCreated: number }> {
-  const { sessions, responses } = await generateMockConversations(surveyId);
+  // Ensure the survey exists first
+  const actualSurveyId = await ensureSurveyExists(surveyId);
+  
+  const { sessions, responses } = await generateMockConversations(actualSurveyId);
   
   // Insert sessions
   const { error: sessionsError } = await supabase
