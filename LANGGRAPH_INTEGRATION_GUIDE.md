@@ -736,4 +736,17 @@ Prioritize by:
 
 ---
 
+## Related Documentation
+
+For detailed recommendations on how to improve your HR analytics to better utilize LangGraph agents, see:
+- **[LANGGRAPH_HR_ANALYTICS_RECOMMENDATIONS.md](./LANGGRAPH_HR_ANALYTICS_RECOMMENDATIONS.md)** - Comprehensive recommendations for enhancing analytics with intelligent agents, including:
+  - Replacing rule-based analysis with semantic understanding
+  - Deep root cause analysis with multi-layer reasoning
+  - Context-aware intervention generation
+  - Advanced pattern recognition
+  - Predictive analytics and early warning systems
+  - And much more!
+
+---
+
 This guide provides a solid foundation for integrating LangGraph into your HR Analytics system. Start with one agent and gradually expand as you validate the approach!
