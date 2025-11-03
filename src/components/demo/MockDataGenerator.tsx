@@ -166,22 +166,41 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
       // Ensure user is authenticated before generating mock data
       await ensureAuthenticated();
       
-      // Clear old demo data first if it exists
-      if (totalGenerated.sessions > 0) {
-        toast.info("Clearing old demo data...");
-        
-        const DEMO_SURVEY_UUID = '00000000-0000-0000-0000-000000000001';
-        const targetSurveyId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(surveyId) 
-          ? surveyId 
-          : DEMO_SURVEY_UUID;
-        
-        // Delete responses first (due to foreign key constraints)
-        await supabase.from('responses').delete().eq('survey_id', targetSurveyId);
-        
-        // Delete conversation sessions
-        await supabase.from('conversation_sessions').delete().eq('survey_id', targetSurveyId);
+      // ALWAYS clear existing demo data first (don't rely on local state)
+      toast.info("Clearing any existing demo data...");
+      
+      const DEMO_SURVEY_UUID = '00000000-0000-0000-0000-000000000001';
+      const targetSurveyId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(surveyId) 
+        ? surveyId 
+        : DEMO_SURVEY_UUID;
+      
+      // Delete responses first (due to foreign key constraints)
+      const { error: deleteResponsesError } = await supabase
+        .from('responses')
+        .delete()
+        .eq('survey_id', targetSurveyId);
+      
+      if (deleteResponsesError) {
+        console.warn('Error deleting old responses:', deleteResponsesError);
+        // Continue anyway - might be first generation
       }
       
+      // Delete conversation sessions
+      const { error: deleteSessionsError } = await supabase
+        .from('conversation_sessions')
+        .delete()
+        .eq('survey_id', targetSurveyId);
+      
+      if (deleteSessionsError) {
+        console.warn('Error deleting old sessions:', deleteSessionsError);
+        // Continue anyway - might be first generation
+      }
+      
+      // Small delay to ensure deletions complete
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Now generate fresh data
+      toast.info("Generating fresh mock data...");
       const stats = await insertMockConversations(surveyId);
       setGeneratedStats(stats);
       setTotalGenerated({
