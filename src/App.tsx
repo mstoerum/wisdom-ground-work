@@ -23,6 +23,8 @@ import PublicSurvey from "./pages/PublicSurvey";
 import AcceptInvitation from "./pages/AcceptInvitation";
 import TestTrustFlow from "./pages/TestTrustFlow";
 import TestSurveyChat from "./pages/hr/TestSurveyChat";
+import EmployeeChatVoiceTesting from "./pages/EmployeeChatVoiceTesting";
+import TestingAnalytics from "./pages/hr/TestingAnalytics";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +49,14 @@ const App = () => (
             
             {/* Test Routes */}
             <Route path="/test/trust-flow" element={<TestTrustFlow />} />
+            <Route 
+              path="/test/chat-voice" 
+              element={
+                <ProtectedRoute>
+                  <EmployeeChatVoiceTesting />
+                </ProtectedRoute>
+              } 
+            />
             
           <Route
             path="/employee/dashboard" 
@@ -109,6 +119,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="hr_admin">
                 <Settings />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/hr/testing-analytics" 
+            element={
+              <ProtectedRoute requiredRole="hr_admin">
+                <TestingAnalytics />
               </ProtectedRoute>
             } 
           />
