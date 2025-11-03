@@ -23,7 +23,7 @@ export const VoiceStateIndicator = ({ state, estimatedTime }: VoiceStateIndicato
       icon: Wifi,
       color: 'text-[hsl(var(--butter-yellow))]',
       bgColor: 'bg-[hsl(var(--butter-yellow))]/10',
-      message: 'Connecting to Atlas...',
+      message: 'Connecting to Spradley...',
       animation: 'animate-pulse',
     },
     listening: {
@@ -38,15 +38,15 @@ export const VoiceStateIndicator = ({ state, estimatedTime }: VoiceStateIndicato
       color: 'text-[hsl(var(--coral-pink))]',
       bgColor: 'bg-[hsl(var(--coral-pink))]/10',
       message: estimatedTime 
-        ? `💭 Atlas is thinking... (~${estimatedTime}s)`
-        : '💭 Atlas is thinking...',
+        ? `💭 Spradley is thinking... (~${estimatedTime}s)`
+        : '💭 Spradley is thinking...',
       animation: 'animate-spin',
     },
     speaking: {
       icon: Volume2,
       color: 'text-[hsl(var(--terracotta-red))]',
       bgColor: 'bg-[hsl(var(--terracotta-red))]/10',
-      message: '🔊 Atlas is speaking',
+      message: '🔊 Spradley is speaking',
       animation: 'animate-pulse',
     },
     error: {

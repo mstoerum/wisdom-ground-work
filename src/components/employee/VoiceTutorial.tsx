@@ -21,7 +21,7 @@ export const VoiceTutorial = ({ open, onComplete }: VoiceTutorialProps) => {
   const steps = [
     {
       title: 'Welcome to Voice Mode',
-      description: 'Voice mode lets you have a natural conversation with Atlas. You can speak naturally and pause when you\'re done.',
+      description: 'Voice mode lets you have a natural conversation with Spradley. You can speak naturally and pause when you\'re done.',
       icon: '🎤',
     },
     {
@@ -40,13 +40,13 @@ export const VoiceTutorial = ({ open, onComplete }: VoiceTutorialProps) => {
     },
     {
       title: 'Test Your Microphone',
-      description: 'Say "Hello, Atlas" to test your microphone. Make sure you\'re in a quiet place.',
+      description: 'Say "Hello, Spradley" to test your microphone. Make sure you\'re in a quiet place.',
       icon: '🔊',
       test: true,
     },
     {
       title: 'You\'re All Set!',
-      description: 'When you start voice chat, Atlas will introduce itself. Speak naturally and pause when you\'re done talking.',
+      description: 'When you start voice chat, Spradley will introduce itself. Speak naturally and pause when you\'re done talking.',
       icon: '✅',
     },
   ];
@@ -113,7 +113,7 @@ export const VoiceTutorial = ({ open, onComplete }: VoiceTutorialProps) => {
           {step === 2 && currentStep.test && (
             <div className="p-4 bg-muted rounded-lg space-y-3">
               <p className="text-sm text-muted-foreground">
-                Click the button below and say "Hello, Atlas" to test your microphone.
+                Click the button below and say "Hello, Spradley" to test your microphone.
               </p>
               <Button
                 onClick={async () => {

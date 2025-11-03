@@ -45,7 +45,7 @@ export const DemoAIChat = ({ onComplete, onSkip }: DemoAIChatProps) => {
           .insert({
             title: 'Demo Employee Feedback Survey',
             description: 'Interactive demo of Spradley AI conversation',
-            first_message: "Hi! I'm Atlas, an AI guide here to help you share your thoughts about work. I'm not a person, and nothing you say here is connected to your name. This might feel a bit different from typical surveys, and that's okay. Let's start with something simple: What's one thing that's been on your mind about work lately?",
+            first_message: "Hi! I'm Spradley, an AI guide here to help you share your thoughts about work. I'm not a person, and nothing you say here is connected to your name. This might feel a bit different from typical surveys, and that's okay. Let's start with something simple: What's one thing that's been on your mind about work lately?",
             themes: [],
             consent_config: {},
             schedule: {},
@@ -59,7 +59,7 @@ export const DemoAIChat = ({ onComplete, onSkip }: DemoAIChatProps) => {
           // Fallback to mock conversation if survey creation fails
           setMessages([{
             role: "assistant",
-            content: "Hi! I'm Atlas, an AI guide here to help you share your thoughts about work. What's one thing that's been on your mind about work lately?",
+            content: "Hi! I'm Spradley, an AI guide here to help you share your thoughts about work. What's one thing that's been on your mind about work lately?",
             timestamp: new Date()
           }]);
           return;
@@ -113,7 +113,7 @@ export const DemoAIChat = ({ onComplete, onSkip }: DemoAIChatProps) => {
         // Fallback to mock conversation
         setMessages([{
           role: "assistant",
-          content: "Hi! I'm Atlas, an AI guide here to help you share your thoughts about work. What's one thing that's been on your mind about work lately?",
+          content: "Hi! I'm Spradley, an AI guide here to help you share your thoughts about work. What's one thing that's been on your mind about work lately?",
           timestamp: new Date()
         }]);
       }

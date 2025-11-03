@@ -143,7 +143,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         setIsLoading(true);
         
         // Show loading state immediately
-        console.log('Atlas is preparing introduction...');
+        console.log('Spradley is preparing introduction...');
         
         try {
           const { data: { session } } = await supabase.auth.getSession();
@@ -191,7 +191,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           // Fallback to a default greeting if AI fails
           setMessages([{
             role: "assistant",
-            content: "Hi! I'm Atlas, your AI guide. How can I help you today?",
+            content: "Hi! I'm Spradley, your AI guide. How can I help you today?",
             timestamp: new Date()
           }]);
         } finally {
@@ -449,8 +449,8 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         className="sr-only"
       >
         {isRecording && 'Recording your message. Click the microphone again to send.'}
-        {isLoading && 'Atlas is typing a response. Please wait.'}
-        {messages.length > 0 && messages[messages.length - 1].role === 'assistant' && 'Atlas has responded. Check the conversation for the message.'}
+        {isLoading && 'Spradley is typing a response. Please wait.'}
+        {messages.length > 0 && messages[messages.length - 1].role === 'assistant' && 'Spradley has responded. Check the conversation for the message.'}
       </div>
 
       {/* Trust Indicators */}
@@ -531,7 +531,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
                 <Skeleton className="h-4 w-4/6" />
                 <p className="text-xs text-muted-foreground mt-2 flex items-center gap-2">
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  Atlas is preparing...
+                  Spradley is preparing...
                 </p>
               </div>
             </div>
@@ -552,7 +552,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
               <div className="bg-muted rounded-lg p-4 flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span className="text-sm text-muted-foreground">
-                  {isRecording ? "Recording..." : "Atlas is typing..."}
+                  {isRecording ? "Recording..." : "Spradley is typing..."}
                 </span>
               </div>
             </div>
@@ -590,7 +590,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         <div className="flex gap-2 items-end">
           <div className="flex-1 relative">
             <Textarea
-              aria-label="Type your message to Atlas"
+              aria-label="Type your message to Spradley"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
@@ -647,7 +647,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
             disabled={!input.trim() || isLoading}
             variant="coral"
             className="w-14 h-14 flex-shrink-0 shadow-sm hover:shadow-md"
-            aria-label="Send message to Atlas"
+            aria-label="Send message to Spradley"
           >
             {isLoading ? (
               <Loader2 className="w-5 h-5 animate-spin" />

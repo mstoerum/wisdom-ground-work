@@ -292,12 +292,12 @@ export const VoiceInterface = ({
       case 'listening':
         return 'Listening...';
       case 'speaking':
-        return 'Atlas is speaking...';
+        return 'Spradley is speaking...';
       case 'processing':
         const remaining = estimatedProcessingTime 
           ? Math.max(0, Math.ceil((estimatedProcessingTime - elapsedProcessingTime) / 1000))
           : null;
-        return remaining !== null ? `Atlas is thinking... (~${remaining}s)` : 'Atlas is thinking...';
+        return remaining !== null ? `Spradley is thinking... (~${remaining}s)` : 'Spradley is thinking...';
       case 'error':
         return 'Error occurred';
       default:
@@ -329,8 +329,8 @@ export const VoiceInterface = ({
       >
         {voiceState === 'connecting' && 'Connecting to voice assistant. Please wait.'}
         {voiceState === 'listening' && 'Microphone is listening. Speak now.'}
-        {voiceState === 'processing' && `Atlas is thinking. ${estimatedProcessingTime ? `Estimated ${Math.ceil(estimatedProcessingTime / 1000)} seconds` : ''}`}
-        {voiceState === 'speaking' && 'Atlas is speaking. Please listen.'}
+        {voiceState === 'processing' && `Spradley is thinking. ${estimatedProcessingTime ? `Estimated ${Math.ceil(estimatedProcessingTime / 1000)} seconds` : ''}`}
+        {voiceState === 'speaking' && 'Spradley is speaking. Please listen.'}
         {voiceState === 'idle' && !isSupported && 'An error occurred. Please check the troubleshooting panel.'}
       </div>
 
@@ -355,7 +355,7 @@ export const VoiceInterface = ({
           <Info className="h-4 w-4 text-[hsl(var(--coral-accent))]" />
           <AlertDescription>
             <strong>Voice Preview Mode:</strong> Experience the voice interface exactly as employees will. 
-            Atlas will introduce itself and explore the selected themes naturally. No data is saved during preview.
+            Spradley will introduce itself and explore the selected themes naturally. No data is saved during preview.
           </AlertDescription>
         </Alert>
       )}
@@ -468,7 +468,7 @@ export const VoiceInterface = ({
               
               {aiTranscript && (
                 <div className="bg-[hsl(var(--coral-pink))]/30 rounded-2xl p-4 animate-fade-in">
-                  <p className="text-xs text-[hsl(var(--coral-accent))] mb-1">Atlas</p>
+                  <p className="text-xs text-[hsl(var(--coral-accent))] mb-1">Spradley</p>
                   <p className="text-base leading-relaxed">{aiTranscript}</p>
                 </div>
               )}
@@ -490,7 +490,7 @@ export const VoiceInterface = ({
                     }`}
                   >
                     <p className="text-xs text-muted-foreground mb-1">
-                      {msg.role === 'user' ? 'You' : 'Atlas'}
+                      {msg.role === 'user' ? 'You' : 'Spradley'}
                     </p>
                     <p className="text-sm leading-relaxed opacity-70">
                       {msg.content}
@@ -525,7 +525,7 @@ export const VoiceInterface = ({
         {voiceState === 'idle' && (
           <div className="text-center space-y-2 max-w-md">
             <p className="text-sm text-muted-foreground">
-              Click the microphone to start a natural voice conversation with Atlas.
+              Click the microphone to start a natural voice conversation with Spradley.
             </p>
             <p className="text-xs text-muted-foreground">
               Speak naturally • Take your time • Pauses are okay • The system waits for you to finish
@@ -544,7 +544,7 @@ export const VoiceInterface = ({
         {voiceState === 'processing' && (
           <div className="text-center space-y-2 max-w-md">
             <p className="text-sm text-muted-foreground">
-              💭 Atlas is analyzing your response...
+              💭 Spradley is analyzing your response...
             </p>
             {estimatedProcessingTime && (
               <p className="text-xs text-muted-foreground opacity-70">
@@ -568,7 +568,7 @@ export const VoiceInterface = ({
         {voiceState === 'speaking' && (
           <div className="text-center space-y-2 max-w-md">
             <p className="text-sm text-muted-foreground">
-              🔊 Atlas is speaking...
+              🔊 Spradley is speaking...
             </p>
           </div>
         )}

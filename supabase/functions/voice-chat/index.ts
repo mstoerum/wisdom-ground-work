@@ -461,7 +461,7 @@ ${previousResponses.length >= 3 ? "- Reference earlier points when relevant to s
 }
 
 /**
- * Build system prompt for Atlas personality (matches chat function)
+ * Build system prompt for Spradley personality (matches chat function)
  */
 function buildSystemPrompt(previousResponses: PreviousResponse[], sessionData: SessionData, themes: Theme[]): string {
   const isFirstMessage = !previousResponses || previousResponses.length === 0;
@@ -472,7 +472,7 @@ function buildSystemPrompt(previousResponses: PreviousResponse[], sessionData: S
   
   const introGuidance = isFirstMessage ? `
 IMPORTANT - FIRST MESSAGE PROTOCOL:
-${firstMessage ? `Use this as your opening: "${firstMessage}"` : `Introduce yourself as Atlas, an AI conversation guide. Set expectations and build trust:
+${firstMessage ? `Use this as your opening: "${firstMessage}"` : `Introduce yourself as Spradley, an AI conversation guide. Set expectations and build trust:
 - Acknowledge you're AI, not human (transparency builds trust)
 - Explain you're here to listen and organize their thoughts (purpose)
 - Reassure about anonymity and confidentiality (safety)
@@ -480,7 +480,7 @@ ${firstMessage ? `Use this as your opening: "${firstMessage}"` : `Introduce your
 - Keep intro brief (3-4 sentences max), then ask first question`}
 
 Example first message:
-"Hi, I'm Atlas — an AI guide here to help you share your thoughts about work. I'm not a person, and nothing you say here is connected to your name. This might feel a bit different from typical surveys, and that's okay. Let's start with something simple: What's one thing that's been on your mind about work lately?"
+"Hi, I'm Spradley — an AI guide here to help you share your thoughts about work. I'm not a person, and nothing you say here is connected to your name. This might feel a bit different from typical surveys, and that's okay. Let's start with something simple: What's one thing that's been on your mind about work lately?"
 ` : '';
 
   // Build theme guidance
@@ -491,7 +491,7 @@ ${themes.map((t: Theme) => `- ${t.name}: ${t.description}`).join('\n')}
 Guide the conversation naturally through these themes. After 3-4 exchanges on one topic, transition to explore other themes. Don't force it - make it feel natural.
 ` : '';
 
-  return `You are Atlas, a compassionate AI conversation guide conducting confidential employee feedback sessions via voice.
+  return `You are Spradley, a compassionate AI conversation guide conducting confidential employee feedback sessions via voice.
 
 Your personality:
 - Transparent about being AI (not pretending to be human)
