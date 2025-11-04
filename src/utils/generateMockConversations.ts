@@ -36,7 +36,7 @@ export interface MockResponse {
   urgency_escalated: boolean;
 }
 
-// Realistic employee response templates by theme and sentiment
+// Rich, detailed response templates with realistic employee narratives
 const responseTemplates: Record<string, {
   positive: string[];
   neutral: string[];
@@ -44,117 +44,166 @@ const responseTemplates: Record<string, {
 }> = {
   'Work-Life Balance': {
     positive: [
-      "I really appreciate the flexible work hours. It helps me balance my personal life with work responsibilities.",
-      "The company has been great about respecting boundaries. I rarely feel pressured to work after hours.",
-      "I feel like I have a good work-life balance. The remote work options have been amazing.",
-      "The leadership really understands the importance of downtime. I never feel guilty taking my vacation days."
+      "I'm really grateful for the flexibility we have here. Last month when my kid was sick, I could work from home without any hassle. My manager actually encouraged me to take the time I needed.",
+      "The work-life balance here is honestly the best I've experienced in my career. I can attend my daughter's soccer games without feeling guilty, and nobody expects me to check emails after 6 PM.",
+      "I appreciate that leadership recognizes burnout is real. They actively encourage us to use our vacation days and even check in if we haven't taken time off.",
+      "The flexibility to manage my schedule has been life-changing. I can hit the gym in the morning and make up the time later without anyone micromanaging me.",
+      "Being able to work remotely has saved me hours of commuting every week. I'm more productive at home, less stressed, and I have more energy for my actual work.",
+      "I recently had a family emergency, and my team rallied around me without question. I was able to take the time I needed, and when I came back, nobody made me feel bad about it.",
     ],
     neutral: [
-      "The work-life balance is okay. Some weeks are busier than others, but it's manageable.",
-      "I think we could improve work-life balance, but it's not terrible right now.",
-      "It depends on the project. Sometimes I work more hours, sometimes less.",
-      "The balance is fine for the most part, though I do occasionally work weekends."
+      "Work-life balance is okay, but it really depends on your team. Some departments seem to have reasonable hours, while others are constantly in fire-drill mode.",
+      "I have mixed feelings about the balance here. On paper, the policies are great - flexible hours, remote work options. But in practice, there's an unspoken expectation to be available pretty much all the time.",
+      "The flexibility is there if you ask for it, but I feel like you have to really advocate for yourself. Some managers are better than others about respecting boundaries.",
+      "Remote work has been both a blessing and a curse. I love not commuting, but I find it harder to disconnect when my office is in my home.",
+      "Balance here is decent, though I feel like I'm always playing catch-up. Email volume is overwhelming, and even with flexible hours, I struggle to keep my head above water.",
     ],
     negative: [
-      "I often find myself answering emails late at night. There's an unspoken expectation to always be available.",
-      "The work-life balance has gotten worse. I'm working 50+ hours a week regularly.",
-      "I feel burnt out. There's no clear boundary between work and personal time anymore.",
-      "I had to cancel personal plans multiple times because of urgent work requests. It's frustrating."
-    ]
-  },
-  'Team Collaboration': {
-    positive: [
-      "My team is incredibly supportive. We work really well together and communicate openly.",
-      "I love how collaborative our team is. Everyone is willing to help each other out.",
-      "The team dynamics are great. We have regular check-ins and everyone's input is valued.",
-      "We have excellent collaboration tools and our team meetings are always productive."
-    ],
-    neutral: [
-      "Team collaboration is decent. We work together when needed, but don't interact much outside of projects.",
-      "The team is okay. Some people collaborate more than others.",
-      "Collaboration happens when it needs to, but there's room for improvement.",
-      "We have good moments of collaboration, but also some silos between different groups."
-    ],
-    negative: [
-      "There's a lack of communication between teams. We often duplicate work or miss important updates.",
-      "Some team members don't respond to messages for days, which slows down projects.",
-      "I feel isolated from the rest of the team. We rarely have meaningful collaboration.",
-      "There's too much competition between team members instead of working together."
+      "Honestly, I'm feeling pretty burnt out lately. I find myself checking Slack at 10 PM most nights because I'm worried I'll miss something important. Last week I had to cancel dinner with my family twice because of urgent requests that could have waited.",
+      "The work-life balance here is practically non-existent. I regularly work 60-hour weeks, and it's taking a toll on my health and relationships. My partner is frustrated because I'm constantly distracted by work.",
+      "I'm exhausted. There's this unwritten rule that if you want to be taken seriously or considered for promotion, you need to be available 24/7. I have young kids, and I'm missing so much of their lives.",
+      "The workload is crushing me. I'm handling what used to be three people's jobs after layoffs, and there's no relief in sight. I work through lunch, stay late, and still can't keep up.",
+      "I haven't taken a real vacation in over a year. Every time I try to plan something, there's a critical project that needs me. Even when I do take time off, I end up working remotely.",
+      "The boundary between work and personal life has completely dissolved. I take calls during dinner, respond to emails from bed, and work most Sundays to prepare for the week.",
     ]
   },
   'Career Development': {
     positive: [
-      "The career development workshops have been really helpful for my growth.",
-      "I appreciate the learning opportunities and mentorship programs available.",
-      "My manager has been supportive of my career goals and helped me find growth opportunities.",
-      "The company invests in employee development. I've learned a lot in the past year."
+      "I'm really excited about the growth opportunities here. My manager and I have quarterly development conversations where we map out skills I want to build, and the company actually invests in training.",
+      "The mentorship program here is fantastic. I was paired with a senior leader who's been incredibly generous with their time and advice. Having that guidance has accelerated my learning.",
+      "I love that there's a clear career path laid out. I can see what skills and experiences I need to move to the next level, and my manager actively helps me get there.",
+      "The company culture encourages taking on stretch assignments. Last quarter, I volunteered to lead a cross-functional project that was way outside my comfort zone.",
+      "I've been promoted twice in three years, which feels like a fair reflection of my contributions. The process is transparent, and feedback is constructive.",
+      "The tuition reimbursement program has been game-changing for me. I'm currently pursuing a master's degree, and the company is covering most of the cost.",
     ],
     neutral: [
-      "There are some development opportunities, but I'm not sure about the path forward.",
-      "Career growth exists, but it's not always clear how to advance.",
-      "I've had some training opportunities, but could use more guidance on career progression.",
-      "The development programs are okay, but I'd like to see more options."
+      "Career development is hit or miss depending on your manager. Some people get great support and opportunities, while others feel stuck.",
+      "There are resources available for development, but you really have to advocate for yourself. I've learned that if you don't explicitly ask for training, you'll just keep doing the same thing.",
+      "I see some people moving up quickly, and I'm not entirely sure what they're doing differently. The advancement criteria feel somewhat subjective.",
+      "Promotions happen, but they seem to take a long time. I've been in the same role for two years and am starting to wonder what the timeline typically looks like.",
+      "I appreciate the learning resources available, but finding time to actually use them is challenging given the workload. Development often takes a backseat to urgent priorities.",
     ],
     negative: [
-      "I feel stuck in my role. There are no clear advancement opportunities.",
-      "Career development feels like an afterthought. Promotions are rare and unclear.",
-      "I've asked about growth opportunities multiple times but haven't gotten concrete answers.",
-      "The training programs are generic and don't address my specific career goals."
+      "I feel completely stuck in my career here. I've been in the same role for four years with no promotion in sight, despite consistently exceeding expectations. When I ask about advancement, I get vague answers.",
+      "There's no real investment in employee development here. I've asked multiple times for training budget to attend a certification program, and I've been denied every time.",
+      "My manager has no interest in my career development. Our one-on-ones are always about immediate tasks. When I try to discuss growth, the conversation gets redirected.",
+      "The promotion process is completely opaque. There's no clear criteria, no timeline, no transparency about what it takes to move up.",
+      "I've been promised a promotion for two years now, and it keeps getting pushed back. First it was budget, then reorganization, now it's we need to see more.",
+      "The lack of learning opportunities is stifling. We're expected to keep up with industry trends on our own time and dime, while the company invests nothing.",
     ]
   },
   'Management Support': {
     positive: [
-      "My manager is approachable and really listens to employee feedback.",
-      "The leadership team is transparent and keeps us informed about company decisions.",
-      "I feel supported by management. They provide clear direction and helpful feedback.",
-      "Management recognizes our hard work and provides constructive guidance."
+      "My manager is genuinely one of the best I've ever had. She gives me autonomy while being available when I need support. She fights for her team and shields us from unnecessary politics.",
+      "I appreciate how transparent my manager is about what's happening at higher levels. He shares context about decisions and involves us in problem-solving.",
+      "The feedback I receive is specific, timely, and actionable. My manager takes time to explain not just what to improve but how.",
+      "My manager has my back. When I made a significant mistake on a project, he took responsibility with leadership and then worked with me privately to learn from it.",
+      "I feel comfortable bringing problems to my manager, even difficult ones. He creates a safe space where we can be honest about challenges without fear of judgment.",
+      "My manager actively invests in my development. She identifies opportunities for me to grow and advocates for my advancement.",
     ],
     neutral: [
-      "Management is okay. They're available when needed but not overly involved.",
-      "The leadership is fine, though communication could be better.",
-      "I have mixed feelings about management. Some things are good, some could improve.",
-      "Management is approachable, but I'd like to see more proactive support."
+      "My manager is fine - not great, not terrible. He leaves me alone to do my work, which I appreciate, but I sometimes wish there was more guidance.",
+      "Management here is inconsistent. My direct manager is pretty good, but leadership above that level seems disconnected from the realities of our work.",
+      "My manager means well but is stretched too thin. She manages 12 people across multiple projects, so individual attention is limited.",
+      "Feedback is pretty generic. I get the sense my manager doesn't have deep visibility into my day-to-day work, so reviews feel surface-level.",
+      "My manager delegates well but doesn't always provide enough context. I often execute tasks without fully understanding the strategy or why it matters.",
     ],
     negative: [
-      "My manager is rarely available and doesn't seem to care about my concerns.",
-      "There's a lack of transparency from leadership. Important decisions are made without explanation.",
-      "I don't feel heard by management. My feedback seems to fall on deaf ears.",
-      "The leadership style is too micromanaging. I don't have autonomy in my work."
+      "My manager is a huge source of stress for me. She micromanages everything, questions my every decision, and makes me feel incompetent despite years of experience.",
+      "The lack of support from leadership is astounding. When I raised concerns about workload and burnout, I was essentially told to work smarter, not harder.",
+      "My manager plays favorites, and I'm not one of them. Certain team members get praised for average work while others of us exceed expectations and hear nothing.",
+      "I've never received constructive feedback, only criticism. My manager focuses exclusively on what went wrong rather than recognizing what went right.",
+      "Communication from leadership is terrible. Decisions get made behind closed doors without explanation. We're expected to just accept and execute.",
+      "My manager throws the team under the bus to protect himself. When projects fail, he points fingers at us rather than taking accountability as a leader.",
+    ]
+  },
+  'Team Collaboration': {
+    positive: [
+      "My team is incredibly supportive. We work really well together and communicate openly. When someone is struggling, we all jump in to help without being asked.",
+      "I love how collaborative our team is. Everyone is willing to share knowledge and help each other out. There's no ego or competition, just genuine teamwork.",
+      "The team dynamics are great. We have regular check-ins where everyone's input is valued, and we've built real trust over time.",
+      "We have excellent collaboration tools and our team meetings are always productive. People come prepared, contribute meaningfully, and follow through on commitments.",
+      "The cross-functional collaboration here has been eye-opening. Working with people from different departments has taught me so much and made projects more successful.",
+    ],
+    neutral: [
+      "Team collaboration is decent. We work together when needed, but don't interact much outside of specific projects. It's functional but not particularly tight-knit.",
+      "Collaboration happens when it needs to, but there's room for improvement. Some people are great team players; others are more siloed in their work.",
+      "We have good moments of collaboration, but also some friction between different groups. The engineering and product teams don't always see eye to eye.",
+      "The team is okay. Communication could be better, and sometimes it feels like we're working in parallel rather than truly together.",
+    ],
+    negative: [
+      "There's a lack of communication between teams. We often duplicate work or miss important updates because nobody's talking to each other. It's incredibly frustrating and wastes so much time.",
+      "Some team members don't respond to messages for days, which completely blocks projects. I don't understand how that's acceptable in a collaborative environment.",
+      "I feel isolated from the rest of the team. We rarely have meaningful collaboration, and when we do, it feels forced or uncomfortable. There's not much trust.",
+      "There's too much competition between team members instead of working together. People hoard information to protect their positions, which kills any chance of real teamwork.",
+      "The silos are terrible. Each department guards their territory and resists collaboration. It makes getting anything done cross-functionally nearly impossible.",
     ]
   },
   'Workplace Culture': {
     positive: [
-      "The company culture is inclusive and welcoming. I feel comfortable being myself at work.",
-      "I love the positive atmosphere. People are friendly and respectful.",
-      "The culture promotes innovation and creativity. I feel empowered to share ideas.",
-      "There's a strong sense of community and shared values at the company."
+      "The culture here is genuinely special. People are collaborative, supportive, and actually care about each other beyond just getting work done. I've made real friendships here.",
+      "What I love most is the emphasis on psychological safety. We're encouraged to take risks, share ideas, and even fail without fear of punishment.",
+      "The company lives its values, which is rare. When they say they prioritize diversity and inclusion, they back it with real action and accountability.",
+      "There's a strong sense of mission here that unites everyone. We all believe in what we're building and why it matters. That shared purpose is motivating.",
+      "The culture celebrates both individual and team success. Recognition is generous and public, and wins are shared rather than hoarded.",
+      "I appreciate how the culture balances professionalism with humanity. We're expected to deliver quality work, but there's understanding that we're whole people with lives outside the office.",
     ],
     neutral: [
-      "The culture is fine. It's not amazing, but it's not toxic either.",
-      "The workplace culture is pretty standard. Nothing stands out as particularly good or bad.",
-      "I see both positive and negative aspects of the culture.",
-      "The culture varies by department. Some areas are more positive than others."
+      "The culture is okay - pretty standard for a tech company. It's professional and generally positive, though I wouldn't call it distinctive.",
+      "Culture varies significantly by team. Some departments have amazing dynamics; others feel more corporate and transactional.",
+      "We talk a lot about culture and values, but I'm not always sure how deeply they penetrate. Day-to-day, I question how much they actually influence behavior.",
+      "There's a disconnect between stated values and lived experience. We say we value balance and transparency, but in practice, I see people working constantly.",
+      "The culture is very work-focused. We talk about projects and deliverables but less about people, growth, or well-being. It's professionally stimulating but emotionally flat.",
     ],
     negative: [
-      "The culture feels competitive in a negative way. People are always trying to one-up each other.",
-      "There's a lot of gossip and negativity. It's not a healthy work environment.",
-      "The company talks about values but doesn't practice them consistently.",
-      "I don't feel like I fit in with the culture. It's not inclusive."
+      "The culture here is toxic. There's constant backstabbing, politics, and competition instead of collaboration. People are more focused on self-promotion than team success.",
+      "Leadership preaches values they don't practice. They talk about transparency while withholding information, respect while talking down to employees, and innovation while punishing deviation.",
+      "This is the most political environment I've ever experienced. Success is more about who you know and how you play the game than actual performance.",
+      "The culture feels hostile to anyone who doesn't fit a specific mold. If you're not part of the in-group, you're marginalized. The lack of true inclusion is obvious.",
+      "There's a culture of fear here. People are afraid to speak up, challenge ideas, or admit mistakes because the response is usually punitive.",
+      "Burnout culture is celebrated here. People brag about all-nighters and working weekends like it's a badge of honor. Anyone who sets boundaries is viewed as uncommitted.",
     ]
   }
 };
 
-// AI response templates
-const aiResponses = [
-  "Thank you for sharing that. Can you tell me more about how that makes you feel?",
-  "I understand. What would you say is the biggest factor contributing to that?",
-  "That's helpful context. Have you discussed this with anyone else at work?",
-  "I appreciate you being open about this. What would you like to see change?",
-  "That sounds challenging. What support do you think would help the most?",
-  "Thank you for that insight. How long have you been experiencing this?",
-  "I hear you. What would an ideal situation look like for you?",
-  "That's valuable feedback. Can you think of any positive aspects as well?",
-];
+// Context-aware AI responses organized by stage and sentiment
+const aiResponses = {
+  opening: [
+    "Hello! Thank you for taking the time to share your feedback with me today. This conversation is completely confidential. How are you feeling about work lately?",
+    "Hi! I appreciate you being here. Your honest thoughts are really valuable. What's been on your mind recently regarding work?",
+    "Welcome! I'm here to listen and understand your experience. To start, how would you describe your overall experience at work lately?",
+  ],
+  validation_positive: [
+    "That's wonderful to hear! It's great that you're having such a positive experience.",
+    "I'm so glad things are going well for you. Those kinds of experiences make a real difference.",
+    "That's fantastic! It's clear that's having a meaningful impact on you.",
+  ],
+  validation_negative: [
+    "Thank you for being honest about that. I can hear how challenging this has been for you.",
+    "I appreciate you sharing that. What you're experiencing sounds really tough.",
+    "That sounds incredibly frustrating. Your feelings about this are completely valid.",
+    "I hear how hard this is for you. It takes courage to be this open about these challenges.",
+  ],
+  probing: [
+    "Can you tell me more about that? I want to make sure I understand your full experience.",
+    "What would it look like if this situation were improved?",
+    "Help me understand - when did you first notice this becoming an issue?",
+    "What impact is this having on you, both professionally and personally?",
+    "If you could change one thing about this, what would make the biggest difference?",
+    "Walk me through a specific example. What did that look like?",
+    "How long has this been going on? Has it gotten better or worse over time?",
+  ],
+  transition: [
+    "That's really helpful to understand. While we're talking, I'd also like to hear your thoughts on another aspect...",
+    "Building on what you just shared, I'm wondering about...",
+    "That gives me good context. Another area I'd like to explore if you're comfortable is...",
+  ],
+  closing: [
+    "We're coming to the end of our conversation. Before we wrap up, is there anything else you'd like to share?",
+    "Thank you so much for your openness today. Your insights are truly valuable. Is there anything else on your mind?",
+    "This has been really helpful. Before we finish, what's the one thing you most want leadership to understand?",
+  ]
+};
 
 // Departments for variety
 const departments = [
@@ -242,7 +291,7 @@ function generateResponses(
   responseIndex: number
 ): MockResponse[] {
   const responses: MockResponse[] = [];
-  const numExchanges = randomInt(3, 8); // 3-8 exchanges per conversation
+  const numExchanges = randomInt(5, 10); // 5-10 exchanges for richer conversations
   
   // Determine overall conversation sentiment (mostly positive, neutral, or negative)
   const conversationTone = Math.random() < 0.4 ? 'negative' : Math.random() < 0.6 ? 'neutral' : 'positive';
@@ -282,10 +331,27 @@ function generateResponses(
       new Date(session.started_at).getTime() + i * 60000 * randomInt(1, 3)
     ).toISOString();
     
-    // AI responds to most but not all messages
-    const aiResponse = Math.random() < 0.8 
-      ? aiResponses[randomInt(0, aiResponses.length - 1)]
-      : null;
+    // Select contextual AI response based on sentiment and position
+    let aiResponse: string | null = null;
+    if (Math.random() < 0.85) {
+      if (i === 0) {
+        aiResponse = aiResponses.opening[randomInt(0, aiResponses.opening.length - 1)];
+      } else if (i === numExchanges - 1) {
+        aiResponse = aiResponses.closing[randomInt(0, aiResponses.closing.length - 1)];
+      } else if (sentiment === 'positive') {
+        aiResponse = Math.random() < 0.5 
+          ? aiResponses.validation_positive[randomInt(0, aiResponses.validation_positive.length - 1)]
+          : aiResponses.probing[randomInt(0, aiResponses.probing.length - 1)];
+      } else if (sentiment === 'negative') {
+        aiResponse = Math.random() < 0.6
+          ? aiResponses.validation_negative[randomInt(0, aiResponses.validation_negative.length - 1)]
+          : aiResponses.probing[randomInt(0, aiResponses.probing.length - 1)];
+      } else {
+        aiResponse = Math.random() < 0.3
+          ? aiResponses.transition[randomInt(0, aiResponses.transition.length - 1)]
+          : aiResponses.probing[randomInt(0, aiResponses.probing.length - 1)];
+      }
+    }
     
     // Convert sentiment score to database format (0-1 range for decimal(3,2))
     // Database expects 0-1 range, so divide by 100
