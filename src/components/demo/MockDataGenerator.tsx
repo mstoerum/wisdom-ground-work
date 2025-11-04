@@ -166,7 +166,7 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
       // Ensure user is authenticated before generating mock data
       await ensureAuthenticated();
       
-      // ALWAYS clear existing demo data first (don't rely on local state)
+      // ALWAYS clear existing demo data first
       toast.info("Clearing any existing demo data...");
       
       const DEMO_SURVEY_UUID = '00000000-0000-0000-0000-000000000001';
@@ -175,25 +175,47 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
         : DEMO_SURVEY_UUID;
       
       // Delete responses first (due to foreign key constraints)
-      const { error: deleteResponsesError } = await supabase
+      const { error: deleteResponsesError, count: deletedResponses } = await supabase
         .from('responses')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('survey_id', targetSurveyId);
       
       if (deleteResponsesError) {
-        console.warn('Error deleting old responses:', deleteResponsesError);
-        // Continue anyway - might be first generation
+        throw new Error(`Failed to delete old responses: ${deleteResponsesError.message}. Please ensure you have proper permissions.`);
       }
       
       // Delete conversation sessions
-      const { error: deleteSessionsError } = await supabase
+      const { error: deleteSessionsError, count: deletedSessions } = await supabase
         .from('conversation_sessions')
-        .delete()
+        .delete({ count: 'exact' })
         .eq('survey_id', targetSurveyId);
       
       if (deleteSessionsError) {
-        console.warn('Error deleting old sessions:', deleteSessionsError);
-        // Continue anyway - might be first generation
+        throw new Error(`Failed to delete old sessions: ${deleteSessionsError.message}. Please ensure you have proper permissions.`);
+      }
+      
+      // Verify deletion succeeded
+      const { count: remainingSessions } = await supabase
+        .from('conversation_sessions')
+        .select('*', { count: 'exact', head: true })
+        .eq('survey_id', targetSurveyId);
+      
+      const { count: remainingResponses } = await supabase
+        .from('responses')
+        .select('*', { count: 'exact', head: true })
+        .eq('survey_id', targetSurveyId);
+      
+      if (remainingSessions && remainingSessions > 0) {
+        throw new Error(`Deletion incomplete: ${remainingSessions} sessions still exist. Please try again.`);
+      }
+      
+      if (remainingResponses && remainingResponses > 0) {
+        throw new Error(`Deletion incomplete: ${remainingResponses} responses still exist. Please try again.`);
+      }
+      
+      console.log('✅ Deletion verified: All old data removed');
+      if (deletedSessions || deletedResponses) {
+        toast.success(`Cleared ${deletedSessions || 0} sessions and ${deletedResponses || 0} responses`);
       }
       
       // Small delay to ensure deletions complete
@@ -202,19 +224,46 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
       // Now generate fresh data
       toast.info("Generating fresh mock data...");
       const stats = await insertMockConversations(surveyId);
+      
+      // Verify data was actually created
+      const { count: newSessions } = await supabase
+        .from('conversation_sessions')
+        .select('*', { count: 'exact', head: true })
+        .eq('survey_id', targetSurveyId);
+      
+      const { count: newResponses } = await supabase
+        .from('responses')
+        .select('*', { count: 'exact', head: true })
+        .eq('survey_id', targetSurveyId);
+      
+      console.log('✅ Generation verified:', { 
+        expectedSessions: stats.sessionsCreated, 
+        actualSessions: newSessions,
+        expectedResponses: stats.responsesCreated,
+        actualResponses: newResponses
+      });
+      
+      if (newSessions !== stats.sessionsCreated) {
+        console.warn(`⚠️ Session count mismatch: expected ${stats.sessionsCreated}, got ${newSessions}`);
+      }
+      
+      if (newResponses !== stats.responsesCreated) {
+        console.warn(`⚠️ Response count mismatch: expected ${stats.responsesCreated}, got ${newResponses}`);
+      }
+      
       setGeneratedStats(stats);
       setTotalGenerated({
-        sessions: stats.sessionsCreated,
-        responses: stats.responsesCreated
+        sessions: newSessions || stats.sessionsCreated,
+        responses: newResponses || stats.responsesCreated
       });
       toast.success(`Successfully generated ${stats.sessionsCreated} conversations with ${stats.responsesCreated} responses!`);
       
-      // Clear the success message after 5 seconds to indicate button is ready again
+      // Clear the success message after 5 seconds
       setTimeout(() => {
         setGeneratedStats(null);
       }, 5000);
       
-      // Invalidate all analytics-related queries to ensure fresh data is fetched
+      // Invalidate all analytics-related queries
       toast.info("Refreshing analytics with new data...");
       await queryClient.invalidateQueries({ 
         predicate: (query) => {
@@ -237,10 +286,7 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
         }
       });
       
-      // Wait a moment for invalidation to propagate
       await new Promise(resolve => setTimeout(resolve, 100));
-      
-      // Call the callback which will handle refetching
       onDataGenerated?.();
     } catch (err: any) {
       const errorMessage = err?.message || 'Failed to generate mock data';
