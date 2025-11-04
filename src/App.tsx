@@ -25,6 +25,7 @@ import TestTrustFlow from "./pages/TestTrustFlow";
 import TestSurveyChat from "./pages/hr/TestSurveyChat";
 import EmployeeChatVoiceTesting from "./pages/EmployeeChatVoiceTesting";
 import TestingAnalytics from "./pages/hr/TestingAnalytics";
+import SimulateTesting from "./pages/SimulateTesting";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <EmployeeChatVoiceTesting />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/test/simulate" 
+              element={
+                <ProtectedRoute requiredRole="hr_admin">
+                  <SimulateTesting />
                 </ProtectedRoute>
               } 
             />
