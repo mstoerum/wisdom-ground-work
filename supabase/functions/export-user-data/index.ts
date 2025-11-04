@@ -117,9 +117,17 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error('Error in export-user-data:', error);
+    
+    // Generic error message for client
+    const clientMessage = error?.message?.includes('Unauthorized') 
+      ? 'Authentication failed' 
+      : 'An error occurred while exporting your data';
+    
+    const statusCode = error?.message?.includes('Unauthorized') ? 401 : 500;
+    
     return new Response(
-      JSON.stringify({ error: error.message || 'An error occurred' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: clientMessage }),
+      { status: statusCode, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

@@ -256,15 +256,28 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in deploy-survey function:', error);
     
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    const statusCode = errorMessage.includes('Unauthorized') ? 401 
-      : errorMessage.includes('Forbidden') ? 403
-      : errorMessage.includes('not found') ? 404
-      : errorMessage.includes('required') || errorMessage.includes('No employees') || errorMessage.includes('must be') ? 400
-      : 500;
+    // Map internal errors to safe client messages
+    let clientMessage = 'An error occurred while deploying the survey';
+    let statusCode = 500;
+    
+    if (error instanceof Error) {
+      if (error.message.includes('Unauthorized') || error.message.includes('authorization')) {
+        clientMessage = 'Authentication required';
+        statusCode = 401;
+      } else if (error.message.includes('Forbidden') || error.message.includes('admin')) {
+        clientMessage = 'Insufficient permissions';
+        statusCode = 403;
+      } else if (error.message.includes('not found') || error.message.includes('Survey not')) {
+        clientMessage = 'Survey not found';
+        statusCode = 404;
+      } else if (error.message.includes('required') || error.message.includes('No employees') || error.message.includes('draft')) {
+        clientMessage = error.message; // These are already safe validation messages
+        statusCode = 400;
+      }
+    }
 
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: clientMessage }),
       {
         status: statusCode,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

@@ -38,6 +38,23 @@ const checkRateLimit = (userId: string): boolean => {
 };
 
 /**
+ * Sanitize user input to prevent injection attacks
+ */
+const sanitizeContent = (content: string): string => {
+  // Remove potential HTML/script tags
+  let sanitized = content.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  sanitized = sanitized.replace(/<[^>]*>/g, '');
+  
+  // Detect and reject excessive special characters (potential injection attempts)
+  const specialCharCount = (sanitized.match(/[<>{}[\]\\|`]/g) || []).length;
+  if (specialCharCount > 10) {
+    throw new Error("Message contains invalid characters");
+  }
+  
+  return sanitized.trim();
+};
+
+/**
  * Validate and sanitize user input
  */
 const validateInput = (conversationId: unknown, messages: unknown, lastContent: unknown) => {
@@ -53,6 +70,14 @@ const validateInput = (conversationId: unknown, messages: unknown, lastContent: 
   if (lastContent.length > MAX_MESSAGE_LENGTH) {
     throw new Error("Message too long");
   }
+  
+  // Sanitize content
+  const sanitized = sanitizeContent(lastContent);
+  if (sanitized.length === 0) {
+    throw new Error("Message cannot be empty after sanitization");
+  }
+  
+  return sanitized;
 };
 
 /**
@@ -246,8 +271,9 @@ serve(async (req) => {
     const isIntroductionTrigger = lastMessage.content === "[START_CONVERSATION]" && messages.length === 1;
     
     // Input validation (skip for introduction trigger)
+    let sanitizedContent = lastMessage.content;
     if (!isIntroductionTrigger) {
-      validateInput(conversationId, messages, lastMessage.content);
+      sanitizedContent = validateInput(conversationId, messages, lastMessage.content);
     }
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -396,24 +422,24 @@ serve(async (req) => {
       200
     );
 
-    // IMPORTANT: Don't save the [START_CONVERSATION] trigger to database
+      // IMPORTANT: Don't save the [START_CONVERSATION] trigger to database
     if (!isIntroductionTrigger) {
-      // Analyze sentiment
-      const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, lastMessage.content);
+      // Analyze sentiment (use sanitized content)
+      const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, sanitizedContent);
 
-      // Detect theme
-      const detectedThemeId = await detectTheme(LOVABLE_API_KEY, lastMessage.content, themes || []);
+      // Detect theme (use sanitized content)
+      const detectedThemeId = await detectTheme(LOVABLE_API_KEY, sanitizedContent, themes || []);
 
-      // Detect urgency
-      const isUrgent = await detectUrgency(LOVABLE_API_KEY, lastMessage.content);
+      // Detect urgency (use sanitized content)
+      const isUrgent = await detectUrgency(LOVABLE_API_KEY, sanitizedContent);
 
-      // Store response in database
+      // Store response in database (use sanitized content)
       const { data: insertedResponse, error: insertError } = await supabase
         .from("responses")
         .insert({
           conversation_session_id: conversationId,
           survey_id: session?.survey_id,
-          content: lastMessage.content,
+          content: sanitizedContent,
           ai_response: aiMessage,
           sentiment,
           sentiment_score: sentimentScore,

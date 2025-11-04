@@ -141,10 +141,27 @@ serve(async (req) => {
 
   } catch (error) {
     console.error('Error in invite-employee function:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Map errors to generic messages for client
+    let clientMessage = 'An error occurred while creating the invitation';
+    let statusCode = 500;
+    
+    if (error instanceof Error) {
+      if (error.message.includes('Unauthorized') || error.message.includes('Authentication')) {
+        clientMessage = 'Authentication failed';
+        statusCode = 401;
+      } else if (error.message.includes('Forbidden') || error.message.includes('admin')) {
+        clientMessage = 'Insufficient permissions';
+        statusCode = 403;
+      } else if (error.message.includes('required') || error.message.includes('Email')) {
+        clientMessage = 'Invalid request data';
+        statusCode = 400;
+      }
+    }
+    
     return new Response(
-      JSON.stringify({ error: errorMessage }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ error: clientMessage }),
+      { status: statusCode, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
