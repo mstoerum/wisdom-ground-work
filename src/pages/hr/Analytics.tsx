@@ -28,6 +28,8 @@ import { ActionableIntelligenceCenter } from "@/components/hr/analytics/Actionab
 import { ConversationQualityDashboard } from "@/components/hr/analytics/ConversationQualityDashboard";
 import { NLPInsights } from "@/components/hr/analytics/NLPInsights";
 import { CulturalPatterns } from "@/components/hr/analytics/CulturalPatterns";
+import { ExecutiveDashboard } from "@/components/hr/analytics/ExecutiveDashboard";
+import { ExportAuditLog } from "@/components/hr/analytics/ExportAuditLog";
 
 const Analytics = () => {
   const navigate = useNavigate();
@@ -352,76 +354,47 @@ const Analytics = () => {
               </Select>
             </div>
 
-            <Tabs defaultValue="quality" className="space-y-6">
-              <div className="overflow-x-auto">
-                <TabsList className="h-auto inline-flex flex-wrap gap-1 p-1 min-w-full md:min-w-0">
-                  <TabsTrigger value="quality" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                    <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Quality & Confidence</span>
-                    <span className="sm:hidden">Quality</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="overview" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                    <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4" />
-                    Overview
-                  </TabsTrigger>
-                  <TabsTrigger value="actionable" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                    <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Action Center</span>
-                    <span className="sm:hidden">Actions</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="insights" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                    <MessageSquare className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Insights Hub</span>
-                    <span className="sm:hidden">Insights</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="themes" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                    <BarChart2 className="h-3 w-3 sm:h-4 sm:w-4" />
-                    Themes
-                  </TabsTrigger>
-                  <TabsTrigger value="voices" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                    <Users className="h-3 w-3 sm:h-4 sm:w-4" />
-                    Voices
-                  </TabsTrigger>
-                  <TabsTrigger value="nlp" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                    <Brain className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden md:inline">NLP Insights</span>
-                    <span className="md:hidden">NLP</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="culture" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                    <Globe className="h-3 w-3 sm:h-4 sm:w-4" />
-                    Culture
-                  </TabsTrigger>
-                  <TabsTrigger value="patterns" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                    <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
-                    Patterns
-                  </TabsTrigger>
-                  <TabsTrigger value="sentiment" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                    <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4" />
-                    Sentiment
-                  </TabsTrigger>
-                  <TabsTrigger value="departments" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                    <Users className="h-3 w-3 sm:h-4 sm:w-4" />
-                    <span className="hidden sm:inline">Departments</span>
-                    <span className="sm:hidden">Depts</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="urgency" className="flex items-center gap-1.5 text-xs sm:text-sm">
-                    <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4" />
-                    Urgent
-                  </TabsTrigger>
-                </TabsList>
-              </div>
+            <Tabs defaultValue="dashboard" className="space-y-6">
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+                <TabsTrigger value="dashboard" className="flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Dashboard
+                </TabsTrigger>
+                <TabsTrigger value="actions" className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Actions & Insights
+                  {urgency?.filter(u => !u.resolved_at).length > 0 && (
+                    <Badge variant="destructive" className="ml-1">{urgency.filter(u => !u.resolved_at).length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="explore" className="flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  Explore Data
+                </TabsTrigger>
+                <TabsTrigger value="reports" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Reports
+                </TabsTrigger>
+              </TabsList>
 
-              {/* Conversation Quality & Confidence Tab - MOST IMPORTANT */}
-              <TabsContent value="quality" className="space-y-6">
-                <ConversationQualityDashboard
+              {/* Dashboard Tab */}
+              <TabsContent value="dashboard" className="space-y-6">
+                <ExecutiveDashboard
+                  participation={participation}
+                  sentiment={sentiment}
+                  themes={themes}
+                  urgency={urgency}
+                  quickWins={quickWins}
                   qualityMetrics={qualityMetrics}
-                  qualityInsights={qualityInsights}
-                  isLoading={isConversationLoading}
+                  onNavigateToActions={() => {
+                    const tabs = document.querySelector('[value="actions"]') as HTMLElement;
+                    tabs?.click();
+                  }}
                 />
               </TabsContent>
 
-              {/* Actionable Intelligence Center Tab */}
-              <TabsContent value="actionable" className="space-y-6">
+              {/* Actions & Insights Tab */}
+              <TabsContent value="actions" className="space-y-6">
                 <ActionableIntelligenceCenter
                   rootCauses={rootCauses}
                   interventions={interventions}
@@ -429,6 +402,39 @@ const Analytics = () => {
                   impactPredictions={impactPredictions}
                   isLoading={isConversationLoading}
                 />
+              </TabsContent>
+
+              {/* Explore Data Tab */}
+              <TabsContent value="explore" className="space-y-6">
+                <Tabs defaultValue="themes" className="space-y-4">
+                  <TabsList>
+                    <TabsTrigger value="themes">Themes</TabsTrigger>
+                    <TabsTrigger value="voices">Voices</TabsTrigger>
+                    <TabsTrigger value="quality">Quality</TabsTrigger>
+                    <TabsTrigger value="nlp">NLP</TabsTrigger>
+                    <TabsTrigger value="culture">Culture</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="themes">
+                    <EnhancedThemeAnalysis themes={enhancedThemes} isLoading={isConversationLoading} />
+                  </TabsContent>
+                  <TabsContent value="voices">
+                    <EmployeeVoiceGallery quotes={quotes} isLoading={isConversationLoading} />
+                  </TabsContent>
+                  <TabsContent value="quality">
+                    <ConversationQualityDashboard qualityMetrics={qualityMetrics} qualityInsights={qualityInsights} isLoading={isConversationLoading} />
+                  </TabsContent>
+                  <TabsContent value="nlp">
+                    <NLPInsights nlpAnalysis={nlpAnalysis} isLoading={isConversationLoading} />
+                  </TabsContent>
+                  <TabsContent value="culture">
+                    <CulturalPatterns culturalMap={culturalMap} isLoading={isConversationLoading} />
+                  </TabsContent>
+                </Tabs>
+              </TabsContent>
+
+              {/* Reports Tab */}
+              <TabsContent value="reports" className="space-y-6">
+                <ExportAuditLog />
               </TabsContent>
 
               {/* NLP Insights Tab */}

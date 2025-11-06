@@ -1,152 +1,175 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { 
   TrendingUp, 
   TrendingDown, 
-  AlertTriangle, 
-  CheckCircle, 
   Users, 
+  AlertTriangle,
   MessageSquare,
-  Target,
-  ArrowUp,
-  ArrowDown,
-  Minus
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  Zap,
+  ArrowRight
 } from "lucide-react";
-import { ParticipationMetrics, SentimentMetrics, ThemeInsight } from "@/hooks/useAnalytics";
+import { ThemePreviewCard } from "./ThemePreviewCard";
+import { ThemeDrillDownPanel } from "./ThemeDrillDownPanel";
+import { ConfidenceIndicator } from "./ConfidenceIndicator";
+import type { ParticipationMetrics, SentimentMetrics, ThemeInsight } from "@/hooks/useAnalytics";
+import type { QuickWin } from "@/lib/actionableIntelligence";
 
 interface ExecutiveDashboardProps {
-  participation: ParticipationMetrics | undefined;
-  sentiment: SentimentMetrics | undefined;
-  themes: ThemeInsight[];
-  urgency: any[];
-  previousPeriod?: {
-    participation: ParticipationMetrics;
-    sentiment: SentimentMetrics;
-    themes: ThemeInsight[];
+  participation?: ParticipationMetrics;
+  sentiment?: SentimentMetrics;
+  themes?: ThemeInsight[];
+  urgency?: any[];
+  quickWins?: QuickWin[];
+  onNavigateToActions?: () => void;
+  qualityMetrics?: {
+    average_confidence_score: number;
   };
 }
 
 interface TrafficLightStatus {
-  status: 'green' | 'yellow' | 'red';
+  status: 'good' | 'warning' | 'critical';
   label: string;
-  value: string | number;
+  value: number | string;
   change?: number;
-  changeType?: 'up' | 'down' | 'neutral';
+  unit?: string;
+  confidence?: 'high' | 'medium' | 'low';
+  sampleSize?: number;
 }
 
-export const ExecutiveDashboard = ({ 
-  participation, 
-  sentiment, 
-  themes, 
-  urgency,
-  previousPeriod 
-}: ExecutiveDashboardProps) => {
-  
-  // Calculate traffic light status for key metrics
+export function ExecutiveDashboard({
+  participation,
+  sentiment,
+  themes = [],
+  urgency = [],
+  quickWins = [],
+  onNavigateToActions,
+  qualityMetrics
+}: ExecutiveDashboardProps) {
+  const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
+
+  // Anonymization threshold check
+  const hasMinimumData = (participation?.completed || 0) >= 10;
+
+  // Get traffic light status for key metrics
   const getTrafficLightStatus = (): TrafficLightStatus[] => {
-    if (!participation || !sentiment) return [];
-
-    const completionRate = participation.completionRate;
-    const avgSentiment = sentiment.avgScore;
-    const urgentFlags = urgency.filter(u => !u.resolved_at).length;
-    const totalResponses = participation.completed;
-
+    const unresolvedUrgent = urgency.filter(u => !u.resolved_at).length;
+    
     return [
       {
-        status: completionRate >= 80 ? 'green' : completionRate >= 60 ? 'yellow' : 'red',
+        status: (participation?.completionRate || 0) >= 70 ? 'good' : 
+                (participation?.completionRate || 0) >= 50 ? 'warning' : 'critical',
         label: 'Participation Rate',
-        value: `${completionRate.toFixed(1)}%`,
-        change: previousPeriod ? completionRate - previousPeriod.participation.completionRate : undefined,
-        changeType: previousPeriod ? 
-          (completionRate > previousPeriod.participation.completionRate ? 'up' : 
-           completionRate < previousPeriod.participation.completionRate ? 'down' : 'neutral') : undefined
+        value: participation?.completionRate || 0,
+        change: 0, // Would need historical data
+        unit: '%',
+        confidence: (participation?.completed || 0) >= 50 ? 'high' : 
+                   (participation?.completed || 0) >= 20 ? 'medium' : 'low',
+        sampleSize: participation?.completed || 0
       },
       {
-        status: avgSentiment >= 70 ? 'green' : avgSentiment >= 50 ? 'yellow' : 'red',
+        status: (sentiment?.avgScore || 0) >= 60 ? 'good' : 
+                (sentiment?.avgScore || 0) >= 40 ? 'warning' : 'critical',
         label: 'Employee Sentiment',
-        value: avgSentiment.toFixed(1),
-        change: previousPeriod ? avgSentiment - previousPeriod.sentiment.avgScore : undefined,
-        changeType: previousPeriod ? 
-          (avgSentiment > previousPeriod.sentiment.avgScore ? 'up' : 
-           avgSentiment < previousPeriod.sentiment.avgScore ? 'down' : 'neutral') : undefined
+        value: `${Math.round(sentiment?.avgScore || 0)}`,
+        change: sentiment?.moodImprovement || 0,
+        unit: '/100',
+        confidence: (participation?.completed || 0) >= 30 ? 'high' : 
+                   (participation?.completed || 0) >= 15 ? 'medium' : 'low',
+        sampleSize: participation?.completed || 0
       },
       {
-        status: urgentFlags === 0 ? 'green' : urgentFlags <= 3 ? 'yellow' : 'red',
+        status: unresolvedUrgent === 0 ? 'good' : 
+                unresolvedUrgent <= 3 ? 'warning' : 'critical',
         label: 'Urgent Issues',
-        value: urgentFlags,
-        change: undefined
+        value: unresolvedUrgent,
+        confidence: 'high',
+        sampleSize: unresolvedUrgent
       },
       {
-        status: totalResponses >= 50 ? 'green' : totalResponses >= 20 ? 'yellow' : 'red',
+        status: (participation?.completed || 0) >= 20 ? 'good' : 
+                (participation?.completed || 0) >= 10 ? 'warning' : 'critical',
         label: 'Response Volume',
-        value: totalResponses,
-        change: undefined
+        value: participation?.completed || 0,
+        confidence: 'high',
+        sampleSize: participation?.completed || 0
       }
     ];
   };
 
-  // Get top 3 concerns and wins
-  const getTopConcerns = (): { theme: string; sentiment: number; urgent: number }[] => {
-    return themes
-      .filter(t => t.avgSentiment < 50 || t.urgencyCount > 0)
-      .sort((a, b) => (a.urgencyCount * 2 + (50 - a.avgSentiment)) - (b.urgencyCount * 2 + (50 - b.avgSentiment)))
-      .slice(0, 3)
-      .map(t => ({
-        theme: t.name,
-        sentiment: t.avgSentiment,
-        urgent: t.urgencyCount
-      }));
+  const getStatusColor = (status: 'good' | 'warning' | 'critical') => {
+    switch (status) {
+      case 'good': return 'text-green-600 dark:text-green-500';
+      case 'warning': return 'text-yellow-600 dark:text-yellow-500';
+      case 'critical': return 'text-red-600 dark:text-red-500';
+    }
   };
 
-  const getTopWins = (): { theme: string; sentiment: number; responses: number }[] => {
-    return themes
-      .filter(t => t.avgSentiment >= 70 && t.urgencyCount === 0)
-      .sort((a, b) => b.avgSentiment - a.avgSentiment)
-      .slice(0, 3)
-      .map(t => ({
-        theme: t.name,
-        sentiment: t.avgSentiment,
-        responses: t.responseCount
-      }));
+  const getStatusIcon = (status: 'good' | 'warning' | 'critical') => {
+    switch (status) {
+      case 'good': return <CheckCircle className="h-5 w-5" />;
+      case 'warning': return <AlertCircle className="h-5 w-5" />;
+      case 'critical': return <XCircle className="h-5 w-5" />;
+    }
   };
+
+  const getChangeIcon = (change: number) => {
+    if (change > 0) return <TrendingUp className="h-3 w-3" />;
+    if (change < 0) return <TrendingDown className="h-3 w-3" />;
+    return null;
+  };
+
+  // Get top 4 themes
+  const topThemes = themes
+    .sort((a, b) => b.responseCount - a.responseCount)
+    .slice(0, 4);
+
+  const topWins = quickWins
+    .filter(w => w.impact === 'high')
+    .slice(0, 3);
+
+  const urgentIssues = urgency
+    .filter(u => !u.resolved_at)
+    .slice(0, 3);
 
   const trafficLights = getTrafficLightStatus();
-  const topConcerns = getTopConcerns();
-  const topWins = getTopWins();
+  const selectedTheme = themes.find(t => t.id === selectedThemeId);
 
-  const getStatusColor = (status: 'green' | 'yellow' | 'red') => {
-    switch (status) {
-      case 'green': return 'bg-green-500';
-      case 'yellow': return 'bg-yellow-500';
-      case 'red': return 'bg-red-500';
-    }
-  };
-
-  const getStatusIcon = (status: 'green' | 'yellow' | 'red') => {
-    switch (status) {
-      case 'green': return <CheckCircle className="h-5 w-5 text-green-600" />;
-      case 'yellow': return <AlertTriangle className="h-5 w-5 text-yellow-600" />;
-      case 'red': return <AlertTriangle className="h-5 w-5 text-red-600" />;
-    }
-  };
-
-  const getChangeIcon = (changeType?: 'up' | 'down' | 'neutral') => {
-    switch (changeType) {
-      case 'up': return <ArrowUp className="h-4 w-4 text-green-600" />;
-      case 'down': return <ArrowDown className="h-4 w-4 text-red-600" />;
-      case 'neutral': return <Minus className="h-4 w-4 text-gray-600" />;
-      default: return null;
-    }
-  };
-
+  // Loading state
   if (!participation || !sentiment) {
     return (
-      <Card className="flex flex-col items-center justify-center p-12 text-center">
-        <Users className="h-12 w-12 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Loading Executive Dashboard</h3>
-        <p className="text-muted-foreground">Preparing your executive overview...</p>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <CardContent className="p-12 text-center">
+            <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+            <p className="text-muted-foreground">Loading dashboard...</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Anonymization message
+  if (!hasMinimumData) {
+    return (
+      <div className="space-y-6">
+        <Card className="border-yellow-200 dark:border-yellow-900 bg-yellow-50 dark:bg-yellow-950/20">
+          <CardContent className="p-8 text-center">
+            <AlertCircle className="h-12 w-12 text-yellow-600 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Insufficient Data</h3>
+            <p className="text-sm text-muted-foreground">
+              At least 10 responses are required to display analytics and protect employee anonymity.
+              <br />
+              Current responses: {participation.completed}
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
@@ -155,144 +178,163 @@ export const ExecutiveDashboard = ({
       {/* Traffic Light System */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            Executive Overview
-          </CardTitle>
+          <CardTitle className="text-xl">Executive Overview</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {trafficLights.map((light, index) => (
-              <div key={index} className="flex items-center space-x-3 p-4 rounded-lg border">
-                <div className={`w-3 h-3 rounded-full ${getStatusColor(light.status)}`} />
-                <div className="flex-1">
-                  <div className="text-sm font-medium text-muted-foreground">{light.label}</div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold">{light.value}</span>
-                    {light.change !== undefined && (
-                      <div className="flex items-center gap-1">
-                        {getChangeIcon(light.changeType)}
-                        <span className={`text-sm ${
-                          light.changeType === 'up' ? 'text-green-600' : 
-                          light.changeType === 'down' ? 'text-red-600' : 'text-gray-600'
-                        }`}>
-                          {Math.abs(light.change).toFixed(1)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+              <div 
+                key={index}
+                className="p-4 rounded-xl border bg-card transition-all hover:shadow-md"
+                role="status"
+                aria-label={`${light.label}: ${light.value}${light.unit || ''}`}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <span className={`font-medium ${getStatusColor(light.status)}`}>
+                    {getStatusIcon(light.status)}
+                  </span>
+                  <ConfidenceIndicator 
+                    level={light.confidence || 'medium'}
+                    sampleSize={light.sampleSize || 0}
+                  />
                 </div>
-                {getStatusIcon(light.status)}
+                
+                <div className="space-y-1">
+                  <p className="text-sm text-muted-foreground">{light.label}</p>
+                  <p className="text-3xl font-bold tabular-nums">
+                    {light.value}
+                    <span className="text-lg text-muted-foreground ml-1">{light.unit}</span>
+                  </p>
+                  
+                  {light.change !== undefined && light.change !== 0 && (
+                    <div className={`flex items-center gap-1 text-sm ${
+                      light.change > 0 ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {getChangeIcon(light.change)}
+                      <span>{Math.abs(light.change)} {light.change > 0 ? 'improvement' : 'decline'}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
         </CardContent>
       </Card>
 
-      {/* Top Concerns and Wins */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Top 3 Concerns */}
+      {/* Top 4 Themes Preview (Small Multiples) */}
+      {topThemes.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-600">
-              <AlertTriangle className="h-5 w-5" />
-              Top 3 Concerns
-            </CardTitle>
+            <CardTitle className="text-xl">Key Themes</CardTitle>
           </CardHeader>
           <CardContent>
-            {topConcerns.length === 0 ? (
-              <div className="text-center py-4">
-                <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">No major concerns identified</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {topConcerns.map((concern, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-red-50 border border-red-200">
-                    <div>
-                      <div className="font-medium text-red-900">{concern.theme}</div>
-                      <div className="text-sm text-red-700">
-                        Sentiment: {concern.sentiment.toFixed(1)} | 
-                        Urgent: {concern.urgent}
-                      </div>
-                    </div>
-                    <Button size="sm" variant="outline" className="text-red-600 border-red-300">
-                      Action
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {topThemes.map((theme) => (
+                <ThemePreviewCard
+                  key={theme.id}
+                  theme={theme}
+                  onClick={() => setSelectedThemeId(theme.id)}
+                  qualityMetrics={qualityMetrics}
+                />
+              ))}
+            </div>
           </CardContent>
         </Card>
+      )}
 
-        {/* Top 3 Wins */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-green-600">
-              <TrendingUp className="h-5 w-5" />
-              Top 3 Wins
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {topWins.length === 0 ? (
-              <div className="text-center py-4">
-                <MessageSquare className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">More data needed to identify wins</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {topWins.map((win, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-green-50 border border-green-200">
-                    <div>
-                      <div className="font-medium text-green-900">{win.theme}</div>
-                      <div className="text-sm text-green-700">
-                        Sentiment: {win.sentiment.toFixed(1)} | 
-                        Responses: {win.responses}
-                      </div>
-                    </div>
-                    <Badge variant="secondary" className="bg-green-100 text-green-800">
-                      Excellent
+      {/* Quick Wins & Urgent Issues */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Quick Wins Preview */}
+        {topWins.length > 0 && (
+          <Card className="border-green-200 dark:border-green-900">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-green-700 dark:text-green-400">
+                <Zap className="h-5 w-5" />
+                Quick Wins
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {topWins.map((win, index) => (
+                <div 
+                  key={index}
+                  className="p-3 rounded-lg border border-green-200 bg-green-50 dark:bg-green-950/20"
+                >
+                  <div className="flex items-start justify-between mb-1">
+                    <h4 className="font-semibold text-sm">{win.title}</h4>
+                    <Badge variant="outline" className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                      {win.implementation_time}
                     </Badge>
                   </div>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{win.description}</p>
+                </div>
+              ))}
+              
+              {quickWins.length > 3 && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="w-full mt-2"
+                  onClick={onNavigateToActions}
+                >
+                  View All {quickWins.length} Quick Wins
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Urgent Items Preview */}
+        {urgentIssues.length > 0 && (
+          <Card className="border-red-200 dark:border-red-900">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-red-700 dark:text-red-400">
+                <AlertTriangle className="h-5 w-5" />
+                Urgent Issues
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {urgentIssues.map((issue, index) => (
+                <div 
+                  key={index}
+                  className="p-3 rounded-lg border border-red-200 bg-red-50 dark:bg-red-950/20"
+                >
+                  <div className="flex items-start justify-between mb-1">
+                    <h4 className="font-semibold text-sm line-clamp-1">
+                      {issue.responses?.survey_themes?.name || 'Unknown Theme'}
+                    </h4>
+                    <Badge variant="destructive" className="text-xs">Critical</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground line-clamp-2">
+                    {issue.reason || 'Requires immediate attention'}
+                  </p>
+                </div>
+              ))}
+              
+              {urgency.filter(u => !u.resolved_at).length > 3 && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="w-full mt-2"
+                  onClick={onNavigateToActions}
+                >
+                  View All {urgency.filter(u => !u.resolved_at).length} Urgent Issues
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      {/* Action Commitment Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Target className="h-5 w-5" />
-            Action Commitment Status
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-3 gap-4">
-            <div className="text-center p-4 rounded-lg bg-blue-50 border border-blue-200">
-              <div className="text-2xl font-bold text-blue-600">
-                {urgency.filter(u => !u.resolved_at).length}
-              </div>
-              <div className="text-sm text-blue-700">Pending Actions</div>
-            </div>
-            <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
-              <div className="text-2xl font-bold text-green-600">
-                {urgency.filter(u => u.resolved_at).length}
-              </div>
-              <div className="text-sm text-green-700">Completed Actions</div>
-            </div>
-            <div className="text-center p-4 rounded-lg bg-gray-50 border border-gray-200">
-              <div className="text-2xl font-bold text-gray-600">
-                {themes.length}
-              </div>
-              <div className="text-sm text-gray-700">Active Themes</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Theme Drill-Down Panel */}
+      {selectedTheme && (
+        <ThemeDrillDownPanel
+          theme={selectedTheme}
+          open={selectedThemeId !== null}
+          onClose={() => setSelectedThemeId(null)}
+        />
+      )}
     </div>
   );
-};
+}
