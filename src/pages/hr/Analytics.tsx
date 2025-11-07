@@ -30,6 +30,7 @@ import { NLPInsights } from "@/components/hr/analytics/NLPInsights";
 import { CulturalPatterns } from "@/components/hr/analytics/CulturalPatterns";
 import { ExecutiveDashboard } from "@/components/hr/analytics/ExecutiveDashboard";
 import { ExportAuditLog } from "@/components/hr/analytics/ExportAuditLog";
+import { ReportsExportTab } from "@/components/hr/analytics/ReportsExportTab";
 
 const Analytics = () => {
   const navigate = useNavigate();
@@ -433,9 +434,12 @@ const Analytics = () => {
               </TabsContent>
 
               {/* Reports Tab */}
-              <TabsContent value="reports" className="space-y-6">
-                <ExportAuditLog />
-              </TabsContent>
+            <TabsContent value="reports" className="space-y-6">
+              <ReportsExportTab 
+                surveys={surveys} 
+                departments={Array.from(new Set(departmentData?.map(d => d.department) || []))}
+              />
+            </TabsContent>
 
               {/* NLP Insights Tab */}
               <TabsContent value="nlp" className="space-y-6">
