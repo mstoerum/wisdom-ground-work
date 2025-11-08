@@ -38,7 +38,7 @@ interface ExecutiveReportData {
   period: string;
 }
 
-export const exportExecutiveReport = async (data: ExecutiveReportData) => {
+export const exportExecutiveReport = async (data: ExecutiveReportData, returnPdf = false) => {
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -362,6 +362,9 @@ export const exportExecutiveReport = async (data: ExecutiveReportData) => {
     );
   }
 
-  // Save the PDF
+  // Save or return the PDF
+  if (returnPdf) {
+    return pdf;
+  }
   pdf.save(`spradley-executive-report-${data.generatedAt.getTime()}.pdf`);
 };

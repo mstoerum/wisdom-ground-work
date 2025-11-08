@@ -5,6 +5,7 @@ import { FileText, Settings } from "lucide-react";
 import { TemplateCard } from "./TemplateCard";
 import { CustomReportBuilder, ReportConfig } from "./CustomReportBuilder";
 import { ExportAuditLog } from "./ExportAuditLog";
+import { ReportPreview } from "./ReportPreview";
 import { REPORT_TEMPLATES } from "@/lib/reportTemplates";
 import { exportExecutiveReport } from "@/lib/exportExecutiveReport";
 import { exportDepartmentReview } from "@/lib/exportDepartmentReview";
@@ -13,6 +14,7 @@ import { exportComplianceReport } from "@/lib/exportComplianceReport";
 import { toast } from "sonner";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useConversationAnalytics } from "@/hooks/useConversationAnalytics";
+import jsPDF from "jspdf";
 
 interface ReportsExportTabProps {
   surveys?: Array<{ id: string; title: string }>;
@@ -21,6 +23,12 @@ interface ReportsExportTabProps {
 
 export function ReportsExportTab({ surveys = [], departments = [] }: ReportsExportTabProps) {
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewConfig, setPreviewConfig] = useState<{
+    generator: () => Promise<jsPDF>;
+    name: string;
+    onExport: () => void;
+  } | null>(null);
   const { participation, sentiment, themes, urgency } = useAnalytics({});
   const { quotes, rootCauses, interventions, quickWins } = useConversationAnalytics({});
 
@@ -30,10 +38,8 @@ export function ReportsExportTab({ surveys = [], departments = [] }: ReportsExpo
       return;
     }
 
-    toast.info("Generating Executive Summary...");
-    
-    try {
-      await exportExecutiveReport({
+    const generator = async () => {
+      const pdf = await exportExecutiveReport({
         surveyName: "All Surveys",
         participation,
         sentiment,
@@ -41,12 +47,35 @@ export function ReportsExportTab({ surveys = [], departments = [] }: ReportsExpo
         urgency: urgency || [],
         generatedAt: new Date(),
         period: "Last 30 Days"
-      });
-      toast.success("Executive Summary generated successfully!");
-    } catch (error) {
-      console.error("Report generation error:", error);
-      toast.error("Failed to generate report");
-    }
+      }, true);
+      return pdf!; // returnPdf=true guarantees a PDF is returned
+    };
+
+    const onExport = async () => {
+      toast.info("Generating Executive Summary...");
+      try {
+        await exportExecutiveReport({
+          surveyName: "All Surveys",
+          participation,
+          sentiment,
+          themes: themes || [],
+          urgency: urgency || [],
+          generatedAt: new Date(),
+          period: "Last 30 Days"
+        });
+        toast.success("Executive Summary generated successfully!");
+      } catch (error) {
+        console.error("Report generation error:", error);
+        toast.error("Failed to generate report");
+      }
+    };
+
+    setPreviewConfig({
+      generator,
+      name: "Executive Summary Report",
+      onExport
+    });
+    setPreviewOpen(true);
   };
 
   const handleGenerateDepartmentReview = async () => {
@@ -55,53 +84,66 @@ export function ReportsExportTab({ surveys = [], departments = [] }: ReportsExpo
       return;
     }
 
-    toast.info("Generating Department Review...");
-    
-    try {
-      // Sample department data
-      const topThemes = (themes || []).slice(0, 4).map(theme => ({
-        name: theme.name,
-        responseCount: theme.responseCount,
-        avgSentiment: theme.avgSentiment,
-        quotes: quotes?.slice(0, 3).map(q => q.text) || []
-      }));
+    const topThemes = (themes || []).slice(0, 4).map(theme => ({
+      name: theme.name,
+      responseCount: theme.responseCount,
+      avgSentiment: theme.avgSentiment,
+      quotes: quotes?.slice(0, 3).map(q => q.text) || []
+    }));
 
-      await exportDepartmentReview({
-        surveyName: "Employee Feedback Survey",
-        departmentName: "Engineering",
-        period: "Q1 2025",
-        generatedAt: new Date(),
-        participation: {
-          departmentRate: participation.completionRate,
-          orgAverage: 75,
-          completed: participation.completed,
-          total: participation.totalAssigned
-        },
-        sentiment: {
-          departmentScore: sentiment.avgScore,
-          orgAverage: 65,
-          positive: sentiment.positive,
-          neutral: sentiment.neutral,
-          negative: sentiment.negative,
-          trend: [62, 65, 67, 68, 70]
-        },
-        themes: topThemes,
-        rootCauses: rootCauses?.slice(0, 2).map(rc => ({
-          issue: rc.cause,
-          whys: rc.evidence || []
-        })) || [],
-        suggestedActions: (interventions || []).slice(0, 5).map(int => ({
-          action: int.title,
-          impact: 'high' as const,
-          effort: int.effort_level || 'medium' as const
-        }))
-      });
-      
-      toast.success("Department Review generated successfully!");
-    } catch (error) {
-      console.error("Report generation error:", error);
-      toast.error("Failed to generate report");
-    }
+    const departmentData = {
+      surveyName: "Employee Feedback Survey",
+      departmentName: "Engineering",
+      period: "Q1 2025",
+      generatedAt: new Date(),
+      participation: {
+        departmentRate: participation.completionRate,
+        orgAverage: 75,
+        completed: participation.completed,
+        total: participation.totalAssigned
+      },
+      sentiment: {
+        departmentScore: sentiment.avgScore,
+        orgAverage: 65,
+        positive: sentiment.positive,
+        neutral: sentiment.neutral,
+        negative: sentiment.negative,
+        trend: [62, 65, 67, 68, 70]
+      },
+      themes: topThemes,
+      rootCauses: rootCauses?.slice(0, 2).map(rc => ({
+        issue: rc.cause,
+        whys: rc.evidence || []
+      })) || [],
+      suggestedActions: (interventions || []).slice(0, 5).map(int => ({
+        action: int.title,
+        impact: 'high' as const,
+        effort: int.effort_level || 'medium' as const
+      }))
+    };
+
+    const generator = async () => {
+      const pdf = await exportDepartmentReview(departmentData, true);
+      return pdf!; // returnPdf=true guarantees a PDF is returned
+    };
+
+    const onExport = async () => {
+      toast.info("Generating Department Review...");
+      try {
+        await exportDepartmentReview(departmentData);
+        toast.success("Department Review generated successfully!");
+      } catch (error) {
+        console.error("Report generation error:", error);
+        toast.error("Failed to generate report");
+      }
+    };
+
+    setPreviewConfig({
+      generator,
+      name: "Department After-Action Review",
+      onExport
+    });
+    setPreviewOpen(true);
   };
 
   const handleGenerateManagerBriefing = async () => {
@@ -324,6 +366,20 @@ export function ReportsExportTab({ surveys = [], departments = [] }: ReportsExpo
         departments={departments}
         themes={themes?.map(t => ({ id: t.id, name: t.name }))}
       />
+
+      {/* Report Preview Modal */}
+      {previewConfig && (
+        <ReportPreview
+          open={previewOpen}
+          onClose={() => {
+            setPreviewOpen(false);
+            setPreviewConfig(null);
+          }}
+          onExport={previewConfig.onExport}
+          reportGenerator={previewConfig.generator}
+          reportName={previewConfig.name}
+        />
+      )}
     </div>
   );
 }

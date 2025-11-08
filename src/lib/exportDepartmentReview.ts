@@ -48,7 +48,7 @@ interface DepartmentReviewData {
   attendees?: string[];
 }
 
-export const exportDepartmentReview = async (data: DepartmentReviewData) => {
+export const exportDepartmentReview = async (data: DepartmentReviewData, returnPdf = false) => {
   const pdf = new jsPDF('p', 'mm', 'a4');
   const pageWidth = pdf.internal.pageSize.getWidth();
   const pageHeight = pdf.internal.pageSize.getHeight();
@@ -448,5 +448,9 @@ export const exportDepartmentReview = async (data: DepartmentReviewData) => {
     );
   }
 
+  // Save or return the PDF
+  if (returnPdf) {
+    return pdf;
+  }
   pdf.save(`department-review-${data.departmentName.toLowerCase().replace(/\s+/g, '-')}-${data.generatedAt.getTime()}.pdf`);
 };
