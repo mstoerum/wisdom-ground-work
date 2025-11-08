@@ -87,13 +87,13 @@ export function ReportsExportTab({ surveys = [], departments = [] }: ReportsExpo
         },
         themes: topThemes,
         rootCauses: rootCauses?.slice(0, 2).map(rc => ({
-          issue: rc.issue,
-          whys: rc.causes || []
+          issue: rc.cause,
+          whys: rc.evidence || []
         })) || [],
         suggestedActions: (interventions || []).slice(0, 5).map(int => ({
           action: int.title,
           impact: 'high' as const,
-          effort: int.effort || 'medium' as const
+          effort: int.effort_level || 'medium' as const
         }))
       });
       
