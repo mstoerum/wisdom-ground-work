@@ -931,9 +931,11 @@ async function ensureSurveyExists(surveyId: string): Promise<string> {
  * Insert mock conversations into the database
  */
 export async function insertMockConversations(
-  surveyId: string = 'demo-survey-001'
-): Promise<{ sessionsCreated: number, responsesCreated: number }> {
+  surveyId: string = 'demo-survey-001',
+  onProgress?: (message: string) => void
+): Promise<{ sessionsCreated: number, responsesCreated: number, assignmentsCreated: number }> {
   console.log('[insertMockConversations] Starting mock data generation for survey:', surveyId);
+  onProgress?.('Starting mock data generation...');
   
   // Get current user ID for RLS compliance (needed for conversation_sessions INSERT policy)
   const { data: { user }, error: userError } = await supabase.auth.getUser();
@@ -943,10 +945,12 @@ export async function insertMockConversations(
   }
   
   console.log('[insertMockConversations] User authenticated:', user.id);
+  onProgress?.('User authenticated ✓');
   
   // Ensure the survey exists first (this will also ensure user has HR admin role)
   const actualSurveyId = await ensureSurveyExists(surveyId);
   console.log('[insertMockConversations] Survey ensured, using ID:', actualSurveyId);
+  onProgress?.('Survey verified ✓');
   
   // Double-check the survey exists and is accessible before inserting sessions (with retry)
   let verifySurveyBeforeInsert = null;
@@ -984,8 +988,10 @@ export async function insertMockConversations(
   // Generate mock conversations with current user ID for RLS compliance
   // Note: anonymization_level is still 'anonymous' even though employee_id is set
   console.log('[insertMockConversations] Generating conversation data...');
+  onProgress?.('Generating conversation data...');
   const { sessions, responses } = await generateMockConversations(actualSurveyId, user.id);
   console.log('[insertMockConversations] Generated', sessions.length, 'sessions and', responses.length, 'responses');
+  onProgress?.(`Generated ${sessions.length} conversations with ${responses.length} responses ✓`);
   
   // Verify all sessions have the correct survey_id and employee_id
   const invalidSessions = sessions.filter(s => 
@@ -1002,7 +1008,33 @@ export async function insertMockConversations(
     throw new Error(`Invalid response data: ${invalidResponses.length} responses reference non-existent session IDs`);
   }
   
+  // Create survey assignments FIRST (one for each unique employee/session)
+  console.log('[insertMockConversations] Creating survey assignments...');
+  onProgress?.('Creating survey assignments...');
+  
+  const assignments = sessions.map((session) => ({
+    id: crypto.randomUUID(),
+    survey_id: actualSurveyId,
+    employee_id: session.employee_id,
+    assigned_at: session.started_at,
+    completed_at: session.ended_at,
+    status: 'completed' as const
+  }));
+  
+  const { error: assignmentsError } = await supabase
+    .from('survey_assignments')
+    .upsert(assignments, { onConflict: 'id' });
+  
+  if (assignmentsError) {
+    console.error('[insertMockConversations] Error inserting assignments:', assignmentsError);
+    throw new Error(`Failed to insert survey assignments: ${assignmentsError.message || assignmentsError.code}`);
+  }
+  
+  console.log('[insertMockConversations] Successfully inserted', assignments.length, 'assignments');
+  onProgress?.(`Created ${assignments.length} survey assignments ✓`);
+  
   // Insert sessions with retry logic for foreign key issues
+  onProgress?.('Creating conversation sessions...');
   let sessionsError = null;
   
   for (let attempt = 0; attempt < 3; attempt++) {
@@ -1058,8 +1090,10 @@ export async function insertMockConversations(
   }
   
   console.log('[insertMockConversations] Successfully inserted', sessions.length, 'sessions');
+  onProgress?.(`Created ${sessions.length} conversation sessions ✓`);
   
   // Insert responses in batches to avoid overwhelming the database
+  onProgress?.('Creating responses in batches...');
   const batchSize = 50;
   let responsesCreated = 0;
   
@@ -1116,10 +1150,13 @@ export async function insertMockConversations(
   }
   
   console.log('[insertMockConversations] Successfully inserted all responses:', responsesCreated);
-  console.log('[insertMockConversations] Final result - sessions:', sessions.length, 'responses:', responsesCreated);
+  console.log('[insertMockConversations] Final result - assignments:', assignments.length, 'sessions:', sessions.length, 'responses:', responsesCreated);
+  onProgress?.(`Created ${responsesCreated} responses ✓`);
+  onProgress?.('✅ Mock data generation complete!');
   
   return {
     sessionsCreated: sessions.length,
-    responsesCreated: responsesCreated
+    responsesCreated: responsesCreated,
+    assignmentsCreated: assignments.length
   };
 }

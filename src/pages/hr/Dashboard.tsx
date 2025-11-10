@@ -5,16 +5,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { SurveyList } from "@/components/hr/SurveyList";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PlusCircle, Users, TrendingUp, CheckSquare, AlertCircle, UserPlus } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { PlusCircle, Users, TrendingUp, CheckSquare, AlertCircle, UserPlus, Sparkles } from "lucide-react";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { OnboardingTour } from "@/components/hr/OnboardingTour";
 import { MetricCard } from "@/components/hr/analytics/MetricCard";
+import { useMemo } from "react";
 
 const HRDashboard = () => {
   const navigate = useNavigate();
   const { participation, urgency, isLoading } = useAnalytics();
+
+  // Demo survey ID
+  const DEMO_SURVEY_UUID = '00000000-0000-0000-0000-000000000001';
 
   const { data: activeSurveysCount = 0 } = useQuery({
     queryKey: ['active-surveys-count'],
@@ -41,6 +46,58 @@ const HRDashboard = () => {
       return count || 0;
     },
   });
+
+  // Fallback for demo: Check conversation_sessions if no assignments
+  const { data: demoSessionData } = useQuery({
+    queryKey: ['demo-session-fallback', DEMO_SURVEY_UUID],
+    queryFn: async () => {
+      // Only run for demo survey
+      const { data: surveys } = await supabase
+        .from('surveys')
+        .select('id')
+        .eq('id', DEMO_SURVEY_UUID)
+        .single();
+      
+      if (!surveys) return null;
+
+      // Check if we have assignments
+      const { count: assignmentCount } = await supabase
+        .from('survey_assignments')
+        .select('*', { count: 'exact', head: true })
+        .eq('survey_id', DEMO_SURVEY_UUID);
+
+      // If we have assignments, use normal analytics
+      if (assignmentCount && assignmentCount > 0) return null;
+
+      // Fallback: count sessions
+      const { count: sessionCount } = await supabase
+        .from('conversation_sessions')
+        .select('*', { count: 'exact', head: true })
+        .eq('survey_id', DEMO_SURVEY_UUID)
+        .eq('status', 'completed');
+
+      return {
+        completed: sessionCount || 0,
+        isDemoFallback: true
+      };
+    },
+    enabled: true,
+  });
+
+  // Compute final participation metrics
+  const finalParticipation = useMemo(() => {
+    if (demoSessionData?.isDemoFallback) {
+      return {
+        completed: demoSessionData.completed,
+        completionRate: 100, // Demo sessions are all completed
+        isDemoMode: true
+      };
+    }
+    return {
+      ...participation,
+      isDemoMode: false
+    };
+  }, [participation, demoSessionData]);
 
   return (
     <HRLayout>
@@ -79,6 +136,21 @@ const HRDashboard = () => {
           </Alert>
         )}
 
+        {/* Demo Mode Badge */}
+        {finalParticipation.isDemoMode && (
+          <Alert className="border-blue-300 bg-blue-50 dark:bg-blue-950/20">
+            <Sparkles className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-100">
+                  Demo Mode
+                </Badge>
+                <span className="text-sm">Using session data - Generate survey assignments for full analytics</span>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Stats Cards - Asymmetric Layout */}
         {isLoading ? (
           <div className="grid gap-6 md:grid-cols-4">
@@ -102,14 +174,14 @@ const HRDashboard = () => {
             
             <MetricCard
               title="Total Responses"
-              value={participation?.completed || 0}
+              value={finalParticipation?.completed || 0}
               icon={Users}
               description="Completed surveys"
             />
 
             <MetricCard
               title="Participation Rate"
-              value={participation?.completionRate || 0}
+              value={finalParticipation?.completionRate || 0}
               suffix="%"
               icon={CheckSquare}
               description="Average completion"

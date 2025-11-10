@@ -17,9 +17,10 @@ interface MockDataGeneratorProps {
 export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerated }: MockDataGeneratorProps) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
-  const [generatedStats, setGeneratedStats] = useState<{ sessionsCreated: number; responsesCreated: number } | null>(null);
-  const [totalGenerated, setTotalGenerated] = useState({ sessions: 0, responses: 0 });
+  const [generatedStats, setGeneratedStats] = useState<{ sessionsCreated: number; responsesCreated: number; assignmentsCreated: number } | null>(null);
+  const [totalGenerated, setTotalGenerated] = useState({ sessions: 0, responses: 0, assignments: 0 });
   const [error, setError] = useState<string | null>(null);
+  const [progressMessage, setProgressMessage] = useState<string>('');
   const { createDemoUser, isLoading: isCreatingDemoUser } = useDemoAuth();
   const queryClient = useQueryClient();
 
@@ -43,10 +44,16 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
           .select('*', { count: 'exact', head: true })
           .eq('survey_id', targetSurveyId);
 
+        const { count: assignmentCount } = await supabase
+          .from('survey_assignments')
+          .select('*', { count: 'exact', head: true })
+          .eq('survey_id', targetSurveyId);
+
         if (sessionCount && sessionCount > 0) {
           setTotalGenerated({
             sessions: sessionCount || 0,
-            responses: responseCount || 0
+            responses: responseCount || 0,
+            assignments: assignmentCount || 0
           });
         }
       } catch (error) {
@@ -118,9 +125,20 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
         throw new Error(`Failed to delete sessions: ${sessionsError.message}`);
       }
       
+      // Delete survey assignments
+      const { error: assignmentsError } = await supabase
+        .from('survey_assignments')
+        .delete()
+        .eq('survey_id', targetSurveyId);
+      
+      if (assignmentsError) {
+        throw new Error(`Failed to delete assignments: ${assignmentsError.message}`);
+      }
+      
       // Reset counters
-      setTotalGenerated({ sessions: 0, responses: 0 });
+      setTotalGenerated({ sessions: 0, responses: 0, assignments: 0 });
       setGeneratedStats(null);
+      setProgressMessage('');
       
       toast.success("All mock data cleared successfully!");
       
@@ -221,9 +239,11 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
       // Small delay to ensure deletions complete
       await new Promise(resolve => setTimeout(resolve, 300));
       
-      // Now generate fresh data
+      // Now generate fresh data with progress callback
       toast.info("Generating fresh mock data...");
-      const stats = await insertMockConversations(surveyId);
+      const stats = await insertMockConversations(surveyId, (message) => {
+        setProgressMessage(message);
+      });
       
       // Verify data was actually created
       const { count: newSessions } = await supabase
@@ -235,8 +255,15 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
         .from('responses')
         .select('*', { count: 'exact', head: true })
         .eq('survey_id', targetSurveyId);
+
+      const { count: newAssignments } = await supabase
+        .from('survey_assignments')
+        .select('*', { count: 'exact', head: true })
+        .eq('survey_id', targetSurveyId);
       
       console.log('✅ Generation verified:', { 
+        expectedAssignments: stats.assignmentsCreated,
+        actualAssignments: newAssignments,
         expectedSessions: stats.sessionsCreated, 
         actualSessions: newSessions,
         expectedResponses: stats.responsesCreated,
@@ -254,9 +281,10 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
       setGeneratedStats(stats);
       setTotalGenerated({
         sessions: newSessions || stats.sessionsCreated,
-        responses: newResponses || stats.responsesCreated
+        responses: newResponses || stats.responsesCreated,
+        assignments: newAssignments || stats.assignmentsCreated
       });
-      toast.success(`Successfully generated ${stats.sessionsCreated} conversations with ${stats.responsesCreated} responses!`);
+      toast.success(`Successfully generated ${stats.assignmentsCreated} assignments, ${stats.sessionsCreated} conversations, and ${stats.responsesCreated} responses!`);
       
       // Clear the success message after 5 seconds
       setTimeout(() => {
@@ -345,16 +373,26 @@ export function MockDataGenerator({ surveyId = 'demo-survey-001', onDataGenerate
           </div>
         )}
 
+        {progressMessage && isGenerating && (
+          <div className="p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+              <span className="text-sm text-blue-900 dark:text-blue-100">{progressMessage}</span>
+            </div>
+          </div>
+        )}
+
         {generatedStats && (
           <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <CheckCircle2 className="h-4 w-4 text-green-600" />
-              <span className="font-medium text-green-900 dark:text-green-100">Latest Generation Successful</span>
+              <span className="font-medium text-green-900 dark:text-green-100">✅ Data Verification Complete</span>
             </div>
             <div className="text-sm text-green-800 dark:text-green-200 space-y-1">
-              <p>? {generatedStats.sessionsCreated} conversation sessions created</p>
-              <p>? {generatedStats.responsesCreated} responses generated</p>
-              <p className="mt-2 text-xs">Watch the analytics below update in real-time with the new data!</p>
+              <p>✓ {generatedStats.assignmentsCreated} survey assignments created</p>
+              <p>✓ {generatedStats.sessionsCreated} conversation sessions created</p>
+              <p>✓ {generatedStats.responsesCreated} responses generated</p>
+              <p className="mt-2 text-xs font-medium">Analytics dashboard will now show real data with proper participation metrics!</p>
             </div>
           </div>
         )}
