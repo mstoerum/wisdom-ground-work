@@ -995,12 +995,12 @@ export async function insertMockConversations(
   console.log('[insertMockConversations] Generated', sessions.length, 'sessions and', responses.length, 'responses');
   onProgress?.(`Generated ${sessions.length} conversations with ${responses.length} responses ✓`);
   
-  // Verify all sessions have the correct survey_id and employee_id
+  // Verify all sessions have the correct survey_id and valid employee_id
   const invalidSessions = sessions.filter(s => 
-    s.survey_id !== actualSurveyId || s.employee_id !== user.id
+    s.survey_id !== actualSurveyId || !s.employee_id
   );
   if (invalidSessions.length > 0) {
-    throw new Error(`Invalid session data: ${invalidSessions.length} sessions have incorrect survey_id or employee_id`);
+    throw new Error(`Invalid session data: ${invalidSessions.length} sessions have incorrect survey_id or missing employee_id`);
   }
   
   // Verify all responses reference valid session IDs
