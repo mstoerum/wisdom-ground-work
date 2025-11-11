@@ -496,9 +496,10 @@ export async function generateMockConversations(
   const allResponses: MockResponse[] = [];
   let responseCounter = 0;
   
-  // Generate 45 conversations
+  // Generate 45 conversations with unique demo employee IDs to avoid assignment uniqueness conflicts
+  const fakeEmployeeIds = Array.from({ length: 45 }, () => crypto.randomUUID());
   for (let i = 1; i <= 45; i++) {
-    const session = generateSession(targetSurveyId, i, themeIds, employeeId);
+    const session = generateSession(targetSurveyId, i, themeIds, fakeEmployeeIds[i - 1]);
     sessions.push(session);
     
     const responses = generateResponses(session, targetSurveyId, themeIds, responseCounter);
@@ -989,7 +990,8 @@ export async function insertMockConversations(
   // Note: anonymization_level is still 'anonymous' even though employee_id is set
   console.log('[insertMockConversations] Generating conversation data...');
   onProgress?.('Generating conversation data...');
-  const { sessions, responses } = await generateMockConversations(actualSurveyId, user.id);
+  // Generate sessions for multiple employees (unique IDs) to avoid duplicate assignment conflicts
+  const { sessions, responses } = await generateMockConversations(actualSurveyId, null);
   console.log('[insertMockConversations] Generated', sessions.length, 'sessions and', responses.length, 'responses');
   onProgress?.(`Generated ${sessions.length} conversations with ${responses.length} responses ✓`);
   
@@ -1023,7 +1025,7 @@ export async function insertMockConversations(
   
   const { error: assignmentsError } = await supabase
     .from('survey_assignments')
-    .upsert(assignments, { onConflict: 'id' });
+    .upsert(assignments, { onConflict: 'survey_id,employee_id' });
   
   if (assignmentsError) {
     console.error('[insertMockConversations] Error inserting assignments:', assignmentsError);
