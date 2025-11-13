@@ -146,11 +146,15 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         console.log('Spradley is preparing introduction...');
         
         try {
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session && !isPreviewMode) {
-            console.error("No session for introduction");
-            setIsLoading(false);
-            return;
+          let session = null;
+          if (!isPreviewMode) {
+            const { data: { session: authSession } } = await supabase.auth.getSession();
+            session = authSession;
+            if (!session) {
+              console.error("No session for introduction");
+              setIsLoading(false);
+              return;
+            }
           }
 
           // Send a special trigger message to request introduction
@@ -323,10 +327,15 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     setIsLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error("Please sign in to continue");
+      let session = null;
+      if (!isPreviewMode) {
+        const { data: { session: authSession } } = await supabase.auth.getSession();
+        session = authSession;
+        if (!session) {
+          throw new Error("Please sign in to continue");
+        }
       }
+
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
@@ -334,7 +343,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
+            ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
           },
           body: JSON.stringify({
             conversationId,
