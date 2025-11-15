@@ -633,6 +633,7 @@ export type Database = {
           name: string
           sentiment_keywords: Json | null
           suggested_questions: Json | null
+          survey_type: Database["public"]["Enums"]["survey_type"]
         }
         Insert: {
           created_at?: string | null
@@ -642,6 +643,7 @@ export type Database = {
           name: string
           sentiment_keywords?: Json | null
           suggested_questions?: Json | null
+          survey_type?: Database["public"]["Enums"]["survey_type"]
         }
         Update: {
           created_at?: string | null
@@ -651,6 +653,7 @@ export type Database = {
           name?: string
           sentiment_keywords?: Json | null
           suggested_questions?: Json | null
+          survey_type?: Database["public"]["Enums"]["survey_type"]
         }
         Relationships: []
       }
@@ -706,6 +709,7 @@ export type Database = {
           id: string
           schedule: Json
           status: string | null
+          survey_type: Database["public"]["Enums"]["survey_type"]
           themes: Json
           title: string
           updated_at: string | null
@@ -720,6 +724,7 @@ export type Database = {
           id?: string
           schedule: Json
           status?: string | null
+          survey_type?: Database["public"]["Enums"]["survey_type"]
           themes: Json
           title: string
           updated_at?: string | null
@@ -734,6 +739,7 @@ export type Database = {
           id?: string
           schedule?: Json
           status?: string | null
+          survey_type?: Database["public"]["Enums"]["survey_type"]
           themes?: Json
           title?: string
           updated_at?: string | null
@@ -828,6 +834,7 @@ export type Database = {
     }
     Enums: {
       app_role: "employee" | "hr_admin" | "hr_analyst"
+      survey_type: "employee_satisfaction" | "course_evaluation"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -956,6 +963,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["employee", "hr_admin", "hr_analyst"],
+      survey_type: ["employee_satisfaction", "course_evaluation"],
     },
   },
 } as const
