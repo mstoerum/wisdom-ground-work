@@ -10,6 +10,7 @@ import { useSurveyDefaults } from "@/hooks/useSurveyDefaults";
 import { WizardProgress } from "@/components/hr/wizard/WizardProgress";
 import { WizardNavigation } from "@/components/hr/wizard/WizardNavigation";
 import { SurveyDetails } from "@/components/hr/wizard/SurveyDetails";
+import { SurveyTypeSelector } from "@/components/hr/wizard/SurveyTypeSelector";
 import { ThemeSelector } from "@/components/hr/wizard/ThemeSelector";
 import { EmployeeTargeting } from "@/components/hr/wizard/EmployeeTargeting";
 import { ScheduleSettings } from "@/components/hr/wizard/ScheduleSettings";
@@ -25,12 +26,13 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 
 const STEPS = [
-  { number: 1, title: "Details" },
-  { number: 2, title: "Themes" },
-  { number: 3, title: "Targeting" },
-  { number: 4, title: "Schedule" },
-  { number: 5, title: "Privacy" },
-  { number: 6, title: "Review & Deploy" },
+  { number: 1, title: "Type" },
+  { number: 2, title: "Details" },
+  { number: 3, title: "Themes" },
+  { number: 4, title: "Targeting" },
+  { number: 5, title: "Schedule" },
+  { number: 6, title: "Privacy" },
+  { number: 7, title: "Review & Deploy" },
 ];
 
 const CreateSurvey = () => {
@@ -200,10 +202,12 @@ const CreateSurvey = () => {
     
     switch (currentStep) {
       case 1:
-        return values.title && values.first_message;
+        return !!values.survey_type;
       case 2:
-        return values.themes.length > 0;
+        return values.title && values.first_message;
       case 3:
+        return values.themes.length > 0;
+      case 4:
         if (values.target_type === 'department') {
           return values.target_departments && values.target_departments.length > 0;
         }
@@ -211,12 +215,12 @@ const CreateSurvey = () => {
           return values.target_employees && values.target_employees.length > 0;
         }
         return true;
-      case 4:
+      case 5:
         if (values.schedule_type === 'scheduled') {
           return values.start_date !== null;
         }
         return true;
-      case 5:
+      case 6:
         return values.consent_message;
       default:
         return true;
@@ -229,22 +233,25 @@ const CreateSurvey = () => {
     
     switch (currentStep) {
       case 1:
-        fieldsToValidate = ['title', 'first_message'];
+        fieldsToValidate = ['survey_type'];
         break;
       case 2:
-        fieldsToValidate = ['themes'];
+        fieldsToValidate = ['title', 'first_message'];
         break;
       case 3:
-        fieldsToValidate = ['target_type', 'target_departments', 'target_employees'];
+        fieldsToValidate = ['themes'];
         break;
       case 4:
-        fieldsToValidate = ['schedule_type', 'start_date', 'end_date'];
+        fieldsToValidate = ['target_type', 'target_departments', 'target_employees'];
         break;
       case 5:
-        fieldsToValidate = ['consent_message', 'anonymization_level', 'data_retention_days'];
+        fieldsToValidate = ['schedule_type', 'start_date', 'end_date'];
         break;
       case 6:
-        // Step 6 doesn't have validation - it's the review step
+        fieldsToValidate = ['consent_message', 'anonymization_level', 'data_retention_days'];
+        break;
+      case 7:
+        // Step 7 doesn't have validation - it's the review step
         return;
     }
 
@@ -254,11 +261,11 @@ const CreateSurvey = () => {
       return;
     }
 
-    if (currentStep < 6) {
+    if (currentStep < 7) {
       setCurrentStep(currentStep + 1);
       await saveDraft(false);
-      // Update target count when moving to step 6
-      if (currentStep === 5) {
+      // Update target count when moving to step 7
+      if (currentStep === 6) {
         calculateTargetCount();
       }
     }
@@ -369,16 +376,18 @@ const CreateSurvey = () => {
   const renderStep = () => {
     switch (currentStep) {
       case 1:
-        return <SurveyDetails form={form} />;
+        return <SurveyTypeSelector form={form} />;
       case 2:
-        return <ThemeSelector form={form} />;
+        return <SurveyDetails form={form} />;
       case 3:
-        return <EmployeeTargeting form={form} />;
+        return <ThemeSelector form={form} />;
       case 4:
-        return <ScheduleSettings form={form} />;
+        return <EmployeeTargeting form={form} />;
       case 5:
-        return <ConsentSettings form={form} />;
+        return <ScheduleSettings form={form} />;
       case 6:
+        return <ConsentSettings form={form} />;
+      case 7:
         return (
           <ReviewAndDeployStep
             formData={form.getValues()}
@@ -408,10 +417,10 @@ const CreateSurvey = () => {
               <p className="text-muted-foreground mt-1">Design an AI-powered feedback conversation</p>
             </div>
           </div>
-          {currentStep < 6 && (
+          {currentStep < 7 && (
             <Button variant="outline" onClick={() => setShowPreview(true)}>
               <Eye className="h-4 w-4 mr-2" />
-              Preview as Employee
+              Preview as {form.watch("survey_type") === 'course_evaluation' ? 'Student' : 'Employee'}
             </Button>
           )}
         </div>
@@ -420,7 +429,7 @@ const CreateSurvey = () => {
 
         <Form {...form}>
           <form onSubmit={(e) => e.preventDefault()}>
-            {currentStep === 6 ? (
+            {currentStep === 7 ? (
               renderStep()
             ) : (
               <Card>
@@ -428,7 +437,7 @@ const CreateSurvey = () => {
                   {renderStep()}
                   <WizardNavigation
                     currentStep={currentStep}
-                    totalSteps={6}
+                    totalSteps={7}
                     onBack={handleBack}
                     onNext={handleNext}
                     onSaveDraft={() => saveDraft(true)}
