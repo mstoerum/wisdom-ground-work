@@ -13,6 +13,7 @@ import { useConversation } from "@/hooks/useConversation";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { PlayCircle } from "lucide-react";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 
@@ -321,8 +322,35 @@ export const EmployeeSurveyFlow = ({
               <p className="text-lg text-muted-foreground max-w-lg mx-auto leading-relaxed">
                 {isPreviewMode
                   ? "Preview complete! You've experienced the complete employee survey journey."
+                  : publicLinkId
+                  ? "Your feedback has been recorded. Thank you for participating!"
                   : "Your feedback has been recorded. Explore the tabs below to see how we're acting on employee feedback."}
               </p>
+              {publicLinkId && (
+                <div className="flex justify-center mt-8">
+                  <Button
+                    onClick={() => {
+                      // Clear any session data from localStorage
+                      if (conversationId) {
+                        localStorage.removeItem(`public_survey_session_${publicLinkId}`);
+                      }
+                      // Close the window/tab
+                      window.close();
+                      // If window.close() doesn't work (some browsers block it), show message
+                      setTimeout(() => {
+                        toast({
+                          title: "Survey Complete",
+                          description: "You can safely close this window now.",
+                        });
+                      }, 100);
+                    }}
+                    size="lg"
+                    className="bg-[hsl(var(--terracotta-primary))] hover:bg-[hsl(var(--terracotta-primary))]/90"
+                  >
+                    Close Window
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>

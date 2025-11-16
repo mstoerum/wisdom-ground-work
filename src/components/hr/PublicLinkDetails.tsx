@@ -117,8 +117,9 @@ export const PublicLinkDetails = ({ open, onOpenChange, linkData }: PublicLinkDe
             <p className="text-sm font-medium">How to share:</p>
             <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
               <li>Copy the link and share via email, Slack, or any communication channel</li>
-              <li>Recipients will be prompted to create an account before accessing the survey</li>
-              <li>New accounts are automatically assigned to this survey upon registration</li>
+              <li>Recipients can participate anonymously - no account or signup required</li>
+              <li>Each person who clicks the link gets their own unique response session</li>
+              <li>The same link can be shared with multiple people</li>
             </ul>
           </div>
         </div>

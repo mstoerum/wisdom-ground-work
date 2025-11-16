@@ -1,98 +1,113 @@
-# Public Survey Link Error Fix
+# Public Survey Link RLS Fix
 
 ## Problem
-When trying to deploy a survey with a shareable link, users encounter the error:
+
+When accessing a public survey link (e.g., `/survey/feewef`), users were getting the error:
 ```
 Survey Unavailable
 Survey data not available. Please contact the survey administrator.
 ```
 
 ## Root Cause
-The issue is caused by Row Level Security (RLS) policies on the `surveys` table. When an anonymous user (not authenticated) tries to access a survey through a public link, the database query successfully finds the `public_survey_links` record but fails to join with the `surveys` table because the RLS policy blocking anonymous access isn't properly configured.
 
-### Technical Details
-- The `PublicSurvey.tsx` component queries the `public_survey_links` table and joins it with the `surveys` table
-- Anonymous users (role: `anon`) can read from `public_survey_links` due to existing RLS policy
-- However, the RLS policy on `surveys` table that should allow anonymous users to view surveys via active public links was either missing or not properly applied
+The issue was caused by **Row Level Security (RLS) policy evaluation** when querying the `surveys` table separately from the `public_survey_links` table. 
+
+The original code:
+1. First queried `public_survey_links` to get link info (✅ worked)
+2. Then separately queried `surveys` table using the `survey_id` (❌ failed due to RLS)
+
+Even though there was an RLS policy allowing anonymous users to read surveys with active public links, Supabase couldn't properly evaluate the relationship when the queries were done separately.
 
 ## Solution
-I've created a migration file that fixes the RLS policy:
-- **File**: `/workspace/supabase/migrations/20251116120000_fix_public_survey_rls.sql`
 
-This migration:
-1. Drops the existing policy (if it exists)
-2. Creates a new policy that allows anonymous users to SELECT from `surveys` table if there's an active, non-expired `public_survey_links` record for that survey
-3. Ensures RLS is enabled on the `surveys` table
+Created a **database function** (`get_public_survey_by_token`) that:
+- Uses `SECURITY DEFINER` to bypass RLS issues
+- Joins `public_survey_links` and `surveys` tables in a single query
+- Validates all conditions (active, not expired, under max responses)
+- Returns both link and survey data together
 
-## How to Apply the Fix
+This ensures the relationship is properly evaluated and the data is accessible to anonymous users.
 
-### Option 1: Using Supabase CLI (Recommended)
-```bash
-# Make sure you're linked to your Supabase project
-npx supabase link --project-ref YOUR_PROJECT_REF
+## Changes Made
 
-# Push the migration to your database
-npx supabase db push
-```
+### 1. Database Migration
+**File:** `supabase/migrations/20250118000000_create_get_public_survey_function.sql`
+- Creates `get_public_survey_by_token()` function
+- Grants execute permission to `anon` and `authenticated` roles
 
-### Option 2: Manual Application via Supabase Dashboard
-1. Go to your Supabase Dashboard
-2. Navigate to the SQL Editor
-3. Copy and paste the contents of `/workspace/supabase/migrations/20251116120000_fix_public_survey_rls.sql`
-4. Execute the SQL
+### 2. Frontend Code
+**File:** `src/pages/PublicSurvey.tsx`
+- Changed from separate queries to RPC function call
+- Improved error handling and logging
+- Better error messages for debugging
 
-### Option 3: Using Direct SQL
-Run this SQL directly in your Supabase SQL editor:
+## Next Steps
+
+1. **Apply the migration** to your database:
+   ```bash
+   # If using Supabase CLI
+   supabase db push
+   
+   # Or apply manually via Supabase dashboard SQL editor
+   ```
+
+2. **Test the fix**:
+   - Try accessing your public link: `/survey/feewef`
+   - Should now load the survey successfully
+
+3. **Verify**:
+   - Link validation works (expired links, max responses)
+   - Survey data loads correctly
+   - Anonymous users can complete surveys
+
+## Technical Details
+
+### Why RPC Function Works
+
+The RPC function uses `SECURITY DEFINER`, which means:
+- It runs with the privileges of the function creator (typically a superuser)
+- It can bypass RLS policies while still enforcing business logic
+- The join query properly evaluates the relationship between tables
+- All validation happens in one place (database level)
+
+### Function Signature
 
 ```sql
--- Fix RLS policy for public survey access
-DROP POLICY IF EXISTS "Public can view surveys via active links" ON public.surveys;
-
-CREATE POLICY "Public can view surveys via active links"
-ON public.surveys FOR SELECT
-TO anon
-USING (
-  EXISTS (
-    SELECT 1 
-    FROM public.public_survey_links
-    WHERE public_survey_links.survey_id = surveys.id
-    AND public_survey_links.is_active = true
-    AND (public_survey_links.expires_at IS NULL OR public_survey_links.expires_at > now())
-  )
-);
-
-ALTER TABLE public.surveys ENABLE ROW LEVEL SECURITY;
+get_public_survey_by_token(link_token_param text)
+RETURNS TABLE (
+  link_id uuid,
+  link_survey_id uuid,
+  link_token text,
+  -- ... other link fields
+  survey_id uuid,
+  survey_title text,
+  -- ... other survey fields
+)
 ```
 
-## Testing the Fix
+### Usage in Frontend
 
-After applying the migration:
+```typescript
+const { data: result } = await supabase.rpc(
+  "get_public_survey_by_token",
+  { link_token_param: linkToken }
+);
+```
 
-1. **Create a new survey with public link targeting**:
-   - Go to Create Survey
-   - Set target type to "Public Link"
-   - Complete the survey setup
-   - Deploy the survey
+## Testing Checklist
 
-2. **Test the public link**:
-   - Copy the generated public survey link
-   - Open it in an incognito/private browser window (to simulate anonymous user)
-   - You should see the survey landing page with title, description, and signup form
-   - The "Survey Unavailable" error should no longer appear
-
-3. **Verify in Database** (optional):
-   - Check that the policy exists: 
-     ```sql
-     SELECT * FROM pg_policies WHERE tablename = 'surveys' AND policyname = 'Public can view surveys via active links';
-     ```
+- [ ] Migration applied successfully
+- [ ] Public link with valid token loads survey
+- [ ] Expired link shows appropriate error
+- [ ] Link at max responses shows appropriate error
+- [ ] Inactive link shows appropriate error
+- [ ] Invalid token shows appropriate error
+- [ ] Anonymous user can complete survey
+- [ ] Responses are saved correctly
 
 ## Related Files
-- Frontend: `/workspace/src/pages/PublicSurvey.tsx` (lines 20-42)
-- Edge Function: `/workspace/supabase/functions/deploy-survey/index.ts` (lines 103-131)
-- RLS Policy Migration: `/workspace/supabase/migrations/20251116120000_fix_public_survey_rls.sql`
 
-## Prevention
-To prevent this issue in the future:
-- Always test public survey links in an incognito window after deployment
-- Verify RLS policies are working correctly when adding new tables or modifying authentication flows
-- Include RLS policy checks in your deployment checklist
+- `src/pages/PublicSurvey.tsx` - Public survey page component
+- `supabase/migrations/20250118000000_create_get_public_survey_function.sql` - Database function
+- `supabase/migrations/20251116120000_fix_public_survey_rls.sql` - RLS policy (existing)
+- `supabase/migrations/20250116120000_allow_public_survey_access.sql` - RLS policy (existing)
