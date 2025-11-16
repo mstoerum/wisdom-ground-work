@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
+import { getSystemPromptForSurveyType, buildConversationContextForType, type SurveyType } from "./context-prompts.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -282,7 +283,7 @@ serve(async (req) => {
     // Check if this is a preview mode conversation
     const isPreviewMode = testMode || conversationId.startsWith("preview-");
     
-    if (isPreviewMode) {
+     if (isPreviewMode) {
       // Handle preview mode without database access
       const turnCount = messages.filter((m: any) => m.role === "user").length;
       const shouldComplete = turnCount >= CONVERSATION_COMPLETE_THRESHOLD;
@@ -292,6 +293,8 @@ serve(async (req) => {
 
       // Fetch theme details if provided (for preview mode)
       let themes: any[] = [];
+      let surveyType: SurveyType = "employee_satisfaction";
+      
       if (requestThemeIds && requestThemeIds.length > 0) {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -299,15 +302,19 @@ serve(async (req) => {
         
         const { data } = await supabase
           .from("survey_themes")
-          .select("id, name, description")
+          .select("id, name, description, survey_type")
           .in("id", requestThemeIds);
         
         themes = data || [];
+        // Detect survey type from themes
+        if (themes.length > 0) {
+          surveyType = themes[0].survey_type || "employee_satisfaction";
+        }
       }
 
-      // Build conversation context with themes for preview
-      const conversationContext = buildConversationContext([], themes);
-      const systemPrompt = getSystemPrompt(conversationContext, isFirstMessage);
+      // Build context-aware prompt based on survey type
+      const conversationContext = buildConversationContextForType(surveyType, [], themes);
+      const systemPrompt = getSystemPromptForSurveyType(surveyType, themes, conversationContext);
 
       // Filter out the [START_CONVERSATION] trigger from messages sent to AI
       const filteredMessages = isIntroductionTrigger 

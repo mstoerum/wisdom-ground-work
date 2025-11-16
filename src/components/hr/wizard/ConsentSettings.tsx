@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Shield, AlertCircle, HelpCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { useContextualTerms } from "@/lib/contextualTerminology";
 
 interface ConsentSettingsProps {
   form: UseFormReturn<SurveyFormData>;
@@ -16,13 +17,15 @@ interface ConsentSettingsProps {
 
 export const ConsentSettings = ({ form }: ConsentSettingsProps) => {
   const anonymizationLevel = form.watch("anonymization_level");
+  const surveyType = form.watch("survey_type");
+  const terms = useContextualTerms(surveyType);
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold">Consent & Privacy</h2>
         <p className="text-muted-foreground mt-1">
-          Configure privacy settings and employee consent requirements
+          {terms.consentDescription}
         </p>
       </div>
 
@@ -33,7 +36,7 @@ export const ConsentSettings = ({ form }: ConsentSettingsProps) => {
             <div>
               <p className="text-sm font-medium">Privacy-First Design</p>
               <p className="text-sm text-muted-foreground">
-                All surveys require explicit employee consent. Data is encrypted and handled according to GDPR standards.
+                {terms.privacyMessage}
               </p>
             </div>
           </div>
@@ -46,14 +49,14 @@ export const ConsentSettings = ({ form }: ConsentSettingsProps) => {
         render={({ field }) => (
           <FormItem className="space-y-4">
             <div className="flex items-center gap-2">
-              <FormLabel>Response Anonymization *</FormLabel>
+              <FormLabel>{terms.responseLabel} *</FormLabel>
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
-                    <p>Fully anonymous surveys don't store any employee identifiers, protecting complete confidentiality. Identified surveys allow follow-up on urgent issues but link responses to employee profiles.</p>
+                    <p>Fully anonymous surveys don't store any {terms.participant} identifiers, protecting complete confidentiality. Identified surveys allow follow-up on urgent issues but link responses to {terms.participant} profiles.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -71,7 +74,7 @@ export const ConsentSettings = ({ form }: ConsentSettingsProps) => {
                       Identified (Default)
                     </Label>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Responses are linked to employee profiles. Allows for personalized follow-up and demographic analysis.
+                      {terms.identifiedDescription}
                     </p>
                   </div>
                 </div>
@@ -82,7 +85,7 @@ export const ConsentSettings = ({ form }: ConsentSettingsProps) => {
                       Anonymous
                     </Label>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Responses use anonymous tokens. No way to trace back to individual employees. Use for sensitive topics.
+                      {terms.anonymousDescription}
                     </p>
                   </div>
                 </div>
