@@ -23,6 +23,7 @@ interface EmployeeSurveyFlowProps {
   onComplete?: () => void;
   onExit?: () => void;
   quickPreview?: boolean;
+  publicLinkId?: string;
 }
 
 /**
@@ -35,18 +36,20 @@ export const EmployeeSurveyFlow = ({
   onComplete,
   onExit,
   quickPreview = false,
+  publicLinkId,
 }: EmployeeSurveyFlowProps) => {
   const { isPreviewMode } = usePreviewMode();
   const [step, setStep] = useState<ConversationStep>("consent");
   const [mood, setMood] = useState(50);
-  const { conversationId, startConversation, endConversation } = useConversation();
+  const { conversationId, startConversation, endConversation } = useConversation(publicLinkId);
   const { toast } = useToast();
 
   const handleConsent = async () => {
     if (!isPreviewMode && surveyId && surveyDetails) {
-      // Log consent to consent_history table (skip in preview mode)
+      // Log consent to consent_history table (skip in preview mode and for anonymous public links)
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        // Only log consent for authenticated users
         await supabase.from("consent_history").insert({
           user_id: user.id,
           survey_id: surveyId,
@@ -54,6 +57,7 @@ export const EmployeeSurveyFlow = ({
           data_retention_days: surveyDetails?.consent_config?.data_retention_days || 60,
         });
       }
+      // For anonymous public link users, consent is recorded in the conversation session
     }
 
     setStep("anonymization");
@@ -62,7 +66,7 @@ export const EmployeeSurveyFlow = ({
   const handleAnonymizationComplete = async () => {
     if (quickPreview) {
       // In quick preview mode, skip mood dial and go directly to chat
-      const sessionId = await startConversation(surveyId, 50);
+      const sessionId = await startConversation(surveyId, 50, publicLinkId);
       if (sessionId) {
         setStep("chat");
       }
@@ -87,7 +91,7 @@ export const EmployeeSurveyFlow = ({
     setMood(selectedMood);
     if (!surveyId) return;
 
-    const sessionId = await startConversation(surveyId, selectedMood);
+    const sessionId = await startConversation(surveyId, selectedMood, publicLinkId);
     if (sessionId) {
       setStep("chat");
     }
