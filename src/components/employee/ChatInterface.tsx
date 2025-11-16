@@ -153,15 +153,21 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         try {
           // In preview mode, ensure we have survey data
           if (isPreviewMode && !previewSurveyData) {
-            console.warn("Preview mode but no survey data available");
+            console.warn("Preview mode but no survey data available - using fallback");
             // Fallback to default message
+            const fallbackMessage = "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.";
             setMessages([{
               role: "assistant",
-              content: "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.",
+              content: fallbackMessage,
               timestamp: new Date()
             }]);
             setIsLoading(false);
             return;
+          }
+          
+          // Additional safety check for preview mode data
+          if (isPreviewMode && previewSurveyData && !previewSurveyData.first_message) {
+            console.warn("Preview mode: first_message is missing, using default");
           }
           
           let session = null;
