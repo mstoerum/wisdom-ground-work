@@ -143,13 +143,27 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
       // 1. Chat is empty (no messages)
       // 2. Trust flow is complete (in chat phase)
       // 3. Not already loading
-      if (messages.length === 0 && trustFlowStep === "chat" && !isLoading) {
+      // 4. Conversation ID exists
+      if (messages.length === 0 && trustFlowStep === "chat" && !isLoading && conversationId) {
         setIsLoading(true);
         
         // Show loading state immediately
         console.log('Spradley is preparing introduction...');
         
         try {
+          // In preview mode, ensure we have survey data
+          if (isPreviewMode && !previewSurveyData) {
+            console.warn("Preview mode but no survey data available");
+            // Fallback to default message
+            setMessages([{
+              role: "assistant",
+              content: "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.",
+              timestamp: new Date()
+            }]);
+            setIsLoading(false);
+            return;
+          }
+          
           let session = null;
           if (!isPreviewMode) {
             const { data: { session: authSession } } = await supabase.auth.getSession();
@@ -162,6 +176,18 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           }
 
           // Send a special trigger message to request introduction
+          const requestBody: any = {
+            conversationId,
+            messages: [{ role: "user", content: "[START_CONVERSATION]" }],
+            testMode: isPreviewMode,
+          };
+
+          // Add preview-specific data
+          if (isPreviewMode && previewSurveyData) {
+            requestBody.themes = previewSurveyData.themes || undefined;
+            requestBody.firstMessage = previewSurveyData.first_message || undefined;
+          }
+
           const response = await fetch(
             `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
             {
@@ -170,20 +196,26 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
                 "Content-Type": "application/json",
                 ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
               },
-              body: JSON.stringify({
-                conversationId,
-                messages: [{ role: "user", content: "[START_CONVERSATION]" }],
-                testMode: isPreviewMode,
-                themes: isPreviewMode ? previewSurveyData?.themes : undefined,
-              }),
+              body: JSON.stringify(requestBody),
             }
           );
 
           if (!response.ok) {
-            throw new Error("Failed to get introduction");
+            const errorText = await response.text().catch(() => "Unknown error");
+            console.error("Chat API error:", response.status, errorText);
+            throw new Error(`Failed to get introduction: ${response.status} ${errorText}`);
           }
 
-          const { message: aiResponse } = await response.json();
+          const responseData = await response.json().catch((err) => {
+            console.error("Failed to parse response:", err);
+            throw new Error("Invalid response from server");
+          });
+
+          if (!responseData || !responseData.message) {
+            throw new Error("Invalid response format from server");
+          }
+
+          const { message: aiResponse } = responseData;
           
           // Add only the AI introduction to messages (not the trigger)
           const introMessage: Message = {
@@ -194,14 +226,29 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           
           setMessages([introMessage]);
           soundEffects.playSuccess();
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error getting AI introduction:", error);
           // Fallback to a default greeting if AI fails
-          setMessages([{
-            role: "assistant",
-            content: "Hi! I'm Spradley, your AI guide. How can I help you today?",
-            timestamp: new Date()
-          }]);
+          // Use first_message from preview data if available, otherwise use default
+          const fallbackMessage = isPreviewMode && previewSurveyData?.first_message 
+            ? previewSurveyData.first_message
+            : "Hi! I'm Spradley, your AI guide. How can I help you today?";
+          
+          try {
+            setMessages([{
+              role: "assistant",
+              content: fallbackMessage,
+              timestamp: new Date()
+            }]);
+          } catch (setStateError) {
+            console.error("Error setting fallback message:", setStateError);
+            // If even setting state fails, show error to user
+            toast({
+              title: "Connection Error",
+              description: "Unable to start conversation. Please try again.",
+              variant: "destructive",
+            });
+          }
         } finally {
           setIsLoading(false);
         }
@@ -209,7 +256,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     };
 
     triggerIntroduction();
-  }, [messages.length, trustFlowStep, isLoading, conversationId, isPreviewMode, previewSurveyData]);
+  }, [messages.length, trustFlowStep, isLoading, conversationId, isPreviewMode, previewSurveyData, toast]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {

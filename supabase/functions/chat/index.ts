@@ -363,7 +363,7 @@ serve(async (req) => {
   }
 
   try {
-    const { conversationId, messages, testMode, themes: requestThemeIds, finishEarly, themeCoverage, isFinalResponse } = await req.json();
+    const { conversationId, messages, testMode, themes: requestThemeIds, finishEarly, themeCoverage, isFinalResponse, firstMessage } = await req.json();
     
     // Get authorization header (optional for preview/demo mode)
     const authHeader = req.headers.get("authorization");
@@ -484,7 +484,20 @@ Be warm and appreciative. Keep it brief.`;
 
       // Build context-aware prompt based on survey type
       const conversationContext = buildConversationContextForType(surveyType, [], themes);
-      const systemPrompt = getSystemPromptForSurveyType(surveyType, themes, conversationContext);
+      let systemPrompt = getSystemPromptForSurveyType(surveyType, themes, conversationContext);
+      
+      // If firstMessage is provided and this is an introduction, use it as the initial message
+      // Otherwise, let the AI generate the introduction based on the system prompt
+      if (isIntroductionTrigger && firstMessage) {
+        // Use the provided first message directly
+        return new Response(
+          JSON.stringify({ 
+            message: firstMessage,
+            shouldComplete: false
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
       // Filter out the [START_CONVERSATION] trigger from messages sent to AI
       const filteredMessages = isIntroductionTrigger 
