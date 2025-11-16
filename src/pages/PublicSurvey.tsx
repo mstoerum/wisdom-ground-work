@@ -36,6 +36,11 @@ export default function PublicSurvey() {
       if (linkError) throw new Error("Invalid or inactive survey link");
       if (!linkInfo) throw new Error("Survey link not found");
 
+      // Check if survey data was retrieved (RLS might block it)
+      if (!linkInfo.survey) {
+        throw new Error("Survey data not available. Please contact the survey administrator.");
+      }
+
       // Check expiration
       if (linkInfo.expires_at && new Date(linkInfo.expires_at) < new Date()) {
         throw new Error("This survey link has expired");
