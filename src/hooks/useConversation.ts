@@ -24,9 +24,11 @@ export const useConversation = (publicLinkId?: string) => {
     try {
       // In preview mode, generate a mock conversation ID without DB operations
       if (isPreviewMode) {
+        console.log('Starting preview conversation with ID:', surveyId);
         const mockId = `preview-${surveyId}-${Date.now()}`;
         setConversationId(mockId);
         setIsActive(true);
+        console.log('Preview conversation started:', mockId);
         return mockId;
       }
 
@@ -121,9 +123,22 @@ export const useConversation = (publicLinkId?: string) => {
       return session.id;
     } catch (error) {
       console.error("Failed to start conversation:", error);
+      
+      // Provide more specific error messages
+      let errorMessage = "Failed to start conversation. Please try again.";
+      if (error instanceof Error) {
+        if (error.message.includes("Not authenticated")) {
+          errorMessage = "Authentication required. Please sign in and try again.";
+        } else if (error.message.includes("RLS")) {
+          errorMessage = "Permission denied. Please contact your administrator.";
+        } else {
+          errorMessage = `Error: ${error.message}`;
+        }
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to start conversation. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
       return null;

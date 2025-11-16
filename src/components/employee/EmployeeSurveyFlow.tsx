@@ -69,9 +69,25 @@ export const EmployeeSurveyFlow = ({
   const handleAnonymizationComplete = async () => {
     if (quickPreview) {
       // In quick preview mode, skip mode selection and mood dial, go directly to chat
-      const sessionId = await startConversation(surveyId, 50, publicLinkId);
-      if (sessionId) {
-        setStep("chat");
+      try {
+        const sessionId = await startConversation(surveyId, 50, publicLinkId);
+        if (sessionId) {
+          setStep("chat");
+        } else {
+          // If session creation failed, show error
+          toast({
+            title: "Preview Error",
+            description: "Failed to start preview conversation. Please try again.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Error starting preview conversation:", error);
+        toast({
+          title: "Preview Error",
+          description: "An error occurred while starting the preview. Please try again.",
+          variant: "destructive",
+        });
       }
     } else {
       // Show mode selector
@@ -98,16 +114,38 @@ export const EmployeeSurveyFlow = ({
 
   const handleMoodSelect = async (selectedMood: number) => {
     setMood(selectedMood);
-    if (!surveyId) return;
+    if (!surveyId) {
+      toast({
+        title: "Error",
+        description: "Survey ID is missing. Please try reloading.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const sessionId = await startConversation(surveyId, selectedMood, publicLinkId);
-    if (sessionId) {
-      // Go to the appropriate interface based on selected mode
-      if (selectedMode === 'voice') {
-        setStep("voice");
+    try {
+      const sessionId = await startConversation(surveyId, selectedMood, publicLinkId);
+      if (sessionId) {
+        // Go to the appropriate interface based on selected mode
+        if (selectedMode === 'voice') {
+          setStep("voice");
+        } else {
+          setStep("chat");
+        }
       } else {
-        setStep("chat");
+        toast({
+          title: "Error",
+          description: "Failed to start conversation. Please try again.",
+          variant: "destructive",
+        });
       }
+    } catch (error) {
+      console.error("Error starting conversation:", error);
+      toast({
+        title: "Error",
+        description: "An error occurred while starting the conversation.",
+        variant: "destructive",
+      });
     }
   };
 
