@@ -2,12 +2,14 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { MoodDial } from "@/components/employee/MoodDial";
 import { ChatInterface } from "@/components/employee/ChatInterface";
+import { VoiceInterface } from "@/components/employee/VoiceInterface";
 import { AnonymizationBanner } from "@/components/employee/AnonymizationBanner";
 import { AnonymizationRitual } from "@/components/employee/AnonymizationRitual";
 import { ConsentModal } from "@/components/employee/ConsentModal";
 import { ClosingRitual } from "@/components/employee/ClosingRitual";
 import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
 import { SpradleyEvaluation } from "@/components/employee/SpradleyEvaluation";
+import { SurveyModeSelector } from "@/components/hr/wizard/SurveyModeSelector";
 import { useConversation } from "@/hooks/useConversation";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -15,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { PlayCircle } from "lucide-react";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 
-type ConversationStep = "consent" | "anonymization" | "mood" | "chat" | "closing" | "evaluation" | "complete";
+type ConversationStep = "consent" | "anonymization" | "mode-select" | "mood" | "chat" | "voice" | "closing" | "evaluation" | "complete";
 
 interface EmployeeSurveyFlowProps {
   surveyId: string;
@@ -41,6 +43,7 @@ export const EmployeeSurveyFlow = ({
   const { isPreviewMode } = usePreviewMode();
   const [step, setStep] = useState<ConversationStep>("consent");
   const [mood, setMood] = useState(50);
+  const [selectedMode, setSelectedMode] = useState<'text' | 'voice' | null>(null);
   const { conversationId, startConversation, endConversation } = useConversation(publicLinkId);
   const { toast } = useToast();
 
@@ -65,14 +68,36 @@ export const EmployeeSurveyFlow = ({
 
   const handleAnonymizationComplete = async () => {
     if (quickPreview) {
-      // In quick preview mode, skip mood dial and go directly to chat
-      const sessionId = await startConversation(surveyId, 50, publicLinkId);
-      if (sessionId) {
-        setStep("chat");
+      // In quick preview mode, skip mode selection and mood dial, go directly to chat
+      try {
+        const sessionId = await startConversation(surveyId, 50, publicLinkId);
+        if (sessionId) {
+          setStep("chat");
+        } else {
+          // If session creation failed, show error
+          toast({
+            title: "Preview Error",
+            description: "Failed to start preview conversation. Please try again.",
+            variant: "destructive",
+          });
+        }
+      } catch (error) {
+        console.error("Error starting preview conversation:", error);
+        toast({
+          title: "Preview Error",
+          description: "An error occurred while starting the preview. Please try again.",
+          variant: "destructive",
+        });
       }
     } else {
-      setStep("mood");
+      // Show mode selector
+      setStep("mode-select");
     }
+  };
+
+  const handleModeSelect = (mode: 'text' | 'voice') => {
+    setSelectedMode(mode);
+    setStep("mood");
   };
 
   const handleDecline = async () => {
@@ -89,11 +114,38 @@ export const EmployeeSurveyFlow = ({
 
   const handleMoodSelect = async (selectedMood: number) => {
     setMood(selectedMood);
-    if (!surveyId) return;
+    if (!surveyId) {
+      toast({
+        title: "Error",
+        description: "Survey ID is missing. Please try reloading.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    const sessionId = await startConversation(surveyId, selectedMood, publicLinkId);
-    if (sessionId) {
-      setStep("chat");
+    try {
+      const sessionId = await startConversation(surveyId, selectedMood, publicLinkId);
+      if (sessionId) {
+        // Go to the appropriate interface based on selected mode
+        if (selectedMode === 'voice') {
+          setStep("voice");
+        } else {
+          setStep("chat");
+        }
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to start conversation. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error starting conversation:", error);
+      toast({
+        title: "Error",
+        description: "An error occurred while starting the conversation.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -216,6 +268,14 @@ export const EmployeeSurveyFlow = ({
             />
           )}
 
+          {step === "mode-select" && (
+            <SurveyModeSelector
+              onSelectMode={handleModeSelect}
+              surveyTitle={surveyDetails?.title || "Employee Feedback Survey"}
+              firstMessage={surveyDetails?.first_message}
+            />
+          )}
+
           {step === "mood" && (
             <MoodDial onMoodSelect={handleMoodSelect} />
           )}
@@ -228,6 +288,16 @@ export const EmployeeSurveyFlow = ({
                 onSaveAndExit={handleSaveAndExit}
                 showTrustFlow={true}
                 skipTrustFlow={quickPreview}
+              />
+            </ChatErrorBoundary>
+          )}
+
+          {step === "voice" && conversationId && (
+            <ChatErrorBoundary conversationId={conversationId} onExit={handleSaveAndExit}>
+              <VoiceInterface
+                conversationId={conversationId}
+                onSwitchToText={() => setStep("chat")}
+                onComplete={handleChatComplete}
               />
             </ChatErrorBoundary>
           )}

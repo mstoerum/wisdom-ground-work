@@ -472,14 +472,14 @@ const CreateSurvey = () => {
           open={showPreview}
           onOpenChange={setShowPreview}
           surveyData={{
-            title: form.watch("title"),
-            first_message: form.watch("first_message"),
-            themes: form.watch("themes"),
+            title: form.watch("title") || "Untitled Survey",
+            first_message: form.watch("first_message") || "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.",
+            themes: form.watch("themes") || [],
             consent_config: {
-              anonymization_level: form.watch("anonymization_level"),
-              data_retention_days: Number(form.watch("data_retention_days")),
-              consent_message: form.watch("consent_message"),
-              enable_spradley_evaluation: form.watch("enable_spradley_evaluation"),
+              anonymization_level: form.watch("anonymization_level") || "anonymous",
+              data_retention_days: Number(form.watch("data_retention_days")) || 60,
+              consent_message: form.watch("consent_message") || "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.",
+              enable_spradley_evaluation: form.watch("enable_spradley_evaluation") ?? false,
             },
           }}
         />

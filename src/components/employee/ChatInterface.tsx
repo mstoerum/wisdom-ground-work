@@ -183,7 +183,10 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
 
           // Validate conversationId exists
           if (!conversationId) {
-            throw new Error("Conversation ID is missing. Please try refreshing the preview.");
+            const errorMsg = isPreviewMode 
+              ? "Conversation ID is missing. Please try refreshing the preview."
+              : "Conversation ID is missing. Please try reloading the page.";
+            throw new Error(errorMsg);
           }
 
           // Send a special trigger message to request introduction
@@ -395,9 +398,108 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     }
   };
 
+  // Handle final response and complete
+  const handleFinalResponse = useCallback(async (finalInput: string) => {
+    if (!finalInput.trim()) {
+      // No final response, just complete
+      setFinishEarlyStep("completing");
+      setTimeout(() => {
+        onComplete();
+      }, 1000);
+      return;
+    }
+
+    // Validate conversationId before proceeding
+    if (!conversationId) {
+      toast({
+        title: "Error",
+        description: "Conversation session is invalid. Please try reloading.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Prevent multiple simultaneous operations
+    if (isLoading) {
+      console.warn("Operation already in progress, skipping final response");
+      return;
+    }
+
+    // Send final response
+    setIsLoading(true);
+    try {
+      let authSession = null;
+      if (!isPreviewMode) {
+        const { data: { session } } = await supabase.auth.getSession();
+        authSession = session;
+      }
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(authSession ? { Authorization: `Bearer ${authSession.access_token}` } : {}),
+          },
+          body: JSON.stringify({
+            conversationId,
+            messages: [
+              ...messages.map(m => ({ role: m.role, content: m.content })),
+              { role: "user", content: finalInput },
+            ],
+            isFinalResponse: true,
+            testMode: isPreviewMode,
+            themes: isPreviewMode ? previewSurveyData?.themes : undefined,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to send final response");
+      }
+
+      const data = await response.json();
+      const aiResponse = data?.message || "Thank you for your response.";
+      
+      setMessages(prev => [...prev,
+        { role: "user", content: finalInput, timestamp: new Date() },
+        { role: "assistant", content: aiResponse, timestamp: new Date() },
+      ]);
+
+      setFinishEarlyStep("completing");
+      setTimeout(() => {
+        onComplete();
+      }, 2000);
+    } catch (error) {
+      console.error("Error sending final response:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send response. Completing survey anyway.",
+        variant: "destructive",
+      });
+      setFinishEarlyStep("completing");
+      setTimeout(() => {
+        onComplete();
+      }, 1000);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [conversationId, messages, isPreviewMode, previewSurveyData, toast, onComplete, isLoading]);
+
   // Send message to AI
   const sendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
+
+    // Validate conversationId before proceeding
+    if (!conversationId) {
+      toast({
+        title: "Error",
+        description: "Conversation session is invalid. Please try reloading.",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Check if this is a final response (finish early flow)
     if (finishEarlyStep === "final-question") {
@@ -455,6 +557,11 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
       
       if (data.error) {
         throw new Error(data.error);
+      }
+      
+      // Validate response has message content
+      if (!data || !data.message) {
+        throw new Error("Invalid response from server - no message content");
       }
       
       const assistantMessage: Message = {
@@ -565,11 +672,31 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
 
   // Handle finish early confirmation
   const handleConfirmFinishEarly = useCallback(async () => {
+    // Validate conversationId before proceeding
+    if (!conversationId) {
+      toast({
+        title: "Error",
+        description: "Conversation session is invalid. Cannot finish early.",
+        variant: "destructive",
+      });
+      setFinishEarlyStep("none");
+      return;
+    }
+
+    // Prevent multiple simultaneous operations
+    if (isLoading) {
+      console.warn("Operation already in progress, skipping finish early");
+      return;
+    }
+
     setFinishEarlyStep("summarizing");
     
     try {
-      // Get conversation summary and final question from backend
-      const { data: { session: authSession } } = await supabase.auth.getSession();
+      let authSession = null;
+      if (!isPreviewMode) {
+        const { data: { session } } = await supabase.auth.getSession();
+        authSession = session;
+      }
       
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
@@ -594,7 +721,15 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         throw new Error("Failed to get summary");
       }
 
-      const { message: summaryMessage, finalQuestion } = await response.json();
+      const responseData = await response.json();
+      
+      // Validate response structure
+      if (!responseData) {
+        throw new Error("Empty response from server");
+      }
+      
+      const summaryMessage = responseData.message || "Thank you for your responses so far.";
+      const finalQuestion = responseData.finalQuestion;
       
       // Add summary message
       setMessages(prev => [...prev, {
@@ -633,75 +768,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
       });
       setFinishEarlyStep("none");
     }
-  }, [conversationId, messages, themeCoverage, isPreviewMode, previewSurveyData, toast]);
-
-  // Handle final response and complete
-  const handleFinalResponse = useCallback(async (finalInput: string) => {
-    if (!finalInput.trim()) {
-      // No final response, just complete
-      setFinishEarlyStep("completing");
-      setTimeout(() => {
-        onComplete();
-      }, 1000);
-      return;
-    }
-
-    // Send final response
-    setIsLoading(true);
-    try {
-      const { data: { session: authSession } } = await supabase.auth.getSession();
-      
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(authSession ? { Authorization: `Bearer ${authSession.access_token}` } : {}),
-          },
-          body: JSON.stringify({
-            conversationId,
-            messages: [
-              ...messages.map(m => ({ role: m.role, content: m.content })),
-              { role: "user", content: finalInput },
-            ],
-            isFinalResponse: true,
-            testMode: isPreviewMode,
-            themes: isPreviewMode ? previewSurveyData?.themes : undefined,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to send final response");
-      }
-
-      const { message: aiResponse } = await response.json();
-      
-      setMessages(prev => [...prev,
-        { role: "user", content: finalInput, timestamp: new Date() },
-        { role: "assistant", content: aiResponse, timestamp: new Date() },
-      ]);
-
-      setFinishEarlyStep("completing");
-      setTimeout(() => {
-        onComplete();
-      }, 2000);
-    } catch (error) {
-      console.error("Error sending final response:", error);
-      toast({
-        title: "Error",
-        description: "Failed to send response. Completing survey anyway.",
-        variant: "destructive",
-      });
-      setFinishEarlyStep("completing");
-      setTimeout(() => {
-        onComplete();
-      }, 1000);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [conversationId, messages, isPreviewMode, previewSurveyData, toast, onComplete]);
+  }, [conversationId, messages, themeCoverage, isPreviewMode, previewSurveyData, toast, isLoading]);
 
   // Calculate conversation progress
   const userMessageCount = messages.filter(m => m.role === "user").length;
