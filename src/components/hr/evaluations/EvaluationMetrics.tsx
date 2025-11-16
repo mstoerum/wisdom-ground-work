@@ -11,15 +11,15 @@ const COLORS = ['#10b981', '#f59e0b', '#ef4444'];
 export const EvaluationMetrics = ({ evaluations }: EvaluationMetricsProps) => {
   // Calculate detailed metrics
   const metrics = useMemo(() => {
-    const durationData = evaluations.reduce((acc, eval) => {
-      const duration = Math.floor((eval.duration_seconds || 0) / 10) * 10; // Round to nearest 10s
+    const durationData = evaluations.reduce((acc, evaluation) => {
+      const duration = Math.floor((evaluation.duration_seconds || 0) / 10) * 10; // Round to nearest 10s
       if (!acc[duration]) acc[duration] = 0;
       acc[duration]++;
       return acc;
     }, {} as Record<number, number>);
 
-    const questionData = evaluations.reduce((acc, eval) => {
-      const insights = eval.key_insights as any;
+    const questionData = evaluations.reduce((acc, evaluation) => {
+      const insights = evaluation.key_insights as any;
       const questions = insights?.total_questions || 0;
       if (!acc[questions]) acc[questions] = 0;
       acc[questions]++;
