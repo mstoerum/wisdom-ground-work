@@ -106,19 +106,13 @@ export const CompleteEmployeeExperiencePreview = ({
   const validateSurveyData = (data: any): string | null => {
     if (!data) return "Survey data is missing";
     
-    // Check for required fields
-    if (!data.first_message || data.first_message.trim() === '') {
-      return "Survey first message is required. Please fill in the survey details before previewing.";
-    }
-    
+    // For preview mode, we're more lenient - we'll use defaults if fields are empty
+    // Only validate that the consent_config object exists
     if (!data.consent_config) {
       return "Consent configuration is missing. Please complete the privacy settings before previewing.";
     }
     
-    if (!data.consent_config.consent_message || data.consent_config.consent_message.trim() === '') {
-      return "Consent message is required. Please fill in the privacy settings before previewing.";
-    }
-    
+    // Allow empty fields - they'll be filled with defaults below
     // Themes are optional but warn if empty
     if (!data.themes || data.themes.length === 0) {
       // This is a warning, not an error - preview can work without themes
@@ -157,31 +151,27 @@ export const CompleteEmployeeExperiencePreview = ({
         return;
       }
     } else {
-      // Validate the actual user input first (before applying defaults)
-      const validationError = validateSurveyData({
-        first_message: surveyData.first_message,
-        consent_config: surveyData.consent_config,
-        themes: surveyData.themes,
-      });
+      // Construct data with defaults first
+      const constructedData = {
+        id: "preview-survey",
+        title: surveyData.title || "Untitled Survey",
+        first_message: surveyData.first_message || "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.",
+        themes: surveyData.themes || [],
+        consent_config: {
+          anonymization_level: surveyData.consent_config?.anonymization_level || "anonymous",
+          data_retention_days: surveyData.consent_config?.data_retention_days || 60,
+          consent_message: surveyData.consent_config?.consent_message || "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.",
+          enable_spradley_evaluation: surveyData.consent_config?.enable_spradley_evaluation || false,
+        },
+      };
+      
+      // Validate the constructed data with defaults
+      const validationError = validateSurveyData(constructedData);
       
       if (validationError) {
         setError(validationError);
         setLoadedSurveyData(null);
       } else {
-        // Only construct data with defaults if validation passes
-        const constructedData = {
-          id: "preview-survey",
-          title: surveyData.title || "Untitled Survey",
-          first_message: surveyData.first_message || "Hello! Thank you for taking the time to share your feedback with us.",
-          themes: surveyData.themes || [],
-          consent_config: {
-            anonymization_level: surveyData.consent_config?.anonymization_level || "anonymous",
-            data_retention_days: surveyData.consent_config?.data_retention_days || 60,
-            consent_message: surveyData.consent_config?.consent_message || "Your responses will be kept confidential and used to improve our workplace.",
-            enable_spradley_evaluation: surveyData.consent_config?.enable_spradley_evaluation || false,
-          },
-        };
-        
         setError(null);
         setLoadedSurveyData(constructedData);
       }

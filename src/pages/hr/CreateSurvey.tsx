@@ -479,6 +479,7 @@ const CreateSurvey = () => {
               anonymization_level: form.watch("anonymization_level"),
               data_retention_days: Number(form.watch("data_retention_days")),
               consent_message: form.watch("consent_message"),
+              enable_spradley_evaluation: form.watch("enable_spradley_evaluation"),
             },
           }}
         />
