@@ -41,7 +41,6 @@ export const EmployeeSurveyFlow = ({
 }: EmployeeSurveyFlowProps) => {
   const { isPreviewMode } = usePreviewMode();
   const [step, setStep] = useState<ConversationStep>("consent");
-  const [mood, setMood] = useState(50);
   const [selectedMode, setSelectedMode] = useState<'text' | 'voice' | null>(null);
   const { conversationId, startConversation, endConversation } = useConversation(publicLinkId);
   const { toast } = useToast();
@@ -67,9 +66,9 @@ export const EmployeeSurveyFlow = ({
 
   const handleAnonymizationComplete = async () => {
     if (quickPreview) {
-      // In quick preview mode, skip mode selection and mood dial, go directly to chat
+      // In quick preview mode, skip mode selection, go directly to chat
       try {
-        const sessionId = await startConversation(surveyId, 50, publicLinkId);
+        const sessionId = await startConversation(surveyId, null, publicLinkId);
         if (sessionId) {
           setStep("chat");
         } else {
@@ -94,12 +93,8 @@ export const EmployeeSurveyFlow = ({
     }
   };
 
-  const handleModeSelect = async (mode: 'text' | 'voice', initialMood?: number) => {
+  const handleModeSelect = async (mode: 'text' | 'voice') => {
     setSelectedMode(mode);
-    
-    // Use provided mood or default to 50
-    const moodToUse = initialMood ?? 50;
-    setMood(moodToUse);
     
     if (!surveyId) {
       toast({
@@ -111,7 +106,8 @@ export const EmployeeSurveyFlow = ({
     }
 
     try {
-      const sessionId = await startConversation(surveyId, moodToUse, publicLinkId);
+      // Start conversation without mood (pass null or undefined)
+      const sessionId = await startConversation(surveyId, null, publicLinkId);
       if (sessionId) {
         // Go to the appropriate interface based on selected mode
         if (mode === 'voice') {
@@ -153,9 +149,9 @@ export const EmployeeSurveyFlow = ({
     setStep("closing");
   };
 
-  const handleSurveyComplete = async (finalMood: number) => {
+  const handleSurveyComplete = async () => {
     if (!isPreviewMode) {
-      await endConversation(finalMood);
+      await endConversation(null);
     } else {
       // In preview mode, just reset conversation state
       if (conversationId) {
@@ -300,7 +296,6 @@ export const EmployeeSurveyFlow = ({
 
           {step === "closing" && conversationId && (
             <ClosingRitual
-              initialMood={mood}
               conversationId={conversationId}
               onComplete={handleSurveyComplete}
             />

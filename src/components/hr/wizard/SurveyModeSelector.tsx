@@ -2,8 +2,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquare, Mic, Clock, Zap, Edit3, Volume2, Info } from "lucide-react";
-import { Slider } from "@/components/ui/slider";
-import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +12,7 @@ import {
 } from "@/components/ui/dialog";
 
 interface SurveyModeSelectorProps {
-  onSelectMode: (mode: 'text' | 'voice', mood?: number) => void;
+  onSelectMode: (mode: 'text' | 'voice') => void;
   surveyTitle: string;
   firstMessage?: string;
 }
@@ -31,84 +29,11 @@ interface SurveyModeSelectorProps {
  * - Feedback: Immediate response on selection
  * - Constraints: Can only pick one (good constraint)
  */
-const moodLabels = [
-  { value: 0, label: "Struggling", emoji: "😔" },
-  { value: 25, label: "Concerned", emoji: "😟" },
-  { value: 50, label: "Neutral", emoji: "😐" },
-  { value: 75, label: "Good", emoji: "🙂" },
-  { value: 100, label: "Thriving", emoji: "😊" }
-];
-
 export const SurveyModeSelector = ({
   onSelectMode,
   surveyTitle,
   firstMessage,
 }: SurveyModeSelectorProps) => {
-  const [mood, setMood] = useState([50]);
-  const [showMoodCollection, setShowMoodCollection] = useState(false);
-  const [selectedMode, setSelectedMode] = useState<'text' | 'voice' | null>(null);
-
-  const currentMood = moodLabels.reduce((prev, curr) => 
-    Math.abs(curr.value - mood[0]) < Math.abs(prev.value - mood[0]) ? curr : prev
-  );
-
-  const handleModeClick = (mode: 'text' | 'voice') => {
-    setSelectedMode(mode);
-    setShowMoodCollection(true);
-  };
-
-  const handleMoodContinue = () => {
-    if (selectedMode) {
-      onSelectMode(selectedMode, mood[0]);
-    }
-  };
-
-  if (showMoodCollection) {
-    return (
-      <div className="min-h-[600px] flex items-center justify-center p-8 bg-gradient-to-br from-background to-muted/20">
-        <Card className="w-full max-w-md p-8 bg-gradient-to-br from-card to-card/50 border-border/50">
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-semibold mb-2">How are you feeling about work right now?</h2>
-            <p className="text-muted-foreground">This helps us understand your starting point</p>
-          </div>
-
-          <div className="flex flex-col items-center gap-8">
-            <div className="text-6xl animate-scale-in">{currentMood.emoji}</div>
-            <div className="text-xl font-medium text-foreground">{currentMood.label}</div>
-            
-            <div className="w-full max-w-md px-4">
-              <Slider
-                value={mood}
-                onValueChange={setMood}
-                max={100}
-                step={1}
-                className="cursor-pointer"
-              />
-            </div>
-            
-            <div className="flex justify-between w-full max-w-md px-4 text-xs text-muted-foreground">
-              <span>Struggling</span>
-              <span>Thriving</span>
-            </div>
-
-            <div className="flex gap-3 w-full mt-4">
-              <Button 
-                onClick={() => setShowMoodCollection(false)} 
-                variant="outline" 
-                className="flex-1"
-              >
-                Back
-              </Button>
-              <Button onClick={handleMoodContinue} className="flex-1">
-                Continue
-              </Button>
-            </div>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-[600px] flex items-center justify-center p-8 bg-gradient-to-br from-background to-muted/20">
       <div className="w-full max-w-5xl space-y-8">
@@ -128,13 +53,13 @@ export const SurveyModeSelector = ({
           <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
             <Card 
               className="h-full hover:border-primary/50 transition-all cursor-pointer group relative"
-              onClick={() => handleModeClick('text')}
+              onClick={() => onSelectMode('text')}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  handleModeClick('text');
+                  onSelectMode('text');
                 }
               }}
               aria-label="Select text conversation mode"
@@ -198,7 +123,7 @@ export const SurveyModeSelector = ({
                 <Button 
                   className="w-full mt-4" 
                   size="lg"
-                  onClick={() => handleModeClick('text')}
+                  onClick={() => onSelectMode('text')}
                 >
                   Start Text Conversation
                 </Button>
@@ -210,13 +135,13 @@ export const SurveyModeSelector = ({
           <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
             <Card 
               className="h-full hover:border-primary/50 transition-all cursor-pointer group relative border-primary/30 shadow-lg"
-              onClick={() => handleModeClick('voice')}
+              onClick={() => onSelectMode('voice')}
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  handleModeClick('voice');
+                  onSelectMode('voice');
                 }
               }}
               aria-label="Select voice conversation mode - recommended"
@@ -290,7 +215,7 @@ export const SurveyModeSelector = ({
                 <Button 
                   className="w-full mt-4 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70" 
                   size="lg"
-                  onClick={() => handleModeClick('voice')}
+                  onClick={() => onSelectMode('voice')}
                 >
                   <Mic className="mr-2 h-5 w-5" />
                   Start Voice Conversation
