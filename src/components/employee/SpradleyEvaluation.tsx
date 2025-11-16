@@ -217,22 +217,27 @@ export const SpradleyEvaluation = ({
         timestamp: new Date()
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages(prev => {
+        const updatedMessages = [...prev, assistantMessage];
+        
+        // Store sentiment from response for later saving
+        if (data.sentiment && data.sentimentScore !== undefined) {
+          setSentimentData({
+            sentiment: data.sentiment,
+            sentimentScore: data.sentimentScore,
+          });
+        }
 
-      // Store sentiment from response for later saving
-      if (data.sentiment && data.sentimentScore !== undefined) {
-        setSentimentData({
-          sentiment: data.sentiment,
-          sentimentScore: data.sentimentScore,
-        });
-      }
-
-      // Auto-complete after sufficient exchanges or if AI indicates completion
-      const userMessageCount = messages.filter(m => m.role === "user").length + 1;
-      // Updated to allow 4-5 questions instead of hard 4 limit
-      if (data.shouldComplete || userMessageCount >= 5) {
-        setTimeout(() => handleComplete(), 2000);
-      }
+        // Auto-complete after sufficient exchanges or if AI indicates completion
+        // Use updated messages count (includes the user message we just added)
+        const userMessageCount = updatedMessages.filter(m => m.role === "user").length;
+        // Updated to allow 4-5 questions instead of hard 4 limit
+        if (data.shouldComplete || userMessageCount >= 5) {
+          setTimeout(() => handleComplete(), 2000);
+        }
+        
+        return updatedMessages;
+      });
     } catch (error) {
       console.error("Evaluation error:", error);
       toast({
@@ -247,7 +252,7 @@ export const SpradleyEvaluation = ({
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, surveyId, conversationSessionId, messages, toast]);
+  }, [input, isLoading, surveyId, conversationSessionId, messages, toast, handleComplete]);
 
   // Handle Enter key to send message
   const handleKeyPress = (e: React.KeyboardEvent) => {
