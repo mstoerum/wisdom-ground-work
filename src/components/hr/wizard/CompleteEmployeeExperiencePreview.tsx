@@ -7,7 +7,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Clock, Info, Eye, CheckCircle2, User, Settings, AlertCircle } from "lucide-react";
+import { Info, Eye, AlertCircle } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -15,8 +15,6 @@ import { PreviewModeProvider } from "@/contexts/PreviewModeContext";
 import { EmployeeSurveyFlow } from "@/components/employee/EmployeeSurveyFlow";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 
 // Error boundary for preview component
 class PreviewErrorBoundary extends Component<
@@ -156,6 +154,7 @@ export const CompleteEmployeeExperiencePreview = ({
       if (queryError) {
         setError("Failed to load survey data. Please try again.");
         setLoadedSurveyData(null);
+        return;
       }
     } else {
       // Validate the actual user input first (before applying defaults)

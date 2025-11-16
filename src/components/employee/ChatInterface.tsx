@@ -256,7 +256,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     };
 
     triggerIntroduction();
-  }, [messages.length, trustFlowStep, isLoading, conversationId, isPreviewMode, previewSurveyData]);
+  }, [messages.length, trustFlowStep, isLoading, conversationId, isPreviewMode, previewSurveyData, toast]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
