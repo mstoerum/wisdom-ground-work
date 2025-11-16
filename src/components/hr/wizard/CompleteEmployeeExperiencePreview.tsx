@@ -278,21 +278,23 @@ export const CompleteEmployeeExperiencePreview = ({
         {/* Main Content - Real Employee Survey Flow - Scrollable */}
         <div className="flex-1 min-h-0 overflow-y-auto">
           <PreviewErrorBoundary onExit={handleExit}>
-            <PreviewModeProvider
-              isPreviewMode={true}
-              previewSurveyId={loadedSurveyData.id || surveyId}
-              previewSurveyData={loadedSurveyData}
-            >
-              <div className="min-h-full">
-                <EmployeeSurveyFlow
-                  surveyId={loadedSurveyData.id || "preview-survey"}
-                  surveyDetails={loadedSurveyData}
-                  onComplete={handleComplete}
-                  onExit={handleExit}
-                  quickPreview={true}
-                />
-              </div>
-            </PreviewModeProvider>
+            {loadedSurveyData && (
+              <PreviewModeProvider
+                isPreviewMode={true}
+                previewSurveyId={loadedSurveyData.id || surveyId}
+                previewSurveyData={loadedSurveyData}
+              >
+                <div className="min-h-full">
+                  <EmployeeSurveyFlow
+                    surveyId={loadedSurveyData.id || "preview-survey"}
+                    surveyDetails={loadedSurveyData}
+                    onComplete={handleComplete}
+                    onExit={handleExit}
+                    quickPreview={true}
+                  />
+                </div>
+              </PreviewModeProvider>
+            )}
           </PreviewErrorBoundary>
         </div>
       </DialogContent>
