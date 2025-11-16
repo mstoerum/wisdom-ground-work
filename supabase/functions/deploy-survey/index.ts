@@ -244,7 +244,6 @@ serve(async (req) => {
         assignment_count: assignmentCount,
         public_link: publicLink ? {
           token: publicLink.link_token,
-          url: `${Deno.env.get('SUPABASE_URL')?.replace('https://', 'https://').replace('.supabase.co', '.lovableproject.com')}/survey/${publicLink.link_token}`,
           expires_at: publicLink.expires_at,
           max_responses: publicLink.max_responses,
         } : null,
