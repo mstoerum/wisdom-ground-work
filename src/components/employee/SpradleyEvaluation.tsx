@@ -24,8 +24,8 @@ interface SpradleyEvaluationProps {
   onSkip?: () => void;
 }
 
-const MAX_DURATION_SECONDS = 120; // 2 minutes
-const ESTIMATED_QUESTIONS = 4; // Keep it short
+const MAX_DURATION_SECONDS = 150; // 2.5 minutes (slightly more flexible)
+const ESTIMATED_QUESTIONS = 5; // Allow 4-5 questions for better coverage
 
 export const SpradleyEvaluation = ({
   surveyId,
@@ -41,6 +41,78 @@ export const SpradleyEvaluation = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
+  // Save evaluation and complete
+  const handleComplete = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const duration = Math.floor((Date.now() - startTime) / 1000);
+      const userMessages = messages.filter(m => m.role === "user");
+      const assistantMessages = messages.filter(m => m.role === "assistant");
+
+      // Extract key insights from conversation with structured data
+      const evaluationResponses = userMessages.map((msg, idx) => ({
+        question: assistantMessages[idx]?.content || "",
+        answer: msg.content,
+        timestamp: msg.timestamp.toISOString(),
+        questionNumber: idx + 1,
+      }));
+
+      // Extract evaluation dimensions from responses
+      const dimensions = {
+        overall_experience: evaluationResponses[0]?.answer || null,
+        ease_of_use: evaluationResponses.find(r => 
+          r.question.toLowerCase().includes("easier") || 
+          r.question.toLowerCase().includes("natural")
+        )?.answer || null,
+        conversation_quality: evaluationResponses.find(r => 
+          r.question.toLowerCase().includes("understand") || 
+          r.question.toLowerCase().includes("rephrase")
+        )?.answer || null,
+        value_comparison: evaluationResponses.find(r => 
+          r.question.toLowerCase().includes("compare") || 
+          r.question.toLowerCase().includes("other")
+        )?.answer || null,
+      };
+
+      // Save evaluation with structured data
+      const { error } = await supabase
+        .from("spradley_evaluations")
+        .insert({
+          survey_id: surveyId,
+          conversation_session_id: conversationSessionId,
+          employee_id: user.id,
+          evaluation_responses: evaluationResponses,
+          key_insights: {
+            dimensions,
+            total_questions: userMessages.length,
+            average_response_length: userMessages.reduce((sum, m) => sum + m.content.length, 0) / userMessages.length || 0,
+          },
+          duration_seconds: duration,
+          completed_at: new Date().toISOString(),
+        });
+
+      if (error) {
+        console.error("Error saving evaluation:", error);
+        // Don't block completion if save fails
+      }
+
+      toast({
+        title: "Thank you!",
+        description: "Your feedback helps us improve Spradley.",
+      });
+
+      setTimeout(() => {
+        onComplete();
+      }, 1000);
+    } catch (error) {
+      console.error("Error completing evaluation:", error);
+      // Still complete even if save fails
+      onComplete();
+    }
+  }, [surveyId, conversationSessionId, messages, startTime, onComplete, toast]);
+
   // Track elapsed time
   useEffect(() => {
     const interval = setInterval(() => {
@@ -54,16 +126,17 @@ export const SpradleyEvaluation = ({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [startTime]);
+  }, [startTime, handleComplete]);
 
   // Auto-trigger AI introduction
   useEffect(() => {
     if (messages.length === 0 && !isLoading) {
       setIsLoading(true);
       
+      // Improved introduction with better framing
       const introMessage: Message = {
         role: "assistant",
-        content: "Hi! Thank you for completing the survey. I'd love to hear about your experience with Spradley. This will only take about 2 minutes. How did you find the conversation?",
+        content: "Thank you for completing the survey! I'd love to hear about your experience. Overall, how did you find this conversation compared to traditional surveys? Did it feel more natural, or was there anything that felt different or off?",
         timestamp: new Date()
       };
       
@@ -139,7 +212,8 @@ export const SpradleyEvaluation = ({
 
       // Auto-complete after sufficient exchanges or if AI indicates completion
       const userMessageCount = messages.filter(m => m.role === "user").length + 1;
-      if (data.shouldComplete || userMessageCount >= ESTIMATED_QUESTIONS) {
+      // Updated to allow 4-5 questions instead of hard 4 limit
+      if (data.shouldComplete || userMessageCount >= 5) {
         setTimeout(() => handleComplete(), 2000);
       }
     } catch (error) {
@@ -166,55 +240,6 @@ export const SpradleyEvaluation = ({
     }
   };
 
-  // Save evaluation and complete
-  const handleComplete = useCallback(async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const duration = Math.floor((Date.now() - startTime) / 1000);
-      const userMessages = messages.filter(m => m.role === "user");
-      const assistantMessages = messages.filter(m => m.role === "assistant");
-
-      // Extract key insights from conversation
-      const evaluationResponses = userMessages.map((msg, idx) => ({
-        question: assistantMessages[idx]?.content || "",
-        answer: msg.content,
-        timestamp: msg.timestamp.toISOString(),
-      }));
-
-      // Save evaluation
-      const { error } = await supabase
-        .from("spradley_evaluations")
-        .insert({
-          survey_id: surveyId,
-          conversation_session_id: conversationSessionId,
-          employee_id: user.id,
-          evaluation_responses: evaluationResponses,
-          duration_seconds: duration,
-          completed_at: new Date().toISOString(),
-        });
-
-      if (error) {
-        console.error("Error saving evaluation:", error);
-        // Don't block completion if save fails
-      }
-
-      toast({
-        title: "Thank you!",
-        description: "Your feedback helps us improve Spradley.",
-      });
-
-      setTimeout(() => {
-        onComplete();
-      }, 1000);
-    } catch (error) {
-      console.error("Error completing evaluation:", error);
-      // Still complete even if save fails
-      onComplete();
-    }
-  }, [surveyId, conversationSessionId, messages, startTime, onComplete, toast]);
-
   const userMessageCount = messages.filter(m => m.role === "user").length;
   const progressPercent = Math.min((userMessageCount / ESTIMATED_QUESTIONS) * 100, 100);
   const remainingSeconds = Math.max(0, MAX_DURATION_SECONDS - elapsedSeconds);
@@ -226,7 +251,7 @@ export const SpradleyEvaluation = ({
           <div>
             <CardTitle className="text-2xl">Help Us Improve Spradley</CardTitle>
             <CardDescription className="mt-2">
-              Share your experience with this new type of survey (about 2 minutes)
+              Your feedback directly helps us improve Spradley for everyone. Just 3-4 quick questions (about 2 minutes).
             </CardDescription>
           </div>
           {onSkip && (
@@ -254,6 +279,7 @@ export const SpradleyEvaluation = ({
             <span className="text-muted-foreground">
               {userMessageCount > 0 && `Question ${userMessageCount} of ~${ESTIMATED_QUESTIONS}`}
               {userMessageCount === 0 && "Getting started..."}
+              {userMessageCount >= 3 && " • Almost done!"}
             </span>
             <span className="text-muted-foreground">
               {Math.floor(remainingSeconds / 60)}:{(remainingSeconds % 60).toString().padStart(2, '0')} remaining

@@ -24,39 +24,91 @@ const sanitizeContent = (content: string): string => {
 };
 
 /**
- * Get system prompt for Spradley evaluation
+ * Get system prompt for Spradley evaluation with structured framework
  */
-const getEvaluationSystemPrompt = (messageCount: number): string => {
+const getEvaluationSystemPrompt = (
+  messageCount: number,
+  conversationContext?: {
+    initialMood?: number;
+    finalMood?: number;
+    messageCount?: number;
+    themes?: string[];
+    usedVoiceMode?: boolean;
+  }
+): string => {
   const isFirstMessage = messageCount === 0;
+  const contextInfo = conversationContext ? `
+CONVERSATION CONTEXT:
+- Initial mood: ${conversationContext.initialMood || 'N/A'} / 100
+- Final mood: ${conversationContext.finalMood || 'N/A'} / 100
+- Total exchanges: ${conversationContext.messageCount || 'N/A'}
+- Themes discussed: ${conversationContext.themes?.join(', ') || 'N/A'}
+- Used voice mode: ${conversationContext.usedVoiceMode ? 'Yes' : 'No'}
+` : '';
   
   if (isFirstMessage) {
     return `You are Spradley, an AI conversation guide. You just finished conducting a survey with a user, and now you're asking them to evaluate their experience with you and the Spradley platform.
 
-Your goal: Gather honest, constructive feedback about:
-1. How the conversation felt (natural, awkward, helpful, etc.)
-2. What worked well about this AI chat survey approach
-3. What could be improved
-4. Overall experience and any suggestions
+${contextInfo}
 
-Guidelines:
+EVALUATION FRAMEWORK - Follow this structured approach:
+
+**Question 1 (Overall Experience)**: Start with a broad, open question that captures their overall impression:
+"Thank you for completing the survey! I'd love to hear about your experience. Overall, how did you find this conversation compared to traditional surveys? Did it feel more natural, or was there anything that felt different or off?"
+
+**Question 2 (Specific Dimension - Ease of Use)**: Based on their response, probe into a specific dimension:
+- If positive: "What specifically made it feel natural? Was it easier to express yourself in conversation vs filling out a form?"
+- If negative: "I'd like to understand what felt off. Was it the AI responses, the flow, or something else?"
+
+**Question 3 (Specific Dimension - Conversation Quality)**: Ask about the AI interaction:
+"Did I understand your responses well, or did you find yourself needing to rephrase things? How was the back-and-forth conversation?"
+
+**Question 4 (Value & Comparison)**: Understand the value proposition:
+"How does this compare to other feedback methods you've used? What would make you want to use this again?"
+
+**Question 5 (Closing)**: Wrap up with appreciation:
+"Thank you so much! Your feedback helps us improve Spradley for everyone. Is there anything else you'd like to share?"
+
+GUIDELINES:
 - Keep questions concise (1-2 sentences max)
-- Be warm and appreciative of their time
-- Ask one question at a time
-- After 3-4 exchanges, naturally conclude with a thank you
-- Keep the entire evaluation under 2 minutes
+- Be warm, appreciative, and genuinely curious
+- Ask ONE question at a time
+- Adapt follow-up questions based on their responses
+- If they mention something specific (e.g., "voice mode was confusing"), probe deeper
+- After 4-5 exchanges total, wrap up with appreciation
+- Keep the entire evaluation conversational and under 2 minutes
 
-Start by asking: "How did you find the conversation? Did it feel natural, or was there anything that felt off?"`;
+Remember: Frame this as "helping improve Spradley" not "evaluating you". Their honest feedback is valuable.`;
   }
 
-  return `You are Spradley, gathering feedback about the user's experience with the AI chat survey.
+  return `You are Spradley, gathering structured feedback about the user's experience with the AI chat survey.
 
-Continue the conversation naturally:
-- Ask follow-up questions based on their responses
-- Explore what worked well and what didn't
-- Keep questions short and focused
-- After 3-4 total exchanges, wrap up with appreciation
+${contextInfo}
 
-Remember: This is about improving Spradley, so be genuinely curious about their experience.`;
+Continue the conversation using this structured framework:
+
+**Current Progress**: You've asked ${messageCount} question(s) so far.
+
+**Next Steps**:
+- If they gave a general response, ask about a SPECIFIC dimension (ease of use, conversation quality, trust, value)
+- If they mentioned something specific, probe deeper: "Can you tell me more about [that specific thing]?"
+- If they're very positive, ask: "What specifically worked well? What made it better than [traditional method]?"
+- If they're negative, ask: "I'd like to understand better. What specifically was [the issue]? How could we improve it?"
+
+**Evaluation Dimensions to Cover**:
+1. Overall experience & comparison to traditional surveys
+2. Ease of use & conversation flow
+3. AI understanding & response quality
+4. Trust & comfort level
+5. Value & likelihood to use again
+
+**Guidelines**:
+- Ask ONE specific question at a time
+- Be genuinely curious and appreciative
+- If they mention a feature (voice mode, trust indicators, etc.), ask about that specifically
+- After 4-5 total exchanges, wrap up: "Thank you so much! Your feedback helps us improve Spradley. Is there anything else you'd like to share?"
+
+Remember: This is about improving Spradley, so be genuinely curious and ask specific, behavior-focused questions.`;
 };
 
 /**
@@ -126,7 +178,7 @@ serve(async (req) => {
     // Verify survey exists and evaluation is enabled
     const { data: survey, error: surveyError } = await supabase
       .from("surveys")
-      .select("consent_config")
+      .select("consent_config, themes")
       .eq("id", surveyId)
       .single();
 
@@ -138,6 +190,39 @@ serve(async (req) => {
     if (!consentConfig?.enable_spradley_evaluation) {
       throw new Error("Evaluation not enabled for this survey");
     }
+
+    // Fetch conversation context for better evaluation questions
+    const { data: session } = await supabase
+      .from("conversation_sessions")
+      .select("initial_mood, final_mood, mood_selection")
+      .eq("id", conversationSessionId)
+      .single();
+
+    // Count messages in the original conversation
+    const { count: responseCount } = await supabase
+      .from("responses")
+      .select("*", { count: "exact", head: true })
+      .eq("conversation_session_id", conversationSessionId);
+
+    // Check if voice mode was used (simplified - could be enhanced)
+    const { data: responses } = await supabase
+      .from("responses")
+      .select("content")
+      .eq("conversation_session_id", conversationSessionId)
+      .limit(5);
+
+    const usedVoiceMode = responses?.some(r => 
+      r.content?.toLowerCase().includes("voice") || 
+      r.content?.toLowerCase().includes("speak")
+    ) || false;
+
+    const conversationContext = {
+      initialMood: session?.initial_mood || session?.mood_selection?.initial || null,
+      finalMood: session?.final_mood || session?.mood_selection?.final || null,
+      messageCount: responseCount || 0,
+      themes: (survey.themes as string[]) || [],
+      usedVoiceMode,
+    };
 
     // Validate and sanitize last message
     const lastMessage = messages[messages.length - 1];
@@ -156,9 +241,9 @@ serve(async (req) => {
       throw new Error("AI API key not configured");
     }
 
-    // Build system prompt
+    // Build system prompt with context
     const userMessageCount = messages.filter(m => m.role === "user").length;
-    const systemPrompt = getEvaluationSystemPrompt(userMessageCount - 1);
+    const systemPrompt = getEvaluationSystemPrompt(userMessageCount - 1, conversationContext);
 
     // Prepare messages for AI
     const aiMessages = [
@@ -172,15 +257,40 @@ serve(async (req) => {
     // Call AI
     const aiResponse = await callAI(aiApiKey, aiMessages);
 
+    // Analyze sentiment of user's last message for adaptive questioning
+    const lastUserMessage = messages.filter(m => m.role === "user").pop()?.content || "";
+    let sentiment = "neutral";
+    let sentimentScore = 0.5;
+    
+    if (lastUserMessage) {
+      try {
+        const sentimentResponse = await callAI(aiApiKey, [
+          { role: "system", content: "Analyze sentiment. Reply with only: positive, neutral, or negative" },
+          { role: "user", content: lastUserMessage }
+        ]);
+        sentiment = sentimentResponse.toLowerCase().trim();
+        sentimentScore = sentiment === "positive" ? 0.75 : sentiment === "negative" ? 0.25 : 0.5;
+      } catch (error) {
+        console.error("Sentiment analysis failed:", error);
+        // Default to neutral if analysis fails
+      }
+    }
+
     // Determine if conversation should complete
-    const shouldComplete = userMessageCount >= MAX_QUESTIONS || 
-      aiResponse.toLowerCase().includes("thank you") ||
-      aiResponse.toLowerCase().includes("appreciate");
+    // Complete after 4-5 exchanges or if AI indicates completion
+    const shouldComplete = userMessageCount >= 4 || 
+      (userMessageCount >= 3 && (
+        aiResponse.toLowerCase().includes("thank you") ||
+        aiResponse.toLowerCase().includes("appreciate") ||
+        aiResponse.toLowerCase().includes("anything else")
+      ));
 
     return new Response(
       JSON.stringify({
         message: aiResponse,
         shouldComplete,
+        sentiment: sentiment,
+        sentimentScore: sentimentScore,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
