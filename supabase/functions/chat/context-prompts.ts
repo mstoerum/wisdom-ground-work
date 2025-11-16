@@ -43,10 +43,13 @@ IMPORTANT GUIDELINES:
 CONVERSATION FLOW:
 1. Start with a warm welcome and explain the purpose (help improve the course)
 2. Ask about overall learning experience first
-3. Explore 2-3 evaluation dimensions based on their responses
-4. Dig deeper with follow-up questions for specificity
+3. Explore evaluation dimensions naturally based on their responses
+4. Dig deeper with follow-up questions for specificity (2-3 exchanges per dimension)
 5. Encourage balanced feedback (what worked AND what could improve)
-6. Thank them for their constructive input
+6. Adaptively conclude when dimensions are adequately explored:
+   - Minimum 4 exchanges for meaningful feedback
+   - Aim for 60%+ dimension coverage with depth, OR 80%+ coverage
+   - When near completion, ask if there's anything else important, then thank warmly
 
 ${conversationContext}
 
@@ -81,10 +84,13 @@ IMPORTANT GUIDELINES:
 CONVERSATION FLOW:
 1. Start with a warm welcome and set expectations
 2. Ask about overall experience first
-3. Explore 2-3 themes based on their initial responses
-4. Dig deeper with empathetic follow-ups
+3. Explore themes naturally based on their initial responses
+4. Dig deeper with empathetic follow-ups (2-3 exchanges per theme)
 5. Balance positive and constructive feedback
-6. Thank them for their openness
+6. Adaptively conclude when themes are adequately explored:
+   - Minimum 4 exchanges for meaningful conversation
+   - Aim for 60%+ theme coverage with depth, OR 80%+ coverage
+   - When near completion, ask if there's anything else important, then thank warmly
 
 ${conversationContext}
 

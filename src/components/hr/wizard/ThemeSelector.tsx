@@ -33,7 +33,43 @@ export const ThemeSelector = ({ form }: ThemeSelectorProps) => {
   });
 
   const selectedThemes = form.watch("themes");
-  const estimatedMinutes = selectedThemes.length * 5;
+  
+  // Calculate estimated time based on adaptive theme exploration
+  // Conversations complete when themes are adequately explored, not after fixed exchanges
+  // Completion criteria: 60%+ coverage with 2+ exchanges per theme, OR 80%+ coverage
+  // Each exchange takes ~1-1.5 minutes (user response + AI processing)
+  // Minimum 4 exchanges, maximum 20 exchanges
+  const calculateEstimatedTime = (themeCount: number): number => {
+    if (themeCount === 0) return 0;
+    
+    // Base time calculation based on theme exploration:
+    // - Minimum: 4 exchanges × 1 min = 4 minutes
+    // - Target: Enough exchanges to cover themes with depth
+    // - For 1-2 themes: 4-6 exchanges (4-6 min)
+    // - For 3-4 themes: 6-10 exchanges (6-10 min) 
+    // - For 5-6 themes: 8-12 exchanges (8-12 min)
+    // - For 7+ themes: 10-15 exchanges (10-15 min)
+    
+    if (themeCount === 1) return 5;
+    if (themeCount === 2) return 6;
+    if (themeCount === 3) return 8;
+    if (themeCount === 4) return 9;
+    if (themeCount === 5) return 10;
+    if (themeCount === 6) return 11;
+    // For 7+ themes, cap at reasonable maximum
+    return Math.min(15, 5 + Math.round(themeCount * 1.2));
+  };
+  
+  const estimatedMinutes = calculateEstimatedTime(selectedThemes.length);
+  
+  // Calculate time range for display (shows variability)
+  // Range accounts for:
+  // - User response speed (fast vs thoughtful)
+  // - Theme exploration depth (light touch vs thorough)
+  // - Natural conversation flow variations
+  const minMinutes = Math.max(4, estimatedMinutes - 2);
+  const maxMinutes = Math.min(estimatedMinutes + 3, 18);
+  const showRange = selectedThemes.length >= 1;
 
   const participantLabel = surveyType === 'course_evaluation' ? 'students' : 'employees';
   const conversationLabel = surveyType === 'course_evaluation' ? 'evaluation' : 'conversation';
@@ -52,7 +88,23 @@ export const ThemeSelector = ({ form }: ThemeSelectorProps) => {
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Clock className="h-4 w-4" />
         <span>
-          Estimated {conversationLabel} time: <strong>{estimatedMinutes} minutes</strong>
+          Estimated {conversationLabel} time: <strong>
+            {showRange ? `${minMinutes}-${maxMinutes} minutes` : `${estimatedMinutes} minutes`}
+          </strong>
+          {selectedThemes.length >= 1 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3 w-3 ml-1 inline cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>
+                    The AI adaptively explores themes like a proper interview. Conversations complete when themes are adequately covered (typically 60%+ coverage with depth, or 80%+ coverage). Time varies based on how much participants want to share.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </span>
       </div>
 

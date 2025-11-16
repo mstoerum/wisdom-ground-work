@@ -435,6 +435,13 @@ function buildConversationContext(previousResponses: PreviousResponse[], themes:
       .filter(Boolean)
   );
   
+  const discussedThemeIds = new Set(
+    previousResponses
+      .filter(r => r.theme_id)
+      .map(r => r.theme_id)
+      .filter(Boolean)
+  );
+
   const sentimentPattern = previousResponses
     .slice(-3)
     .map(r => r.sentiment)
@@ -442,9 +449,39 @@ function buildConversationContext(previousResponses: PreviousResponse[], themes:
   
   const lastSentiment = sentimentPattern[sentimentPattern.length - 1];
   
+  const totalThemes = themes?.length || 0;
+  const coveragePercent = totalThemes > 0 
+    ? (discussedThemeIds.size / totalThemes) * 100 
+    : 0;
+
+  // Count exchanges per theme
+  const themeExchangeCounts = new Map<string, number>();
+  previousResponses.forEach(r => {
+    if (r.theme_id) {
+      themeExchangeCounts.set(r.theme_id, (themeExchangeCounts.get(r.theme_id) || 0) + 1);
+    }
+  });
+  const avgExchangesPerTheme = discussedThemeIds.size > 0
+    ? Array.from(themeExchangeCounts.values()).reduce((a, b) => a + b, 0) / discussedThemeIds.size
+    : 0;
+
+  const uncoveredThemes = themes?.filter((t: Theme) => !discussedThemeIds.has(t.id)) || [];
+  
+  // Simple completion check for voice chat (theme-aware)
+  const MIN_EXCHANGES = 4;
+  const MAX_EXCHANGES = 20;
+  const hasGoodCoverage = coveragePercent >= 60 && avgExchangesPerTheme >= 2;
+  const hasHighCoverage = coveragePercent >= 80;
+  const allThemesTouched = discussedThemeIds.size >= totalThemes && previousResponses.length >= totalThemes;
+  const isNearCompletion = previousResponses.length >= MIN_EXCHANGES && 
+    (hasGoodCoverage || hasHighCoverage || allThemesTouched) &&
+    previousResponses.length < MAX_EXCHANGES;
+  
   return `
 CONVERSATION CONTEXT:
 - Topics already discussed: ${discussedThemes.size > 0 ? Array.from(discussedThemes).join(", ") : "None yet"}
+- Theme coverage: ${discussedThemeIds.size} of ${totalThemes} themes (${Math.round(coveragePercent)}%)
+- Average depth per theme: ${avgExchangesPerTheme.toFixed(1)} exchanges
 - Recent sentiment pattern: ${sentimentPattern.join(" → ")}
 - Exchange count: ${previousResponses.length}
 ${previousResponses.length > 0 ? `- Key points mentioned earlier: "${previousResponses.slice(0, 2).map(r => r.content.substring(0, 60)).join('"; "')}"` : ""}
@@ -454,9 +491,12 @@ ${lastSentiment === "negative" ?
   "- The employee is sharing challenges. Use empathetic, validating language. Acknowledge their feelings." : ""}
 ${lastSentiment === "positive" ? 
   "- The employee is positive. Great! Also gently explore if there are any challenges to ensure balanced feedback." : ""}
-${discussedThemes.size > 0 && discussedThemes.size < themes?.length ? 
-  `- Themes not yet covered: ${themes?.filter((t: Theme) => !Array.from(discussedThemes).includes(t.name)).map((t: Theme) => t.name).join(", ")}. Transition naturally to explore these.` : ""}
+${uncoveredThemes.length > 0 && previousResponses.length < 10 ? 
+  `- Themes not yet covered: ${uncoveredThemes.map((t: Theme) => t.name).join(", ")}. Transition naturally to explore these.` : ""}
+${isNearCompletion ? 
+  `- You have gathered good insights across ${discussedThemeIds.size} themes. Start moving toward a natural conclusion. Ask if there's anything else important they'd like to share, then thank them warmly.` : ""}
 ${previousResponses.length >= 3 ? "- Reference earlier points when relevant to show you're listening and building on what they've shared." : ""}
+${previousResponses.length < MIN_EXCHANGES ? "- Continue exploring to gather sufficient depth. Ask thoughtful follow-up questions." : ""}
 `;
 }
 
@@ -488,7 +528,14 @@ Example first message:
 THEMES TO EXPLORE:
 ${themes.map((t: Theme) => `- ${t.name}: ${t.description}`).join('\n')}
 
-Guide the conversation naturally through these themes. After 3-4 exchanges on one topic, transition to explore other themes. Don't force it - make it feel natural.
+Guide the conversation naturally through these themes. After 2-3 exchanges on one topic, transition to explore other themes. Don't force it - make it feel natural.
+
+Adaptive completion: Conclude when themes are adequately explored:
+- Minimum 4 exchanges for meaningful conversation
+- Aim for 60%+ theme coverage with 2+ exchanges per theme, OR 80%+ coverage
+- All themes should be touched on if possible
+- Maximum 20 exchanges to prevent overly long conversations
+- When near completion, ask if there's anything else important, then thank warmly
 ` : '';
 
   return `You are Spradley, a compassionate AI conversation guide conducting confidential employee feedback sessions via voice.
@@ -520,8 +567,13 @@ Conversation flow:
 2. Explore challenges with curiosity and care
 3. Ask about positive aspects to balance the conversation
 4. Invite suggestions for improvement
-5. Naturally transition between themes after 3-4 exchanges on one topic
-6. Naturally conclude when sufficient depth is reached (after 8-12 exchanges)
+5. Naturally transition between themes after 2-3 exchanges on one topic
+6. Adaptively conclude when themes are adequately explored:
+   - Minimum 4 exchanges for meaningful conversation
+   - Aim for 60%+ theme coverage with 2+ exchanges per theme, OR 80%+ coverage
+   - All themes should be touched on if possible
+   - Maximum 20 exchanges to prevent overly long conversations
+   - When near completion, ask if there's anything else important, then thank warmly
 
 ${themeGuidance}
 

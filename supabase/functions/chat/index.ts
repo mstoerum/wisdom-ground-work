@@ -11,7 +11,8 @@ const corsHeaders = {
 const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10;
 const MAX_MESSAGE_LENGTH = 2000;
-const CONVERSATION_COMPLETE_THRESHOLD = 8;
+const MIN_EXCHANGES = 4; // Minimum exchanges for meaningful conversation
+const MAX_EXCHANGES = 20; // Maximum exchanges to prevent overly long conversations
 const AI_MODEL = "google/gemini-2.5-flash";
 const AI_MODEL_LITE = "google/gemini-2.5-flash-lite";
 
@@ -82,6 +83,70 @@ const validateInput = (conversationId: unknown, messages: unknown, lastContent: 
 };
 
 /**
+ * Determine if themes have been adequately explored
+ * Returns true if conversation should complete based on theme coverage
+ */
+const shouldCompleteBasedOnThemes = (
+  previousResponses: any[],
+  themes: any[],
+  turnCount: number
+): boolean => {
+  if (!themes || themes.length === 0) {
+    // No themes specified - use exchange count as fallback
+    return turnCount >= 8 && turnCount <= MAX_EXCHANGES;
+  }
+
+  // Need minimum exchanges for meaningful conversation
+  if (turnCount < MIN_EXCHANGES) {
+    return false;
+  }
+
+  // Cap at maximum to prevent overly long conversations
+  if (turnCount >= MAX_EXCHANGES) {
+    return true;
+  }
+
+  // Count unique themes discussed
+  const discussedThemeIds = new Set(
+    previousResponses
+      .filter(r => r.theme_id)
+      .map(r => r.theme_id)
+      .filter(Boolean)
+  );
+
+  const discussedCount = discussedThemeIds.size;
+  const totalThemes = themes.length;
+
+  // Calculate coverage percentage
+  const coveragePercent = totalThemes > 0 ? (discussedCount / totalThemes) * 100 : 0;
+
+  // Count exchanges per theme (for depth check)
+  const themeExchangeCounts = new Map<string, number>();
+  previousResponses.forEach(r => {
+    if (r.theme_id) {
+      themeExchangeCounts.set(r.theme_id, (themeExchangeCounts.get(r.theme_id) || 0) + 1);
+    }
+  });
+  
+  const avgExchangesPerTheme = discussedCount > 0 
+    ? Array.from(themeExchangeCounts.values()).reduce((a, b) => a + b, 0) / discussedCount 
+    : 0;
+
+  // Completion criteria:
+  // 1. At least 60% theme coverage AND average 2+ exchanges per theme
+  // 2. OR 80%+ theme coverage (even if some themes are light)
+  // 3. OR all themes covered with at least 1 exchange each
+  const hasGoodCoverage = coveragePercent >= 60 && avgExchangesPerTheme >= 2;
+  const hasHighCoverage = coveragePercent >= 80;
+  const allThemesTouched = discussedCount >= totalThemes && turnCount >= totalThemes;
+
+  // Also check if we have sufficient depth (at least 6 exchanges and good coverage)
+  const hasSufficientDepth = turnCount >= 6 && (hasGoodCoverage || hasHighCoverage);
+
+  return hasSufficientDepth || allThemesTouched;
+};
+
+/**
  * Build adaptive conversation context from previous responses
  */
 const buildConversationContext = (previousResponses: any[], themes: any[]): string => {
@@ -94,6 +159,13 @@ const buildConversationContext = (previousResponses: any[], themes: any[]): stri
       .filter(Boolean)
   );
   
+  const discussedThemeIds = new Set(
+    previousResponses
+      .filter(r => r.theme_id)
+      .map(r => r.theme_id)
+      .filter(Boolean)
+  );
+
   const sentimentPattern = previousResponses
     .slice(-3)
     .map(r => r.sentiment)
@@ -101,9 +173,30 @@ const buildConversationContext = (previousResponses: any[], themes: any[]): stri
   
   const lastSentiment = sentimentPattern[sentimentPattern.length - 1];
   
+  const totalThemes = themes?.length || 0;
+  const coveragePercent = totalThemes > 0 
+    ? (discussedThemeIds.size / totalThemes) * 100 
+    : 0;
+
+  // Count exchanges per theme
+  const themeExchangeCounts = new Map<string, number>();
+  previousResponses.forEach(r => {
+    if (r.theme_id) {
+      themeExchangeCounts.set(r.theme_id, (themeExchangeCounts.get(r.theme_id) || 0) + 1);
+    }
+  });
+  const avgExchangesPerTheme = discussedThemeIds.size > 0
+    ? Array.from(themeExchangeCounts.values()).reduce((a, b) => a + b, 0) / discussedThemeIds.size
+    : 0;
+
+  const uncoveredThemes = themes?.filter((t: any) => !discussedThemeIds.has(t.id)) || [];
+  const isNearCompletion = shouldCompleteBasedOnThemes(previousResponses, themes || [], previousResponses.length);
+  
   return `
 CONVERSATION CONTEXT:
 - Topics already discussed: ${discussedThemes.size > 0 ? Array.from(discussedThemes).join(", ") : "None yet"}
+- Theme coverage: ${discussedThemeIds.size} of ${totalThemes} themes (${Math.round(coveragePercent)}%)
+- Average depth per theme: ${avgExchangesPerTheme.toFixed(1)} exchanges
 - Recent sentiment pattern: ${sentimentPattern.join(" → ")}
 - Exchange count: ${previousResponses.length}
 ${previousResponses.length > 0 ? `- Key points mentioned earlier: "${previousResponses.slice(0, 2).map(r => r.content.substring(0, 60)).join('"; "')}"` : ""}
@@ -113,9 +206,12 @@ ${lastSentiment === "negative" ?
   "- The employee is sharing challenges. Use empathetic, validating language. Acknowledge their feelings." : ""}
 ${lastSentiment === "positive" ? 
   "- The employee is positive. Great! Also gently explore if there are any challenges to ensure balanced feedback." : ""}
-${discussedThemes.size > 0 && discussedThemes.size < themes?.length ? 
-  `- Themes not yet covered: ${themes?.filter((t: any) => !Array.from(discussedThemes).includes(t.name)).map((t: any) => t.name).join(", ")}. Transition naturally to explore these.` : ""}
+${uncoveredThemes.length > 0 && previousResponses.length < 10 ? 
+  `- Themes not yet covered: ${uncoveredThemes.map((t: any) => t.name).join(", ")}. Transition naturally to explore these.` : ""}
+${isNearCompletion && previousResponses.length >= MIN_EXCHANGES ? 
+  `- You have gathered good insights across ${discussedThemeIds.size} themes. Start moving toward a natural conclusion. Ask if there's anything else important they'd like to share, then thank them warmly.` : ""}
 ${previousResponses.length >= 3 ? "- Reference earlier points when relevant to show you're listening and building on what they've shared." : ""}
+${previousResponses.length < MIN_EXCHANGES ? "- Continue exploring to gather sufficient depth. Ask thoughtful follow-up questions." : ""}
 `;
 };
 
@@ -161,8 +257,13 @@ Conversation flow:
 2. Explore challenges with curiosity and care
 3. Ask about positive aspects to balance the conversation
 4. Invite suggestions for improvement
-5. Naturally transition between themes after 3-4 exchanges on one topic
-6. Naturally conclude when sufficient depth is reached (after 8-12 exchanges)
+5. Naturally transition between themes after 2-3 exchanges on one topic
+6. Adaptively conclude when themes are adequately explored:
+   - Minimum 4 exchanges for meaningful conversation
+   - Aim for 60%+ theme coverage with 2+ exchanges per theme, OR 80%+ coverage
+   - All themes should be touched on if possible
+   - Maximum 20 exchanges to prevent overly long conversations
+   - When near completion, ask if there's anything else important, then thank warmly
 
 ${conversationContext}
 
@@ -262,7 +363,7 @@ serve(async (req) => {
   }
 
   try {
-    const { conversationId, messages, testMode, themes: requestThemeIds } = await req.json();
+    const { conversationId, messages, testMode, themes: requestThemeIds, finishEarly, themeCoverage, isFinalResponse } = await req.json();
     
     // Get authorization header (optional for preview/demo mode)
     const authHeader = req.headers.get("authorization");
@@ -286,7 +387,76 @@ serve(async (req) => {
      if (isPreviewMode) {
       // Handle preview mode without database access
       const turnCount = messages.filter((m: any) => m.role === "user").length;
-      const shouldComplete = turnCount >= CONVERSATION_COMPLETE_THRESHOLD;
+      
+      // Handle finish early request
+      if (finishEarly) {
+        const summaryPrompt = `You've been conducting a conversation with a participant. They want to finish early (${Math.round(themeCoverage || 0)}% theme coverage, ${turnCount} exchanges).
+
+Summarize what they've shared so far in 2-3 sentences, then either:
+1. Ask ONE final important question that would help get a clearer picture of their experience (if coverage < 60%), OR
+2. Ask if there's anything else they'd like to add (if coverage >= 60%)
+
+Be warm and appreciative. Keep it brief.`;
+
+        const summaryMessage = await callAI(
+          LOVABLE_API_KEY,
+          AI_MODEL,
+          [
+            { role: "system", content: summaryPrompt },
+            ...messages.map((m: any) => ({ role: m.role, content: m.content }))
+          ],
+          0.7,
+          150
+        );
+
+        // Extract final question if present
+        const finalQuestionMatch = summaryMessage.match(/(?:question|ask|wondering)[^.]*[?]/i);
+        const finalQuestion = finalQuestionMatch ? finalQuestionMatch[0] : null;
+
+        return new Response(
+          JSON.stringify({ 
+            message: summaryMessage,
+            finalQuestion: finalQuestion || null,
+            shouldComplete: false
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Handle final response
+      if (isFinalResponse) {
+        const finalResponsePrompt = `The participant has finished sharing. Acknowledge their final response warmly and thank them for their time. Keep it brief (1-2 sentences).`;
+
+        const finalMessage = await callAI(
+          LOVABLE_API_KEY,
+          AI_MODEL,
+          [
+            { role: "system", content: finalResponsePrompt },
+            ...messages.map((m: any) => ({ role: m.role, content: m.content }))
+          ],
+          0.7,
+          100
+        );
+
+        return new Response(
+          JSON.stringify({ 
+            message: finalMessage,
+            shouldComplete: true
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Build mock previousResponses for theme-based completion check
+      const mockResponses = messages
+        .filter((m: any, idx: number) => m.role === "user" && idx > 0) // Skip intro
+        .map((m: any, idx: number) => ({
+          content: m.content,
+          theme_id: null, // In preview, we don't have theme detection
+          sentiment: null
+        }));
+      
+      const shouldComplete = shouldCompleteBasedOnThemes(mockResponses, themes || [], turnCount);
       
       // Force isFirstMessage=true for introduction trigger
       const isFirstMessage = isIntroductionTrigger || (turnCount === 1 && !messages.some((m: any) => m.role === "assistant"));
@@ -405,7 +575,90 @@ serve(async (req) => {
       .limit(10);
 
     const turnCount = messages.filter((m: any) => m.role === "user").length;
-    const shouldComplete = turnCount >= CONVERSATION_COMPLETE_THRESHOLD;
+    
+    // Handle finish early request
+    if (finishEarly) {
+      const coveragePercent = themeCoverage || 0;
+      const summaryPrompt = `You've been conducting a conversation with a participant. They want to finish early (${Math.round(coveragePercent)}% theme coverage, ${turnCount} exchanges).
+
+Summarize what they've shared so far in 2-3 sentences, then either:
+1. Ask ONE final important question that would help get a clearer picture of their experience (if coverage < 60%), OR
+2. Ask if there's anything else they'd like to add (if coverage >= 60%)
+
+Be warm and appreciative. Keep it brief.`;
+
+      const summaryMessage = await callAI(
+        LOVABLE_API_KEY,
+        AI_MODEL,
+        [
+          { role: "system", content: summaryPrompt },
+          ...messages.map((m: any) => ({ role: m.role, content: m.content }))
+        ],
+        0.7,
+        150
+      );
+
+      // Extract final question if present (look for question mark)
+      const sentences = summaryMessage.split(/[.!?]+/).filter(s => s.trim());
+      const questionSentence = sentences.find((s: string) => {
+        const trimmed = s.trim();
+        return trimmed.endsWith('?') && trimmed.length > 20;
+      });
+      const finalQuestion = questionSentence ? questionSentence.trim() : null;
+
+      return new Response(
+        JSON.stringify({ 
+          message: summaryMessage,
+          finalQuestion: finalQuestion || null,
+          shouldComplete: false
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle final response
+    if (isFinalResponse) {
+      const finalResponsePrompt = `The participant has finished sharing. Acknowledge their final response warmly and thank them for their time. Keep it brief (1-2 sentences).`;
+
+      const finalMessage = await callAI(
+        LOVABLE_API_KEY,
+        AI_MODEL,
+        [
+          { role: "system", content: finalResponsePrompt },
+          ...messages.map((m: any) => ({ role: m.role, content: m.content }))
+        ],
+        0.7,
+        100
+      );
+
+      // Save final response if not introduction trigger
+      if (!isIntroductionTrigger && sanitizedContent) {
+        const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, sanitizedContent);
+        const detectedThemeId = await detectTheme(LOVABLE_API_KEY, sanitizedContent, themes || []);
+
+        await supabase.from("responses").insert({
+          conversation_session_id: conversationId,
+          survey_id: session?.survey_id,
+          content: sanitizedContent,
+          ai_response: finalMessage,
+          sentiment,
+          sentiment_score: sentimentScore,
+          theme_id: detectedThemeId,
+          created_at: new Date().toISOString(),
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          message: finalMessage,
+          shouldComplete: true
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // Determine completion based on theme exploration, not just exchange count
+    const shouldComplete = shouldCompleteBasedOnThemes(previousResponses || [], themes || [], turnCount);
     
     // Force isFirstMessage=true for introduction trigger
     const hasExistingAssistantMessages = messages.some((m: any) => m.role === "assistant");
