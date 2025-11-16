@@ -75,8 +75,7 @@ export const ReviewAndDeployStep = ({
   };
 
   const linkToken = deployResult?.public_link?.token;
-  const surveyUrl = deployResult?.public_link?.url || 
-    (linkToken ? `${window.location.origin}/survey/${linkToken}` : null);
+  const surveyUrl = linkToken ? `${window.location.origin}/survey/${linkToken}` : null;
 
   const handleCopyLink = () => {
     if (surveyUrl) {
