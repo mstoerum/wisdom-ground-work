@@ -28,14 +28,24 @@ export class ChatErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error) {
     console.error("Chat error caught:", error);
     
-    // Log to escalation_log for HR visibility
-    supabase.from('escalation_log').insert({
-      escalation_type: 'technical_error',
-      response_id: null,
-      resolution_notes: `Chat interface error: ${error.message}`,
-    }).then(({ error: logError }) => {
-      if (logError) console.error("Failed to log error:", logError);
-    });
+    // Skip database logging in preview mode (conversationId starts with "preview-")
+    const isPreviewMode = this.props.conversationId?.startsWith('preview-');
+    
+    if (!isPreviewMode) {
+      // Log to escalation_log for HR visibility (only in non-preview mode)
+      supabase.from('escalation_log').insert({
+        escalation_type: 'technical_error',
+        response_id: null,
+        resolution_notes: `Chat interface error: ${error.message}`,
+      }).then(({ error: logError }) => {
+        if (logError) console.error("Failed to log error:", logError);
+      }).catch((err) => {
+        // Silently fail if logging fails (e.g., no auth)
+        console.error("Error logging to escalation_log:", err);
+      });
+    } else {
+      console.log("Preview mode: skipping error logging to database");
+    }
   }
 
   handleTryAgain = () => {
@@ -44,13 +54,19 @@ export class ChatErrorBoundary extends Component<Props, State> {
 
   render() {
     if (this.state.hasError) {
+      const isPreviewMode = this.props.conversationId?.startsWith('preview-');
+      
       return (
         <div className="flex items-center justify-center h-[600px] p-6">
           <Alert variant="destructive" className="max-w-md">
             <AlertTriangle className="h-4 w-4" />
             <AlertTitle>Something went wrong</AlertTitle>
             <AlertDescription className="mt-2 space-y-4">
-              <p>Don't worry, your progress is saved and you can resume anytime.</p>
+              <p>
+                {isPreviewMode 
+                  ? "An error occurred in preview mode. Please try again or check that all survey fields are properly filled."
+                  : "Don't worry, your progress is saved and you can resume anytime."}
+              </p>
               <div className="flex gap-2">
                 <Button
                   onClick={this.handleTryAgain}
@@ -66,7 +82,7 @@ export class ChatErrorBoundary extends Component<Props, State> {
                   size="sm"
                 >
                   <LogOut className="h-4 w-4 mr-2" />
-                  Exit & Resume Later
+                  {isPreviewMode ? "Close Preview" : "Exit & Resume Later"}
                 </Button>
               </div>
             </AlertDescription>

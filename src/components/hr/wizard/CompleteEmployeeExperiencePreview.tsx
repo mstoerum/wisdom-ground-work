@@ -151,17 +151,24 @@ export const CompleteEmployeeExperiencePreview = ({
         return;
       }
     } else {
-      // Construct data with defaults first
+      // Construct data with defaults first - ensure all fields have safe defaults
+      const safeFirstMessage = surveyData?.first_message && typeof surveyData.first_message === 'string' 
+        ? surveyData.first_message.trim() 
+        : undefined;
+      const safeConsentMessage = surveyData?.consent_config?.consent_message && typeof surveyData.consent_config.consent_message === 'string'
+        ? surveyData.consent_config.consent_message.trim()
+        : undefined;
+      
       const constructedData = {
         id: "preview-survey",
-        title: surveyData.title || "Untitled Survey",
-        first_message: surveyData.first_message || "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.",
-        themes: surveyData.themes || [],
+        title: surveyData?.title || "Untitled Survey",
+        first_message: safeFirstMessage || "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.",
+        themes: Array.isArray(surveyData?.themes) ? surveyData.themes : [],
         consent_config: {
-          anonymization_level: surveyData.consent_config?.anonymization_level || "anonymous",
-          data_retention_days: surveyData.consent_config?.data_retention_days || 60,
-          consent_message: surveyData.consent_config?.consent_message || "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.",
-          enable_spradley_evaluation: surveyData.consent_config?.enable_spradley_evaluation || false,
+          anonymization_level: surveyData?.consent_config?.anonymization_level || "anonymous",
+          data_retention_days: surveyData?.consent_config?.data_retention_days || 60,
+          consent_message: safeConsentMessage || "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.",
+          enable_spradley_evaluation: surveyData?.consent_config?.enable_spradley_evaluation ?? false,
         },
       };
       
@@ -268,11 +275,23 @@ export const CompleteEmployeeExperiencePreview = ({
         {/* Main Content - Real Employee Survey Flow - Scrollable */}
         <div className="flex-1 min-h-0 overflow-y-auto">
           <PreviewErrorBoundary onExit={handleExit}>
-            {loadedSurveyData && (
+            {loadedSurveyData && loadedSurveyData.consent_config ? (
               <PreviewModeProvider
                 isPreviewMode={true}
                 previewSurveyId={loadedSurveyData.id || surveyId}
-                previewSurveyData={loadedSurveyData}
+                previewSurveyData={{
+                  ...loadedSurveyData,
+                  // Ensure all required fields have defaults
+                  first_message: loadedSurveyData.first_message || "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.",
+                  themes: Array.isArray(loadedSurveyData.themes) ? loadedSurveyData.themes : [],
+                  consent_config: {
+                    ...loadedSurveyData.consent_config,
+                    consent_message: loadedSurveyData.consent_config.consent_message || "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.",
+                    anonymization_level: loadedSurveyData.consent_config.anonymization_level || "anonymous",
+                    data_retention_days: loadedSurveyData.consent_config.data_retention_days || 60,
+                    enable_spradley_evaluation: loadedSurveyData.consent_config.enable_spradley_evaluation ?? false,
+                  },
+                }}
               >
                 <div className="min-h-full">
                   <EmployeeSurveyFlow
@@ -284,6 +303,16 @@ export const CompleteEmployeeExperiencePreview = ({
                   />
                 </div>
               </PreviewModeProvider>
+            ) : (
+              <div className="flex items-center justify-center min-h-[400px] p-6">
+                <Alert variant="destructive" className="max-w-md">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription className="mt-2">
+                    <p className="font-semibold">Preview data not ready</p>
+                    <p>Please wait while the preview loads, or check that all required fields are filled in.</p>
+                  </AlertDescription>
+                </Alert>
+              </div>
             )}
           </PreviewErrorBoundary>
         </div>
