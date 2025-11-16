@@ -33,7 +33,28 @@ export const ThemeSelector = ({ form }: ThemeSelectorProps) => {
   });
 
   const selectedThemes = form.watch("themes");
-  const estimatedMinutes = selectedThemes.length * 5;
+  
+  // Calculate estimated time using diminishing returns model
+  // Accounts for natural conversation flow where themes interweave
+  // First theme: ~3 min, each additional: ~2.5 min (more efficient)
+  const calculateEstimatedTime = (themeCount: number): number => {
+    if (themeCount === 0) return 0;
+    if (themeCount === 1) return 3;
+    if (themeCount === 2) return 5;
+    if (themeCount === 3) return 8;
+    if (themeCount === 4) return 11;
+    if (themeCount === 5) return 14;
+    // For 6+ themes, cap at reasonable maximum to avoid drop-off
+    // Uses formula: 3 + (n-1) * 2.5, capped at 18 minutes
+    return Math.min(18, Math.round(3 + (themeCount - 1) * 2.5));
+  };
+  
+  const estimatedMinutes = calculateEstimatedTime(selectedThemes.length);
+  
+  // Calculate time range for display (shows variability)
+  const minMinutes = Math.max(estimatedMinutes - 3, Math.max(3, selectedThemes.length * 2));
+  const maxMinutes = Math.min(estimatedMinutes + 3, 20);
+  const showRange = selectedThemes.length >= 3;
 
   const participantLabel = surveyType === 'course_evaluation' ? 'students' : 'employees';
   const conversationLabel = surveyType === 'course_evaluation' ? 'evaluation' : 'conversation';
@@ -52,7 +73,23 @@ export const ThemeSelector = ({ form }: ThemeSelectorProps) => {
       <div className="flex items-center gap-2 text-sm text-muted-foreground">
         <Clock className="h-4 w-4" />
         <span>
-          Estimated {conversationLabel} time: <strong>{estimatedMinutes} minutes</strong>
+          Estimated {conversationLabel} time: <strong>
+            {showRange ? `${minMinutes}-${maxMinutes} minutes` : `${estimatedMinutes} minutes`}
+          </strong>
+          {selectedThemes.length >= 6 && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3 w-3 ml-1 inline cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>
+                    Time varies based on how much participants want to share. The AI explores themes naturally through conversation, so multiple themes can be covered efficiently.
+                  </p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
         </span>
       </div>
 
