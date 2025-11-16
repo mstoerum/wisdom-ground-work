@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ConversationBubble } from "./ConversationBubble";
 import { VoiceInterface } from "./VoiceInterface";
-import { Send, Loader2, Save, Mic, ArrowRight } from "lucide-react";
+import { Send, Loader2, Save, Mic, ArrowRight, CheckCircle } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +17,7 @@ import { trackTrustMetrics } from "@/lib/trustAnalytics";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import { FinishEarlyConfirmationDialog } from "./FinishEarlyConfirmationDialog";
 
 interface Message {
   role: "user" | "assistant";
@@ -37,6 +38,7 @@ const ESTIMATED_TOTAL_QUESTIONS = 8;
 const PROGRESS_COMPLETE_THRESHOLD = 100;
 
 type TrustFlowStep = "introduction" | "anonymization" | "chat" | "complete";
+type FinishEarlyStep = "none" | "confirming" | "summarizing" | "final-question" | "completing";
 
 export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showTrustFlow = true, skipTrustFlow = false }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -47,6 +49,8 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
   const [culturalContext, setCulturalContext] = useState<CulturalContext | null>(null);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
+  const [finishEarlyStep, setFinishEarlyStep] = useState<FinishEarlyStep>("none");
+  const [themeCoverage, setThemeCoverage] = useState({ discussed: 0, total: 0, percentage: 0 });
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { isPreviewMode, previewSurveyData } = usePreviewMode();
@@ -315,9 +319,15 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
   const sendMessage = useCallback(async () => {
     if (!input.trim() || isLoading) return;
 
+    // Check if this is a final response (finish early flow)
+    if (finishEarlyStep === "final-question") {
+      await handleFinalResponse(input.trim());
+      return;
+    }
+
     const userMessage: Message = {
       role: "user",
-      content: input,
+      content: input.trim(),
       timestamp: new Date()
     };
 
@@ -335,7 +345,6 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           throw new Error("Please sign in to continue");
         }
       }
-
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
@@ -394,7 +403,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, conversationId, messages, onComplete, toast, isPreviewMode]);
+  }, [input, isLoading, conversationId, messages, onComplete, toast, isPreviewMode, previewSurveyData, finishEarlyStep, handleFinalResponse]);
 
   // Handle Enter key to send message
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -404,14 +413,215 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     }
   };
 
-  // Save and exit conversation
-  const handleSaveAndExit = useCallback(() => {
-    toast({
-      title: "Progress saved",
-      description: "You can resume this conversation anytime.",
-    });
-    setTimeout(onSaveAndExit, 1000);
-  }, [onSaveAndExit, toast]);
+  // Calculate theme coverage
+  const calculateThemeCoverage = useCallback(async () => {
+    if (isPreviewMode) {
+      // In preview mode, estimate based on messages
+      const totalThemes = previewSurveyData?.themes?.length || 0;
+      if (totalThemes === 0) {
+        setThemeCoverage({ discussed: 0, total: 0, percentage: 0 });
+        return;
+      }
+      // Estimate: assume some themes are discussed based on exchange count
+      const discussed = Math.min(Math.ceil(messages.filter(m => m.role === "user").length / 2), totalThemes);
+      setThemeCoverage({
+        discussed,
+        total: totalThemes,
+        percentage: (discussed / totalThemes) * 100,
+      });
+      return;
+    }
+
+    try {
+      // Fetch responses with theme_id
+      const { data: responses } = await supabase
+        .from("responses")
+        .select("theme_id")
+        .eq("conversation_session_id", conversationId);
+
+      if (!responses) return;
+
+      // Get survey themes
+      const { data: session } = await supabase
+        .from("conversation_sessions")
+        .select("survey_id, surveys(themes)")
+        .eq("id", conversationId)
+        .single();
+
+      if (!session?.surveys) return;
+
+      const themeIds = (session.surveys as any)?.themes || [];
+      const totalThemes = themeIds.length;
+      
+      if (totalThemes === 0) {
+        setThemeCoverage({ discussed: 0, total: 0, percentage: 0 });
+        return;
+      }
+
+      // Count unique themes discussed
+      const discussedThemeIds = new Set(
+        responses.filter(r => r.theme_id).map(r => r.theme_id)
+      );
+      const discussed = discussedThemeIds.size;
+      const percentage = (discussed / totalThemes) * 100;
+
+      setThemeCoverage({ discussed, total: totalThemes, percentage });
+    } catch (error) {
+      console.error("Error calculating theme coverage:", error);
+    }
+  }, [conversationId, messages, isPreviewMode, previewSurveyData]);
+
+  // Update theme coverage when messages change
+  useEffect(() => {
+    if (messages.length > 0 && trustFlowStep === "chat") {
+      calculateThemeCoverage();
+    }
+  }, [messages, trustFlowStep, calculateThemeCoverage]);
+
+  // Handle finish early request
+  const handleFinishEarly = useCallback(() => {
+    setFinishEarlyStep("confirming");
+  }, []);
+
+  // Handle finish early confirmation
+  const handleConfirmFinishEarly = useCallback(async () => {
+    setFinishEarlyStep("summarizing");
+    
+    try {
+      // Get conversation summary and final question from backend
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(session?.session ? { Authorization: `Bearer ${session.session.access_token}` } : {}),
+          },
+          body: JSON.stringify({
+            conversationId,
+            messages: messages.map(m => ({ role: m.role, content: m.content })),
+            finishEarly: true,
+            themeCoverage: themeCoverage.percentage,
+            testMode: isPreviewMode,
+            themes: isPreviewMode ? previewSurveyData?.themes : undefined,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to get summary");
+      }
+
+      const { message: summaryMessage, finalQuestion } = await response.json();
+      
+      // Add summary message
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: summaryMessage,
+        timestamp: new Date(),
+      }]);
+
+      setFinishEarlyStep("final-question");
+      
+      // If there's a final question, add it
+      if (finalQuestion) {
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            role: "assistant",
+            content: finalQuestion,
+            timestamp: new Date(),
+          }]);
+        }, 1500);
+      } else {
+        // No final question needed, just ask if they want to add anything
+        setTimeout(() => {
+          setMessages(prev => [...prev, {
+            role: "assistant",
+            content: "Is there anything else you'd like to add before we finish?",
+            timestamp: new Date(),
+          }]);
+        }, 1500);
+      }
+    } catch (error) {
+      console.error("Error finishing early:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate summary. Please try again.",
+        variant: "destructive",
+      });
+      setFinishEarlyStep("none");
+    }
+  }, [conversationId, messages, themeCoverage, isPreviewMode, previewSurveyData, toast]);
+
+  // Handle final response and complete
+  const handleFinalResponse = useCallback(async (finalInput: string) => {
+    if (!finalInput.trim()) {
+      // No final response, just complete
+      setFinishEarlyStep("completing");
+      setTimeout(() => {
+        onComplete();
+      }, 1000);
+      return;
+    }
+
+    // Send final response
+    setIsLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(session?.session ? { Authorization: `Bearer ${session.session.access_token}` } : {}),
+          },
+          body: JSON.stringify({
+            conversationId,
+            messages: [
+              ...messages.map(m => ({ role: m.role, content: m.content })),
+              { role: "user", content: finalInput },
+            ],
+            isFinalResponse: true,
+            testMode: isPreviewMode,
+            themes: isPreviewMode ? previewSurveyData?.themes : undefined,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to send final response");
+      }
+
+      const { message: aiResponse } = await response.json();
+      
+      setMessages(prev => [...prev,
+        { role: "user", content: finalInput, timestamp: new Date() },
+        { role: "assistant", content: aiResponse, timestamp: new Date() },
+      ]);
+
+      setFinishEarlyStep("completing");
+      setTimeout(() => {
+        onComplete();
+      }, 2000);
+    } catch (error) {
+      console.error("Error sending final response:", error);
+      toast({
+        title: "Error",
+        description: "Failed to send response. Completing survey anyway.",
+        variant: "destructive",
+      });
+      setFinishEarlyStep("completing");
+      setTimeout(() => {
+        onComplete();
+      }, 1000);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [conversationId, messages, isPreviewMode, previewSurveyData, toast, onComplete]);
 
   // Calculate conversation progress
   const userMessageCount = messages.filter(m => m.role === "user").length;
@@ -513,13 +723,14 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
             )}
             <span className="text-sm font-medium">{Math.round(progressPercent)}%</span>
             <Button
-              onClick={handleSaveAndExit}
+              onClick={handleFinishEarly}
               variant="ghost"
               size="sm"
               className="h-7"
+              disabled={finishEarlyStep !== "none" || isLoading}
             >
-              <Save className="h-3 w-3 mr-1" />
-              Save & Exit
+              <CheckCircle className="h-3 w-3 mr-1" />
+              Finish Early
             </Button>
           </div>
         </div>
@@ -666,6 +877,16 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           </Button>
         </div>
       </div>
+
+      {/* Finish Early Confirmation Dialog */}
+      <FinishEarlyConfirmationDialog
+        open={finishEarlyStep === "confirming"}
+        onConfirm={handleConfirmFinishEarly}
+        onCancel={() => setFinishEarlyStep("none")}
+        themeCoverage={themeCoverage}
+        exchangeCount={userMessageCount}
+        minExchanges={4}
+      />
     </div>
   );
 };

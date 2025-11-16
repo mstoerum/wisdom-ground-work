@@ -363,7 +363,7 @@ serve(async (req) => {
   }
 
   try {
-    const { conversationId, messages, testMode, themes: requestThemeIds } = await req.json();
+    const { conversationId, messages, testMode, themes: requestThemeIds, finishEarly, themeCoverage, isFinalResponse } = await req.json();
     
     // Get authorization header (optional for preview/demo mode)
     const authHeader = req.headers.get("authorization");
@@ -387,6 +387,65 @@ serve(async (req) => {
      if (isPreviewMode) {
       // Handle preview mode without database access
       const turnCount = messages.filter((m: any) => m.role === "user").length;
+      
+      // Handle finish early request
+      if (finishEarly) {
+        const summaryPrompt = `You've been conducting a conversation with a participant. They want to finish early (${Math.round(themeCoverage || 0)}% theme coverage, ${turnCount} exchanges).
+
+Summarize what they've shared so far in 2-3 sentences, then either:
+1. Ask ONE final important question that would help get a clearer picture of their experience (if coverage < 60%), OR
+2. Ask if there's anything else they'd like to add (if coverage >= 60%)
+
+Be warm and appreciative. Keep it brief.`;
+
+        const summaryMessage = await callAI(
+          LOVABLE_API_KEY,
+          AI_MODEL,
+          [
+            { role: "system", content: summaryPrompt },
+            ...messages.map((m: any) => ({ role: m.role, content: m.content }))
+          ],
+          0.7,
+          150
+        );
+
+        // Extract final question if present
+        const finalQuestionMatch = summaryMessage.match(/(?:question|ask|wondering)[^.]*[?]/i);
+        const finalQuestion = finalQuestionMatch ? finalQuestionMatch[0] : null;
+
+        return new Response(
+          JSON.stringify({ 
+            message: summaryMessage,
+            finalQuestion: finalQuestion || null,
+            shouldComplete: false
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Handle final response
+      if (isFinalResponse) {
+        const finalResponsePrompt = `The participant has finished sharing. Acknowledge their final response warmly and thank them for their time. Keep it brief (1-2 sentences).`;
+
+        const finalMessage = await callAI(
+          LOVABLE_API_KEY,
+          AI_MODEL,
+          [
+            { role: "system", content: finalResponsePrompt },
+            ...messages.map((m: any) => ({ role: m.role, content: m.content }))
+          ],
+          0.7,
+          100
+        );
+
+        return new Response(
+          JSON.stringify({ 
+            message: finalMessage,
+            shouldComplete: true
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       
       // Build mock previousResponses for theme-based completion check
       const mockResponses = messages
@@ -516,6 +575,83 @@ serve(async (req) => {
       .limit(10);
 
     const turnCount = messages.filter((m: any) => m.role === "user").length;
+    
+    // Handle finish early request
+    if (finishEarly) {
+      const coveragePercent = themeCoverage || 0;
+      const summaryPrompt = `You've been conducting a conversation with a participant. They want to finish early (${Math.round(coveragePercent)}% theme coverage, ${turnCount} exchanges).
+
+Summarize what they've shared so far in 2-3 sentences, then either:
+1. Ask ONE final important question that would help get a clearer picture of their experience (if coverage < 60%), OR
+2. Ask if there's anything else they'd like to add (if coverage >= 60%)
+
+Be warm and appreciative. Keep it brief.`;
+
+      const summaryMessage = await callAI(
+        LOVABLE_API_KEY,
+        AI_MODEL,
+        [
+          { role: "system", content: summaryPrompt },
+          ...messages.map((m: any) => ({ role: m.role, content: m.content }))
+        ],
+        0.7,
+        150
+      );
+
+      // Extract final question if present (look for question mark)
+      const sentences = summaryMessage.split(/[.!?]+/);
+      const finalQuestion = sentences.find((s: string) => s.trim().endsWith('?') && s.length > 20)?.trim() + '?';
+
+      return new Response(
+        JSON.stringify({ 
+          message: summaryMessage,
+          finalQuestion: finalQuestion || null,
+          shouldComplete: false
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Handle final response
+    if (isFinalResponse) {
+      const finalResponsePrompt = `The participant has finished sharing. Acknowledge their final response warmly and thank them for their time. Keep it brief (1-2 sentences).`;
+
+      const finalMessage = await callAI(
+        LOVABLE_API_KEY,
+        AI_MODEL,
+        [
+          { role: "system", content: finalResponsePrompt },
+          ...messages.map((m: any) => ({ role: m.role, content: m.content }))
+        ],
+        0.7,
+        100
+      );
+
+      // Save final response if not introduction trigger
+      if (!isIntroductionTrigger && sanitizedContent) {
+        const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, sanitizedContent);
+        const detectedThemeId = await detectTheme(LOVABLE_API_KEY, sanitizedContent, themes || []);
+
+        await supabase.from("responses").insert({
+          conversation_session_id: conversationId,
+          survey_id: session?.survey_id,
+          content: sanitizedContent,
+          ai_response: finalMessage,
+          sentiment,
+          sentiment_score: sentimentScore,
+          theme_id: detectedThemeId,
+          created_at: new Date().toISOString(),
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ 
+          message: finalMessage,
+          shouldComplete: true
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
     
     // Determine completion based on theme exploration, not just exchange count
     const shouldComplete = shouldCompleteBasedOnThemes(previousResponses || [], themes || [], turnCount);
