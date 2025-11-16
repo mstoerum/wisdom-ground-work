@@ -7,6 +7,7 @@ import { AnonymizationRitual } from "@/components/employee/AnonymizationRitual";
 import { ConsentModal } from "@/components/employee/ConsentModal";
 import { ClosingRitual } from "@/components/employee/ClosingRitual";
 import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
+import { SpradleyEvaluation } from "@/components/employee/SpradleyEvaluation";
 import { useConversation } from "@/hooks/useConversation";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -14,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { PlayCircle } from "lucide-react";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 
-type ConversationStep = "consent" | "anonymization" | "mood" | "chat" | "closing" | "complete";
+type ConversationStep = "consent" | "anonymization" | "mood" | "chat" | "closing" | "evaluation" | "complete";
 
 interface EmployeeSurveyFlowProps {
   surveyId: string;
@@ -106,19 +107,56 @@ export const EmployeeSurveyFlow = ({
       }
     }
 
+    // Check if evaluation is enabled
+    const enableEvaluation = surveyDetails?.consent_config?.enable_spradley_evaluation;
+    
+    if (enableEvaluation && !isPreviewMode && conversationId) {
+      // Show evaluation step
+      setStep("evaluation");
+    } else {
+      // Skip evaluation and go to complete
+      setStep("complete");
+      
+      toast({
+        title: isPreviewMode ? "Preview Complete!" : "Thank you!",
+        description: isPreviewMode
+          ? "You've experienced the complete employee survey journey."
+          : "Your feedback has been recorded.",
+      });
+
+      // Call completion handler after a delay
+      setTimeout(() => {
+        onComplete?.();
+      }, isPreviewMode ? 1000 : 2000);
+    }
+  };
+
+  const handleEvaluationComplete = () => {
     setStep("complete");
     
     toast({
-      title: isPreviewMode ? "Preview Complete!" : "Thank you!",
-      description: isPreviewMode
-        ? "You've experienced the complete employee survey journey."
-        : "Your feedback has been recorded.",
+      title: "Thank you!",
+      description: "Your feedback has been recorded.",
     });
 
     // Call completion handler after a delay
     setTimeout(() => {
       onComplete?.();
-    }, isPreviewMode ? 1000 : 2000);
+    }, 2000);
+  };
+
+  const handleEvaluationSkip = () => {
+    setStep("complete");
+    
+    toast({
+      title: "Thank you!",
+      description: "Your feedback has been recorded.",
+    });
+
+    // Call completion handler after a delay
+    setTimeout(() => {
+      onComplete?.();
+    }, 2000);
   };
 
   const handleSaveAndExit = () => {
@@ -195,6 +233,15 @@ export const EmployeeSurveyFlow = ({
               initialMood={mood}
               conversationId={conversationId}
               onComplete={handleSurveyComplete}
+            />
+          )}
+
+          {step === "evaluation" && conversationId && (
+            <SpradleyEvaluation
+              surveyId={surveyId}
+              conversationSessionId={conversationId}
+              onComplete={handleEvaluationComplete}
+              onSkip={handleEvaluationSkip}
             />
           )}
 

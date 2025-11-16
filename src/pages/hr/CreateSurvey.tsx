@@ -114,6 +114,7 @@ const CreateSurvey = () => {
         anonymization_level: (draftData.consent_config as any)?.anonymization_level || 'identified',
         consent_message: safeConsentMessage.trim() ? safeConsentMessage : "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.",
         data_retention_days: (draftData.consent_config as any)?.data_retention_days || '60',
+        enable_spradley_evaluation: (draftData.consent_config as any)?.enable_spradley_evaluation || false,
       });
     }
   }, [draftData, form, surveyDefaults]);
@@ -146,6 +147,7 @@ const CreateSurvey = () => {
           anonymization_level: values.anonymization_level,
           consent_message: values.consent_message,
           data_retention_days: values.data_retention_days,
+          enable_spradley_evaluation: values.enable_spradley_evaluation,
         },
         created_by: user.id,
         status: 'draft',

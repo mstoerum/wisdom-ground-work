@@ -7,9 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Shield, AlertCircle, HelpCircle } from "lucide-react";
+import { Shield, AlertCircle, HelpCircle, MessageSquare } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useContextualTerms } from "@/lib/contextualTerminology";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface ConsentSettingsProps {
   form: UseFormReturn<SurveyFormData>;
@@ -160,6 +161,41 @@ export const ConsentSettings = ({ form }: ConsentSettingsProps) => {
               How long should we keep the survey responses before automatic deletion?
             </FormDescription>
             <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="enable_spradley_evaluation"
+        render={({ field }) => (
+          <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+            <FormControl>
+              <Checkbox
+                checked={field.value}
+                onCheckedChange={field.onChange}
+              />
+            </FormControl>
+            <div className="space-y-1 leading-none">
+              <div className="flex items-center gap-2">
+                <FormLabel className="font-medium cursor-pointer">
+                  Request Spradley Evaluation
+                </FormLabel>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>After completing the survey, {terms.participants} will be asked to evaluate their experience with Spradley through a brief AI chat conversation (2 minutes max). This helps us improve the platform.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <FormDescription className="text-sm text-muted-foreground">
+                Enable a post-survey evaluation where {terms.participants} can share feedback about their Spradley experience through AI chat
+              </FormDescription>
+            </div>
           </FormItem>
         )}
       />
