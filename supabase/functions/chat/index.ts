@@ -203,61 +203,56 @@ ${previousResponses.length > 0 ? `- Key points mentioned earlier: "${previousRes
 
 ADAPTIVE INSTRUCTIONS:
 ${lastSentiment === "negative" ? 
-  "- The employee is sharing challenges. Use empathetic, validating language. Acknowledge their feelings." : ""}
+  "- The employee is sharing challenges. Ask specific follow-up questions to understand what happened and what would help." : ""}
 ${lastSentiment === "positive" ? 
-  "- The employee is positive. Great! Also gently explore if there are any challenges to ensure balanced feedback." : ""}
+  "- The employee is positive. Great! Also explore if there are any areas for improvement to ensure balanced feedback." : ""}
 ${uncoveredThemes.length > 0 && previousResponses.length < 10 ? 
   `- Themes not yet covered: ${uncoveredThemes.map((t: any) => t.name).join(", ")}. Transition naturally to explore these.` : ""}
 ${isNearCompletion && previousResponses.length >= MIN_EXCHANGES ? 
   `- You have gathered good insights across ${discussedThemeIds.size} themes. Start moving toward a natural conclusion. Ask if there's anything else important they'd like to share, then thank them warmly.` : ""}
-${previousResponses.length >= 3 ? "- Reference earlier points when relevant to show you're listening and building on what they've shared." : ""}
-${previousResponses.length < MIN_EXCHANGES ? "- Continue exploring to gather sufficient depth. Ask thoughtful follow-up questions." : ""}
+${previousResponses.length >= 3 ? "- Reference earlier points when relevant to build on what they've shared." : ""}
+${previousResponses.length < MIN_EXCHANGES ? "- Continue exploring to gather sufficient depth. Ask specific follow-up questions to get concrete examples." : ""}
 `;
 };
 
 /**
- * Generate system prompt for empathetic AI conversation
+ * Generate system prompt for constructive AI conversation
  */
-const getSystemPrompt = (conversationContext: string, isFirstMessage: boolean): string => {
+const getSystemPrompt = (conversationContext: string, isFirstMessage: boolean, surveyType?: SurveyType): string => {
+  const isCourseEvaluation = surveyType === "course_evaluation";
+  const experienceType = isCourseEvaluation ? "course experience" : "work experience";
+  
   const introGuidance = isFirstMessage ? `
 IMPORTANT - FIRST MESSAGE PROTOCOL:
-Introduce yourself as Spradley, an AI conversation guide. Set expectations and build trust:
-- Acknowledge you're AI, not human (transparency builds trust)
-- Explain you're here to listen and organize their thoughts (purpose)
-- Reassure about anonymity and confidentiality (safety)
-- Acknowledge this might feel unusual (metacommunication)
-- Keep intro brief (3-4 sentences max), then ask first question
-
-Example first message:
-"Hi, I'm Spradley — an AI guide here to help you share your thoughts about work. I'm not a person, and nothing you say here is connected to your name. This might feel a bit different from typical surveys, and that's okay. Let's start with something simple: What's one thing that's been on your mind about work lately?"
+Use this exact first message (or the provided firstMessage if available):
+"Hi, I'm Spradley, the AI here to listen about your ${experienceType}."
+Then immediately ask your first question to get the conversation started.
 ` : '';
 
-  return `You are Spradley, a compassionate AI conversation guide conducting confidential employee feedback sessions.
+  return `You are Spradley, an AI conversation guide conducting feedback sessions.
 
 Your personality:
-- Transparent about being AI (not pretending to be human)
-- Warm but professional tone
+- Direct and conversational
 - Concise responses (1-2 sentences, max 3)
-- Direct questions (no rambling)
-- Good at being AI, not imitating humans
+- Focused on gathering constructive feedback
+- Professional but approachable tone
 
 Your goals:
-- Create a safe, non-judgmental space for honest feedback
-- Ask thoughtful follow-up questions to understand nuances
-- Show empathy through validation and acknowledgment
-- Guide conversation naturally through work experience, challenges, and suggestions
-- Probe deeper on important topics without being repetitive
-- Recognize emotional cues and respond appropriately
+- Guide the conversation through different themes systematically
+- Ask thoughtful follow-up questions to understand specifics
+- Explore both positive aspects and areas for improvement
+- Ensure all relevant themes are covered
+- Gather actionable feedback through constructive dialogue
 - Reference earlier points naturally when building on topics
 
 ${introGuidance}
 
 Conversation flow:
-1. Start with open-ended questions about their current experience
-2. Explore challenges with curiosity and care
-3. Ask about positive aspects to balance the conversation
-4. Invite suggestions for improvement
-5. Naturally transition between themes after 2-3 exchanges on one topic
+1. Start with an open-ended question about their ${experienceType}
+2. Explore themes systematically - aim for 2-3 exchanges per theme
+3. Ask specific follow-up questions to get concrete examples
+4. Balance positive feedback with constructive suggestions
+5. Transition naturally between themes after adequate depth
 6. Adaptively conclude when themes are adequately explored:
    - Minimum 4 exchanges for meaningful conversation
    - Aim for 60%+ theme coverage with 2+ exchanges per theme, OR 80%+ coverage
@@ -267,7 +262,7 @@ Conversation flow:
 
 ${conversationContext}
 
-Remember: Your tone should be warm, professional, and genuinely interested in understanding their perspective. Adapt your approach based on their sentiment and what they've already shared.`;
+Remember: Focus on constructive dialogue and systematic theme exploration. Keep responses concise and direct.`;
 };
 
 /**
@@ -502,16 +497,29 @@ Be warm and appreciative. Keep it brief.`;
       let systemPrompt = getSystemPromptForSurveyType(surveyType, themes, conversationContext);
       
       // If firstMessage is provided and this is an introduction, use it as the initial message
-      // Otherwise, let the AI generate the introduction based on the system prompt
-      if (isIntroductionTrigger && firstMessage) {
-        // Use the provided first message directly
-        return new Response(
-          JSON.stringify({ 
-            message: firstMessage,
-            shouldComplete: false
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      // Otherwise, generate a simple consistent first message
+      if (isIntroductionTrigger) {
+        if (firstMessage) {
+          // Use the provided first message directly
+          return new Response(
+            JSON.stringify({ 
+              message: firstMessage,
+              shouldComplete: false
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        } else {
+          // Generate consistent first message based on survey type
+          const experienceType = surveyType === "course_evaluation" ? "course experience" : "work experience";
+          const consistentFirstMessage = `Hi, I'm Spradley, the AI here to listen about your ${experienceType}.`;
+          return new Response(
+            JSON.stringify({ 
+              message: consistentFirstMessage,
+              shouldComplete: false
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
       }
 
       // Filter out the [START_CONVERSATION] trigger from messages sent to AI
@@ -570,7 +578,8 @@ Be warm and appreciative. Keep it brief.`;
         survey_id, 
         surveys(
           themes, 
-          first_message
+          first_message,
+          survey_type
         )
       `)
       .eq("id", conversationId)
@@ -589,6 +598,7 @@ Be warm and appreciative. Keep it brief.`;
     // Fetch theme details for classification
     const survey = session?.surveys as any;
     const themeIds = survey?.themes || [];
+    const surveyType: SurveyType = survey?.survey_type || "employee_satisfaction";
     const { data: themes } = await supabase
       .from("survey_themes")
       .select("id, name, description")
@@ -692,9 +702,35 @@ Be warm and appreciative. Keep it brief.`;
     const hasExistingAssistantMessages = messages.some((m: any) => m.role === "assistant");
     const isFirstMessage = isIntroductionTrigger || (turnCount === 1 && !hasExistingAssistantMessages);
 
+    // If this is an introduction trigger, handle first message
+    if (isIntroductionTrigger) {
+      const firstMessage = survey?.first_message;
+      if (firstMessage) {
+        // Use the provided first message directly
+        return new Response(
+          JSON.stringify({ 
+            message: firstMessage,
+            shouldComplete: false
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } else {
+        // Generate consistent first message based on survey type
+        const experienceType = surveyType === "course_evaluation" ? "course experience" : "work experience";
+        const consistentFirstMessage = `Hi, I'm Spradley, the AI here to listen about your ${experienceType}.`;
+        return new Response(
+          JSON.stringify({ 
+            message: consistentFirstMessage,
+            shouldComplete: false
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     // Build conversation context
     const conversationContext = buildConversationContext(previousResponses || [], themes || []);
-    const systemPrompt = getSystemPrompt(conversationContext, isFirstMessage);
+    const systemPrompt = getSystemPrompt(conversationContext, isFirstMessage, surveyType);
 
     // Filter out the [START_CONVERSATION] trigger from messages sent to AI
     const filteredMessages = isIntroductionTrigger 
