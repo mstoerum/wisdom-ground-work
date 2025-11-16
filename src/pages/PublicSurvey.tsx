@@ -14,37 +14,56 @@ export default function PublicSurvey() {
     queryFn: async () => {
       if (!linkToken) throw new Error("No link token provided");
 
-      // First, get the public link info
-      const { data: linkInfo, error: linkError } = await supabase
-        .from("public_survey_links")
-        .select("*")
-        .eq("link_token", linkToken)
-        .eq("is_active", true)
-        .single();
+      // Use RPC function to fetch survey data - this bypasses RLS issues
+      // and properly evaluates the relationship between link and survey
+      const { data: result, error: rpcError } = await supabase.rpc(
+        "get_public_survey_by_token",
+        { link_token_param: linkToken }
+      );
 
-      if (linkError) throw new Error("Invalid or inactive survey link");
-      if (!linkInfo) throw new Error("Survey link not found");
+      if (rpcError) {
+        console.error("RPC error:", rpcError);
+        if (rpcError.code === 'P0001' || rpcError.message?.includes('not found')) {
+          throw new Error("Invalid or inactive survey link");
+        }
+        throw new Error(`Failed to load survey: ${rpcError.message}`);
+      }
 
-      // Check expiration
+      if (!result || result.length === 0) {
+        throw new Error("Survey link not found or survey data unavailable");
+      }
+
+      const row = result[0];
+
+      // Build link info object
+      const linkInfo = {
+        id: row.link_id,
+        survey_id: row.link_survey_id,
+        link_token: row.link_token,
+        is_active: row.link_is_active,
+        max_responses: row.link_max_responses,
+        current_responses: row.link_current_responses,
+        expires_at: row.link_expires_at,
+        created_by: row.link_created_by,
+        created_at: row.link_created_at,
+      };
+
+      // Build survey data object
+      const surveyData = {
+        id: row.survey_id,
+        title: row.survey_title,
+        description: row.survey_description,
+        first_message: row.survey_first_message,
+        consent_config: row.survey_consent_config,
+      };
+
+      // Additional validation (though the function already checks these)
       if (linkInfo.expires_at && new Date(linkInfo.expires_at) < new Date()) {
         throw new Error("This survey link has expired");
       }
 
-      // Check max responses
       if (linkInfo.max_responses && linkInfo.current_responses >= linkInfo.max_responses) {
         throw new Error("This survey has reached its maximum number of responses");
-      }
-
-      // Now fetch the survey data separately (RLS should allow this via the policy)
-      const { data: surveyData, error: surveyError } = await supabase
-        .from("surveys")
-        .select("id, title, description, first_message, consent_config")
-        .eq("id", linkInfo.survey_id)
-        .single();
-
-      if (surveyError || !surveyData) {
-        console.error("Survey fetch error:", surveyError);
-        throw new Error("Survey data not available. Please contact the survey administrator.");
       }
 
       return {
