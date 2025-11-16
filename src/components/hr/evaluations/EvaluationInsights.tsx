@@ -22,8 +22,8 @@ export const EvaluationInsights = ({ evaluations }: EvaluationInsightsProps) => 
     const strengths: string[] = [];
     const suggestions: string[] = [];
 
-    evaluations.forEach((eval) => {
-      const keyInsights = eval.key_insights as any;
+    evaluations.forEach((evaluation) => {
+      const keyInsights = evaluation.key_insights as any;
       if (!keyInsights?.dimensions) return;
 
       const dims = keyInsights.dimensions;
@@ -36,8 +36,8 @@ export const EvaluationInsights = ({ evaluations }: EvaluationInsightsProps) => 
       });
 
       // Extract pain points (negative sentiment responses)
-      if (eval.sentiment_score && eval.sentiment_score < 0.4) {
-        const responses = eval.evaluation_responses as any[];
+      if (evaluation.sentiment_score && evaluation.sentiment_score < 0.4) {
+        const responses = evaluation.evaluation_responses as any[];
         responses?.forEach((r) => {
           if (r.answer && r.answer.toLowerCase().includes("problem") || 
               r.answer.toLowerCase().includes("issue") ||
@@ -49,8 +49,8 @@ export const EvaluationInsights = ({ evaluations }: EvaluationInsightsProps) => 
       }
 
       // Extract strengths (positive sentiment responses)
-      if (eval.sentiment_score && eval.sentiment_score > 0.6) {
-        const responses = eval.evaluation_responses as any[];
+      if (evaluation.sentiment_score && evaluation.sentiment_score > 0.6) {
+        const responses = evaluation.evaluation_responses as any[];
         responses?.forEach((r) => {
           if (r.answer && (r.answer.toLowerCase().includes("good") || 
               r.answer.toLowerCase().includes("great") ||
@@ -62,7 +62,7 @@ export const EvaluationInsights = ({ evaluations }: EvaluationInsightsProps) => 
       }
 
       // Extract suggestions
-      const responses = eval.evaluation_responses as any[];
+      const responses = evaluation.evaluation_responses as any[];
       responses?.forEach((r) => {
         if (r.answer && (r.answer.toLowerCase().includes("could") || 
             r.answer.toLowerCase().includes("should") ||

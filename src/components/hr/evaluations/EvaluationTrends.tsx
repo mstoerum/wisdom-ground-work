@@ -10,8 +10,8 @@ interface EvaluationTrendsProps {
 export const EvaluationTrends = ({ evaluations }: EvaluationTrendsProps) => {
   // Group evaluations by date
   const trends = useMemo(() => {
-    const grouped = evaluations.reduce((acc, eval) => {
-      const date = format(new Date(eval.completed_at), 'yyyy-MM-dd');
+    const grouped = evaluations.reduce((acc, evaluation) => {
+      const date = format(new Date(evaluation.completed_at), 'yyyy-MM-dd');
       if (!acc[date]) {
         acc[date] = {
           date,
@@ -23,8 +23,8 @@ export const EvaluationTrends = ({ evaluations }: EvaluationTrendsProps) => {
         };
       }
       acc[date].count++;
-      acc[date].totalDuration += eval.duration_seconds || 0;
-      acc[date].totalSentiment += eval.sentiment_score || 0.5;
+      acc[date].totalDuration += evaluation.duration_seconds || 0;
+      acc[date].totalSentiment += evaluation.sentiment_score || 0.5;
       acc[date].avgDuration = acc[date].totalDuration / acc[date].count;
       acc[date].avgSentiment = acc[date].totalSentiment / acc[date].count;
       return acc;

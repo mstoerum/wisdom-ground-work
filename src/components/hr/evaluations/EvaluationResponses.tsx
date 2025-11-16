@@ -20,34 +20,34 @@ export const EvaluationResponses = ({ evaluations }: EvaluationResponsesProps) =
       <CardContent>
         <ScrollArea className="h-[600px]">
           <div className="space-y-4">
-            {evaluations.map((eval) => {
-              const responses = eval.evaluation_responses as any[];
-              const insights = eval.key_insights as any;
+            {evaluations.map((evaluation) => {
+              const responses = evaluation.evaluation_responses as any[];
+              const insights = evaluation.key_insights as any;
               
               return (
-                <Card key={eval.id} className="border-l-4 border-l-primary">
+                <Card key={evaluation.id} className="border-l-4 border-l-primary">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle className="text-base">
-                          {eval.survey?.title || 'Survey'}
+                          {evaluation.survey?.title || 'Survey'}
                         </CardTitle>
                         <CardDescription className="text-xs mt-1">
-                          {format(new Date(eval.completed_at), 'MMM dd, yyyy HH:mm')}
-                          {eval.employee?.full_name && ` • ${eval.employee.full_name}`}
+                          {format(new Date(evaluation.completed_at), 'MMM dd, yyyy HH:mm')}
+                          {evaluation.employee?.full_name && ` • ${evaluation.employee.full_name}`}
                         </CardDescription>
                       </div>
                       <div className="flex items-center gap-2">
                         <Badge variant={
-                          eval.sentiment_score && eval.sentiment_score > 0.6 ? "default" :
-                          eval.sentiment_score && eval.sentiment_score < 0.4 ? "destructive" :
+                          evaluation.sentiment_score && evaluation.sentiment_score > 0.6 ? "default" :
+                          evaluation.sentiment_score && evaluation.sentiment_score < 0.4 ? "destructive" :
                           "secondary"
                         }>
-                          {eval.sentiment_score ? eval.sentiment_score.toFixed(2) : 'N/A'}
+                          {evaluation.sentiment_score ? evaluation.sentiment_score.toFixed(2) : 'N/A'}
                         </Badge>
                         <Badge variant="outline" className="text-xs">
                           <Clock className="h-3 w-3 mr-1" />
-                          {eval.duration_seconds}s
+                          {evaluation.duration_seconds}s
                         </Badge>
                       </div>
                     </div>
