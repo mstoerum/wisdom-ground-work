@@ -23,6 +23,8 @@ WITH CHECK (
 );
 
 -- Allow anonymous users to update their own public link sessions
+-- Note: We don't check if link is still active in USING clause because
+-- users should be able to complete sessions even if link expires mid-conversation
 CREATE POLICY "Anonymous users can update own public link sessions"
 ON public.conversation_sessions
 FOR UPDATE
@@ -30,11 +32,11 @@ TO anon
 USING (
   public_link_id IS NOT NULL
   AND employee_id IS NULL
+  -- Allow updates even if link expired (user started before expiration)
   AND EXISTS (
     SELECT 1 
     FROM public.public_survey_links
     WHERE public_survey_links.id = conversation_sessions.public_link_id
-    AND public_survey_links.is_active = true
   )
 )
 WITH CHECK (
@@ -113,5 +115,50 @@ WITH CHECK (
       WHERE public_survey_links.id = cs.public_link_id
       AND public_survey_links.is_active = true
     )
+  )
+);
+
+-- Allow anonymous users to read their own responses for public link sessions
+-- This is needed for features like theme coverage calculation and closing ritual
+CREATE POLICY "Anonymous users can read own responses for public links"
+ON public.responses FOR SELECT
+TO anon
+USING (
+  EXISTS (
+    SELECT 1 FROM conversation_sessions cs
+    WHERE cs.id = responses.conversation_session_id
+    AND cs.employee_id IS NULL
+    AND cs.public_link_id IS NOT NULL
+    AND EXISTS (
+      SELECT 1 FROM public.public_survey_links
+      WHERE public_survey_links.id = cs.public_link_id
+      AND public_survey_links.is_active = true
+    )
+  )
+);
+
+-- Update the existing "Block all employee direct access to responses" policy
+-- to allow authenticated users to read responses from their own sessions (including public link sessions)
+DROP POLICY IF EXISTS "Block all employee direct access to responses" ON public.responses;
+CREATE POLICY "Block all employee direct access to responses"
+ON public.responses FOR SELECT
+USING (
+  -- HR admins and analysts can read all responses
+  has_role(auth.uid(), 'hr_admin') 
+  OR has_role(auth.uid(), 'hr_analyst')
+  OR
+  -- Authenticated users can read responses from their own sessions
+  EXISTS (
+    SELECT 1 FROM conversation_sessions cs
+    WHERE cs.id = responses.conversation_session_id
+    AND cs.employee_id = auth.uid()
+  )
+  OR
+  -- Authenticated users can read responses from public link sessions they created
+  EXISTS (
+    SELECT 1 FROM conversation_sessions cs
+    WHERE cs.id = responses.conversation_session_id
+    AND cs.employee_id IS NULL
+    AND cs.public_link_id IS NOT NULL
   )
 );
