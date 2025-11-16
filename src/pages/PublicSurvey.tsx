@@ -23,10 +23,20 @@ export default function PublicSurvey() {
 
       if (rpcError) {
         console.error("RPC error:", rpcError);
+        // Provide user-friendly error messages
         if (rpcError.code === 'P0001' || rpcError.message?.includes('not found')) {
           throw new Error("Invalid or inactive survey link");
         }
-        throw new Error(`Failed to load survey: ${rpcError.message}`);
+        if (rpcError.code === 'PGRST116') {
+          throw new Error("Survey link not found. Please check the link and try again.");
+        }
+        if (rpcError.message?.includes('expired')) {
+          throw new Error("This survey link has expired");
+        }
+        if (rpcError.message?.includes('max responses')) {
+          throw new Error("This survey has reached its maximum number of responses");
+        }
+        throw new Error(`Unable to load survey. Please try again later or contact the survey administrator.`);
       }
 
       if (!result || result.length === 0) {

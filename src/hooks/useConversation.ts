@@ -38,7 +38,60 @@ export const useConversation = (publicLinkId?: string) => {
 
       // For public links, allow anonymous access
       if (isPublicLink && !user) {
-        // Create anonymous conversation session for public link
+        // Check for existing session in localStorage
+        const storageKey = `public_survey_session_${effectiveLinkId}`;
+        const existingSessionId = localStorage.getItem(storageKey);
+        
+        if (existingSessionId) {
+          // Check if session still exists and is active
+          const { data: existingSession, error: checkError } = await supabase
+            .from("conversation_sessions")
+            .select("id, status")
+            .eq("id", existingSessionId)
+            .eq("public_link_id", effectiveLinkId)
+            .single();
+          
+          if (!checkError && existingSession && existingSession.status === "active") {
+            // Resume existing session
+            setConversationId(existingSession.id);
+            setIsActive(true);
+            return existingSession.id;
+          } else {
+            // Session doesn't exist or is completed, clear localStorage
+            localStorage.removeItem(storageKey);
+          }
+        }
+        
+        // Basic rate limiting check (client-side, using localStorage)
+        // Note: Proper rate limiting should be done server-side with IP tracking
+        const rateLimitKey = `public_link_rate_${effectiveLinkId}`;
+        const rateLimitData = localStorage.getItem(rateLimitKey);
+        const now = Date.now();
+        const oneHour = 60 * 60 * 1000;
+        
+        if (rateLimitData) {
+          const { count, timestamp } = JSON.parse(rateLimitData);
+          if (now - timestamp < oneHour) {
+            if (count >= 10) { // Max 10 sessions per hour per browser
+              toast({
+                title: "Rate Limit Exceeded",
+                description: "You've created too many sessions. Please wait before trying again.",
+                variant: "destructive",
+              });
+              throw new Error("Rate limit exceeded. Please wait before creating a new session.");
+            }
+            // Update count
+            localStorage.setItem(rateLimitKey, JSON.stringify({ count: count + 1, timestamp }));
+          } else {
+            // Reset counter for new hour
+            localStorage.setItem(rateLimitKey, JSON.stringify({ count: 1, timestamp: now }));
+          }
+        } else {
+          // First time, create counter
+          localStorage.setItem(rateLimitKey, JSON.stringify({ count: 1, timestamp: now }));
+        }
+        
+        // Create new anonymous conversation session for public link
         const { data: session, error: sessionError } = await supabase
           .from("conversation_sessions")
           .insert({
@@ -76,6 +129,12 @@ export const useConversation = (publicLinkId?: string) => {
 
         setConversationId(session.id);
         setIsActive(true);
+        
+        // Store session ID in localStorage for public links
+        if (effectiveLinkId) {
+          localStorage.setItem(`public_survey_session_${effectiveLinkId}`, session.id);
+        }
+        
         return session.id;
       }
 
@@ -119,6 +178,11 @@ export const useConversation = (publicLinkId?: string) => {
 
       setConversationId(session.id);
       setIsActive(true);
+      
+      // Store session ID in localStorage for public links
+      if (effectiveLinkId) {
+        localStorage.setItem(`public_survey_session_${effectiveLinkId}`, session.id);
+      }
 
       return session.id;
     } catch (error) {
@@ -199,6 +263,11 @@ export const useConversation = (publicLinkId?: string) => {
         })
         .eq("id", conversationId);
 
+      // Clear localStorage for public links
+      if (publicLinkId) {
+        localStorage.removeItem(`public_survey_session_${publicLinkId}`);
+      }
+
       setIsActive(false);
       setConversationId(null);
     } catch (error) {
@@ -209,7 +278,7 @@ export const useConversation = (publicLinkId?: string) => {
         variant: "destructive",
       });
     }
-  }, [conversationId, toast, isPreviewMode]);
+  }, [conversationId, toast, isPreviewMode, publicLinkId]);
 
   return {
     conversationId,
