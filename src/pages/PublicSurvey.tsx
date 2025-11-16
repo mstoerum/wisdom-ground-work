@@ -1,45 +1,29 @@
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
-import { PublicSurveySignup } from "@/components/public/PublicSurveySignup";
-import { useState } from "react";
+import { Loader2, AlertCircle } from "lucide-react";
+import { EmployeeSurveyFlow } from "@/components/employee/EmployeeSurveyFlow";
 
 export default function PublicSurvey() {
   const { linkToken } = useParams<{ linkToken: string }>();
-  const navigate = useNavigate();
-  const [registered, setRegistered] = useState(false);
 
   const { data: linkData, isLoading, error } = useQuery({
     queryKey: ["public-survey-link", linkToken],
     queryFn: async () => {
       if (!linkToken) throw new Error("No link token provided");
 
+      // First, get the public link info
       const { data: linkInfo, error: linkError } = await supabase
         .from("public_survey_links")
-        .select(`
-          *,
-          survey:surveys(
-            id,
-            title,
-            description,
-            first_message,
-            consent_config
-          )
-        `)
+        .select("*")
         .eq("link_token", linkToken)
         .eq("is_active", true)
         .single();
 
       if (linkError) throw new Error("Invalid or inactive survey link");
       if (!linkInfo) throw new Error("Survey link not found");
-
-      // Check if survey data was retrieved (RLS might block it)
-      if (!linkInfo.survey) {
-        throw new Error("Survey data not available. Please contact the survey administrator.");
-      }
 
       // Check expiration
       if (linkInfo.expires_at && new Date(linkInfo.expires_at) < new Date()) {
@@ -51,17 +35,25 @@ export default function PublicSurvey() {
         throw new Error("This survey has reached its maximum number of responses");
       }
 
-      return linkInfo;
+      // Now fetch the survey data separately (RLS should allow this via the policy)
+      const { data: surveyData, error: surveyError } = await supabase
+        .from("surveys")
+        .select("id, title, description, first_message, consent_config")
+        .eq("id", linkInfo.survey_id)
+        .single();
+
+      if (surveyError || !surveyData) {
+        console.error("Survey fetch error:", surveyError);
+        throw new Error("Survey data not available. Please contact the survey administrator.");
+      }
+
+      return {
+        ...linkInfo,
+        survey: surveyData,
+      };
     },
     enabled: !!linkToken,
   });
-
-  const handleRegistrationSuccess = () => {
-    setRegistered(true);
-    setTimeout(() => {
-      navigate("/");
-    }, 2000);
-  };
 
   if (isLoading) {
     return (
@@ -79,13 +71,11 @@ export default function PublicSurvey() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-accent/20 p-4">
         <Card className="w-full max-w-md">
-          <CardHeader>
-            <div className="flex items-center gap-2 text-destructive">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-2 text-destructive mb-4">
               <AlertCircle className="h-5 w-5" />
-              <CardTitle>Survey Unavailable</CardTitle>
+              <h2 className="text-xl font-semibold">Survey Unavailable</h2>
             </div>
-          </CardHeader>
-          <CardContent>
             <Alert variant="destructive">
               <AlertDescription>
                 {error.message || "This survey link is not valid or has expired."}
@@ -101,10 +91,7 @@ export default function PublicSurvey() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-accent/20 p-4">
         <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Survey Not Found</CardTitle>
-          </CardHeader>
-          <CardContent>
+          <CardContent className="p-6">
             <Alert>
               <AlertDescription>
                 The survey associated with this link could not be found.
@@ -116,55 +103,31 @@ export default function PublicSurvey() {
     );
   }
 
-  if (registered) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-accent/20 p-4">
-        <Card className="w-full max-w-md">
-          <CardContent className="flex flex-col items-center justify-center p-8 text-center space-y-4">
-            <CheckCircle2 className="h-16 w-16 text-green-500" />
-            <div>
-              <h3 className="text-xl font-semibold">Registration Successful!</h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                Redirecting you to the survey...
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
+  // Render the survey flow directly - no signup required
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-accent/20 p-4">
-      <Card className="w-full max-w-2xl">
-        <CardHeader>
-          <CardTitle className="text-2xl">{linkData.survey.title}</CardTitle>
-          {linkData.survey.description && (
-            <CardDescription className="text-base mt-2">
-              {linkData.survey.description}
-            </CardDescription>
-          )}
-        </CardHeader>
-        <CardContent>
-          <div className="mb-6 p-4 rounded-lg bg-accent/20 border">
-            <p className="text-sm text-muted-foreground">
-              {linkData.survey.first_message}
-            </p>
-          </div>
+    <PublicSurveyFlow
+      surveyId={linkData.survey.id}
+      surveyDetails={linkData.survey}
+      publicLinkId={linkData.id}
+    />
+  );
+}
 
-          <PublicSurveySignup
-            surveyId={linkData.survey.id}
-            linkId={linkData.id}
-            onSuccess={handleRegistrationSuccess}
-          />
-
-          {linkData.expires_at && (
-            <p className="text-xs text-muted-foreground text-center mt-4">
-              This survey link expires on {new Date(linkData.expires_at).toLocaleDateString()}
-            </p>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+// Component that wraps EmployeeSurveyFlow for public links
+function PublicSurveyFlow({
+  surveyId,
+  surveyDetails,
+  publicLinkId,
+}: {
+  surveyId: string;
+  surveyDetails: any;
+  publicLinkId: string;
+}) {
+  return (
+    <EmployeeSurveyFlow
+      surveyId={surveyId}
+      surveyDetails={surveyDetails}
+      publicLinkId={publicLinkId}
+    />
   );
 }

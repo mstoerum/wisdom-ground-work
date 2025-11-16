@@ -6,8 +6,9 @@ import { usePreviewMode } from "@/contexts/PreviewModeContext";
 /**
  * Custom hook for managing employee feedback conversation sessions
  * Handles conversation lifecycle: start, end, and state management
+ * Supports both authenticated users and anonymous public link users
  */
-export const useConversation = () => {
+export const useConversation = (publicLinkId?: string) => {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(false);
   const { toast } = useToast();
@@ -17,8 +18,9 @@ export const useConversation = () => {
    * Start a new conversation session with anonymization
    * Creates or reuses anonymous token and initializes session
    * In preview mode, generates a mock conversation ID without database operations
+   * Supports anonymous public link users (no authentication required)
    */
-  const startConversation = useCallback(async (surveyId: string, initialMood: number) => {
+  const startConversation = useCallback(async (surveyId: string, initialMood: number, linkId?: string) => {
     try {
       // In preview mode, generate a mock conversation ID without DB operations
       if (isPreviewMode) {
@@ -29,6 +31,53 @@ export const useConversation = () => {
       }
 
       const { data: { user } } = await supabase.auth.getUser();
+      const isPublicLink = !!linkId || !!publicLinkId;
+      const effectiveLinkId = linkId || publicLinkId;
+
+      // For public links, allow anonymous access
+      if (isPublicLink && !user) {
+        // Create anonymous conversation session for public link
+        const { data: session, error: sessionError } = await supabase
+          .from("conversation_sessions")
+          .insert({
+            employee_id: null, // Anonymous user
+            anonymous_token_id: null, // No anonymous token needed for public links
+            survey_id: surveyId,
+            public_link_id: effectiveLinkId,
+            initial_mood: initialMood,
+            status: "active",
+            consent_given: true,
+            consent_timestamp: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (sessionError) {
+          console.error("Session creation error:", sessionError);
+          throw sessionError;
+        }
+
+        // Increment response counter for public link
+        if (effectiveLinkId) {
+          try {
+            const { error: incrementError } = await supabase.rpc('increment_link_responses', {
+              link_id: effectiveLinkId
+            });
+            if (incrementError) {
+              console.error("Failed to increment response count:", incrementError);
+              // Don't fail the whole operation if counter increment fails
+            }
+          } catch (counterError) {
+            console.error("Counter increment error:", counterError);
+          }
+        }
+
+        setConversationId(session.id);
+        setIsActive(true);
+        return session.id;
+      }
+
+      // For authenticated users
       if (!user) throw new Error("Not authenticated");
 
       // Get or create anonymous token for privacy
@@ -41,6 +90,7 @@ export const useConversation = () => {
           employee_id: user.id,
           anonymous_token_id: anonymousTokenId,
           survey_id: surveyId,
+          public_link_id: effectiveLinkId || null,
           initial_mood: initialMood,
           status: "active",
           consent_given: true,
@@ -50,6 +100,20 @@ export const useConversation = () => {
         .single();
 
       if (sessionError) throw sessionError;
+
+      // Increment response counter if this is a public link
+      if (effectiveLinkId) {
+        try {
+          const { error: incrementError } = await supabase.rpc('increment_link_responses', {
+            link_id: effectiveLinkId
+          });
+          if (incrementError) {
+            console.error("Failed to increment response count:", incrementError);
+          }
+        } catch (counterError) {
+          console.error("Counter increment error:", counterError);
+        }
+      }
 
       setConversationId(session.id);
       setIsActive(true);
@@ -64,7 +128,7 @@ export const useConversation = () => {
       });
       return null;
     }
-  }, [toast, isPreviewMode]);
+  }, [toast, isPreviewMode, publicLinkId]);
 
   /**
    * Get existing or create new anonymous token
