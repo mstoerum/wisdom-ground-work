@@ -165,7 +165,7 @@ export const SurveyList = ({ status }: SurveyListProps) => {
 
   // Copy public link to clipboard
   const handleCopyPublicLink = (linkToken: string) => {
-    const surveyUrl = `${window.location.origin}/public-survey/${linkToken}`;
+    const surveyUrl = `${window.location.origin}/survey/${linkToken}`;
     navigator.clipboard.writeText(surveyUrl);
     toast.success("Link copied to clipboard");
   };
