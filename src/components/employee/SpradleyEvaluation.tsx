@@ -38,6 +38,7 @@ export const SpradleyEvaluation = ({
   const [isLoading, setIsLoading] = useState(false);
   const [startTime] = useState(Date.now());
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [sentimentData, setSentimentData] = useState<{ sentiment?: string; sentimentScore?: number }>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -76,6 +77,10 @@ export const SpradleyEvaluation = ({
         )?.answer || null,
       };
 
+      // Calculate overall sentiment from stored sentiment data or responses
+      const overallSentiment = sentimentData.sentiment || "neutral";
+      const overallSentimentScore = sentimentData.sentimentScore || 0.5;
+
       // Save evaluation with structured data
       const { error } = await supabase
         .from("spradley_evaluations")
@@ -84,10 +89,14 @@ export const SpradleyEvaluation = ({
           conversation_session_id: conversationSessionId,
           employee_id: user.id,
           evaluation_responses: evaluationResponses,
+          overall_sentiment: overallSentiment,
+          sentiment_score: overallSentimentScore,
           key_insights: {
             dimensions,
             total_questions: userMessages.length,
-            average_response_length: userMessages.reduce((sum, m) => sum + m.content.length, 0) / userMessages.length || 0,
+            average_response_length: userMessages.length > 0 
+              ? userMessages.reduce((sum, m) => sum + m.content.length, 0) / userMessages.length 
+              : 0,
           },
           duration_seconds: duration,
           completed_at: new Date().toISOString(),
@@ -111,7 +120,7 @@ export const SpradleyEvaluation = ({
       // Still complete even if save fails
       onComplete();
     }
-  }, [surveyId, conversationSessionId, messages, startTime, onComplete, toast]);
+  }, [surveyId, conversationSessionId, messages, startTime, onComplete, toast, sentimentData]);
 
   // Track elapsed time
   useEffect(() => {
@@ -209,6 +218,14 @@ export const SpradleyEvaluation = ({
       };
 
       setMessages(prev => [...prev, assistantMessage]);
+
+      // Store sentiment from response for later saving
+      if (data.sentiment && data.sentimentScore !== undefined) {
+        setSentimentData({
+          sentiment: data.sentiment,
+          sentimentScore: data.sentimentScore,
+        });
+      }
 
       // Auto-complete after sufficient exchanges or if AI indicates completion
       const userMessageCount = messages.filter(m => m.role === "user").length + 1;

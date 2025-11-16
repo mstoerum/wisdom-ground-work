@@ -199,22 +199,24 @@ serve(async (req) => {
       .single();
 
     // Count messages in the original conversation
+    // Based on migration 20251023083040, column is conversation_session_id
     const { count: responseCount } = await supabase
       .from("responses")
       .select("*", { count: "exact", head: true })
       .eq("conversation_session_id", conversationSessionId);
 
     // Check if voice mode was used (simplified - could be enhanced)
+    // Based on migration, column is content (not message_text)
     const { data: responses } = await supabase
       .from("responses")
       .select("content")
       .eq("conversation_session_id", conversationSessionId)
       .limit(5);
 
-    const usedVoiceMode = responses?.some(r => 
-      r.content?.toLowerCase().includes("voice") || 
-      r.content?.toLowerCase().includes("speak")
-    ) || false;
+    const usedVoiceMode = responses?.some(r => {
+      const text = (r.content || "").toLowerCase();
+      return text.includes("voice") || text.includes("speak");
+    }) || false;
 
     const conversationContext = {
       initialMood: session?.initial_mood || session?.mood_selection?.initial || null,

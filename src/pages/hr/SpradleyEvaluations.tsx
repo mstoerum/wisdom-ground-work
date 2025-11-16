@@ -30,19 +30,27 @@ const SpradleyEvaluations = () => {
     },
   });
 
-  // Calculate aggregate metrics
-  const metrics = evaluations ? {
+  // Calculate aggregate metrics with zero-division protection
+  const metrics = evaluations && evaluations.length > 0 ? {
     totalEvaluations: evaluations.length,
-    averageDuration: evaluations.reduce((sum, e) => sum + (e.duration_seconds || 0), 0) / evaluations.length || 0,
+    averageDuration: evaluations.reduce((sum, e) => sum + (e.duration_seconds || 0), 0) / evaluations.length,
     averageQuestions: evaluations.reduce((sum, e) => {
       const insights = e.key_insights as any;
       return sum + (insights?.total_questions || 0);
-    }, 0) / evaluations.length || 0,
+    }, 0) / evaluations.length,
     positiveSentiment: evaluations.filter(e => e.sentiment_score && e.sentiment_score > 0.6).length,
     neutralSentiment: evaluations.filter(e => e.sentiment_score && e.sentiment_score >= 0.4 && e.sentiment_score <= 0.6).length,
     negativeSentiment: evaluations.filter(e => e.sentiment_score && e.sentiment_score < 0.4).length,
-    completionRate: evaluations.length > 0 ? 100 : 0, // Simplified - could calculate from survey completions
-  } : null;
+    completionRate: 100, // Simplified - could calculate from survey completions
+  } : {
+    totalEvaluations: 0,
+    averageDuration: 0,
+    averageQuestions: 0,
+    positiveSentiment: 0,
+    neutralSentiment: 0,
+    negativeSentiment: 0,
+    completionRate: 0,
+  };
 
   if (isLoading) {
     return (
