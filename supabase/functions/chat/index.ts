@@ -365,16 +365,31 @@ serve(async (req) => {
   try {
     const { conversationId, messages, testMode, themes: requestThemeIds, finishEarly, themeCoverage, isFinalResponse, firstMessage } = await req.json();
     
+    // Validate required fields
+    if (!conversationId || typeof conversationId !== "string") {
+      return new Response(
+        JSON.stringify({ error: "Invalid or missing conversationId" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "Invalid or empty messages array" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     // Get authorization header (optional for preview/demo mode)
     const authHeader = req.headers.get("authorization");
     const lastMessage = messages[messages.length - 1];
 
     // Check if this is an auto-triggered introduction request
-    const isIntroductionTrigger = lastMessage.content === "[START_CONVERSATION]" && messages.length === 1;
+    const isIntroductionTrigger = lastMessage?.content === "[START_CONVERSATION]" && messages.length === 1;
     
     // Input validation (skip for introduction trigger)
-    let sanitizedContent = lastMessage.content;
-    if (!isIntroductionTrigger) {
+    let sanitizedContent = lastMessage?.content || "";
+    if (!isIntroductionTrigger && lastMessage) {
       sanitizedContent = validateInput(conversationId, messages, lastMessage.content);
     }
     
@@ -382,7 +397,7 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     // Check if this is a preview mode conversation
-    const isPreviewMode = testMode || conversationId.startsWith("preview-");
+    const isPreviewMode = testMode || (conversationId && typeof conversationId === 'string' && conversationId.startsWith("preview-"));
     
      if (isPreviewMode) {
       // Handle preview mode without database access
