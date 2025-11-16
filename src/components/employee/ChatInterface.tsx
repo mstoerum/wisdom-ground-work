@@ -181,6 +181,11 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
             }
           }
 
+          // Validate conversationId exists
+          if (!conversationId) {
+            throw new Error("Conversation ID is missing. Please try refreshing the preview.");
+          }
+
           // Send a special trigger message to request introduction
           const requestBody: any = {
             conversationId,
@@ -234,6 +239,12 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           soundEffects.playSuccess();
         } catch (error: any) {
           console.error("Error getting AI introduction:", error);
+          
+          // In preview mode, provide more helpful error messages
+          const errorMessage = error?.message || "Unknown error";
+          const isNetworkError = errorMessage.includes("Failed to fetch") || errorMessage.includes("NetworkError");
+          const isApiError = errorMessage.includes("Failed to get introduction") || errorMessage.includes("status");
+          
           // Fallback to a default greeting if AI fails
           // Use first_message from preview data if available, otherwise use default
           const fallbackMessage = isPreviewMode && previewSurveyData?.first_message 
@@ -246,14 +257,30 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
               content: fallbackMessage,
               timestamp: new Date()
             }]);
+            
+            // Show a warning toast in preview mode if there was an API error
+            if (isPreviewMode && (isNetworkError || isApiError)) {
+              toast({
+                title: "Preview Mode: Using Fallback",
+                description: "The chat API is unavailable. Showing preview with default message.",
+                variant: "default",
+              });
+            }
           } catch (setStateError) {
             console.error("Error setting fallback message:", setStateError);
             // If even setting state fails, show error to user
             toast({
               title: "Connection Error",
-              description: "Unable to start conversation. Please try again.",
+              description: isPreviewMode 
+                ? "Unable to start preview. Please check your connection and try again."
+                : "Unable to start conversation. Please try again.",
               variant: "destructive",
             });
+            // Re-throw only if it's a critical error that prevents the component from working
+            // This will be caught by the error boundary
+            if (setStateError instanceof Error && setStateError.message.includes("Cannot read")) {
+              throw setStateError;
+            }
           }
         } finally {
           setIsLoading(false);
