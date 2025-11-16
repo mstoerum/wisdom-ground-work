@@ -18,6 +18,7 @@ export const surveyFormSchema = z.object({
   anonymization_level: z.enum(['identified', 'anonymous']),
   consent_message: z.string().min(1, "Consent message is required"),
   data_retention_days: z.enum(['30', '60', '90']),
+  enable_spradley_evaluation: z.boolean().default(false),
 }).refine((data) => {
   if (data.target_type === 'department') {
     return data.target_departments && data.target_departments.length > 0;
@@ -63,6 +64,7 @@ export const getDefaultSurveyValues = (defaults?: any, surveyType: 'employee_sat
     ? "Your course evaluation will be kept confidential and used to improve the learning experience. Your feedback is valuable for enhancing teaching quality and course design."
     : "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines."),
   data_retention_days: defaults?.data_retention_days?.toString() || "60",
+  enable_spradley_evaluation: false,
 });
 
 export const defaultSurveyValues: SurveyFormData = getDefaultSurveyValues();

@@ -17,6 +17,7 @@ import CreateSurvey from "./pages/hr/CreateSurvey";
 import Analytics from "./pages/hr/Analytics";
 import Commitments from "./pages/hr/Commitments";
 import Settings from "./pages/hr/Settings";
+import SpradleyEvaluations from "./pages/hr/SpradleyEvaluations";
 import NotFound from "./pages/NotFound";
 import EmployeeProfile from "./pages/employee/Profile";
 import PublicSurvey from "./pages/PublicSurvey";
@@ -109,6 +110,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="hr_admin">
                 <Settings />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/hr/evaluations" 
+            element={
+              <ProtectedRoute requiredRole="hr_admin">
+                <SpradleyEvaluations />
               </ProtectedRoute>
             } 
           />
