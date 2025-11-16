@@ -94,10 +94,13 @@ export const EmployeeSurveyFlow = ({
     }
   };
 
-  const handleModeSelect = async (mode: 'text' | 'voice') => {
+  const handleModeSelect = async (mode: 'text' | 'voice', initialMood?: number) => {
     setSelectedMode(mode);
     
-    // Start conversation directly with default mood (50)
+    // Use provided mood or default to 50
+    const moodToUse = initialMood ?? 50;
+    setMood(moodToUse);
+    
     if (!surveyId) {
       toast({
         title: "Error",
@@ -108,7 +111,7 @@ export const EmployeeSurveyFlow = ({
     }
 
     try {
-      const sessionId = await startConversation(surveyId, 50, publicLinkId);
+      const sessionId = await startConversation(surveyId, moodToUse, publicLinkId);
       if (sessionId) {
         // Go to the appropriate interface based on selected mode
         if (mode === 'voice') {
@@ -132,6 +135,7 @@ export const EmployeeSurveyFlow = ({
       });
     }
   };
+
 
   const handleDecline = async () => {
     if (isPreviewMode) {
