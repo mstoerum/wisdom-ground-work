@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { MoodDial } from "@/components/employee/MoodDial";
 import { ChatInterface } from "@/components/employee/ChatInterface";
 import { VoiceInterface } from "@/components/employee/VoiceInterface";
 import { AnonymizationBanner } from "@/components/employee/AnonymizationBanner";
@@ -17,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { PlayCircle } from "lucide-react";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 
-type ConversationStep = "consent" | "anonymization" | "mode-select" | "mood" | "chat" | "voice" | "closing" | "evaluation" | "complete";
+type ConversationStep = "consent" | "anonymization" | "mode-select" | "chat" | "voice" | "closing" | "evaluation" | "complete";
 
 interface EmployeeSurveyFlowProps {
   surveyId: string;
@@ -95,25 +94,10 @@ export const EmployeeSurveyFlow = ({
     }
   };
 
-  const handleModeSelect = (mode: 'text' | 'voice') => {
+  const handleModeSelect = async (mode: 'text' | 'voice') => {
     setSelectedMode(mode);
-    setStep("mood");
-  };
-
-  const handleDecline = async () => {
-    if (isPreviewMode) {
-      onExit?.();
-    } else {
-      toast({
-        title: "Thank you",
-        description: "You can participate whenever you're ready.",
-      });
-      onExit?.();
-    }
-  };
-
-  const handleMoodSelect = async (selectedMood: number) => {
-    setMood(selectedMood);
+    
+    // Start conversation directly with default mood (50)
     if (!surveyId) {
       toast({
         title: "Error",
@@ -124,10 +108,10 @@ export const EmployeeSurveyFlow = ({
     }
 
     try {
-      const sessionId = await startConversation(surveyId, selectedMood, publicLinkId);
+      const sessionId = await startConversation(surveyId, 50, publicLinkId);
       if (sessionId) {
         // Go to the appropriate interface based on selected mode
-        if (selectedMode === 'voice') {
+        if (mode === 'voice') {
           setStep("voice");
         } else {
           setStep("chat");
@@ -146,6 +130,18 @@ export const EmployeeSurveyFlow = ({
         description: "An error occurred while starting the conversation.",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleDecline = async () => {
+    if (isPreviewMode) {
+      onExit?.();
+    } else {
+      toast({
+        title: "Thank you",
+        description: "You can participate whenever you're ready.",
+      });
+      onExit?.();
     }
   };
 
@@ -274,10 +270,6 @@ export const EmployeeSurveyFlow = ({
               surveyTitle={surveyDetails?.title || "Employee Feedback Survey"}
               firstMessage={surveyDetails?.first_message}
             />
-          )}
-
-          {step === "mood" && (
-            <MoodDial onMoodSelect={handleMoodSelect} />
           )}
 
           {step === "chat" && conversationId && (
