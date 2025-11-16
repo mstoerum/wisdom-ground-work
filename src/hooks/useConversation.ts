@@ -20,7 +20,7 @@ export const useConversation = (publicLinkId?: string) => {
    * In preview mode, generates a mock conversation ID without database operations
    * Supports anonymous public link users (no authentication required)
    */
-  const startConversation = useCallback(async (surveyId: string, initialMood: number, linkId?: string) => {
+  const startConversation = useCallback(async (surveyId: string, initialMood: number | null, linkId?: string) => {
     try {
       // In preview mode, generate a mock conversation ID without DB operations
       if (isPreviewMode) {
@@ -46,7 +46,7 @@ export const useConversation = (publicLinkId?: string) => {
             anonymous_token_id: null, // No anonymous token needed for public links
             survey_id: surveyId,
             public_link_id: effectiveLinkId,
-            initial_mood: initialMood,
+            initial_mood: initialMood ?? null,
             status: "active",
             consent_given: true,
             consent_timestamp: new Date().toISOString(),
@@ -179,7 +179,7 @@ export const useConversation = (publicLinkId?: string) => {
    * Records final mood and marks session as completed
    * In preview mode, just resets local state without DB operations
    */
-  const endConversation = useCallback(async (finalMood?: number) => {
+  const endConversation = useCallback(async (finalMood?: number | null) => {
     if (!conversationId) return;
 
     // In preview mode, just reset state without DB operations
@@ -194,7 +194,7 @@ export const useConversation = (publicLinkId?: string) => {
         .from("conversation_sessions")
         .update({
           status: "completed",
-          final_mood: finalMood,
+          final_mood: finalMood ?? null,
           ended_at: new Date().toISOString(),
         })
         .eq("id", conversationId);

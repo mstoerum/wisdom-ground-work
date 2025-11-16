@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { MoodDial } from "@/components/employee/MoodDial";
 import { ChatInterface } from "@/components/employee/ChatInterface";
 import { VoiceInterface } from "@/components/employee/VoiceInterface";
 import { AnonymizationBanner } from "@/components/employee/AnonymizationBanner";
@@ -17,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { PlayCircle } from "lucide-react";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 
-type ConversationStep = "consent" | "anonymization" | "mode-select" | "mood" | "chat" | "voice" | "closing" | "evaluation" | "complete";
+type ConversationStep = "consent" | "anonymization" | "mode-select" | "chat" | "voice" | "closing" | "evaluation" | "complete";
 
 interface EmployeeSurveyFlowProps {
   surveyId: string;
@@ -42,7 +41,6 @@ export const EmployeeSurveyFlow = ({
 }: EmployeeSurveyFlowProps) => {
   const { isPreviewMode } = usePreviewMode();
   const [step, setStep] = useState<ConversationStep>("consent");
-  const [mood, setMood] = useState(50);
   const [selectedMode, setSelectedMode] = useState<'text' | 'voice' | null>(null);
   const { conversationId, startConversation, endConversation } = useConversation(publicLinkId);
   const { toast } = useToast();
@@ -68,9 +66,9 @@ export const EmployeeSurveyFlow = ({
 
   const handleAnonymizationComplete = async () => {
     if (quickPreview) {
-      // In quick preview mode, skip mode selection and mood dial, go directly to chat
+      // In quick preview mode, skip mode selection, go directly to chat
       try {
-        const sessionId = await startConversation(surveyId, 50, publicLinkId);
+        const sessionId = await startConversation(surveyId, null, publicLinkId);
         if (sessionId) {
           setStep("chat");
         } else {
@@ -95,25 +93,9 @@ export const EmployeeSurveyFlow = ({
     }
   };
 
-  const handleModeSelect = (mode: 'text' | 'voice') => {
+  const handleModeSelect = async (mode: 'text' | 'voice') => {
     setSelectedMode(mode);
-    setStep("mood");
-  };
-
-  const handleDecline = async () => {
-    if (isPreviewMode) {
-      onExit?.();
-    } else {
-      toast({
-        title: "Thank you",
-        description: "You can participate whenever you're ready.",
-      });
-      onExit?.();
-    }
-  };
-
-  const handleMoodSelect = async (selectedMood: number) => {
-    setMood(selectedMood);
+    
     if (!surveyId) {
       toast({
         title: "Error",
@@ -124,10 +106,11 @@ export const EmployeeSurveyFlow = ({
     }
 
     try {
-      const sessionId = await startConversation(surveyId, selectedMood, publicLinkId);
+      // Start conversation without mood (pass null or undefined)
+      const sessionId = await startConversation(surveyId, null, publicLinkId);
       if (sessionId) {
         // Go to the appropriate interface based on selected mode
-        if (selectedMode === 'voice') {
+        if (mode === 'voice') {
           setStep("voice");
         } else {
           setStep("chat");
@@ -149,13 +132,26 @@ export const EmployeeSurveyFlow = ({
     }
   };
 
+
+  const handleDecline = async () => {
+    if (isPreviewMode) {
+      onExit?.();
+    } else {
+      toast({
+        title: "Thank you",
+        description: "You can participate whenever you're ready.",
+      });
+      onExit?.();
+    }
+  };
+
   const handleChatComplete = () => {
     setStep("closing");
   };
 
-  const handleSurveyComplete = async (finalMood: number) => {
+  const handleSurveyComplete = async () => {
     if (!isPreviewMode) {
-      await endConversation(finalMood);
+      await endConversation(null);
     } else {
       // In preview mode, just reset conversation state
       if (conversationId) {
@@ -276,10 +272,6 @@ export const EmployeeSurveyFlow = ({
             />
           )}
 
-          {step === "mood" && (
-            <MoodDial onMoodSelect={handleMoodSelect} />
-          )}
-
           {step === "chat" && conversationId && (
             <ChatErrorBoundary conversationId={conversationId} onExit={handleSaveAndExit}>
               <ChatInterface
@@ -304,7 +296,6 @@ export const EmployeeSurveyFlow = ({
 
           {step === "closing" && conversationId && (
             <ClosingRitual
-              initialMood={mood}
               conversationId={conversationId}
               onComplete={handleSurveyComplete}
             />
