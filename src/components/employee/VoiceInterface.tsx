@@ -98,17 +98,31 @@ export const VoiceInterface = ({
           
           // If themes are IDs, fetch theme details
           if (themeIds.length > 0 && typeof themeIds[0] === 'string') {
-            const { data: themesData } = await supabase
-              .from('survey_themes')
-              .select('id, name, description')
-              .in('id', themeIds);
-            
-            if (themesData) {
-              setSurveyDataForVoice({
-                first_message: firstMessage,
-                themes: themesData.map(t => ({ name: t.name, description: t.description }))
-              });
-            } else {
+            try {
+              const { data: themesData, error: themesError } = await supabase
+                .from('survey_themes')
+                .select('id, name, description')
+                .in('id', themeIds);
+              
+              if (themesError) {
+                console.error('Error fetching themes:', themesError);
+                setSurveyDataForVoice({
+                  first_message: firstMessage,
+                  themes: []
+                });
+              } else if (themesData && themesData.length > 0) {
+                setSurveyDataForVoice({
+                  first_message: firstMessage,
+                  themes: themesData.map(t => ({ name: t.name, description: t.description }))
+                });
+              } else {
+                setSurveyDataForVoice({
+                  first_message: firstMessage,
+                  themes: []
+                });
+              }
+            } catch (err) {
+              console.error('Error loading themes:', err);
               setSurveyDataForVoice({
                 first_message: firstMessage,
                 themes: []
@@ -116,11 +130,23 @@ export const VoiceInterface = ({
             }
           } else if (Array.isArray(themeIds) && themeIds.length > 0 && typeof themeIds[0] === 'object') {
             // Themes are already expanded objects
-            setSurveyDataForVoice({
-              first_message: firstMessage,
-              themes: themeIds.map((t: any) => ({ name: t.name, description: t.description }))
-            });
+            try {
+              setSurveyDataForVoice({
+                first_message: firstMessage,
+                themes: themeIds.map((t: any) => ({ 
+                  name: t.name || t.id || 'Unknown Theme', 
+                  description: t.description || '' 
+                }))
+              });
+            } catch (err) {
+              console.error('Error processing theme objects:', err);
+              setSurveyDataForVoice({
+                first_message: firstMessage,
+                themes: []
+              });
+            }
           } else {
+            // No themes or empty array - this is valid for preview
             setSurveyDataForVoice({
               first_message: firstMessage,
               themes: []
