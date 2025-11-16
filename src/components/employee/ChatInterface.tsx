@@ -154,8 +154,8 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           // In preview mode, ensure we have survey data
           if (isPreviewMode && !previewSurveyData) {
             console.warn("Preview mode but no survey data available - using fallback");
-            // Fallback to default message
-            const fallbackMessage = "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.";
+            // Fallback to standard message
+            const fallbackMessage = "Hi, I'm Spradley, the AI here to listen about your work experience.";
             setMessages([{
               role: "assistant",
               content: fallbackMessage,
@@ -249,10 +249,10 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           const isApiError = errorMessage.includes("Failed to get introduction") || errorMessage.includes("status");
           
           // Fallback to a default greeting if AI fails
-          // Use first_message from preview data if available, otherwise use default
+          // Use first_message from preview data if available, otherwise use standard format
           const fallbackMessage = isPreviewMode && previewSurveyData?.first_message 
             ? previewSurveyData.first_message
-            : "Hi! I'm Spradley, your AI guide. How can I help you today?";
+            : "Hi, I'm Spradley, the AI here to listen about your work experience.";
           
           try {
             setMessages([{
