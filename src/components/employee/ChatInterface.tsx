@@ -489,7 +489,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     
     try {
       // Get conversation summary and final question from backend
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session: authSession } } = await supabase.auth.getSession();
       
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
@@ -497,7 +497,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(session?.session ? { Authorization: `Bearer ${session.session.access_token}` } : {}),
+            ...(authSession ? { Authorization: `Bearer ${authSession.access_token}` } : {}),
           },
           body: JSON.stringify({
             conversationId,
@@ -569,7 +569,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     // Send final response
     setIsLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session: authSession } } = await supabase.auth.getSession();
       
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
@@ -577,7 +577,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(session?.session ? { Authorization: `Bearer ${session.session.access_token}` } : {}),
+            ...(authSession ? { Authorization: `Bearer ${authSession.access_token}` } : {}),
           },
           body: JSON.stringify({
             conversationId,

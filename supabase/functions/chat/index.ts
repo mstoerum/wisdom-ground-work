@@ -599,8 +599,12 @@ Be warm and appreciative. Keep it brief.`;
       );
 
       // Extract final question if present (look for question mark)
-      const sentences = summaryMessage.split(/[.!?]+/);
-      const finalQuestion = sentences.find((s: string) => s.trim().endsWith('?') && s.length > 20)?.trim() + '?';
+      const sentences = summaryMessage.split(/[.!?]+/).filter(s => s.trim());
+      const questionSentence = sentences.find((s: string) => {
+        const trimmed = s.trim();
+        return trimmed.endsWith('?') && trimmed.length > 20;
+      });
+      const finalQuestion = questionSentence ? questionSentence.trim() : null;
 
       return new Response(
         JSON.stringify({ 
