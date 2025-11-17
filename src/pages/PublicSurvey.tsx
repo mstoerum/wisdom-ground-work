@@ -17,7 +17,7 @@ export default function PublicSurvey() {
       // Use RPC function to fetch survey data - this bypasses RLS issues
       // and properly evaluates the relationship between link and survey
       const { data: result, error: rpcError } = await supabase.rpc(
-        "get_public_survey_by_token",
+        "get_public_survey_by_token" as any,
         { link_token_param: linkToken }
       );
 
@@ -39,7 +39,7 @@ export default function PublicSurvey() {
         throw new Error(`Unable to load survey. Please try again later or contact the survey administrator.`);
       }
 
-      if (!result || result.length === 0) {
+      if (!result || !Array.isArray(result) || result.length === 0) {
         throw new Error("Survey link not found or survey data unavailable");
       }
 

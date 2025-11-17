@@ -371,8 +371,8 @@ export const ReviewAndDeployStep = ({
             anonymization_level: formData.anonymization_level,
             data_retention_days: Number(formData.data_retention_days),
             consent_message: formData.consent_message,
-            enable_spradley_evaluation: formData.enable_spradley_evaluation ?? false,
-          },
+            ...(formData.enable_spradley_evaluation !== undefined && { enable_spradley_evaluation: formData.enable_spradley_evaluation }),
+          } as any,
         }}
         surveyId={surveyId || undefined}
       />

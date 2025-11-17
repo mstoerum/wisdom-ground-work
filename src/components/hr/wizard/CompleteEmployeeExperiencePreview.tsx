@@ -169,8 +169,8 @@ export const CompleteEmployeeExperiencePreview = ({
             anonymization_level: surveyData?.consent_config?.anonymization_level || "anonymous",
             data_retention_days: surveyData?.consent_config?.data_retention_days || 60,
             consent_message: safeConsentMessage || "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.",
-            enable_spradley_evaluation: surveyData?.consent_config?.enable_spradley_evaluation ?? false,
-          },
+            ...(((surveyData?.consent_config as any)?.enable_spradley_evaluation !== undefined) && { enable_spradley_evaluation: (surveyData.consent_config as any).enable_spradley_evaluation }),
+          } as any,
         };
         
         // Validate the constructed data with defaults

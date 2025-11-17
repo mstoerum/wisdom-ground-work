@@ -43,11 +43,11 @@ export const EvaluationTrends = ({ evaluations }: EvaluationTrendsProps) => {
   };
 
   const completionTrend = trends.length >= 2 
-    ? getTrend(trends[trends.length - 1].count, trends[trends.length - 2].count)
+    ? getTrend((trends[trends.length - 1] as any).count, (trends[trends.length - 2] as any).count)
     : null;
 
   const sentimentTrend = trends.length >= 2
-    ? getTrend(trends[trends.length - 1].avgSentiment, trends[trends.length - 2].avgSentiment)
+    ? getTrend((trends[trends.length - 1] as any).avgSentiment, (trends[trends.length - 2] as any).avgSentiment)
     : null;
 
   return (
