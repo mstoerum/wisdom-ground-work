@@ -38,6 +38,52 @@ export const useConversation = (publicLinkId?: string) => {
 
       // For public links, allow anonymous access
       if (isPublicLink && !user) {
+        // Validate publicLinkId is provided and is a valid UUID format
+        if (!effectiveLinkId || typeof effectiveLinkId !== 'string') {
+          console.error("Invalid publicLinkId:", effectiveLinkId);
+          throw new Error("Invalid public link ID. Please check the survey link.");
+        }
+        
+        // Validate UUID format (basic check)
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        if (!uuidRegex.test(effectiveLinkId)) {
+          console.error("publicLinkId is not a valid UUID:", effectiveLinkId);
+          throw new Error("Invalid public link format. Please check the survey link.");
+        }
+        
+        // Verify the public link exists and is active before creating session
+        const { data: linkCheck, error: linkCheckError } = await supabase
+          .from("public_survey_links")
+          .select("id, is_active, expires_at, survey_id")
+          .eq("id", effectiveLinkId)
+          .maybeSingle();
+        
+        if (linkCheckError) {
+          console.error("Error checking public link:", linkCheckError);
+          throw new Error("Unable to verify survey link. Please try again.");
+        }
+        
+        if (!linkCheck) {
+          console.error("Public link not found:", effectiveLinkId);
+          throw new Error("Survey link not found or has been removed.");
+        }
+        
+        if (!linkCheck.is_active) {
+          console.error("Public link is inactive:", effectiveLinkId);
+          throw new Error("This survey link is no longer active.");
+        }
+        
+        if (linkCheck.expires_at && new Date(linkCheck.expires_at) < new Date()) {
+          console.error("Public link has expired:", effectiveLinkId);
+          throw new Error("This survey link has expired.");
+        }
+        
+        // Verify survey_id matches
+        if (linkCheck.survey_id !== surveyId) {
+          console.error("Survey ID mismatch:", { linkSurveyId: linkCheck.survey_id, providedSurveyId: surveyId });
+          throw new Error("Survey link mismatch. Please check the link.");
+        }
+        
         // Check for existing session in localStorage
         const storageKey = `public_survey_session_${effectiveLinkId}`;
         const existingSessionId = localStorage.getItem(storageKey);
@@ -94,6 +140,14 @@ export const useConversation = (publicLinkId?: string) => {
         }
         
         // Create new anonymous conversation session for public link
+        console.log("Creating public link session:", {
+          surveyId,
+          effectiveLinkId,
+          publicLinkId,
+          linkId,
+          isPublicLink,
+        });
+        
         const { data: session, error: sessionError } = await supabase
           .from("conversation_sessions")
           .insert({
@@ -110,9 +164,21 @@ export const useConversation = (publicLinkId?: string) => {
           .single();
 
         if (sessionError) {
-          console.error("Session creation error:", sessionError);
+          console.error("Session creation error:", {
+            error: sessionError,
+            code: sessionError.code,
+            message: sessionError.message,
+            details: sessionError.details,
+            hint: sessionError.hint,
+            surveyId,
+            effectiveLinkId,
+            publicLinkId,
+            linkId,
+          });
           throw sessionError;
         }
+        
+        console.log("Session created successfully:", session.id);
 
         // Increment response counter for public link
         if (effectiveLinkId) {
@@ -195,11 +261,26 @@ export const useConversation = (publicLinkId?: string) => {
       if (error instanceof Error) {
         if (error.message.includes("Not authenticated")) {
           errorMessage = "Authentication required. Please sign in and try again.";
-        } else if (error.message.includes("RLS")) {
+        } else if (error.message.includes("RLS") || error.message.includes("permission") || error.message.includes("policy")) {
           errorMessage = "Permission denied. Please contact your administrator.";
+        } else if (error.message.includes("violates foreign key") || error.message.includes("public_link_id")) {
+          errorMessage = "Invalid survey link. Please check the link and try again.";
         } else {
-          errorMessage = `Error: ${error.message}`;
+          // Include more details in development
+          if (import.meta.env.DEV) {
+            errorMessage = `Error: ${error.message}`;
+          }
         }
+      }
+      
+      // Log full error details for debugging
+      if (error && typeof error === 'object' && 'code' in error) {
+        console.error("Error details:", {
+          code: (error as any).code,
+          message: (error as any).message,
+          details: (error as any).details,
+          hint: (error as any).hint,
+        });
       }
       
       toast({
