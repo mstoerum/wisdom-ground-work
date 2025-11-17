@@ -40,6 +40,45 @@ const PROGRESS_COMPLETE_THRESHOLD = 100;
 type TrustFlowStep = "introduction" | "anonymization" | "chat" | "complete";
 type FinishEarlyStep = "none" | "confirming" | "summarizing" | "final-question" | "completing";
 
+// Helper function to check if a conversation session is a public link session
+const checkIsPublicLinkSession = async (conversationId: string): Promise<boolean> => {
+  try {
+    const { data: conversationSession } = await supabase
+      .from("conversation_sessions")
+      .select("public_link_id")
+      .eq("id", conversationId)
+      .maybeSingle();
+    
+    return conversationSession?.public_link_id !== null && conversationSession?.public_link_id !== undefined;
+  } catch (error) {
+    console.error("Error checking public link session:", error);
+    return false;
+  }
+};
+
+// Helper function to get session token, allowing anonymous access for public links
+const getSessionForConversation = async (conversationId: string, isPreviewMode: boolean): Promise<{ access_token: string } | null> => {
+  if (isPreviewMode) {
+    return null;
+  }
+  
+  // Check if this is a public link conversation
+  const isPublicLink = await checkIsPublicLinkSession(conversationId);
+  
+  if (isPublicLink) {
+    console.log("Public link conversation - allowing anonymous access");
+    return null; // Anonymous access allowed for public links
+  }
+  
+  // For regular sessions, require authentication
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error("Authentication required for non-public link conversations");
+  }
+  
+  return session;
+};
+
 export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showTrustFlow = true, skipTrustFlow = false }: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -172,10 +211,10 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           
           let session = null;
           if (!isPreviewMode) {
-            const { data: { session: authSession } } = await supabase.auth.getSession();
-            session = authSession;
-            if (!session) {
-              console.error("No session for introduction");
+            try {
+              session = await getSessionForConversation(conversationId, isPreviewMode);
+            } catch (error) {
+              console.error("Error getting session for introduction:", error);
               setIsLoading(false);
               return;
             }
@@ -357,14 +396,15 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
       reader.onloadend = async () => {
         const base64Audio = (reader.result as string).split(',')[1];
 
-        const { data: { session } } = await supabase.auth.getSession();
-        const response = await fetch(
+        try {
+          const session = await getSessionForConversation(conversationId, isPreviewMode);
+          const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-audio`,
           {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${session?.access_token}`,
+              ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
             },
             body: JSON.stringify({ audio: base64Audio }),
           }
@@ -383,6 +423,18 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         setTimeout(() => {
           sendMessage();
         }, 500);
+        } catch (error) {
+          console.error("Error in transcription:", error);
+          setIsLoading(false);
+          soundEffects.playError();
+          toast({
+            title: "Transcription failed",
+            description: error instanceof Error && error.message.includes("Authentication") 
+              ? "Authentication required. Please sign in to continue."
+              : "Please try again or type your message",
+            variant: "destructive",
+          });
+        }
       };
     } catch (error) {
       // Play error sound
@@ -430,8 +482,18 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     try {
       let authSession = null;
       if (!isPreviewMode) {
-        const { data: { session } } = await supabase.auth.getSession();
-        authSession = session;
+        try {
+          authSession = await getSessionForConversation(conversationId, isPreviewMode);
+        } catch (error) {
+          console.error("Error getting session for final response:", error);
+          toast({
+            title: "Error",
+            description: "Authentication required. Please sign in to continue.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
       }
       
       const response = await fetch(
@@ -521,10 +583,16 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     try {
       let session = null;
       if (!isPreviewMode) {
-        const { data: { session: authSession } } = await supabase.auth.getSession();
-        session = authSession;
-        if (!session) {
-          throw new Error("Please sign in to continue");
+        try {
+          session = await getSessionForConversation(conversationId, isPreviewMode);
+        } catch (error) {
+          toast({
+            title: "Error",
+            description: error instanceof Error ? error.message : "Please sign in to continue",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
         }
       }
 
@@ -694,8 +762,18 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     try {
       let authSession = null;
       if (!isPreviewMode) {
-        const { data: { session } } = await supabase.auth.getSession();
-        authSession = session;
+        try {
+          authSession = await getSessionForConversation(conversationId, isPreviewMode);
+        } catch (error) {
+          console.error("Error getting session for finish early:", error);
+          toast({
+            title: "Error",
+            description: "Authentication required. Please sign in to continue.",
+            variant: "destructive",
+          });
+          setFinishEarlyStep("none");
+          return;
+        }
       }
       
       const response = await fetch(
