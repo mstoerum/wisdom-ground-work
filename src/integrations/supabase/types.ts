@@ -810,6 +810,25 @@ export type Database = {
     Functions: {
       assign_demo_hr_admin: { Args: never; Returns: undefined }
       assign_initial_hr_admin: { Args: never; Returns: undefined }
+      get_public_survey_by_token: {
+        Args: { link_token_param: string }
+        Returns: {
+          link_created_at: string
+          link_created_by: string
+          link_current_responses: number
+          link_expires_at: string
+          link_id: string
+          link_is_active: boolean
+          link_max_responses: number
+          link_survey_id: string
+          link_token: string
+          survey_consent_config: Json
+          survey_description: string
+          survey_first_message: string
+          survey_id: string
+          survey_title: string
+        }[]
+      }
       has_any_admin: { Args: never; Returns: boolean }
       has_role: {
         Args: {

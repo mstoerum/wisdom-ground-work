@@ -282,9 +282,8 @@ const EmployeeDashboard = () => {
 
           {step === "closing" && conversationId && (
             <ClosingRitual 
-              initialMood={mood} 
               conversationId={conversationId}
-              onComplete={handleComplete} 
+              onComplete={async () => await handleComplete(mood)} 
             />
           )}
 

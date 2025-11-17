@@ -39,9 +39,6 @@ export class ChatErrorBoundary extends Component<Props, State> {
         resolution_notes: `Chat interface error: ${error.message}`,
       }).then(({ error: logError }) => {
         if (logError) console.error("Failed to log error:", logError);
-      }).catch((err) => {
-        // Silently fail if logging fails (e.g., no auth)
-        console.error("Error logging to escalation_log:", err);
       });
     } else {
       console.log("Preview mode: skipping error logging to database");

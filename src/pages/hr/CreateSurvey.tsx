@@ -479,8 +479,8 @@ const CreateSurvey = () => {
               anonymization_level: form.watch("anonymization_level") || "anonymous",
               data_retention_days: Number(form.watch("data_retention_days")) || 60,
               consent_message: form.watch("consent_message") || "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.",
-              enable_spradley_evaluation: form.watch("enable_spradley_evaluation") ?? false,
-            },
+              ...(form.watch("enable_spradley_evaluation") !== undefined && { enable_spradley_evaluation: form.watch("enable_spradley_evaluation") }),
+            } as any,
           }}
         />
       </div>

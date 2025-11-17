@@ -17,7 +17,7 @@ const SpradleyEvaluations = () => {
     queryKey: ['spradley-evaluations'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('spradley_evaluations')
+        .from('spradley_evaluations' as any)
         .select(`
           *,
           survey:surveys(id, title, created_at),
@@ -33,14 +33,14 @@ const SpradleyEvaluations = () => {
   // Calculate aggregate metrics with zero-division protection
   const metrics = evaluations && evaluations.length > 0 ? {
     totalEvaluations: evaluations.length,
-    averageDuration: evaluations.reduce((sum, e) => sum + (e.duration_seconds || 0), 0) / evaluations.length,
-    averageQuestions: evaluations.reduce((sum, e) => {
+    averageDuration: evaluations.reduce((sum, e: any) => sum + (e.duration_seconds || 0), 0) / evaluations.length,
+    averageQuestions: evaluations.reduce((sum, e: any) => {
       const insights = e.key_insights as any;
       return sum + (insights?.total_questions || 0);
     }, 0) / evaluations.length,
-    positiveSentiment: evaluations.filter(e => e.sentiment_score && e.sentiment_score > 0.6).length,
-    neutralSentiment: evaluations.filter(e => e.sentiment_score && e.sentiment_score >= 0.4 && e.sentiment_score <= 0.6).length,
-    negativeSentiment: evaluations.filter(e => e.sentiment_score && e.sentiment_score < 0.4).length,
+    positiveSentiment: evaluations.filter((e: any) => e.sentiment_score && e.sentiment_score > 0.6).length,
+    neutralSentiment: evaluations.filter((e: any) => e.sentiment_score && e.sentiment_score >= 0.4 && e.sentiment_score <= 0.6).length,
+    negativeSentiment: evaluations.filter((e: any) => e.sentiment_score && e.sentiment_score < 0.4).length,
     completionRate: 100, // Simplified - could calculate from survey completions
   } : {
     totalEvaluations: 0,

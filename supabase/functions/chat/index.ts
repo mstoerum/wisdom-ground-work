@@ -457,6 +457,10 @@ Be warm and appreciative. Keep it brief.`;
         );
       }
       
+      // Fetch theme details first (must be before usage in preview mode)
+      let themes: any[] = [];
+      let surveyType: SurveyType = "employee_satisfaction";
+      
       // Build mock previousResponses for theme-based completion check
       const mockResponses = messages
         .filter((m: any, idx: number) => m.role === "user" && idx > 0) // Skip intro
@@ -470,10 +474,6 @@ Be warm and appreciative. Keep it brief.`;
       
       // Force isFirstMessage=true for introduction trigger
       const isFirstMessage = isIntroductionTrigger || (turnCount === 1 && !messages.some((m: any) => m.role === "assistant"));
-
-      // Fetch theme details if provided (for preview mode)
-      let themes: any[] = [];
-      let surveyType: SurveyType = "employee_satisfaction";
       
       if (requestThemeIds && requestThemeIds.length > 0) {
         const supabaseUrl = Deno.env.get("SUPABASE_URL")!;

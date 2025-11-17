@@ -44,12 +44,14 @@ export const useConversation = (publicLinkId?: string) => {
         
         if (existingSessionId) {
           // Check if session still exists and is active
-          const { data: existingSession, error: checkError } = await supabase
+          const sessionCheck: any = await supabase
             .from("conversation_sessions")
             .select("id, status")
             .eq("id", existingSessionId)
-            .eq("public_link_id", effectiveLinkId)
-            .single();
+            .maybeSingle();
+          
+          const existingSession: any = sessionCheck.data;
+          const checkError: any = sessionCheck.error;
           
           if (!checkError && existingSession && existingSession.status === "active") {
             // Resume existing session

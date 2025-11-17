@@ -83,7 +83,7 @@ export const SpradleyEvaluation = ({
 
       // Save evaluation with structured data
       const { error } = await supabase
-        .from("spradley_evaluations")
+        .from("spradley_evaluations" as any)
         .insert({
           survey_id: surveyId,
           conversation_session_id: conversationSessionId,
