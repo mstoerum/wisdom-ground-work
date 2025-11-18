@@ -83,7 +83,19 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [trustFlowStep, setTrustFlowStep] = useState<TrustFlowStep>("introduction");
+  const [isPublicLinkSession, setIsPublicLinkSession] = useState(false);
+  const [trustFlowStep, setTrustFlowStep] = useState<TrustFlowStep>(() => {
+    // For public links or skipTrustFlow, skip to chat
+    if (skipTrustFlow) {
+      return "chat";
+    }
+    // For demo/preview, skip to chat
+    if (showTrustFlow === false) {
+      return "chat";
+    }
+    // For regular authenticated users, start with introduction
+    return "introduction";
+  });
   const [sessionId, setSessionId] = useState<string>("");
   const [culturalContext, setCulturalContext] = useState<CulturalContext | null>(null);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
@@ -215,8 +227,8 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
               session = await getSessionForConversation(conversationId, isPreviewMode);
             } catch (error) {
               console.error("Error getting session for introduction:", error);
-              setIsLoading(false);
-              return;
+              // Don't fail - public link sessions are allowed without auth
+              session = null;
             }
           }
 
@@ -586,24 +598,26 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         try {
           session = await getSessionForConversation(conversationId, isPreviewMode);
         } catch (error) {
-          toast({
-            title: "Error",
-            description: error instanceof Error ? error.message : "Please sign in to continue",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
+          // Don't fail for public link sessions - they're allowed without auth
+          console.log("Session retrieval error:", error);
+          session = null;
         }
+      }
+
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      
+      // Only add auth header if we have a session
+      if (session?.access_token) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
       }
 
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
-          },
+          headers,
           body: JSON.stringify({
             conversationId,
             messages: [...messages, userMessage].map(m => ({
@@ -648,7 +662,9 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
       console.error("Chat error:", error);
       toast({
         title: "Message failed",
-        description: error instanceof Error ? error.message : "Please try again",
+        description: isPublicLinkSession 
+          ? "Unable to send message. Please refresh and try again."
+          : (error instanceof Error ? error.message : "An error occurred processing your request. Please try again."),
         variant: "destructive",
       });
       
@@ -658,7 +674,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, conversationId, messages, onComplete, toast, isPreviewMode, previewSurveyData, finishEarlyStep, handleFinalResponse]);
+  }, [input, isLoading, conversationId, messages, onComplete, toast, isPreviewMode, previewSurveyData, finishEarlyStep, handleFinalResponse, isPublicLinkSession]);
 
   // Handle Enter key to send message
   const handleKeyPress = (e: React.KeyboardEvent) => {
