@@ -358,7 +358,7 @@ serve(async (req) => {
   }
 
   try {
-    const { conversationId, messages, testMode, themes: requestThemeIds, finishEarly, themeCoverage, isFinalResponse, firstMessage } = await req.json();
+    const { conversationId, messages, testMode, themes: requestThemeIds, finishEarly, themeCoverage, isFinalResponse, firstMessage: requestFirstMessage } = await req.json();
     
     // Validate required fields
     if (!conversationId || typeof conversationId !== "string") {
@@ -499,11 +499,11 @@ Be warm and appreciative. Keep it brief.`;
       // If firstMessage is provided and this is an introduction, use it as the initial message
       // Otherwise, generate a simple consistent first message
       if (isIntroductionTrigger) {
-        if (firstMessage) {
+        if (requestFirstMessage) {
           // Use the provided first message directly
           return new Response(
             JSON.stringify({ 
-              message: firstMessage,
+              message: requestFirstMessage,
               shouldComplete: false
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -549,21 +549,41 @@ Be warm and appreciative. Keep it brief.`;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Verify user authentication (required for non-preview mode)
-    if (!authHeader) {
-      throw new Error("Missing authorization header");
-    }
-    
-    const { data: { user }, error: userError } = await supabase.auth.getUser(
-      authHeader.replace("Bearer ", "")
-    );
-    
-    if (userError || !user) {
-      throw new Error("Unauthorized: Invalid authentication");
+    // Check if this is a public link conversation (before requiring auth)
+    const { data: sessionCheck } = await supabase
+      .from("conversation_sessions")
+      .select("public_link_id, employee_id")
+      .eq("id", conversationId)
+      .single();
+
+    const isPublicLinkSession = sessionCheck?.public_link_id !== null;
+
+    // Verify user authentication (required for non-public-link mode)
+    let userId: string | null = null;
+
+    if (!isPublicLinkSession) {
+      if (!authHeader) {
+        throw new Error("Missing authorization header");
+      }
+      
+      const { data: { user }, error: userError } = await supabase.auth.getUser(
+        authHeader.replace("Bearer ", "")
+      );
+      
+      if (userError || !user) {
+        throw new Error("Unauthorized: Invalid authentication");
+      }
+      
+      userId = user.id;
+    } else {
+      // Public link - use anonymous access
+      userId = sessionCheck?.employee_id || null;
+      console.log("Public link conversation - allowing anonymous access");
     }
 
-    // Rate limiting check
-    if (!checkRateLimit(user.id)) {
+    // Rate limiting check (use conversationId for public links)
+    const rateLimitKey = isPublicLinkSession ? conversationId : userId!;
+    if (!checkRateLimit(rateLimitKey)) {
       return new Response(
         JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
         { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -575,11 +595,14 @@ Be warm and appreciative. Keep it brief.`;
       .from("conversation_sessions")
       .select(`
         employee_id,
-        survey_id, 
+        survey_id,
+        public_link_id,
         surveys(
-          themes, 
+          themes,
           first_message,
-          survey_type
+          survey_type,
+          title,
+          description
         )
       `)
       .eq("id", conversationId)
@@ -589,9 +612,9 @@ Be warm and appreciative. Keep it brief.`;
       throw new Error("Conversation not found");
     }
 
-    // Verify user owns this conversation
-    if (session.employee_id !== user.id) {
-      console.warn(`Unauthorized access attempt: User ${user.id} tried to access conversation ${conversationId}`);
+    // Verify user owns this conversation (skip for public links)
+    if (!isPublicLinkSession && session.employee_id !== userId) {
+      console.warn(`Unauthorized access attempt: User ${userId} tried to access conversation ${conversationId}`);
       throw new Error("Unauthorized: You don't have access to this conversation");
     }
 
@@ -599,6 +622,7 @@ Be warm and appreciative. Keep it brief.`;
     const survey = session?.surveys as any;
     const themeIds = survey?.themes || [];
     const surveyType: SurveyType = survey?.survey_type || "employee_satisfaction";
+    const surveyFirstMessage = survey?.first_message;
     const { data: themes } = await supabase
       .from("survey_themes")
       .select("id, name, description")
@@ -704,12 +728,12 @@ Be warm and appreciative. Keep it brief.`;
 
     // If this is an introduction trigger, handle first message
     if (isIntroductionTrigger) {
-      const firstMessage = survey?.first_message;
-      if (firstMessage) {
+      const surveyFirstMessageText = survey?.first_message;
+      if (surveyFirstMessageText) {
         // Use the provided first message directly
         return new Response(
           JSON.stringify({ 
-            message: firstMessage,
+            message: surveyFirstMessageText,
             shouldComplete: false
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -730,7 +754,16 @@ Be warm and appreciative. Keep it brief.`;
 
     // Build conversation context
     const conversationContext = buildConversationContext(previousResponses || [], themes || []);
-    const systemPrompt = getSystemPrompt(conversationContext, isFirstMessage, surveyType);
+    const systemPromptWithContext = getSystemPromptForSurveyType(
+      surveyType,
+      themes || [],
+      conversationContext
+    );
+    
+    // Prepend first message if available
+    const systemPrompt = surveyFirstMessage 
+      ? `${surveyFirstMessage}\n\n${systemPromptWithContext}`
+      : systemPromptWithContext;
 
     // Filter out the [START_CONVERSATION] trigger from messages sent to AI
     const filteredMessages = isIntroductionTrigger 
@@ -787,19 +820,21 @@ Be warm and appreciative. Keep it brief.`;
         });
       }
 
-      // Log to audit logs
-      await supabase.from("audit_logs").insert({
-        user_id: user.id,
-        action_type: "chat_message_sent",
-        resource_type: "conversation_session",
-        resource_id: conversationId,
-        metadata: {
-          survey_id: session?.survey_id,
-          theme_id: detectedThemeId,
-          sentiment: sentiment,
-          urgency_escalated: isUrgent,
-        },
-      });
+      // Log to audit logs (only for authenticated users)
+      if (userId) {
+        await supabase.from("audit_logs").insert({
+          user_id: userId,
+          action_type: "chat_message_sent",
+          resource_type: "conversation_session",
+          resource_id: conversationId,
+          metadata: {
+            survey_id: session?.survey_id,
+            theme_id: detectedThemeId,
+            sentiment: sentiment,
+            urgency_escalated: isUrgent,
+          },
+        });
+      }
     }
 
     return new Response(
