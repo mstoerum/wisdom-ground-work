@@ -226,6 +226,7 @@ export type Database = {
           final_mood: number | null
           id: string
           initial_mood: number | null
+          public_link_id: string | null
           started_at: string | null
           status: string | null
           survey_id: string
@@ -240,6 +241,7 @@ export type Database = {
           final_mood?: number | null
           id?: string
           initial_mood?: number | null
+          public_link_id?: string | null
           started_at?: string | null
           status?: string | null
           survey_id: string
@@ -254,6 +256,7 @@ export type Database = {
           final_mood?: number | null
           id?: string
           initial_mood?: number | null
+          public_link_id?: string | null
           started_at?: string | null
           status?: string | null
           survey_id?: string
@@ -264,6 +267,13 @@ export type Database = {
             columns: ["anonymous_token_id"]
             isOneToOne: false
             referencedRelation: "anonymous_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_sessions_public_link_id_fkey"
+            columns: ["public_link_id"]
+            isOneToOne: false
+            referencedRelation: "public_survey_links"
             referencedColumns: ["id"]
           },
           {
