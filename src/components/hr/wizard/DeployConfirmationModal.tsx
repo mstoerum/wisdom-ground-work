@@ -42,7 +42,7 @@ export const DeployConfirmationModal = ({
   const [progress, setProgress] = useState(0);
   const [copied, setCopied] = useState(false);
 
-  const linkToken = deployResult?.public_link?.link_token || deployResult?.public_link?.token;
+  const linkToken = deployResult?.public_link?.link_token;
   const surveyUrl = linkToken 
     ? `${window.location.origin}/survey/${linkToken}`
     : null;

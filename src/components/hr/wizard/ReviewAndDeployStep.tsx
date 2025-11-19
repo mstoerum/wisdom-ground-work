@@ -20,10 +20,12 @@ interface ReviewAndDeployStepProps {
   surveyId?: string | null;
   deployResult?: {
     public_link?: {
-      token?: string;
-      url?: string;
+      link_token?: string;
+      id?: string;
       expires_at: string | null;
       max_responses: number | null;
+      current_responses?: number;
+      is_active?: boolean;
     };
     assignment_count?: number;
   };
@@ -74,7 +76,7 @@ export const ReviewAndDeployStep = ({
     return 'Not scheduled';
   };
 
-  const linkToken = deployResult?.public_link?.token;
+  const linkToken = deployResult?.public_link?.link_token;
   const surveyUrl = linkToken ? `${window.location.origin}/survey/${linkToken}` : null;
 
   const handleCopyLink = () => {
