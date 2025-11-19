@@ -243,9 +243,12 @@ serve(async (req) => {
         success: true,
         assignment_count: assignmentCount,
         public_link: publicLink ? {
-          token: publicLink.link_token,
+          link_token: publicLink.link_token,
+          id: publicLink.id,
           expires_at: publicLink.expires_at,
           max_responses: publicLink.max_responses,
+          current_responses: publicLink.current_responses,
+          is_active: publicLink.is_active,
         } : null,
       }),
       {
