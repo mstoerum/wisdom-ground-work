@@ -9,12 +9,14 @@ import { ClosingRitual } from "@/components/employee/ClosingRitual";
 import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
 import { SpradleyEvaluation } from "@/components/employee/SpradleyEvaluation";
 import { SurveyModeSelector } from "@/components/hr/wizard/SurveyModeSelector";
+import { ConversationSummary } from "@/components/employee/ConversationSummary";
 import { useConversation } from "@/hooks/useConversation";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { PlayCircle } from "lucide-react";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { PlayCircle, CheckCircle2 } from "lucide-react";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 
 type ConversationStep = "consent" | "anonymization" | "mode-select" | "chat" | "voice" | "closing" | "evaluation" | "complete";
@@ -296,10 +298,34 @@ export const EmployeeSurveyFlow = ({
           )}
 
           {step === "closing" && conversationId && (
-            <ClosingRitual
-              conversationId={conversationId}
-              onComplete={handleSurveyComplete}
-            />
+            <div className="max-w-2xl mx-auto p-8">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle2 className="h-6 w-6 text-[hsl(var(--lime-green))]" />
+                    Thank You For Your Time
+                  </CardTitle>
+                  <CardDescription>
+                    We appreciate you sharing your honest feedback
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="bg-muted p-4 rounded-lg">
+                    <h4 className="font-semibold mb-3 text-foreground">What We Discussed:</h4>
+                    <ConversationSummary conversationId={conversationId} />
+                  </div>
+                  
+                  <p className="text-sm text-muted-foreground">
+                    Your responses have been securely saved and will be analyzed to identify themes and insights.
+                  </p>
+                </CardContent>
+                <CardFooter>
+                  <Button onClick={handleSurveyComplete} className="w-full">
+                    Continue
+                  </Button>
+                </CardFooter>
+              </Card>
+            </div>
           )}
 
           {step === "evaluation" && conversationId && (

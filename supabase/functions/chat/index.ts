@@ -219,7 +219,7 @@ ${previousResponses.length < MIN_EXCHANGES ? "- Continue exploring to gather suf
  * Generate system prompt for constructive AI conversation
  */
 const getSystemPrompt = (conversationContext: string, isFirstMessage: boolean, surveyType?: SurveyType): string => {
-  const isCourseEvaluation = surveyType === "course_evaluation";
+  const isCourseEvaluation = surveyType === "university_course_evaluation";
   const experienceType = isCourseEvaluation ? "course experience" : "work experience";
   
   const introGuidance = isFirstMessage ? `
@@ -510,7 +510,7 @@ Be warm and appreciative. Keep it brief.`;
           );
         } else {
           // Generate consistent first message based on survey type
-          const experienceType = surveyType === "course_evaluation" ? "course experience" : "work experience";
+          const experienceType = surveyType === "university_course_evaluation" ? "course experience" : "work experience";
           const consistentFirstMessage = `Hi, I'm Spradley, the AI here to listen about your ${experienceType}.`;
           return new Response(
             JSON.stringify({ 
@@ -722,6 +722,76 @@ Be warm and appreciative. Keep it brief.`;
     // Determine completion based on theme exploration, not just exchange count
     const shouldComplete = shouldCompleteBasedOnThemes(previousResponses || [], themes || [], turnCount);
     
+    // Check if user is confirming completion
+    const userConfirmingCompletion = sanitizedContent.toLowerCase().match(/\b(yes|yeah|sure|ok|okay|done|finished|that'?s all|nothing else|no|nope)\b/);
+    
+    // Natural completion flow: AI detected completion + user confirms
+    if (shouldComplete && !isFinalResponse && !isIntroductionTrigger) {
+      // Generate conversation summary
+      const conversationContext = previousResponses?.map(r => r.content).join("\n") || "";
+      const summaryPrompt = `Based on this conversation about ${surveyType === 'university_course_evaluation' ? 'course evaluation' : 'workplace feedback'}, create a brief summary (2-3 sentences) of the key points the participant discussed: ${conversationContext}`;
+      
+      const summary = await callAI(
+        LOVABLE_API_KEY,
+        AI_MODEL_LITE,
+        [
+          { role: "system", content: "You summarize conversations concisely and accurately." },
+          { role: "user", content: summaryPrompt }
+        ],
+        0.5,
+        150
+      );
+      
+      return new Response(
+        JSON.stringify({
+          message: `Thank you for sharing your thoughts. Let me summarize what we discussed:\n\n${summary}\n\nIs there anything you'd like to add or clarify before we finish?`,
+          shouldComplete: false,
+          isCompletionPrompt: true
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    // User responds to completion prompt with confirmation
+    if (messages.some((m: any) => m.content?.includes("Is there anything you'd like to add or clarify")) && userConfirmingCompletion) {
+      // Save final confirmation response if has content
+      if (sanitizedContent && !isIntroductionTrigger) {
+        const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, sanitizedContent);
+        const detectedThemeId = await detectTheme(LOVABLE_API_KEY, sanitizedContent, themes || []);
+
+        console.log("Attempting to insert final completion response:", {
+          conversationId,
+          surveyId: session?.survey_id,
+          content: sanitizedContent
+        });
+
+        const { error: finalInsertError } = await supabase.from("responses").insert({
+          conversation_session_id: conversationId,
+          survey_id: session?.survey_id,
+          content: sanitizedContent,
+          ai_response: "Thank you for your time and insights.",
+          sentiment,
+          sentiment_score: sentimentScore,
+          theme_id: detectedThemeId,
+          created_at: new Date().toISOString(),
+        });
+
+        if (finalInsertError) {
+          console.error("Error inserting final response:", finalInsertError);
+          throw new Error(`Failed to save final response: ${finalInsertError.message}`);
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          message: "Thank you for your time and valuable insights. Your feedback will help create meaningful change.",
+          shouldComplete: true,
+          showSummary: true
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     // Force isFirstMessage=true for introduction trigger
     const hasExistingAssistantMessages = messages.some((m: any) => m.role === "assistant");
     const isFirstMessage = isIntroductionTrigger || (turnCount === 1 && !hasExistingAssistantMessages);
@@ -740,7 +810,7 @@ Be warm and appreciative. Keep it brief.`;
         );
       } else {
         // Generate consistent first message based on survey type
-        const experienceType = surveyType === "course_evaluation" ? "course experience" : "work experience";
+        const experienceType = surveyType === "university_course_evaluation" ? "course experience" : "work experience";
         const consistentFirstMessage = `Hi, I'm Spradley, the AI here to listen about your ${experienceType}.`;
         return new Response(
           JSON.stringify({ 
@@ -791,6 +861,15 @@ Be warm and appreciative. Keep it brief.`;
       const isUrgent = await detectUrgency(LOVABLE_API_KEY, sanitizedContent);
 
       // Store response in database (use sanitized content)
+      console.log("Attempting to insert response:", {
+        conversationId,
+        surveyId: session?.survey_id,
+        hasContent: !!sanitizedContent,
+        hasAiMessage: !!aiMessage,
+        sentiment,
+        themeId: detectedThemeId
+      });
+
       const { data: insertedResponse, error: insertError } = await supabase
         .from("responses")
         .insert({
@@ -809,7 +888,10 @@ Be warm and appreciative. Keep it brief.`;
 
       if (insertError) {
         console.error("Error inserting response:", insertError);
+        throw new Error(`Failed to save response: ${insertError.message}`);
       }
+
+      console.log("Response inserted successfully:", insertedResponse?.id);
 
       // If urgent, create escalation log entry
       if (isUrgent && insertedResponse) {

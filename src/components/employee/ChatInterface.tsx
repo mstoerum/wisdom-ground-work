@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ConversationBubble } from "./ConversationBubble";
 import { VoiceInterface } from "./VoiceInterface";
-import { Send, Loader2, Save, Mic, ArrowRight, CheckCircle } from "lucide-react";
+import { Send, Loader2, Save, Mic, ArrowRight, CheckCircle, CheckCircle2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,6 +84,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isPublicLinkSession, setIsPublicLinkSession] = useState(false);
+  const [isInCompletionPhase, setIsInCompletionPhase] = useState(false);
   const [trustFlowStep, setTrustFlowStep] = useState<TrustFlowStep>(() => {
     // For public links or skipTrustFlow, skip to chat
     if (skipTrustFlow) {
@@ -646,6 +647,37 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         throw new Error("Invalid response from server - no message content");
       }
       
+      // Handle completion prompt (summary + final question)
+      if (data.isCompletionPrompt) {
+        const summaryMessage: Message = {
+          role: "assistant",
+          content: data.message,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, summaryMessage]);
+        setIsInCompletionPhase(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // Handle final completion
+      if (data.shouldComplete && data.showSummary) {
+        const finalMessage: Message = {
+          role: "assistant",
+          content: data.message,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, finalMessage]);
+        
+        // Show animated transition to closing screen
+        setTimeout(() => {
+          onComplete();
+        }, 2000);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Regular message
       const assistantMessage: Message = {
         role: "assistant",
         content: data.message,
@@ -980,6 +1012,16 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
       
       <ScrollArea className="flex-1 p-4 overflow-y-auto">
         <div className="space-y-3">
+          {/* Completion phase indicator */}
+          {isInCompletionPhase && (
+            <Alert className="mx-4 mb-2 border-[hsl(var(--lime-green))] bg-[hsl(var(--lime-green))]/10">
+              <CheckCircle2 className="h-4 w-4 text-[hsl(var(--lime-green))]" />
+              <AlertDescription>
+                Almost done! Please review the summary and add any final thoughts.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           {/* Loading skeleton when AI is preparing introduction */}
           {isLoading && messages.length === 0 && (
             <div className="flex justify-start">
