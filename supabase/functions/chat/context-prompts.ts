@@ -2,14 +2,14 @@
  * Context-aware system prompts based on survey type
  */
 
-export type SurveyType = "employee_satisfaction" | "course_evaluation";
+export type SurveyType = "employee_satisfaction" | "university_course_evaluation";
 
 export const getSystemPromptForSurveyType = (
   surveyType: SurveyType,
   themes: any[],
   conversationContext: string
 ): string => {
-  if (surveyType === "course_evaluation") {
+  if (surveyType === "university_course_evaluation") {
     return getCourseEvaluationPrompt(themes, conversationContext);
   }
   return getEmployeeSatisfactionPrompt(themes, conversationContext);
@@ -103,8 +103,8 @@ export const buildConversationContextForType = (
   previousResponses: any[],
   themes: any[]
 ): string => {
-  const participantTerm = surveyType === "course_evaluation" ? "student" : "employee";
-  const contextTerm = surveyType === "course_evaluation" ? "course" : "workplace";
+  const participantTerm = surveyType === "university_course_evaluation" ? "student" : "employee";
+  const contextTerm = surveyType === "university_course_evaluation" ? "course" : "workplace";
 
   if (!previousResponses || previousResponses.length === 0) return "";
 
@@ -131,11 +131,11 @@ ${previousResponses.length > 0 ? `- Key points mentioned earlier: "${previousRes
 
 ADAPTIVE INSTRUCTIONS:
 ${lastSentiment === "negative" ? 
-  (surveyType === "course_evaluation" 
+  (surveyType === "university_course_evaluation" 
     ? `- The student is sharing learning challenges. Ask specific questions about what would have helped them learn better.`
     : `- The employee is sharing challenges. Ask specific follow-up questions to understand what happened and what would help.`) : ""}
 ${lastSentiment === "positive" ? 
-  (surveyType === "course_evaluation"
+  (surveyType === "university_course_evaluation"
     ? `- The student is positive about their learning. Great! Also explore if there were any areas for improvement to ensure balanced feedback.`
     : `- The employee is positive. Great! Also explore if there are any areas for improvement to ensure balanced feedback.`) : ""}
 ${previousResponses.length >= 6 ? 
