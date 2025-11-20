@@ -47,7 +47,7 @@ export const getDefaultSurveyValues = (defaults?: any, surveyType: 'employee_sat
   title: "",
   description: "",
   first_message: defaults?.first_message || (surveyType === 'course_evaluation' 
-    ? "Thank you for taking time to evaluate this course. Your honest feedback helps improve the learning experience for future students. This conversation is confidential and will help your instructor understand what worked well and what could be better."
+    ? "Hi, I'm Spradley, an AI here to learn about your course experience. Your honest feedback helps improve the learning experience for future students. What's been on your mind about this course?"
     : "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone."),
   themes: [],
   target_type: "all",
