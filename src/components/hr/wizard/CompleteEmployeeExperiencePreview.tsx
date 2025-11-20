@@ -60,6 +60,7 @@ interface CompleteEmployeeExperiencePreviewProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   surveyData: {
+    survey_type?: string;
     title: string;
     first_message?: string;
     themes?: string[];
@@ -160,15 +161,25 @@ export const CompleteEmployeeExperiencePreview = ({
           ? surveyData.consent_config.consent_message.trim()
           : undefined;
         
+        // Set safe defaults based on survey type
+        const surveyType = (surveyData as any)?.survey_type || 'employee_satisfaction';
+        const defaultFirstMessage = surveyType === 'course_evaluation'
+          ? "Hi, I'm Spradley, an AI here to learn about your course experience. Your honest feedback helps improve the learning experience for future students. What's been on your mind about this course?"
+          : "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.";
+        const defaultConsentMessage = surveyType === 'course_evaluation'
+          ? "Your course evaluation will be kept confidential and used to improve the learning experience. Your feedback is valuable for enhancing teaching quality and course design."
+          : "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.";
+        
         const constructedData = {
           id: "preview-survey",
+          survey_type: surveyType,
           title: surveyData?.title || "Untitled Survey",
-          first_message: safeFirstMessage || "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.",
+          first_message: safeFirstMessage || defaultFirstMessage,
           themes: Array.isArray(surveyData?.themes) ? surveyData.themes : [],
           consent_config: {
             anonymization_level: surveyData?.consent_config?.anonymization_level || "anonymous",
             data_retention_days: surveyData?.consent_config?.data_retention_days || 60,
-            consent_message: safeConsentMessage || "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.",
+            consent_message: safeConsentMessage || defaultConsentMessage,
             ...(((surveyData?.consent_config as any)?.enable_spradley_evaluation !== undefined) && { enable_spradley_evaluation: (surveyData.consent_config as any).enable_spradley_evaluation }),
           } as any,
         };
@@ -288,12 +299,21 @@ export const CompleteEmployeeExperiencePreview = ({
                 previewSurveyId={loadedSurveyData.id || surveyId}
                 previewSurveyData={{
                   ...loadedSurveyData,
-                  // Ensure all required fields have defaults
-                  first_message: loadedSurveyData.first_message || "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.",
+                  // Ensure all required fields have defaults based on survey type
+                  survey_type: loadedSurveyData.survey_type || 'employee_satisfaction',
+                  first_message: loadedSurveyData.first_message || (
+                    loadedSurveyData.survey_type === 'course_evaluation'
+                      ? "Hi, I'm Spradley, an AI here to learn about your course experience. Your honest feedback helps improve the learning experience for future students. What's been on your mind about this course?"
+                      : "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone."
+                  ),
                   themes: Array.isArray(loadedSurveyData.themes) ? loadedSurveyData.themes : [],
                   consent_config: {
                     ...loadedSurveyData.consent_config,
-                    consent_message: loadedSurveyData.consent_config.consent_message || "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.",
+                    consent_message: loadedSurveyData.consent_config.consent_message || (
+                      loadedSurveyData.survey_type === 'course_evaluation'
+                        ? "Your course evaluation will be kept confidential and used to improve the learning experience. Your feedback is valuable for enhancing teaching quality and course design."
+                        : "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines."
+                    ),
                     anonymization_level: loadedSurveyData.consent_config.anonymization_level || "anonymous",
                     data_retention_days: loadedSurveyData.consent_config.data_retention_days || 60,
                     enable_spradley_evaluation: loadedSurveyData.consent_config.enable_spradley_evaluation ?? false,

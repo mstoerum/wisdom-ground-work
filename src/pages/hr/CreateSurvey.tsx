@@ -54,24 +54,39 @@ const CreateSurvey = () => {
 
   const form = useForm<SurveyFormData>({
     resolver: zodResolver(surveyFormSchema),
-    defaultValues: getDefaultSurveyValues(surveyDefaults),
+    defaultValues: getDefaultSurveyValues(surveyDefaults, 'employee_satisfaction'),
     mode: "onChange",
   });
 
   // Update form when defaults load
   useEffect(() => {
     if (surveyDefaults && !draftId) {
-      const defaults = getDefaultSurveyValues(surveyDefaults);
-      // Ensure consent_message and first_message are never empty
-      if (!defaults.consent_message || defaults.consent_message.trim() === '') {
-        defaults.consent_message = "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.";
-      }
-      if (!defaults.first_message || defaults.first_message.trim() === '') {
-        defaults.first_message = "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.";
-      }
+      const surveyType = form.getValues('survey_type') || 'employee_satisfaction';
+      const defaults = getDefaultSurveyValues(surveyDefaults, surveyType);
       form.reset(defaults);
     }
   }, [surveyDefaults, draftId, form]);
+
+  // Update first_message when survey_type changes (only if not manually edited)
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === 'survey_type' && value.survey_type) {
+        const currentFirstMessage = form.getValues('first_message');
+        const currentConsentMessage = form.getValues('consent_message');
+        const newDefaults = getDefaultSurveyValues(surveyDefaults, value.survey_type);
+        
+        // Only update if current message matches the default (i.e., hasn't been manually edited)
+        const oldDefaults = getDefaultSurveyValues(surveyDefaults, value.survey_type === 'course_evaluation' ? 'employee_satisfaction' : 'course_evaluation');
+        if (currentFirstMessage === oldDefaults.first_message || !currentFirstMessage) {
+          form.setValue('first_message', newDefaults.first_message);
+        }
+        if (currentConsentMessage === oldDefaults.consent_message || !currentConsentMessage) {
+          form.setValue('consent_message', newDefaults.consent_message);
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form, surveyDefaults]);
 
   // Load draft if editing
   const { data: draftData } = useQuery({
@@ -93,16 +108,18 @@ const CreateSurvey = () => {
   useEffect(() => {
     if (draftData) {
       const schedule = draftData.schedule as any;
-      const defaults = getDefaultSurveyValues(surveyDefaults);
+      const surveyType = draftData.survey_type || 'employee_satisfaction';
+      const defaults = getDefaultSurveyValues(surveyDefaults, surveyType);
       
       // Ensure fallback values are never empty strings
-      const safeFirstMessage = draftData.first_message || defaults.first_message || "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.";
-      const safeConsentMessage = (draftData.consent_config as any)?.consent_message || defaults.consent_message || "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.";
+      const safeFirstMessage = draftData.first_message || defaults.first_message;
+      const safeConsentMessage = (draftData.consent_config as any)?.consent_message || defaults.consent_message;
       
       form.reset({
+        survey_type: surveyType,
         title: draftData.title,
         description: draftData.description || "",
-        first_message: safeFirstMessage.trim() ? safeFirstMessage : "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.",
+        first_message: safeFirstMessage,
         themes: (draftData.themes as string[]) || [],
         target_type: schedule.target_type || 'all',
         target_departments: schedule.target_departments || [],
@@ -112,7 +129,7 @@ const CreateSurvey = () => {
         end_date: schedule.end_date || null,
         reminder_frequency: schedule.reminder_frequency,
         anonymization_level: (draftData.consent_config as any)?.anonymization_level || 'identified',
-        consent_message: safeConsentMessage.trim() ? safeConsentMessage : "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.",
+        consent_message: safeConsentMessage,
         data_retention_days: (draftData.consent_config as any)?.data_retention_days || '60',
         enable_spradley_evaluation: (draftData.consent_config as any)?.enable_spradley_evaluation || false,
       });
@@ -472,13 +489,14 @@ const CreateSurvey = () => {
           open={showPreview}
           onOpenChange={setShowPreview}
           surveyData={{
+            survey_type: form.watch("survey_type"),
             title: form.watch("title") || "Untitled Survey",
-            first_message: form.watch("first_message") || "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.",
+            first_message: form.watch("first_message") || getDefaultSurveyValues(surveyDefaults, form.watch("survey_type") || 'employee_satisfaction').first_message,
             themes: form.watch("themes") || [],
             consent_config: {
               anonymization_level: form.watch("anonymization_level") || "anonymous",
               data_retention_days: Number(form.watch("data_retention_days")) || 60,
-              consent_message: form.watch("consent_message") || "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.",
+              consent_message: form.watch("consent_message") || getDefaultSurveyValues(surveyDefaults, form.watch("survey_type") || 'employee_satisfaction').consent_message,
               ...(form.watch("enable_spradley_evaluation") !== undefined && { enable_spradley_evaluation: form.watch("enable_spradley_evaluation") }),
             } as any,
           }}

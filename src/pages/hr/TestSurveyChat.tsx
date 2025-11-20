@@ -50,10 +50,15 @@ const TestSurveyChat = () => {
 
         setSurveyData(data);
         
-        // Initialize with first message
+        // Initialize with first message based on survey type
+        const surveyType = data.survey_type || 'employee_satisfaction';
+        const defaultFirstMessage = surveyType === 'course_evaluation'
+          ? "Hi, I'm Spradley, an AI here to learn about your course experience. Your honest feedback helps improve the learning experience for future students. What's been on your mind about this course?"
+          : "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.";
+        
         const firstMessage: Message = {
           role: "assistant",
-          content: data.first_message || "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.",
+          content: data.first_message || defaultFirstMessage,
           timestamp: new Date(),
         };
         setMessages([firstMessage]);
