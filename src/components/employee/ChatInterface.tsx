@@ -122,16 +122,15 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
 
   // Initialize cultural context
   useEffect(() => {
-    if (showTrustFlow && !skipTrustFlow) {
+    if (showTrustFlow && !skipTrustFlow && trustFlowStep !== "chat") {
       const context = detectCulturalContext();
       setCulturalContext(context);
       trackTrustMetrics('session_started', {
         culturalContext: context.region,
         sessionId: conversationId
       });
-    } else {
-      setTrustFlowStep("chat");
     }
+    // Don't override trustFlowStep if already set to "chat"
   }, [showTrustFlow, skipTrustFlow, conversationId]);
 
   // Track trust indicators being viewed
