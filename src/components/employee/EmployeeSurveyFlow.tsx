@@ -281,8 +281,8 @@ export const EmployeeSurveyFlow = ({
                 conversationId={conversationId}
                 onComplete={handleChatComplete}
                 onSaveAndExit={handleSaveAndExit}
-                showTrustFlow={true}
-                skipTrustFlow={quickPreview}
+                showTrustFlow={!publicLinkId}
+                skipTrustFlow={!!publicLinkId}
               />
             </ChatErrorBoundary>
           )}

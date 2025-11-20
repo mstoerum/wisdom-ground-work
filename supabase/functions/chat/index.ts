@@ -799,6 +799,7 @@ Be warm and appreciative. Keep it brief.`;
     // If this is an introduction trigger, handle first message
     if (isIntroductionTrigger) {
       const surveyFirstMessageText = survey?.first_message;
+      
       if (surveyFirstMessageText) {
         // Use the provided first message directly
         return new Response(
@@ -809,12 +810,21 @@ Be warm and appreciative. Keep it brief.`;
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       } else {
-        // Generate consistent first message based on survey type
-        const experienceType = surveyType === "university_course_evaluation" ? "course experience" : "work experience";
-        const consistentFirstMessage = `Hi, I'm Spradley, the AI here to listen about your ${experienceType}.`;
+        // Generate context-aware first message based on survey type and themes
+        const themeContext = themes && themes.length > 0 
+          ? `We'll explore topics like ${themes.slice(0, 3).map((t: any) => t.name.toLowerCase()).join(", ")}.`
+          : "";
+        
+        let contextualGreeting = "";
+        if (surveyType === "university_course_evaluation") {
+          contextualGreeting = `Hi, I'm Spradley, here to learn about your course experience. ${themeContext} What's been on your mind about the course?`;
+        } else {
+          contextualGreeting = `Hi, I'm Spradley, here to listen about your work experience. ${themeContext} What's been on your mind lately at work?`;
+        }
+        
         return new Response(
           JSON.stringify({ 
-            message: consistentFirstMessage,
+            message: contextualGreeting,
             shouldComplete: false
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
