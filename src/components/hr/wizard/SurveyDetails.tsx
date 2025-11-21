@@ -12,9 +12,13 @@ interface SurveyDetailsProps {
 }
 
 export const SurveyDetails = ({ form }: SurveyDetailsProps) => {
-  const firstMessage = form.watch("first_message");
   const surveyType = form.watch("survey_type");
   const terms = useContextualTerms(surveyType);
+  
+  // Auto-generate first message based on survey type
+  const firstMessage = surveyType === 'course_evaluation'
+    ? "Hi, I'm Spradley, an AI here to learn about your course experience."
+    : "Hello! I'm here to listen and learn from your experience.";
 
   const getPlaceholderTitle = () => {
     return surveyType === "course_evaluation" ? "PSYCH 101 Fall 2024 Evaluation" : "Q1 2025 Employee Feedback";
@@ -47,14 +51,15 @@ export const SurveyDetails = ({ form }: SurveyDetailsProps) => {
             </FormItem>
           )} />
 
-          <FormField control={form.control} name="first_message" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Opening Message *</FormLabel>
-              <FormControl><Textarea placeholder={surveyType === "course_evaluation" ? "Hi! I'd love to hear about your learning experience." : "Hi! I'm here to listen. How are you feeling about work today?"} {...field} rows={3} /></FormControl>
-              <FormDescription>The AI's first message to {terms.participants}</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )} />
+          <div className="rounded-lg border border-border/50 bg-muted/30 p-4">
+            <p className="text-sm font-medium mb-2">✨ Auto-Generated Opening</p>
+            <p className="text-sm text-muted-foreground">
+              The AI will automatically introduce itself based on the themes you select. 
+              {surveyType === 'course_evaluation' 
+                ? " For course evaluations, it uses a student-friendly, conversational approach."
+                : " For employee surveys, it uses a professional, empathetic tone."}
+            </p>
+          </div>
         </div>
 
         <div>
