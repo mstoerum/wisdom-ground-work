@@ -67,19 +67,15 @@ const CreateSurvey = () => {
     }
   }, [surveyDefaults, draftId, form]);
 
-  // Update first_message when survey_type changes (only if not manually edited)
+  // Update consent_message when survey_type changes (only if not manually edited)
   useEffect(() => {
     const subscription = form.watch((value, { name }) => {
       if (name === 'survey_type' && value.survey_type) {
-        const currentFirstMessage = form.getValues('first_message');
         const currentConsentMessage = form.getValues('consent_message');
         const newDefaults = getDefaultSurveyValues(surveyDefaults, value.survey_type);
         
-        // Only update if current message matches the default (i.e., hasn't been manually edited)
+        // Only update if current message matches default (hasn't been manually edited)
         const oldDefaults = getDefaultSurveyValues(surveyDefaults, value.survey_type === 'course_evaluation' ? 'employee_satisfaction' : 'course_evaluation');
-        if (currentFirstMessage === oldDefaults.first_message || !currentFirstMessage) {
-          form.setValue('first_message', newDefaults.first_message);
-        }
         if (currentConsentMessage === oldDefaults.consent_message || !currentConsentMessage) {
           form.setValue('consent_message', newDefaults.consent_message);
         }
@@ -111,15 +107,13 @@ const CreateSurvey = () => {
       const surveyType = draftData.survey_type || 'employee_satisfaction';
       const defaults = getDefaultSurveyValues(surveyDefaults, surveyType);
       
-      // Ensure fallback values are never empty strings
-      const safeFirstMessage = draftData.first_message || defaults.first_message;
+      // Ensure fallback consent message
       const safeConsentMessage = (draftData.consent_config as any)?.consent_message || defaults.consent_message;
       
       form.reset({
         survey_type: surveyType,
         title: draftData.title,
         description: draftData.description || "",
-        first_message: safeFirstMessage,
         themes: (draftData.themes as string[]) || [],
         target_type: schedule.target_type || 'all',
         target_departments: schedule.target_departments || [],
@@ -147,7 +141,6 @@ const CreateSurvey = () => {
       const surveyData = {
         title: values.title || 'Untitled Survey',
         description: values.description,
-        first_message: values.first_message,
         themes: values.themes,
         schedule: {
           target_type: values.target_type,
@@ -223,7 +216,7 @@ const CreateSurvey = () => {
       case 1:
         return !!values.survey_type;
       case 2:
-        return values.title && values.first_message;
+        return !!values.title;
       case 3:
         return values.themes.length > 0;
       case 4:
@@ -255,7 +248,7 @@ const CreateSurvey = () => {
         fieldsToValidate = ['survey_type'];
         break;
       case 2:
-        fieldsToValidate = ['title', 'first_message'];
+        fieldsToValidate = ['title'];
         break;
       case 3:
         fieldsToValidate = ['themes'];
@@ -491,7 +484,6 @@ const CreateSurvey = () => {
           surveyData={{
             survey_type: form.watch("survey_type"),
             title: form.watch("title") || "Untitled Survey",
-            first_message: form.watch("first_message") || getDefaultSurveyValues(surveyDefaults, form.watch("survey_type") || 'employee_satisfaction').first_message,
             themes: form.watch("themes") || [],
             consent_config: {
               anonymization_level: form.watch("anonymization_level") || "anonymous",

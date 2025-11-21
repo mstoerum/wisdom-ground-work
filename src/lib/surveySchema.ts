@@ -4,7 +4,6 @@ export const surveyFormSchema = z.object({
   survey_type: z.enum(['employee_satisfaction', 'course_evaluation']),
   title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters"),
   description: z.string().max(500, "Description must be less than 500 characters").optional(),
-  first_message: z.string().min(1, "First message is required"),
   themes: z.array(z.string()).min(1, "At least one theme must be selected"),
   target_type: z.enum(['all', 'department', 'manual', 'public_link']),
   target_departments: z.array(z.string()).optional(),
@@ -46,9 +45,6 @@ export const getDefaultSurveyValues = (defaults?: any, surveyType: 'employee_sat
   survey_type: surveyType,
   title: "",
   description: "",
-  first_message: defaults?.first_message || (surveyType === 'course_evaluation' 
-    ? "Hi, I'm Spradley, an AI here to learn about your course experience. Your honest feedback helps improve the learning experience for future students. What's been on your mind about this course?"
-    : "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone."),
   themes: [],
   target_type: "all",
   target_departments: [],

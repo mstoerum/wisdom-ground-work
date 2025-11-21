@@ -358,7 +358,6 @@ export const SurveyList = ({ status }: SurveyListProps) => {
           onOpenChange={setPreviewDialogOpen}
           surveyData={{
             title: selectedSurveyForPreview.title,
-            first_message: selectedSurveyForPreview.first_message,
             themes: selectedSurveyForPreview.themes || [],
             consent_config: selectedSurveyForPreview.consent_config,
           }}

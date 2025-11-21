@@ -367,7 +367,6 @@ export const ReviewAndDeployStep = ({
         onOpenChange={setShowCompletePreview}
         surveyData={{
           title: formData.title,
-          first_message: formData.first_message,
           themes: formData.themes || [],
           consent_config: {
             anonymization_level: formData.anonymization_level,

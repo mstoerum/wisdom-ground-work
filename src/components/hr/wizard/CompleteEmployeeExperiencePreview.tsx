@@ -62,7 +62,6 @@ interface CompleteEmployeeExperiencePreviewProps {
   surveyData: {
     survey_type?: string;
     title: string;
-    first_message?: string;
     themes?: string[];
     consent_config?: {
       anonymization_level?: string;
@@ -152,20 +151,14 @@ export const CompleteEmployeeExperiencePreview = ({
         return;
       }
     } else {
-      // Construct data with defaults first - ensure all fields have safe defaults
+      // Construct data with defaults based on survey type
       try {
-        const safeFirstMessage = surveyData?.first_message && typeof surveyData.first_message === 'string' 
-          ? surveyData.first_message.trim() 
-          : undefined;
         const safeConsentMessage = surveyData?.consent_config?.consent_message && typeof surveyData.consent_config.consent_message === 'string'
           ? surveyData.consent_config.consent_message.trim()
           : undefined;
         
         // Set safe defaults based on survey type
         const surveyType = (surveyData as any)?.survey_type || 'employee_satisfaction';
-        const defaultFirstMessage = surveyType === 'course_evaluation'
-          ? "Hi, I'm Spradley, an AI here to learn about your course experience. Your honest feedback helps improve the learning experience for future students. What's been on your mind about this course?"
-          : "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.";
         const defaultConsentMessage = surveyType === 'course_evaluation'
           ? "Your course evaluation will be kept confidential and used to improve the learning experience. Your feedback is valuable for enhancing teaching quality and course design."
           : "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines.";
@@ -174,7 +167,6 @@ export const CompleteEmployeeExperiencePreview = ({
           id: "preview-survey",
           survey_type: surveyType,
           title: surveyData?.title || "Untitled Survey",
-          first_message: safeFirstMessage || defaultFirstMessage,
           themes: Array.isArray(surveyData?.themes) ? surveyData.themes : [],
           consent_config: {
             anonymization_level: surveyData?.consent_config?.anonymization_level || "anonymous",
@@ -299,13 +291,7 @@ export const CompleteEmployeeExperiencePreview = ({
                 previewSurveyId={loadedSurveyData.id || surveyId}
                 previewSurveyData={{
                   ...loadedSurveyData,
-                  // Ensure all required fields have defaults based on survey type
                   survey_type: loadedSurveyData.survey_type || 'employee_satisfaction',
-                  first_message: loadedSurveyData.first_message || (
-                    loadedSurveyData.survey_type === 'course_evaluation'
-                      ? "Hi, I'm Spradley, an AI here to learn about your course experience. Your honest feedback helps improve the learning experience for future students. What's been on your mind about this course?"
-                      : "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone."
-                  ),
                   themes: Array.isArray(loadedSurveyData.themes) ? loadedSurveyData.themes : [],
                   consent_config: {
                     ...loadedSurveyData.consent_config,
