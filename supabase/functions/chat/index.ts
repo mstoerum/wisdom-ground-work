@@ -475,20 +475,28 @@ Be warm and appreciative. Keep it brief.`;
       // Force isFirstMessage=true for introduction trigger
       const isFirstMessage = isIntroductionTrigger || (turnCount === 1 && !messages.some((m: any) => m.role === "assistant"));
       
-      if (requestThemeIds && requestThemeIds.length > 0) {
-        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-        const supabase = createClient(supabaseUrl, supabaseKey);
-        
-        const { data } = await supabase
-          .from("survey_themes")
-          .select("id, name, description, survey_type")
-          .in("id", requestThemeIds);
-        
-        themes = data || [];
-        // Detect survey type from themes
-        if (themes.length > 0) {
-          surveyType = themes[0].survey_type || "employee_satisfaction";
+      // Fetch themes if provided
+      if (requestThemeIds && Array.isArray(requestThemeIds) && requestThemeIds.length > 0) {
+        try {
+          const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+          const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+          const supabase = createClient(supabaseUrl, supabaseKey);
+          
+          const { data, error } = await supabase
+            .from("survey_themes")
+            .select("id, name, description, survey_type")
+            .in("id", requestThemeIds);
+          
+          if (!error && data) {
+            themes = data;
+            // Detect survey type from themes
+            if (themes.length > 0) {
+              surveyType = themes[0].survey_type || "employee_satisfaction";
+            }
+          }
+        } catch (error) {
+          console.error("Error fetching themes in preview mode:", error);
+          // Continue with empty themes - not critical for preview
         }
       }
 
