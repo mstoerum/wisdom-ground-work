@@ -706,7 +706,8 @@ Be warm and appreciative. Keep it brief.`;
         const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, sanitizedContent);
         const detectedThemeId = await detectTheme(LOVABLE_API_KEY, sanitizedContent, themes || []);
 
-        await supabase.from("responses").insert({
+        console.log(`[${conversationId}] Saving preview final response...`);
+        const { error: previewInsertError } = await supabase.from("responses").insert({
           conversation_session_id: conversationId,
           survey_id: session?.survey_id,
           content: sanitizedContent,
@@ -716,6 +717,10 @@ Be warm and appreciative. Keep it brief.`;
           theme_id: detectedThemeId,
           created_at: new Date().toISOString(),
         });
+
+        if (previewInsertError) {
+          console.error(`[${conversationId}] Warning: Failed to save preview final response:`, previewInsertError);
+        }
       }
 
       return new Response(
@@ -773,7 +778,8 @@ Be warm and appreciative. Keep it brief.`;
           content: sanitizedContent
         });
 
-        const { error: finalInsertError } = await supabase.from("responses").insert({
+        console.log(`[${conversationId}] Saving final completion response...`);
+        const { data: finalInserted, error: finalInsertError } = await supabase.from("responses").insert({
           conversation_session_id: conversationId,
           survey_id: session?.survey_id,
           content: sanitizedContent,
@@ -782,12 +788,29 @@ Be warm and appreciative. Keep it brief.`;
           sentiment_score: sentimentScore,
           theme_id: detectedThemeId,
           created_at: new Date().toISOString(),
-        });
+        })
+        .select();
 
         if (finalInsertError) {
-          console.error("Error inserting final response:", finalInsertError);
-          throw new Error(`Failed to save final response: ${finalInsertError.message}`);
+          console.error(`[${conversationId}] CRITICAL: Failed to save final response:`, {
+            error: finalInsertError,
+            code: finalInsertError.code,
+            message: finalInsertError.message,
+          });
+          
+          // Return error to frontend
+          return new Response(
+            JSON.stringify({ 
+              error: "Failed to save final response. Please try again.",
+              details: finalInsertError.message 
+            }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
         }
+
+        console.log(`[${conversationId}] ✅ Final response saved successfully:`, {
+          responseId: finalInserted?.[0]?.id,
+        });
       }
 
       return new Response(
@@ -888,6 +911,7 @@ Be warm and appreciative. Keep it brief.`;
         themeId: detectedThemeId
       });
 
+      console.log(`[${conversationId}] Attempting to save response to database...`);
       const { data: insertedResponse, error: insertError } = await supabase
         .from("responses")
         .insert({
@@ -905,19 +929,49 @@ Be warm and appreciative. Keep it brief.`;
         .single();
 
       if (insertError) {
-        console.error("Error inserting response:", insertError);
-        throw new Error(`Failed to save response: ${insertError.message}`);
+        console.error(`[${conversationId}] CRITICAL: Failed to save response:`, {
+          error: insertError,
+          code: insertError.code,
+          message: insertError.message,
+          details: insertError.details,
+          hint: insertError.hint,
+          surveyId: session?.survey_id,
+          conversationId,
+          hasPublicLink: !!session?.public_link_id,
+          isAnonymous: !userId,
+        });
+        
+        // Return error to frontend so user knows there's a problem
+        return new Response(
+          JSON.stringify({ 
+            error: "Failed to save your response. Please try again.",
+            details: insertError.message,
+            aiMessage: aiMessage // Still show the AI response
+          }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
-      console.log("Response inserted successfully:", insertedResponse?.id);
+      console.log(`[${conversationId}] ✅ Response saved successfully:`, {
+        responseId: insertedResponse?.id,
+        theme: detectedThemeId,
+        sentiment,
+      });
 
       // If urgent, create escalation log entry
       if (isUrgent && insertedResponse) {
-        await supabase.from("escalation_log").insert({
+        console.log(`[${conversationId}] Urgent issue detected, logging escalation...`);
+        const { error: escalationError } = await supabase.from("escalation_log").insert({
           response_id: insertedResponse.id,
           escalation_type: 'ai_detected',
           escalated_at: new Date().toISOString(),
         });
+
+        if (escalationError) {
+          console.error(`[${conversationId}] Failed to log escalation:`, escalationError);
+        } else {
+          console.log(`[${conversationId}] ✅ Escalation logged successfully`);
+        }
       }
 
       // Log to audit logs (only for authenticated users)
