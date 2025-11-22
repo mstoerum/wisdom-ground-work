@@ -9,9 +9,11 @@ import { SocialProof } from "./SocialProof";
 interface ClosingRitualProps {
   conversationId: string;
   onComplete: () => void;
+  surveyType?: 'employee_satisfaction' | 'course_evaluation';
 }
 
-export const ClosingRitual = ({ conversationId, onComplete }: ClosingRitualProps) => {
+export const ClosingRitual = ({ conversationId, onComplete, surveyType = 'employee_satisfaction' }: ClosingRitualProps) => {
+  const isCourseEvaluation = surveyType === 'course_evaluation';
 
   const { data: themesDiscussed = [] } = useQuery({
     queryKey: ['themes-discussed', conversationId],
@@ -63,9 +65,18 @@ export const ClosingRitual = ({ conversationId, onComplete }: ClosingRitualProps
           <p className="text-foreground font-medium">
             Thank you for taking the time to share your thoughts! 🙏
           </p>
-          <p className="text-foreground text-sm">
-            Your feedback has been securely recorded and will help us create a better workplace.
-          </p>
+          {themesDiscussed.length > 0 ? (
+            <p className="text-foreground text-sm">
+              Your feedback has been securely recorded and will help us {isCourseEvaluation 
+                ? 'improve the learning experience for future students'
+                : 'create a better workplace'
+              }.
+            </p>
+          ) : (
+            <p className="text-foreground text-sm">
+              Your conversation has been recorded. Even brief feedback helps us understand your {isCourseEvaluation ? 'course experience' : 'work experience'} better.
+            </p>
+          )}
           <p className="text-muted-foreground text-sm">
             Remember, your responses are completely anonymous. Your voice matters, and we're
             grateful for your honesty and time.
@@ -76,12 +87,21 @@ export const ClosingRitual = ({ conversationId, onComplete }: ClosingRitualProps
           <Heart className="h-5 w-5 text-primary mt-0.5" />
           <div>
             <p className="font-medium mb-1">What happens next?</p>
-            <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Your feedback is analyzed with others to identify trends</li>
-              <li>• Leadership reviews aggregated insights</li>
-              <li>• Action plans are developed based on common themes</li>
-              <li>• You'll hear about outcomes and changes made</li>
-            </ul>
+            {isCourseEvaluation ? (
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• Your feedback is analyzed with other student responses</li>
+                <li>• Instructors review aggregated insights to improve the course</li>
+                <li>• Common themes help shape future course improvements</li>
+                <li>• Your voice contributes to a better learning experience</li>
+              </ul>
+            ) : (
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• Your feedback is analyzed with others to identify trends</li>
+                <li>• Leadership reviews aggregated insights</li>
+                <li>• Action plans are developed based on common themes</li>
+                <li>• You'll hear about outcomes and changes made</li>
+              </ul>
+            )}
           </div>
         </div>
 
