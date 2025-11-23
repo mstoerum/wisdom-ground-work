@@ -18,6 +18,7 @@ import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FinishEarlyConfirmationDialog } from "./FinishEarlyConfirmationDialog";
+import { CompletionConfirmationButtons } from "./CompletionConfirmationButtons";
 
 interface Message {
   role: "user" | "assistant";
@@ -618,15 +619,16 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         {
           method: "POST",
           headers,
-          body: JSON.stringify({
-            conversationId,
-            messages: [...messages, userMessage].map(m => ({
-              role: m.role,
-              content: m.content
-            })),
-            testMode: isPreviewMode,
-            themes: isPreviewMode ? previewSurveyData?.themes : undefined,
-          }),
+        body: JSON.stringify({
+          conversationId,
+          messages: [...messages, userMessage].map(m => ({
+            role: m.role,
+            content: m.content
+          })),
+          isCompletionConfirmation: isInCompletionPhase,
+          testMode: isPreviewMode,
+          themes: isPreviewMode ? previewSurveyData?.themes : undefined,
+        }),
         }
       );
 
@@ -895,6 +897,33 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     }
   }, [conversationId, messages, themeCoverage, isPreviewMode, previewSurveyData, toast, isLoading]);
 
+  // Handle completion confirmation via buttons
+  const handleCompleteFromButtons = useCallback(async () => {
+    setIsLoading(true);
+    
+    try {
+      // Send empty string as the final response (user clicked "Complete Survey")
+      await handleFinalResponse("");
+    } catch (error) {
+      console.error("Error completing survey:", error);
+      toast({
+        title: "Error",
+        description: "Failed to complete the survey. Please try again.",
+        variant: "destructive",
+      });
+      setIsLoading(false);
+    }
+  }, [handleFinalResponse, toast]);
+
+  const handleAddMoreFromButtons = useCallback(() => {
+    // Clear the completion phase and allow user to type more
+    setIsInCompletionPhase(false);
+    toast({
+      title: "Continue sharing",
+      description: "You can add more feedback below",
+    });
+  }, [toast]);
+
   // Calculate conversation progress
   const userMessageCount = messages.filter(m => m.role === "user").length;
   const progressPercent = Math.min((userMessageCount / ESTIMATED_TOTAL_QUESTIONS) * 100, PROGRESS_COMPLETE_THRESHOLD);
@@ -1062,6 +1091,15 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           <div ref={scrollRef} />
         </div>
       </ScrollArea>
+
+      {/* Completion Confirmation Buttons */}
+      {isInCompletionPhase && messages.length > 0 && (
+        <CompletionConfirmationButtons
+          onComplete={handleCompleteFromButtons}
+          onAddMore={handleAddMoreFromButtons}
+          isLoading={isLoading}
+        />
+      )}
 
       <div className="p-4 border-t border-border/50 bg-background/95 backdrop-blur-md">
         {/* Suggested Prompts - Show only when input is empty and no messages yet */}
