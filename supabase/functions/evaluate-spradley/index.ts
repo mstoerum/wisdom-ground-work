@@ -152,13 +152,7 @@ serve(async (req) => {
       throw new Error("Missing required fields");
     }
 
-    // Get auth header
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      throw new Error("Missing authorization header");
-    }
-
-    // Create Supabase client
+    // Create Supabase client with service role key
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey, {
@@ -168,11 +162,16 @@ serve(async (req) => {
       },
     });
 
-    // Verify user is authenticated
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    if (authError || !user) {
-      throw new Error("Unauthorized");
+    // Try to get authenticated user (optional for anonymous surveys)
+    let userId: string | null = null;
+    const authHeader = req.headers.get("Authorization");
+    
+    if (authHeader) {
+      const token = authHeader.replace("Bearer ", "");
+      const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+      if (!authError && user) {
+        userId = user.id;
+      }
     }
 
     // Verify survey exists and evaluation is enabled

@@ -45,9 +45,9 @@ export const SpradleyEvaluation = ({
   // Save evaluation and complete
   const handleComplete = useCallback(async () => {
     try {
+      // Get user if authenticated (may be null for anonymous surveys)
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
+      
       const duration = Math.floor((Date.now() - startTime) / 1000);
       const userMessages = messages.filter(m => m.role === "user");
       const assistantMessages = messages.filter(m => m.role === "assistant");
@@ -81,13 +81,13 @@ export const SpradleyEvaluation = ({
       const overallSentiment = sentimentData.sentiment || "neutral";
       const overallSentimentScore = sentimentData.sentimentScore || 0.5;
 
-      // Save evaluation with structured data
+      // Save evaluation with structured data (employee_id may be null for anonymous)
       const { error } = await supabase
         .from("spradley_evaluations" as any)
         .insert({
           survey_id: surveyId,
           conversation_session_id: conversationSessionId,
-          employee_id: user.id,
+          employee_id: user?.id || null,
           evaluation_responses: evaluationResponses,
           overall_sentiment: overallSentiment,
           sentiment_score: overallSentimentScore,
@@ -175,9 +175,16 @@ export const SpradleyEvaluation = ({
     setIsLoading(true);
 
     try {
+      // Get session if available (optional for anonymous surveys)
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        throw new Error("Please sign in to continue");
+
+      // Prepare headers with optional authorization
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      
+      if (session?.access_token) {
+        headers.Authorization = `Bearer ${session.access_token}`;
       }
 
       // Call evaluation-specific chat endpoint
@@ -185,10 +192,7 @@ export const SpradleyEvaluation = ({
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evaluate-spradley`,
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
+          headers,
           body: JSON.stringify({
             surveyId,
             conversationSessionId,
