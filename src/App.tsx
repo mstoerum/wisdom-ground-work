@@ -15,6 +15,7 @@ import EmployeeDashboard from "./pages/employee/Dashboard";
 import HRDashboard from "./pages/hr/Dashboard";
 import CreateSurvey from "./pages/hr/CreateSurvey";
 import Analytics from "./pages/hr/Analytics";
+import CourseAnalytics from "./pages/hr/CourseAnalytics";
 import Commitments from "./pages/hr/Commitments";
 import Settings from "./pages/hr/Settings";
 import SpradleyEvaluations from "./pages/hr/SpradleyEvaluations";
@@ -94,6 +95,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="hr_admin">
                 <Analytics />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/hr/course-analytics" 
+            element={
+              <ProtectedRoute requiredRole="hr_admin">
+                <CourseAnalytics />
               </ProtectedRoute>
             } 
           />
