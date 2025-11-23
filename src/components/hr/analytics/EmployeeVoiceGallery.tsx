@@ -16,17 +16,22 @@ import {
 } from "lucide-react";
 import { ConversationQuote } from "@/lib/conversationAnalytics";
 import { toast } from "sonner";
+import { getTerminology } from "@/lib/contextualTerminology";
+import type { Database } from "@/integrations/supabase/types";
 
 interface EmployeeVoiceGalleryProps {
   quotes: ConversationQuote[];
   isLoading?: boolean;
+  surveyType?: Database['public']['Enums']['survey_type'];
 }
 
-export function EmployeeVoiceGallery({ quotes, isLoading }: EmployeeVoiceGalleryProps) {
+export function EmployeeVoiceGallery({ quotes, isLoading, surveyType = 'employee_satisfaction' }: EmployeeVoiceGalleryProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTheme, setSelectedTheme] = useState<string>("all");
   const [selectedSentiment, setSelectedSentiment] = useState<string>("all");
   const [selectedDepartment, setSelectedDepartment] = useState<string>("all");
+  
+  const terminology = getTerminology(surveyType);
 
   // Extract unique themes and departments
   const themes = useMemo(() => {
@@ -102,7 +107,7 @@ export function EmployeeVoiceGallery({ quotes, isLoading }: EmployeeVoiceGallery
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `employee-voice-gallery-${Date.now()}.csv`;
+    a.download = `${terminology.exportPrefix}-voice-${Date.now()}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
     toast.success("Quotes exported successfully");
@@ -135,7 +140,7 @@ export function EmployeeVoiceGallery({ quotes, isLoading }: EmployeeVoiceGallery
       <Card>
         <CardContent className="p-12 text-center">
           <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4 animate-pulse" />
-          <p className="text-muted-foreground">Loading employee voices...</p>
+          <p className="text-muted-foreground">Loading {terminology.voice.toLowerCase()}...</p>
         </CardContent>
       </Card>
     );
@@ -148,7 +153,7 @@ export function EmployeeVoiceGallery({ quotes, isLoading }: EmployeeVoiceGallery
           <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <h3 className="text-lg font-semibold mb-2">No Quotes Available</h3>
           <p className="text-muted-foreground">
-            Employee quotes will appear here as conversations are completed.
+            {terminology.feedback} will appear here as evaluations are completed.
           </p>
         </CardContent>
       </Card>
@@ -164,7 +169,7 @@ export function EmployeeVoiceGallery({ quotes, isLoading }: EmployeeVoiceGallery
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Quote className="h-5 w-5" />
-                Employee Voice Gallery
+                {terminology.voiceGallery}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
                 {filteredQuotes.length} of {quotes.length} quotes

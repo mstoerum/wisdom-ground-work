@@ -22,6 +22,14 @@ export interface ContextualTerms {
   responseLabel: string;
   identifiedDescription: string;
   anonymousDescription: string;
+  voice: string;
+  voiceGallery: string;
+  avgDuration: string;
+  avgSentiment: string;
+  participationRate: string;
+  completedCount: string;
+  analyticsTitle: string;
+  exportPrefix: string;
 }
 
 export const terminology: Record<SurveyType, ContextualTerms> = {
@@ -45,6 +53,14 @@ export const terminology: Record<SurveyType, ContextualTerms> = {
     responseLabel: "Response Anonymization",
     identifiedDescription: "Responses are linked to employee profiles. Allows for personalized follow-up and demographic analysis.",
     anonymousDescription: "Responses use anonymous tokens. No way to trace back to individual employees. Use for sensitive topics.",
+    voice: "Employee Voice",
+    voiceGallery: "Employee Voice Gallery",
+    avgDuration: "Avg Conversation Duration",
+    avgSentiment: "Avg Employee Sentiment",
+    participationRate: "Employee Participation Rate",
+    completedCount: "employees",
+    analyticsTitle: "Employee Feedback Analytics",
+    exportPrefix: "employee-feedback",
   },
   course_evaluation: {
     participant: "student",
@@ -66,6 +82,14 @@ export const terminology: Record<SurveyType, ContextualTerms> = {
     responseLabel: "Response Anonymization",
     identifiedDescription: "Responses are linked to student enrollment. Allows for learning outcome analysis and personalized follow-up.",
     anonymousDescription: "Responses use anonymous tokens. No way to trace back to individual students. Encourages honest, constructive feedback.",
+    voice: "Student Voice",
+    voiceGallery: "Student Voice Gallery",
+    avgDuration: "Avg Evaluation Duration",
+    avgSentiment: "Student Sentiment",
+    participationRate: "Student Response Rate",
+    completedCount: "students",
+    analyticsTitle: "Course Evaluation Analytics",
+    exportPrefix: "course-evaluation",
   },
 };
 
