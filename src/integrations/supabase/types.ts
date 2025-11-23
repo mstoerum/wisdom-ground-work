@@ -604,6 +604,63 @@ export type Database = {
           },
         ]
       }
+      spradley_evaluations: {
+        Row: {
+          completed_at: string | null
+          conversation_session_id: string
+          created_at: string | null
+          duration_seconds: number | null
+          employee_id: string | null
+          evaluation_responses: Json
+          id: string
+          key_insights: Json | null
+          overall_sentiment: string | null
+          sentiment_score: number | null
+          survey_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          conversation_session_id: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          employee_id?: string | null
+          evaluation_responses?: Json
+          id?: string
+          key_insights?: Json | null
+          overall_sentiment?: string | null
+          sentiment_score?: number | null
+          survey_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          conversation_session_id?: string
+          created_at?: string | null
+          duration_seconds?: number | null
+          employee_id?: string | null
+          evaluation_responses?: Json
+          id?: string
+          key_insights?: Json | null
+          overall_sentiment?: string | null
+          sentiment_score?: number | null
+          survey_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spradley_evaluations_conversation_session_id_fkey"
+            columns: ["conversation_session_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "spradley_evaluations_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       survey_analytics: {
         Row: {
           analyzed_at: string | null

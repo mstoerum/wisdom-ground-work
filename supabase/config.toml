@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.deep-analytics]
 verify_jwt = false
+
+[functions.evaluate-spradley]
+verify_jwt = false
