@@ -38,7 +38,7 @@ serve(async (req) => {
     // Fetch survey details
     const { data: survey, error: surveyError } = await supabase
       .from("surveys")
-      .select("*, survey_themes(*)")
+      .select("*")
       .eq("id", survey_id)
       .single();
 
@@ -49,6 +49,16 @@ serve(async (req) => {
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Fetch theme details from JSONB array
+    const themeIds = survey.themes || [];
+    const { data: surveyThemes } = await supabase
+      .from("survey_themes")
+      .select("*")
+      .in("id", themeIds);
+
+    // Attach themes to survey object for compatibility
+    survey.survey_themes = surveyThemes || [];
 
     // Fetch all completed sessions for this survey
     const { data: sessions, error: sessionsError } = await supabase
