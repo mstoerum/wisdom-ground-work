@@ -35,13 +35,17 @@ import { ExportAuditLog } from "@/components/hr/analytics/ExportAuditLog";
 import { ReportsExportTab } from "@/components/hr/analytics/ReportsExportTab";
 import { UrgentResponsesPanel } from "@/components/hr/analytics/UrgentResponsesPanel";
 import { SessionInsightsPanel } from "@/components/hr/analytics/SessionInsightsPanel";
+import { SurveyAnalyticsDashboard } from "@/components/hr/analytics/SurveyAnalyticsDashboard";
 import { useSessionInsights } from "@/hooks/useSessionInsights";
+import { useSurveyAnalytics } from "@/hooks/useSurveyAnalytics";
+import { useState as useReactState } from "react";
 
 const Analytics = () => {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<AnalyticsFilters>({});
   const [selectedDepartment, setSelectedDepartment] = useState("all");
   const [selectedTheme, setSelectedTheme] = useState("all");
+  const [isRunningAnalysis, setIsRunningAnalysis] = useReactState(false);
   
   const { participation, sentiment, themes, urgency, isLoading } = useAnalytics(filters);
   const { 
@@ -62,6 +66,9 @@ const Analytics = () => {
 
   // Fetch session insights
   const { data: sessionInsights, isLoading: isInsightsLoading } = useSessionInsights(filters.surveyId);
+
+  // Fetch survey-wide deep analytics
+  const { data: surveyAnalytics, isLoading: isAnalyticsLoading, refetch: refetchAnalytics } = useSurveyAnalytics(filters.surveyId);
 
   // Fetch urgent responses for the Urgent tab
   const { data: urgentResponses } = useQuery({
@@ -241,6 +248,39 @@ const Analytics = () => {
                 </p>
               </div>
               <div className="flex gap-2 flex-shrink-0">
+                <Button 
+                  onClick={async () => {
+                    if (!filters.surveyId) {
+                      toast.error("Please select a survey first");
+                      return;
+                    }
+                    setIsRunningAnalysis(true);
+                    try {
+                      const { error } = await supabase.functions.invoke('deep-analytics', {
+                        body: { survey_id: filters.surveyId }
+                      });
+                      if (error) throw error;
+                      toast.success("Deep analysis completed successfully");
+                      await refetchAnalytics();
+                    } catch (error) {
+                      console.error("Deep analysis error:", error);
+                      toast.error("Failed to run deep analysis");
+                    } finally {
+                      setIsRunningAnalysis(false);
+                    }
+                  }}
+                  variant="default"
+                  size="sm"
+                  disabled={!filters.surveyId || isRunningAnalysis}
+                >
+                  <Brain className="h-4 w-4 mr-2" />
+                  {isRunningAnalysis ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Analyzing...
+                    </>
+                  ) : 'Run Deep Analysis'}
+                </Button>
                 <Button onClick={handleExport} variant="outline" size="sm">
                   <Download className="h-4 w-4 mr-2" />
                   Export CSV
@@ -389,10 +429,17 @@ const Analytics = () => {
             </div>
 
             <Tabs defaultValue="dashboard" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-6">
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-7">
                 <TabsTrigger value="dashboard" className="flex items-center gap-2">
                   <BarChart3 className="h-4 w-4" />
                   Dashboard
+                </TabsTrigger>
+                <TabsTrigger value="ai-insights" className="flex items-center gap-2">
+                  <Brain className="h-4 w-4" />
+                  AI Insights
+                  {surveyAnalytics && (
+                    <Badge variant="secondary" className="ml-1">New</Badge>
+                  )}
                 </TabsTrigger>
                 <TabsTrigger value="urgent" className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4" />
@@ -405,7 +452,7 @@ const Analytics = () => {
                 </TabsTrigger>
                 <TabsTrigger value="insights" className="flex items-center gap-2">
                   <Lightbulb className="h-4 w-4" />
-                  Insights
+                  Sessions
                   {sessionInsights && sessionInsights.length > 0 && (
                     <Badge variant="secondary" className="ml-1">{sessionInsights.length}</Badge>
                   )}
@@ -440,6 +487,21 @@ const Analytics = () => {
                     const tabs = document.querySelector('[value="actions"]') as HTMLElement;
                     tabs?.click();
                   }}
+                />
+              </TabsContent>
+
+              {/* AI Insights Tab - Sprint 3 */}
+              <TabsContent value="ai-insights" className="space-y-6">
+                <SurveyAnalyticsDashboard 
+                  analytics={surveyAnalytics ? {
+                    ...surveyAnalytics,
+                    top_themes: surveyAnalytics.top_themes as any,
+                    sentiment_trends: surveyAnalytics.sentiment_trends as any,
+                    risk_factors: surveyAnalytics.risk_factors as any,
+                    opportunities: surveyAnalytics.opportunities as any,
+                    strategic_recommendations: surveyAnalytics.strategic_recommendations as any,
+                  } : null}
+                  isLoading={isAnalyticsLoading}
                 />
               </TabsContent>
 

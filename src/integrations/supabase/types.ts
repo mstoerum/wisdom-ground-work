@@ -604,6 +604,62 @@ export type Database = {
           },
         ]
       }
+      survey_analytics: {
+        Row: {
+          analyzed_at: string | null
+          confidence_score: number | null
+          cultural_insights: string | null
+          executive_summary: string | null
+          id: string
+          opportunities: Json | null
+          participation_analysis: string | null
+          risk_factors: Json | null
+          sentiment_trends: Json | null
+          strategic_recommendations: Json | null
+          survey_id: string
+          top_themes: Json | null
+          total_sessions_analyzed: number | null
+        }
+        Insert: {
+          analyzed_at?: string | null
+          confidence_score?: number | null
+          cultural_insights?: string | null
+          executive_summary?: string | null
+          id?: string
+          opportunities?: Json | null
+          participation_analysis?: string | null
+          risk_factors?: Json | null
+          sentiment_trends?: Json | null
+          strategic_recommendations?: Json | null
+          survey_id: string
+          top_themes?: Json | null
+          total_sessions_analyzed?: number | null
+        }
+        Update: {
+          analyzed_at?: string | null
+          confidence_score?: number | null
+          cultural_insights?: string | null
+          executive_summary?: string | null
+          id?: string
+          opportunities?: Json | null
+          participation_analysis?: string | null
+          risk_factors?: Json | null
+          sentiment_trends?: Json | null
+          strategic_recommendations?: Json | null
+          survey_id?: string
+          top_themes?: Json | null
+          total_sessions_analyzed?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_analytics_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       survey_assignments: {
         Row: {
           assigned_at: string | null
