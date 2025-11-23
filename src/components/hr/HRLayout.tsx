@@ -26,7 +26,6 @@ const menuItems = [
   { title: "Dashboard", url: "/hr/dashboard", icon: LayoutDashboard, tourId: undefined, adminOnly: false },
   { title: "Create Survey", url: "/hr/create-survey", icon: PlusCircle, tourId: undefined, adminOnly: true },
   { title: "Analytics", url: "/hr/analytics", icon: BarChart3, tourId: "analytics", adminOnly: false },
-  { title: "Course Analytics", url: "/hr/course-analytics", icon: GraduationCap, tourId: undefined, adminOnly: false },
   { title: "Action Commitments", url: "/hr/commitments", icon: ListChecks, tourId: "commitments", adminOnly: false },
   { title: "Spradley Evaluations", url: "/hr/evaluations", icon: MessageSquare, tourId: undefined, adminOnly: false },
   { title: "Settings", url: "/hr/settings", icon: Settings, tourId: "settings", adminOnly: true },

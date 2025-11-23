@@ -22,6 +22,8 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { EmployeeVoiceGallery } from "@/components/hr/analytics/EmployeeVoiceGallery";
 import { NarrativeSummary } from "@/components/hr/analytics/NarrativeSummary";
+import { getTerminology } from "@/lib/contextualTerminology";
+import type { Database } from "@/integrations/supabase/types";
 import { EnhancedThemeAnalysis } from "@/components/hr/analytics/EnhancedThemeAnalysis";
 import { PatternDiscovery } from "@/components/hr/analytics/PatternDiscovery";
 import { ActionableIntelligenceCenter } from "@/components/hr/analytics/ActionableIntelligenceCenter";
@@ -60,12 +62,17 @@ const Analytics = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('surveys')
-        .select('id, title')
+        .select('id, title, survey_type')
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
     },
   });
+
+  // Detect survey type from selected survey
+  const selectedSurvey = surveys?.find(s => s.id === filters.surveyId);
+  const surveyType = selectedSurvey?.survey_type || 'employee_satisfaction';
+  const terminology = getTerminology(surveyType as Database['public']['Enums']['survey_type']);
 
   // Fetch department data
   const { data: departmentData } = useQuery({
@@ -191,9 +198,9 @@ const Analytics = () => {
           <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
-                <h1 className="text-3xl font-bold">Employee Feedback Analytics</h1>
+                <h1 className="text-3xl font-bold">{terminology.analyticsTitle}</h1>
                 <p className="text-muted-foreground mt-1">
-                  Comprehensive insights from {participation?.completed || 0} completed conversations
+                  Comprehensive insights from {participation?.completed || 0} completed {terminology.completedCount}
                   {qualityMetrics && (
                     <span className="ml-2">
                       ? <span className={
@@ -225,10 +232,10 @@ const Analytics = () => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Participation Rate</p>
+                      <p className="text-sm text-muted-foreground">{terminology.participationRate}</p>
                       <p className="text-3xl font-bold text-green-600">{participation?.completionRate || 0}%</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {participation?.completed || 0} of {participation?.totalAssigned || 0} employees
+                        {participation?.completed || 0} of {participation?.totalAssigned || 0} {terminology.completedCount}
                       </p>
                     </div>
                     <Users className="h-8 w-8 text-green-600" />
@@ -240,7 +247,7 @@ const Analytics = () => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Avg Sentiment</p>
+                      <p className="text-sm text-muted-foreground">{terminology.avgSentiment}</p>
                       <p className="text-3xl font-bold">{sentiment?.avgScore || 0}/100</p>
                       <p className="text-xs text-green-600 mt-1 flex items-center">
                         <TrendingUp className="h-3 w-3 mr-1" />
@@ -256,9 +263,9 @@ const Analytics = () => {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm text-muted-foreground">Avg Duration</p>
+                      <p className="text-sm text-muted-foreground">{terminology.avgDuration}</p>
                       <p className="text-3xl font-bold">{participation?.avgDuration || 0}m</p>
-                      <p className="text-xs text-muted-foreground mt-1">per conversation</p>
+                      <p className="text-xs text-muted-foreground mt-1">per session</p>
                     </div>
                     <Clock className="h-8 w-8 text-purple-600" />
                   </div>
@@ -419,7 +426,11 @@ const Analytics = () => {
                     <EnhancedThemeAnalysis themes={enhancedThemes} isLoading={isConversationLoading} />
                   </TabsContent>
                   <TabsContent value="voices">
-                    <EmployeeVoiceGallery quotes={quotes} isLoading={isConversationLoading} />
+                    <EmployeeVoiceGallery 
+                      quotes={quotes} 
+                      isLoading={isConversationLoading}
+                      surveyType={surveyType as Database['public']['Enums']['survey_type']}
+                    />
                   </TabsContent>
                   <TabsContent value="quality">
                     <ConversationQualityDashboard qualityMetrics={qualityMetrics} qualityInsights={qualityInsights} isLoading={isConversationLoading} />
