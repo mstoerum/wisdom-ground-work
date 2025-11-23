@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, PlusCircle, BarChart2, Clock, TrendingDown, Shield, Brain, Globe, RefreshCw } from "lucide-react";
+import { Download, BarChart3, Users, MessageSquare, TrendingUp, AlertTriangle, FileText, PlusCircle, BarChart2, Clock, TrendingDown, Shield, Brain, Globe, RefreshCw, Lightbulb } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, Area, AreaChart } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart";
 import { DonutProgressRing } from "@/components/hr/analytics/DonutProgressRing";
@@ -33,6 +33,9 @@ import { CulturalPatterns } from "@/components/hr/analytics/CulturalPatterns";
 import { ExecutiveDashboard } from "@/components/hr/analytics/ExecutiveDashboard";
 import { ExportAuditLog } from "@/components/hr/analytics/ExportAuditLog";
 import { ReportsExportTab } from "@/components/hr/analytics/ReportsExportTab";
+import { UrgentResponsesPanel } from "@/components/hr/analytics/UrgentResponsesPanel";
+import { SessionInsightsPanel } from "@/components/hr/analytics/SessionInsightsPanel";
+import { useSessionInsights } from "@/hooks/useSessionInsights";
 
 const Analytics = () => {
   const navigate = useNavigate();
@@ -56,6 +59,29 @@ const Analytics = () => {
     culturalMap,
     isLoading: isConversationLoading
   } = useConversationAnalytics(filters);
+
+  // Fetch session insights
+  const { data: sessionInsights, isLoading: isInsightsLoading } = useSessionInsights(filters.surveyId);
+
+  // Fetch urgent responses for the Urgent tab
+  const { data: urgentResponses } = useQuery({
+    queryKey: ['urgent-responses', filters.surveyId],
+    queryFn: async () => {
+      if (!filters.surveyId) return [];
+      
+      const { data, error } = await supabase
+        .from('responses')
+        .select('*')
+        .eq('survey_id', filters.surveyId)
+        .gte('urgency_score', 3)
+        .order('urgency_score', { ascending: false })
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!filters.surveyId,
+  });
 
   const { data: surveys } = useQuery({
     queryKey: ['surveys-list'],
@@ -363,21 +389,37 @@ const Analytics = () => {
             </div>
 
             <Tabs defaultValue="dashboard" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-6">
                 <TabsTrigger value="dashboard" className="flex items-center gap-2">
                   <BarChart3 className="h-4 w-4" />
                   Dashboard
                 </TabsTrigger>
+                <TabsTrigger value="urgent" className="flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Urgent
+                  {urgentResponses && urgentResponses.filter(r => r.urgency_score >= 4).length > 0 && (
+                    <Badge variant="destructive" className="ml-1">
+                      {urgentResponses.filter(r => r.urgency_score >= 4).length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="insights" className="flex items-center gap-2">
+                  <Lightbulb className="h-4 w-4" />
+                  Insights
+                  {sessionInsights && sessionInsights.length > 0 && (
+                    <Badge variant="secondary" className="ml-1">{sessionInsights.length}</Badge>
+                  )}
+                </TabsTrigger>
                 <TabsTrigger value="actions" className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4" />
-                  Actions & Insights
+                  Actions
                   {urgency?.filter(u => !u.resolved_at).length > 0 && (
                     <Badge variant="destructive" className="ml-1">{urgency.filter(u => !u.resolved_at).length}</Badge>
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="explore" className="flex items-center gap-2">
                   <MessageSquare className="h-4 w-4" />
-                  Explore Data
+                  Explore
                 </TabsTrigger>
                 <TabsTrigger value="reports" className="flex items-center gap-2">
                   <FileText className="h-4 w-4" />
@@ -398,6 +440,41 @@ const Analytics = () => {
                     const tabs = document.querySelector('[value="actions"]') as HTMLElement;
                     tabs?.click();
                   }}
+                />
+              </TabsContent>
+
+              {/* Urgent Tab - Sprint 1 */}
+              <TabsContent value="urgent" className="space-y-6">
+                <UrgentResponsesPanel 
+                  responses={urgentResponses?.map(r => ({
+                    id: r.id,
+                    content: r.content,
+                    urgency_score: r.urgency_score || 0,
+                    ai_analysis: r.ai_analysis as any,
+                    created_at: r.created_at || new Date().toISOString()
+                  })) || []}
+                  isLoading={isLoading}
+                />
+                <NarrativeSummary 
+                  narrative={narrative} 
+                  isLoading={isConversationLoading}
+                />
+              </TabsContent>
+
+              {/* Session Insights Tab - Sprint 2 */}
+              <TabsContent value="insights" className="space-y-6">
+                <SessionInsightsPanel 
+                  insights={(sessionInsights || []).map(insight => ({
+                    ...insight,
+                    sentiment_trajectory: insight.sentiment_trajectory as 'improving' | 'declining' | 'stable' | 'mixed' | null,
+                    key_quotes: insight.key_quotes as string[],
+                    recommended_actions: insight.recommended_actions as Array<{
+                      action: string;
+                      priority: 'high' | 'medium' | 'low';
+                      timeframe: string;
+                    }>
+                  }))}
+                  isLoading={isInsightsLoading}
                 />
               </TabsContent>
 
