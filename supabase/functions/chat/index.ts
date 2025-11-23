@@ -958,6 +958,108 @@ Be warm and appreciative. Keep it brief.`;
         sentiment,
       });
 
+      // SPRINT 1: Real-time LLM-powered analysis
+      if (insertedResponse?.id) {
+        try {
+          console.log(`[${conversationId}] Running LLM analysis on response...`);
+          
+          const analysisResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: AI_MODEL_LITE,
+              messages: [
+                {
+                  role: "system",
+                  content: "You analyze employee feedback to extract urgency, themes, and sentiment indicators."
+                },
+                {
+                  role: "user",
+                  content: `Analyze this feedback: "${sanitizedContent}"\n\nAvailable themes: ${themes?.map((t: any) => `${t.id}:${t.name}`).join(", ")}`
+                }
+              ],
+              tools: [
+                {
+                  type: "function",
+                  function: {
+                    name: "analyze_response",
+                    description: "Extract urgency score, themes, and sentiment from employee feedback",
+                    parameters: {
+                      type: "object",
+                      properties: {
+                        urgency_score: {
+                          type: "integer",
+                          description: "Urgency level from 1-5 where 1=routine, 2=minor concern, 3=notable issue, 4=serious problem, 5=critical/urgent",
+                          enum: [1, 2, 3, 4, 5]
+                        },
+                        urgency_reason: {
+                          type: "string",
+                          description: "Brief explanation of why this urgency level was assigned"
+                        },
+                        detected_themes: {
+                          type: "array",
+                          items: { type: "string" },
+                          description: "Array of theme IDs that are relevant to this response"
+                        },
+                        key_sentiment_indicators: {
+                          type: "array",
+                          items: { type: "string" },
+                          description: "Phrases or words that reveal the person's sentiment"
+                        },
+                        suggested_followup: {
+                          type: "string",
+                          description: "A specific follow-up question that could deepen understanding"
+                        }
+                      },
+                      required: ["urgency_score", "urgency_reason", "detected_themes", "key_sentiment_indicators", "suggested_followup"],
+                      additionalProperties: false
+                    }
+                  }
+                }
+              ],
+              tool_choice: { type: "function", function: { name: "analyze_response" } }
+            }),
+          });
+
+          if (analysisResponse.ok) {
+            const analysisData = await analysisResponse.json();
+            const toolCall = analysisData.choices[0]?.message?.tool_calls?.[0];
+            
+            if (toolCall?.function?.arguments) {
+              const analysis = JSON.parse(toolCall.function.arguments);
+              
+              console.log(`[${conversationId}] LLM analysis complete:`, {
+                urgency_score: analysis.urgency_score,
+                urgency_reason: analysis.urgency_reason
+              });
+
+              // Update response with analysis results
+              const { error: updateError } = await supabase
+                .from("responses")
+                .update({
+                  urgency_score: analysis.urgency_score,
+                  ai_analysis: analysis
+                })
+                .eq("id", insertedResponse.id);
+
+              if (updateError) {
+                console.error(`[${conversationId}] Failed to update response with analysis:`, updateError);
+              } else {
+                console.log(`[${conversationId}] ✅ Response enriched with LLM analysis`);
+              }
+            }
+          } else {
+            console.error(`[${conversationId}] LLM analysis failed:`, await analysisResponse.text());
+          }
+        } catch (analysisError) {
+          console.error(`[${conversationId}] Error during LLM analysis:`, analysisError);
+          // Don't fail the whole request if analysis fails
+        }
+      }
+
       // If urgent, create escalation log entry
       if (isUrgent && insertedResponse) {
         console.log(`[${conversationId}] Urgent issue detected, logging escalation...`);
