@@ -153,23 +153,17 @@ export const EmployeeSurveyFlow = ({
   };
 
   const handleSurveyComplete = async () => {
-    if (!isPreviewMode) {
-      await endConversation(null);
-    } else {
-      // In preview mode, just reset conversation state
-      if (conversationId) {
-        // No DB operations in preview mode
-      }
-    }
-
-    // Check if evaluation is enabled
+    // Check if evaluation is enabled FIRST
     const enableEvaluation = surveyDetails?.consent_config?.enable_spradley_evaluation;
     
     if (enableEvaluation && !isPreviewMode && conversationId) {
-      // Show evaluation step
+      // Don't end conversation yet - evaluation needs active session
       setStep("evaluation");
     } else {
-      // Skip evaluation and go to complete
+      // No evaluation - end conversation now
+      if (!isPreviewMode) {
+        await endConversation(null);
+      }
       setStep("complete");
       
       toast({
@@ -179,14 +173,18 @@ export const EmployeeSurveyFlow = ({
           : "Your feedback has been recorded.",
       });
 
-      // Call completion handler after a delay
       setTimeout(() => {
         onComplete?.();
       }, isPreviewMode ? 1000 : 2000);
     }
   };
 
-  const handleEvaluationComplete = () => {
+  const handleEvaluationComplete = async () => {
+    // End conversation after evaluation is complete
+    if (!isPreviewMode) {
+      await endConversation(null);
+    }
+    
     setStep("complete");
     
     toast({
@@ -194,13 +192,17 @@ export const EmployeeSurveyFlow = ({
       description: "Your feedback has been recorded.",
     });
 
-    // Call completion handler after a delay
     setTimeout(() => {
       onComplete?.();
     }, 2000);
   };
 
-  const handleEvaluationSkip = () => {
+  const handleEvaluationSkip = async () => {
+    // End conversation even if evaluation was skipped
+    if (!isPreviewMode) {
+      await endConversation(null);
+    }
+    
     setStep("complete");
     
     toast({
@@ -208,7 +210,6 @@ export const EmployeeSurveyFlow = ({
       description: "Your feedback has been recorded.",
     });
 
-    // Call completion handler after a delay
     setTimeout(() => {
       onComplete?.();
     }, 2000);
