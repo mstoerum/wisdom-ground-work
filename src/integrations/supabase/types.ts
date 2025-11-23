@@ -563,6 +563,47 @@ export type Database = {
           },
         ]
       }
+      session_insights: {
+        Row: {
+          confidence_score: number | null
+          created_at: string | null
+          id: string
+          key_quotes: Json | null
+          recommended_actions: Json | null
+          root_cause: string | null
+          sentiment_trajectory: string | null
+          session_id: string
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          key_quotes?: Json | null
+          recommended_actions?: Json | null
+          root_cause?: string | null
+          sentiment_trajectory?: string | null
+          session_id: string
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string | null
+          id?: string
+          key_quotes?: Json | null
+          recommended_actions?: Json | null
+          root_cause?: string | null
+          sentiment_trajectory?: string | null
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_insights_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "conversation_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       survey_assignments: {
         Row: {
           assigned_at: string | null
