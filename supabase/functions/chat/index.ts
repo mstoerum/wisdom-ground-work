@@ -358,7 +358,7 @@ serve(async (req) => {
   }
 
   try {
-    const { conversationId, messages, testMode, themes: requestThemeIds, finishEarly, themeCoverage, isFinalResponse, firstMessage: requestFirstMessage } = await req.json();
+    const { conversationId, messages, testMode, themes: requestThemeIds, finishEarly, themeCoverage, isFinalResponse, isCompletionConfirmation, firstMessage: requestFirstMessage } = await req.json();
     
     // Validate required fields
     if (!conversationId || typeof conversationId !== "string") {
@@ -646,6 +646,53 @@ Be warm and appreciative. Keep it brief.`;
 
     const turnCount = messages.filter((m: any) => m.role === "user").length;
     
+    // Handle user responding to completion confirmation
+    if (isCompletionConfirmation) {
+      const userResponse = sanitizedContent.toLowerCase();
+      const wantsToAddMore = userResponse.match(/\b(yes|yeah|sure|actually|wait)\b/);
+      
+      if (wantsToAddMore) {
+        // User wants to add more - continue conversation
+        const continuePrompt = "Of course! What would you like to add?";
+        return new Response(
+          JSON.stringify({
+            message: continuePrompt,
+            shouldComplete: false,
+            isCompletionPrompt: false
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } else {
+        // User says no/nothing OR clicked "Complete Survey" button (empty content)
+        // Save their final response only if it has meaningful content
+        if (sanitizedContent.length > 3 && !isIntroductionTrigger) {
+          const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, sanitizedContent);
+          const detectedThemeId = await detectTheme(LOVABLE_API_KEY, sanitizedContent, themes || []);
+
+          await supabase.from("responses").insert({
+            conversation_session_id: conversationId,
+            survey_id: session?.survey_id,
+            content: sanitizedContent,
+            ai_response: "Thank you for your time and insights.",
+            sentiment,
+            sentiment_score: sentimentScore,
+            theme_id: detectedThemeId,
+            created_at: new Date().toISOString(),
+          });
+        }
+
+        // Return final thank you message
+        return new Response(
+          JSON.stringify({
+            message: "Thank you for your time and valuable insights. Your feedback will help create meaningful change.",
+            shouldComplete: true,
+            showSummary: true
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+    
     // Handle finish early request
     if (finishEarly) {
       const coveragePercent = themeCoverage || 0;
@@ -684,6 +731,53 @@ Be warm and appreciative. Keep it brief.`;
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Handle user responding to completion confirmation
+    if (isCompletionConfirmation) {
+      const userResponse = sanitizedContent.toLowerCase();
+      const wantsToAddMore = userResponse.match(/\b(yes|yeah|sure|actually|wait)\b/);
+      
+      if (wantsToAddMore) {
+        // User wants to add more - continue conversation
+        const continuePrompt = "Of course! What would you like to add?";
+        return new Response(
+          JSON.stringify({
+            message: continuePrompt,
+            shouldComplete: false,
+            isCompletionPrompt: false
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } else {
+        // User says no/nothing OR clicked "Complete Survey" button (empty content)
+        // Save their final response only if it has meaningful content
+        if (sanitizedContent.length > 3 && !isIntroductionTrigger) {
+          const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, sanitizedContent);
+          const detectedThemeId = await detectTheme(LOVABLE_API_KEY, sanitizedContent, themes || []);
+
+          await supabase.from("responses").insert({
+            conversation_session_id: conversationId,
+            survey_id: session?.survey_id,
+            content: sanitizedContent,
+            ai_response: "Thank you for your time and insights.",
+            sentiment,
+            sentiment_score: sentimentScore,
+            theme_id: detectedThemeId,
+            created_at: new Date().toISOString(),
+          });
+        }
+
+        // Return final thank you message
+        return new Response(
+          JSON.stringify({
+            message: "Thank you for your time and valuable insights. Your feedback will help create meaningful change.",
+            shouldComplete: true,
+            showSummary: true
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Handle final response
