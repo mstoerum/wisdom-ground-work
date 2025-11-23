@@ -507,6 +507,7 @@ export type Database = {
           survey_id: string
           theme_id: string | null
           urgency_escalated: boolean | null
+          urgency_score: number | null
         }
         Insert: {
           ai_analysis?: Json | null
@@ -521,6 +522,7 @@ export type Database = {
           survey_id: string
           theme_id?: string | null
           urgency_escalated?: boolean | null
+          urgency_score?: number | null
         }
         Update: {
           ai_analysis?: Json | null
@@ -535,6 +537,7 @@ export type Database = {
           survey_id?: string
           theme_id?: string | null
           urgency_escalated?: boolean | null
+          urgency_score?: number | null
         }
         Relationships: [
           {
