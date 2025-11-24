@@ -32,6 +32,7 @@ interface ChatInterfaceProps {
   onSaveAndExit: () => void;
   showTrustFlow?: boolean;
   skipTrustFlow?: boolean;
+  publicLinkId?: string;
 }
 
 // Constants
@@ -58,16 +59,22 @@ const checkIsPublicLinkSession = async (conversationId: string): Promise<boolean
 };
 
 // Helper function to get session token, allowing anonymous access for public links
-const getSessionForConversation = async (conversationId: string, isPreviewMode: boolean): Promise<{ access_token: string } | null> => {
-  if (isPreviewMode) {
+const getSessionForConversation = async (
+  conversationId: string, 
+  isPreviewMode: boolean,
+  publicLinkId?: string
+): Promise<{ access_token: string } | null> => {
+  // Skip auth check for preview mode or public links
+  if (isPreviewMode || publicLinkId) {
+    console.log(publicLinkId ? "Public link conversation - allowing anonymous access" : "Preview mode - skipping auth");
     return null;
   }
   
-  // Check if this is a public link conversation
+  // Check if this is a public link conversation (fallback if publicLinkId not provided)
   const isPublicLink = await checkIsPublicLinkSession(conversationId);
   
   if (isPublicLink) {
-    console.log("Public link conversation - allowing anonymous access");
+    console.log("Public link conversation detected - allowing anonymous access");
     return null; // Anonymous access allowed for public links
   }
   
@@ -80,7 +87,14 @@ const getSessionForConversation = async (conversationId: string, isPreviewMode: 
   return session;
 };
 
-export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showTrustFlow = true, skipTrustFlow = false }: ChatInterfaceProps) => {
+export const ChatInterface = ({ 
+  conversationId, 
+  onComplete, 
+  onSaveAndExit, 
+  showTrustFlow = true, 
+  skipTrustFlow = false,
+  publicLinkId 
+}: ChatInterfaceProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -225,7 +239,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           let session = null;
           if (!isPreviewMode) {
             try {
-              session = await getSessionForConversation(conversationId, isPreviewMode);
+              session = await getSessionForConversation(conversationId, isPreviewMode, publicLinkId);
             } catch (error) {
               console.error("Error getting session for introduction:", error);
               // Don't fail - public link sessions are allowed without auth
@@ -410,7 +424,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
         const base64Audio = (reader.result as string).split(',')[1];
 
         try {
-          const session = await getSessionForConversation(conversationId, isPreviewMode);
+          const session = await getSessionForConversation(conversationId, isPreviewMode, publicLinkId);
           const response = await fetch(
           `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-audio`,
           {
@@ -440,11 +454,15 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
           console.error("Error in transcription:", error);
           setIsLoading(false);
           soundEffects.playError();
+          
+          // Enhanced error handling for public links
+          const errorMessage = error instanceof Error && error.message.includes("Authentication") 
+            ? (publicLinkId ? "Unable to connect. Please refresh the page and try again." : "Authentication required. Please sign in to continue.")
+            : "Please try again or type your message";
+            
           toast({
             title: "Transcription failed",
-            description: error instanceof Error && error.message.includes("Authentication") 
-              ? "Authentication required. Please sign in to continue."
-              : "Please try again or type your message",
+            description: errorMessage,
             variant: "destructive",
           });
         }
@@ -597,7 +615,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
       let session = null;
       if (!isPreviewMode) {
         try {
-          session = await getSessionForConversation(conversationId, isPreviewMode);
+          session = await getSessionForConversation(conversationId, isPreviewMode, publicLinkId);
         } catch (error) {
           // Don't fail for public link sessions - they're allowed without auth
           console.log("Session retrieval error:", error);
@@ -691,13 +709,17 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
       if (data.shouldComplete) {
         setTimeout(onComplete, 2000);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Chat error:", error);
+      
+      // Enhanced error handling for public links - never redirect
+      const errorMessage = error?.message?.includes("Authentication")
+        ? (publicLinkId ? "Connection error. Please refresh the page and try again." : "Authentication required. Please sign in to continue.")
+        : (error instanceof Error ? error.message : "An error occurred processing your request. Please try again.");
+      
       toast({
         title: "Message failed",
-        description: isPublicLinkSession 
-          ? "Unable to send message. Please refresh and try again."
-          : (error instanceof Error ? error.message : "An error occurred processing your request. Please try again."),
+        description: errorMessage,
         variant: "destructive",
       });
       
@@ -707,7 +729,7 @@ export const ChatInterface = ({ conversationId, onComplete, onSaveAndExit, showT
     } finally {
       setIsLoading(false);
     }
-  }, [input, isLoading, conversationId, messages, onComplete, toast, isPreviewMode, previewSurveyData, finishEarlyStep, handleFinalResponse, isPublicLinkSession]);
+  }, [input, isLoading, conversationId, messages, onComplete, toast, isPreviewMode, previewSurveyData, finishEarlyStep, handleFinalResponse, publicLinkId]);
 
   // Handle Enter key to send message
   const handleKeyPress = (e: React.KeyboardEvent) => {
