@@ -3,13 +3,34 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, PlayCircle, Sparkles } from "lucide-react";
+import { MessageSquare, PlayCircle, Sparkles, Shield } from "lucide-react";
 import { SocialProof } from "@/components/employee/SocialProof";
+import { toast } from "sonner";
 
 const Index = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [isGrantingAccess, setIsGrantingAccess] = useState(false);
   const { roles, loading } = useUserRole();
   const navigate = useNavigate();
+
+  const handleGrantHRAccess = async () => {
+    setIsGrantingAccess(true);
+    try {
+      const { error } = await supabase.rpc('assign_demo_hr_admin');
+      if (error) throw error;
+      
+      toast.success("HR Admin access granted! Redirecting...");
+      
+      // Refresh the page to update roles
+      setTimeout(() => {
+        window.location.href = '/hr/dashboard';
+      }, 1000);
+    } catch (error) {
+      console.error('Error granting HR access:', error);
+      toast.error("Failed to grant access. Please try again.");
+      setIsGrantingAccess(false);
+    }
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -70,6 +91,20 @@ const Index = () => {
             Sign In
           </Button>
         </div>
+
+        {isAuthenticated && !roles.includes('hr_admin') && (
+          <div className="pt-4">
+            <Button 
+              onClick={handleGrantHRAccess}
+              disabled={isGrantingAccess}
+              size="lg"
+              className="gap-2"
+            >
+              <Shield className="h-5 w-5" />
+              {isGrantingAccess ? "Granting Access..." : "Grant HR Admin Access"}
+            </Button>
+          </div>
+        )}
 
         <div className="pt-4 max-w-md mx-auto">
           <SocialProof />
