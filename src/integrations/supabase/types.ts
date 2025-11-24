@@ -604,6 +604,65 @@ export type Database = {
           },
         ]
       }
+      spradley_analytics: {
+        Row: {
+          actionable_recommendations: Json | null
+          analyzed_at: string | null
+          competitive_analysis: string | null
+          confidence_score: number | null
+          created_at: string | null
+          executive_summary: string | null
+          feature_feedback: Json | null
+          feature_requests: Json | null
+          id: string
+          sentiment_trends: Json | null
+          survey_id: string | null
+          top_insights: Json | null
+          total_evaluations_analyzed: number | null
+          usability_issues: Json | null
+        }
+        Insert: {
+          actionable_recommendations?: Json | null
+          analyzed_at?: string | null
+          competitive_analysis?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          executive_summary?: string | null
+          feature_feedback?: Json | null
+          feature_requests?: Json | null
+          id?: string
+          sentiment_trends?: Json | null
+          survey_id?: string | null
+          top_insights?: Json | null
+          total_evaluations_analyzed?: number | null
+          usability_issues?: Json | null
+        }
+        Update: {
+          actionable_recommendations?: Json | null
+          analyzed_at?: string | null
+          competitive_analysis?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          executive_summary?: string | null
+          feature_feedback?: Json | null
+          feature_requests?: Json | null
+          id?: string
+          sentiment_trends?: Json | null
+          survey_id?: string | null
+          top_insights?: Json | null
+          total_evaluations_analyzed?: number | null
+          usability_issues?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "spradley_analytics_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       spradley_evaluations: {
         Row: {
           completed_at: string | null

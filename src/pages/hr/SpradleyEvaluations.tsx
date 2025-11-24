@@ -5,14 +5,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MessageSquare, TrendingUp, Clock, Users, ThumbsUp, ThumbsDown, Minus, Download, RefreshCw } from "lucide-react";
+import { MessageSquare, TrendingUp, Clock, Users, ThumbsUp, ThumbsDown, Minus, Download, RefreshCw, Sparkles } from "lucide-react";
 import { EvaluationMetrics } from "@/components/hr/evaluations/EvaluationMetrics";
 import { EvaluationTrends } from "@/components/hr/evaluations/EvaluationTrends";
 import { EvaluationInsights } from "@/components/hr/evaluations/EvaluationInsights";
 import { EvaluationResponses } from "@/components/hr/evaluations/EvaluationResponses";
 import { EvaluationFilters } from "@/components/hr/evaluations/EvaluationFilters";
+import { SpradleyInsightsPanel } from "@/components/hr/evaluations/SpradleyInsightsPanel";
+import { UsabilityIssuesPanel } from "@/components/hr/evaluations/UsabilityIssuesPanel";
+import { ActionableRecommendationsPanel } from "@/components/hr/evaluations/ActionableRecommendationsPanel";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { exportEvaluationsToCSV } from "@/lib/exportEvaluations";
+import { useSpradleyAnalytics } from "@/hooks/useSpradleyAnalytics";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { isAfter, isBefore, parseISO } from "date-fns";
@@ -22,6 +26,11 @@ const SpradleyEvaluations = () => {
   const [sentimentFilter, setSentimentFilter] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
+  const [selectedSurveyId, setSelectedSurveyId] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // Fetch AI analytics for selected survey
+  const { data: analytics, isLoading: analyticsLoading, refetch: refetchAnalytics } = useSpradleyAnalytics(selectedSurveyId);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Fetch all evaluations
@@ -84,6 +93,30 @@ const SpradleyEvaluations = () => {
     }
     exportEvaluationsToCSV(filteredEvaluations);
     toast.success('Evaluations exported to CSV');
+  };
+
+  const handleRunAnalysis = async () => {
+    if (!selectedSurveyId) {
+      toast.error("Please select a survey first");
+      return;
+    }
+
+    setIsAnalyzing(true);
+    try {
+      const { error } = await supabase.functions.invoke("spradley-deep-analytics", {
+        body: { survey_id: selectedSurveyId },
+      });
+
+      if (error) throw error;
+
+      toast.success("Analysis complete! Insights are now available.");
+      refetchAnalytics();
+    } catch (error) {
+      console.error("Analysis error:", error);
+      toast.error("Failed to run analysis. Please try again.");
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   // Filter evaluations
@@ -183,6 +216,15 @@ const SpradleyEvaluations = () => {
             </p>
           </div>
           <div className="flex gap-2">
+            <Button 
+              onClick={handleRunAnalysis} 
+              variant="default" 
+              size="sm"
+              disabled={isAnalyzing || !selectedSurveyId}
+            >
+              <Sparkles className="h-4 w-4 mr-2" />
+              {isAnalyzing ? "Analyzing..." : "Run AI Analysis"}
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -216,6 +258,8 @@ const SpradleyEvaluations = () => {
           }}
           activeFilterCount={activeFilterCount}
           onClearAll={handleClearFilters}
+          selectedSurveyId={selectedSurveyId}
+          setSelectedSurveyId={setSelectedSurveyId}
         />
 
         {/* Key Metrics */}
@@ -294,13 +338,22 @@ const SpradleyEvaluations = () => {
 
         {/* Detailed Insights */}
         {filteredEvaluations && filteredEvaluations.length > 0 ? (
-          <Tabs defaultValue="insights" className="space-y-4">
+          <Tabs defaultValue="ai-insights" className="space-y-4">
             <TabsList>
+              <TabsTrigger value="ai-insights">AI Insights</TabsTrigger>
               <TabsTrigger value="insights">Key Insights</TabsTrigger>
               <TabsTrigger value="trends">Trends</TabsTrigger>
               <TabsTrigger value="responses">Responses</TabsTrigger>
               <TabsTrigger value="metrics">Detailed Metrics</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="ai-insights" className="space-y-6">
+              <SpradleyInsightsPanel analytics={analytics as any} isLoading={analyticsLoading} />
+              <div className="grid gap-6 md:grid-cols-2">
+                <UsabilityIssuesPanel analytics={analytics as any} isLoading={analyticsLoading} />
+                <ActionableRecommendationsPanel analytics={analytics as any} isLoading={analyticsLoading} />
+              </div>
+            </TabsContent>
 
             <TabsContent value="insights" className="space-y-4">
               <EvaluationInsights evaluations={filteredEvaluations} />
