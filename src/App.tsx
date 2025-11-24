@@ -68,7 +68,7 @@ const App = () => (
           <Route 
             path="/hr/dashboard" 
             element={
-              <ProtectedRoute requiredRole="hr_admin">
+              <ProtectedRoute>
                 <HRDashboard />
               </ProtectedRoute>
             } 
@@ -76,7 +76,7 @@ const App = () => (
           <Route 
             path="/hr/create-survey" 
             element={
-              <ProtectedRoute requiredRole="hr_admin">
+              <ProtectedRoute>
                 <CreateSurvey />
               </ProtectedRoute>
             } 
@@ -84,7 +84,7 @@ const App = () => (
           <Route 
             path="/hr/test-survey-chat" 
             element={
-              <ProtectedRoute requiredRole="hr_admin">
+              <ProtectedRoute>
                 <TestSurveyChat />
               </ProtectedRoute>
             } 
@@ -92,7 +92,7 @@ const App = () => (
           <Route 
             path="/hr/analytics" 
             element={
-              <ProtectedRoute requiredRole="hr_admin">
+              <ProtectedRoute>
                 <Analytics />
               </ProtectedRoute>
             } 
@@ -100,7 +100,7 @@ const App = () => (
           <Route 
             path="/hr/commitments"
             element={
-              <ProtectedRoute requiredRole="hr_admin">
+              <ProtectedRoute>
                 <Commitments />
               </ProtectedRoute>
             } 
@@ -108,7 +108,7 @@ const App = () => (
           <Route 
             path="/hr/settings" 
             element={
-              <ProtectedRoute requiredRole="hr_admin">
+              <ProtectedRoute>
                 <Settings />
               </ProtectedRoute>
             } 
@@ -116,7 +116,7 @@ const App = () => (
           <Route 
             path="/hr/evaluations" 
             element={
-              <ProtectedRoute requiredRole="hr_admin">
+              <ProtectedRoute>
                 <SpradleyEvaluations />
               </ProtectedRoute>
             } 
