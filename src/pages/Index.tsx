@@ -18,16 +18,16 @@ const Index = () => {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated && !loading) {
-      // Redirect based on role
+    if (isAuthenticated && !loading && roles.length > 0) {
+      // Priority: HR roles over employee role
       if (roles.includes('hr_admin') || roles.includes('hr_analyst')) {
         navigate('/hr/dashboard');
       } else if (roles.includes('employee')) {
         navigate('/employee/dashboard');
-      } else {
-        // No role assigned, default to employee
-        navigate('/employee/dashboard');
       }
+    } else if (isAuthenticated && !loading && roles.length === 0) {
+      // No role assigned, default to employee
+      navigate('/employee/dashboard');
     }
   }, [isAuthenticated, roles, loading, navigate]);
 

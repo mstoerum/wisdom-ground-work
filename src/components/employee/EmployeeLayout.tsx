@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useUserRole } from "@/hooks/useUserRole";
 import {
   SidebarProvider,
   Sidebar,
@@ -14,7 +15,7 @@ import {
   SidebarMenuButton,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, MessageSquare, Bell, User, LogOut } from "lucide-react";
+import { LayoutDashboard, User, LogOut, Building2 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -29,6 +30,8 @@ const menuItems = [
 
 export const EmployeeLayout = ({ children }: EmployeeLayoutProps) => {
   const navigate = useNavigate();
+  const { isHRAdmin, isHRAnalyst } = useUserRole();
+  const isHR = isHRAdmin || isHRAnalyst;
 
   const { data: profile } = useQuery({
     queryKey: ['employee-profile'],
@@ -55,6 +58,10 @@ export const EmployeeLayout = ({ children }: EmployeeLayoutProps) => {
       toast.success("Logged out successfully");
       navigate("/auth");
     }
+  };
+
+  const handleSwitchToHR = () => {
+    navigate("/hr/dashboard");
   };
 
   return (
@@ -90,6 +97,14 @@ export const EmployeeLayout = ({ children }: EmployeeLayoutProps) => {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
+                  {isHR && (
+                    <SidebarMenuItem>
+                      <SidebarMenuButton onClick={handleSwitchToHR}>
+                        <Building2 className="h-4 w-4" />
+                        <span>HR Dashboard</span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  )}
                   <SidebarMenuItem>
                     <SidebarMenuButton onClick={handleLogout}>
                       <LogOut className="h-4 w-4" />
