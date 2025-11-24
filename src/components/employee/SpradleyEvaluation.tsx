@@ -52,6 +52,17 @@ export const SpradleyEvaluation = ({
       const userMessages = messages.filter(m => m.role === "user");
       const assistantMessages = messages.filter(m => m.role === "assistant");
 
+      // Validate that we have responses
+      if (userMessages.length === 0) {
+        console.warn("⚠️ No user messages to save in evaluation");
+        toast({
+          title: "No responses to save",
+          description: "Please answer at least one question",
+          variant: "destructive",
+        });
+        return;
+      }
+
       // Extract key insights from conversation with structured data
       const evaluationResponses = userMessages.map((msg, idx) => ({
         question: assistantMessages[idx]?.content || "",
@@ -81,30 +92,53 @@ export const SpradleyEvaluation = ({
       const overallSentiment = sentimentData.sentiment || "neutral";
       const overallSentimentScore = sentimentData.sentimentScore || 0.5;
 
+      // Prepare evaluation data
+      const evaluationData = {
+        survey_id: surveyId,
+        conversation_session_id: conversationSessionId,
+        employee_id: user?.id || null,
+        evaluation_responses: evaluationResponses,
+        overall_sentiment: overallSentiment,
+        sentiment_score: overallSentimentScore,
+        key_insights: {
+          dimensions,
+          total_questions: userMessages.length,
+          average_response_length: userMessages.length > 0 
+            ? userMessages.reduce((sum, m) => sum + m.content.length, 0) / userMessages.length 
+            : 0,
+        },
+        duration_seconds: duration,
+        completed_at: new Date().toISOString(),
+      };
+
+      console.log("🔍 Submitting Spradley evaluation with data:", {
+        ...evaluationData,
+        response_count: evaluationResponses.length,
+        user_id: user?.id || 'anonymous',
+      });
+
       // Save evaluation with structured data (employee_id may be null for anonymous)
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("spradley_evaluations" as any)
-        .insert({
-          survey_id: surveyId,
-          conversation_session_id: conversationSessionId,
-          employee_id: user?.id || null,
-          evaluation_responses: evaluationResponses,
-          overall_sentiment: overallSentiment,
-          sentiment_score: overallSentimentScore,
-          key_insights: {
-            dimensions,
-            total_questions: userMessages.length,
-            average_response_length: userMessages.length > 0 
-              ? userMessages.reduce((sum, m) => sum + m.content.length, 0) / userMessages.length 
-              : 0,
-          },
-          duration_seconds: duration,
-          completed_at: new Date().toISOString(),
-        });
+        .insert(evaluationData)
+        .select();
 
       if (error) {
-        console.error("Error saving evaluation:", error);
-        // Don't block completion if save fails
+        console.error("❌ Error saving Spradley evaluation:", {
+          error,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code,
+        });
+        toast({
+          title: "Error saving feedback",
+          description: error.message || "Please contact support",
+          variant: "destructive",
+        });
+        // Don't throw - allow completion anyway
+      } else {
+        console.log("✅ Spradley evaluation saved successfully:", data);
       }
 
       toast({
