@@ -5,8 +5,22 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+// 🔍 DEBUG: Environment Variables Check
+console.log('🔍 SUPABASE DEBUG - Environment Check:');
+console.log('  VITE_SUPABASE_URL exists:', !!SUPABASE_URL);
+console.log('  VITE_SUPABASE_URL value:', SUPABASE_URL || 'UNDEFINED');
+console.log('  VITE_SUPABASE_PUBLISHABLE_KEY exists:', !!SUPABASE_PUBLISHABLE_KEY);
+console.log('  VITE_SUPABASE_PUBLISHABLE_KEY length:', SUPABASE_PUBLISHABLE_KEY?.length || 0);
+console.log('  All import.meta.env:', import.meta.env);
+
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
+
+if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+  console.error('❌ CRITICAL: Supabase environment variables are missing!');
+  console.error('   This will cause all Supabase operations to fail.');
+  console.error('   Make sure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are set.');
+}
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
@@ -14,4 +28,14 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
     persistSession: true,
     autoRefreshToken: true,
   }
+});
+
+// 🔍 DEBUG: Test connection
+supabase.auth.getSession().then(({ data, error }) => {
+  console.log('🔍 SUPABASE DEBUG - Initial Auth Check:');
+  console.log('  Session exists:', !!data.session);
+  console.log('  User ID:', data.session?.user?.id || 'No user');
+  console.log('  Error:', error || 'None');
+}).catch(err => {
+  console.error('❌ SUPABASE DEBUG - Auth check failed:', err);
 });

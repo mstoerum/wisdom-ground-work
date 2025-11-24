@@ -5,6 +5,7 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, PlayCircle, Sparkles, Shield } from "lucide-react";
 import { SocialProof } from "@/components/employee/SocialProof";
+import { DebugPanel } from "@/components/DebugPanel";
 import { toast } from "sonner";
 
 const Index = () => {
@@ -33,21 +34,49 @@ const Index = () => {
   };
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    console.log('🔍 INDEX DEBUG - Starting auth check...');
+    
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      console.log('🔍 INDEX DEBUG - getSession result:');
+      console.log('  Session:', session);
+      console.log('  Error:', error);
+      setIsAuthenticated(!!session);
+    }).catch(err => {
+      console.error('❌ INDEX DEBUG - getSession failed:', err);
+      setIsAuthenticated(false);
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('🔍 INDEX DEBUG - Auth state changed:');
+      console.log('  Event:', event);
+      console.log('  Session exists:', !!session);
+      console.log('  User:', session?.user?.email || 'No user');
       setIsAuthenticated(!!session);
     });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
+    console.log('🔍 INDEX DEBUG - Navigation check:');
+    console.log('  isAuthenticated:', isAuthenticated);
+    console.log('  loading:', loading);
+    console.log('  roles:', roles);
+    
     if (isAuthenticated && !loading && roles.length > 0) {
       // Priority: HR roles over employee role
       if (roles.includes('hr_admin') || roles.includes('hr_analyst')) {
+        console.log('  → Navigating to /hr/dashboard');
         navigate('/hr/dashboard');
       } else if (roles.includes('employee')) {
+        console.log('  → Navigating to /employee/dashboard');
         navigate('/employee/dashboard');
       }
     } else if (isAuthenticated && !loading && roles.length === 0) {
       // No role assigned, default to employee
+      console.log('  → No roles, navigating to /employee/dashboard');
       navigate('/employee/dashboard');
     }
   }, [isAuthenticated, roles, loading, navigate]);
@@ -109,6 +138,8 @@ const Index = () => {
         <div className="pt-4 max-w-md mx-auto">
           <SocialProof />
         </div>
+
+        <DebugPanel />
 
         <div className="pt-8 grid gap-6 sm:grid-cols-3 text-left">
           <div className="space-y-2 p-4 rounded-lg border border-border/50 bg-card/50">
