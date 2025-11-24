@@ -16,7 +16,9 @@ import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { LogOut, MessageSquare, PlayCircle } from "lucide-react";
+import { MessageSquare, PlayCircle } from "lucide-react";
+import { EmployeeLayout } from "@/components/employee/EmployeeLayout";
+import { useNavigate } from "react-router-dom";
 
 type ConversationStep = "consent" | "anonymization" | "mood" | "chat" | "closing" | "complete";
 
@@ -28,6 +30,7 @@ const EmployeeDashboard = () => {
   const [mood, setMood] = useState(50);
   const { conversationId, startConversation, endConversation } = useConversation();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     loadActiveSurvey();
@@ -102,6 +105,7 @@ const EmployeeDashboard = () => {
       description: "You can participate whenever you're ready.",
     });
     await supabase.auth.signOut();
+    navigate('/auth');
   };
 
   const handleMoodSelect = async (selectedMood: number) => {
@@ -149,6 +153,7 @@ const EmployeeDashboard = () => {
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+    navigate('/auth');
   };
 
   const handleSaveAndExit = () => {
@@ -157,19 +162,13 @@ const EmployeeDashboard = () => {
 
   if (!surveyId) {
     return (
-      <div className="min-h-screen bg-background p-6">
+      <EmployeeLayout>
         <div className="max-w-4xl mx-auto">
-          <div className="flex justify-between items-center mb-12">
-            <div className="space-y-2">
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-[hsl(var(--terracotta-primary))] via-[hsl(var(--coral-accent))] to-[hsl(var(--butter-yellow))] bg-clip-text text-transparent">
-                Your Feedback Hub
-              </h1>
-              <p className="text-lg text-muted-foreground">Track your participation and see our commitments</p>
-            </div>
-            <Button onClick={handleSignOut} variant="ghost" size="sm">
-              <LogOut className="h-4 w-4 mr-2" />
-              Sign Out
-            </Button>
+          <div className="space-y-2 mb-12">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-[hsl(var(--terracotta-primary))] via-[hsl(var(--coral-accent))] to-[hsl(var(--butter-yellow))] bg-clip-text text-transparent">
+              Your Feedback Hub
+            </h1>
+            <p className="text-lg text-muted-foreground">Track your participation and see our commitments</p>
           </div>
 
           <div className="space-y-6">
@@ -215,24 +214,18 @@ const EmployeeDashboard = () => {
             </Tabs>
           </div>
         </div>
-      </div>
+      </EmployeeLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background p-6">
+    <EmployeeLayout>
       <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-12">
-          <div className="space-y-2">
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-[hsl(var(--terracotta-primary))] via-[hsl(var(--coral-accent))] to-[hsl(var(--butter-yellow))] bg-clip-text text-transparent">
-              Feedback Session
-            </h1>
-            <p className="text-lg text-muted-foreground">Your voice matters</p>
-          </div>
-          <Button onClick={handleSignOut} variant="ghost" size="sm">
-            <LogOut className="h-4 w-4 mr-2" />
-            Sign Out
-          </Button>
+        <div className="space-y-2 mb-12">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-[hsl(var(--terracotta-primary))] via-[hsl(var(--coral-accent))] to-[hsl(var(--butter-yellow))] bg-clip-text text-transparent">
+            Feedback Session
+          </h1>
+          <p className="text-lg text-muted-foreground">Your voice matters</p>
         </div>
 
         <AnonymizationBanner />
@@ -300,7 +293,7 @@ const EmployeeDashboard = () => {
           )}
         </div>
       </div>
-    </div>
+    </EmployeeLayout>
   );
 };
 
