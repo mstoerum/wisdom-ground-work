@@ -1,17 +1,29 @@
 import { HRLayout } from "@/components/hr/HRLayout";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { MessageSquare, TrendingUp, Clock, Users, ThumbsUp, ThumbsDown, Minus } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { MessageSquare, TrendingUp, Clock, Users, ThumbsUp, ThumbsDown, Minus, Download, RefreshCw } from "lucide-react";
 import { EvaluationMetrics } from "@/components/hr/evaluations/EvaluationMetrics";
 import { EvaluationTrends } from "@/components/hr/evaluations/EvaluationTrends";
 import { EvaluationInsights } from "@/components/hr/evaluations/EvaluationInsights";
 import { EvaluationResponses } from "@/components/hr/evaluations/EvaluationResponses";
+import { EvaluationFilters } from "@/components/hr/evaluations/EvaluationFilters";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { exportEvaluationsToCSV } from "@/lib/exportEvaluations";
+import { toast } from "sonner";
+import { useEffect, useState } from "react";
+import { isAfter, isBefore, parseISO } from "date-fns";
 
 const SpradleyEvaluations = () => {
+  const queryClient = useQueryClient();
+  const [sentimentFilter, setSentimentFilter] = useState<string | null>(null);
+  const [startDate, setStartDate] = useState<Date | undefined>();
+  const [endDate, setEndDate] = useState<Date | undefined>();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   // Fetch all evaluations
   const { data: evaluations, isLoading } = useQuery({
     queryKey: ['spradley-evaluations'],
@@ -30,17 +42,98 @@ const SpradleyEvaluations = () => {
     },
   });
 
-  // Calculate aggregate metrics with zero-division protection
-  const metrics = evaluations && evaluations.length > 0 ? {
-    totalEvaluations: evaluations.length,
-    averageDuration: evaluations.reduce((sum, e: any) => sum + (e.duration_seconds || 0), 0) / evaluations.length,
-    averageQuestions: evaluations.reduce((sum, e: any) => {
+  // Real-time updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('spradley-evaluations-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'spradley_evaluations'
+        },
+        (payload) => {
+          console.log('🔴 New evaluation received:', payload);
+          queryClient.invalidateQueries({ queryKey: ['spradley-evaluations'] });
+          toast.success('New evaluation received', {
+            description: 'Fresh feedback from a user'
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
+  // Manual refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await queryClient.invalidateQueries({ queryKey: ['spradley-evaluations'] });
+    toast.success('Evaluations refreshed');
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
+
+  // Export to CSV
+  const handleExport = () => {
+    if (!filteredEvaluations || filteredEvaluations.length === 0) {
+      toast.error('No evaluations to export');
+      return;
+    }
+    exportEvaluationsToCSV(filteredEvaluations);
+    toast.success('Evaluations exported to CSV');
+  };
+
+  // Filter evaluations
+  const filteredEvaluations = evaluations?.filter((e: any) => {
+    // Sentiment filter
+    if (sentimentFilter) {
+      const score = e.sentiment_score || 0;
+      if (sentimentFilter === 'positive' && score <= 0.6) return false;
+      if (sentimentFilter === 'neutral' && (score < 0.4 || score > 0.6)) return false;
+      if (sentimentFilter === 'negative' && score >= 0.4) return false;
+    }
+
+    // Date range filter
+    if (startDate && e.completed_at) {
+      const completedAt = parseISO(e.completed_at);
+      if (isBefore(completedAt, startDate)) return false;
+    }
+    if (endDate && e.completed_at) {
+      const completedAt = parseISO(e.completed_at);
+      if (isAfter(completedAt, endDate)) return false;
+    }
+
+    return true;
+  });
+
+  // Count active filters
+  const activeFilterCount = [
+    sentimentFilter,
+    startDate,
+    endDate
+  ].filter(Boolean).length;
+
+  // Clear all filters
+  const handleClearFilters = () => {
+    setSentimentFilter(null);
+    setStartDate(undefined);
+    setEndDate(undefined);
+  };
+
+  // Calculate aggregate metrics with zero-division protection (using filtered data)
+  const metrics = filteredEvaluations && filteredEvaluations.length > 0 ? {
+    totalEvaluations: filteredEvaluations.length,
+    averageDuration: filteredEvaluations.reduce((sum, e: any) => sum + (e.duration_seconds || 0), 0) / filteredEvaluations.length,
+    averageQuestions: filteredEvaluations.reduce((sum, e: any) => {
       const insights = e.key_insights as any;
       return sum + (insights?.total_questions || 0);
-    }, 0) / evaluations.length,
-    positiveSentiment: evaluations.filter((e: any) => e.sentiment_score && e.sentiment_score > 0.6).length,
-    neutralSentiment: evaluations.filter((e: any) => e.sentiment_score && e.sentiment_score >= 0.4 && e.sentiment_score <= 0.6).length,
-    negativeSentiment: evaluations.filter((e: any) => e.sentiment_score && e.sentiment_score < 0.4).length,
+    }, 0) / filteredEvaluations.length,
+    positiveSentiment: filteredEvaluations.filter((e: any) => e.sentiment_score && e.sentiment_score > 0.6).length,
+    neutralSentiment: filteredEvaluations.filter((e: any) => e.sentiment_score && e.sentiment_score >= 0.4 && e.sentiment_score <= 0.6).length,
+    negativeSentiment: filteredEvaluations.filter((e: any) => e.sentiment_score && e.sentiment_score < 0.4).length,
     completionRate: 100, // Simplified - could calculate from survey completions
   } : {
     totalEvaluations: 0,
@@ -73,12 +166,57 @@ const SpradleyEvaluations = () => {
   return (
     <HRLayout>
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Spradley Evaluations</h1>
-          <p className="text-muted-foreground mt-1">
-            Insights from user feedback about their Spradley experience
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-3xl font-bold">Spradley Evaluations</h1>
+              <Badge variant="outline" className="text-green-600 border-green-600">
+                <span className="relative flex h-2 w-2 mr-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                Live
+              </Badge>
+            </div>
+            <p className="text-muted-foreground mt-1">
+              Insights from user feedback about their Spradley experience
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExport}
+              disabled={!filteredEvaluations || filteredEvaluations.length === 0}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+          </div>
         </div>
+
+        {/* Filters */}
+        <EvaluationFilters
+          sentimentFilter={sentimentFilter}
+          setSentimentFilter={setSentimentFilter}
+          startDate={startDate}
+          endDate={endDate}
+          onDateChange={(start, end) => {
+            setStartDate(start);
+            setEndDate(end);
+          }}
+          activeFilterCount={activeFilterCount}
+          onClearAll={handleClearFilters}
+        />
 
         {/* Key Metrics */}
         {metrics && (
@@ -155,7 +293,7 @@ const SpradleyEvaluations = () => {
         )}
 
         {/* Detailed Insights */}
-        {evaluations && evaluations.length > 0 ? (
+        {filteredEvaluations && filteredEvaluations.length > 0 ? (
           <Tabs defaultValue="insights" className="space-y-4">
             <TabsList>
               <TabsTrigger value="insights">Key Insights</TabsTrigger>
@@ -165,19 +303,19 @@ const SpradleyEvaluations = () => {
             </TabsList>
 
             <TabsContent value="insights" className="space-y-4">
-              <EvaluationInsights evaluations={evaluations} />
+              <EvaluationInsights evaluations={filteredEvaluations} />
             </TabsContent>
 
             <TabsContent value="trends" className="space-y-4">
-              <EvaluationTrends evaluations={evaluations} />
+              <EvaluationTrends evaluations={filteredEvaluations} />
             </TabsContent>
 
             <TabsContent value="responses" className="space-y-4">
-              <EvaluationResponses evaluations={evaluations} />
+              <EvaluationResponses evaluations={filteredEvaluations} />
             </TabsContent>
 
             <TabsContent value="metrics" className="space-y-4">
-              <EvaluationMetrics evaluations={evaluations} />
+              <EvaluationMetrics evaluations={filteredEvaluations} />
             </TabsContent>
           </Tabs>
         ) : (
