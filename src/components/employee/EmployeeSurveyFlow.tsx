@@ -8,7 +8,7 @@ import { ConsentModal } from "@/components/employee/ConsentModal";
 import { ClosingRitual } from "@/components/employee/ClosingRitual";
 import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
 import { SpradleyEvaluation } from "@/components/employee/SpradleyEvaluation";
-import { SurveyModeSelector } from "@/components/hr/wizard/SurveyModeSelector";
+// SurveyModeSelector removed - voice mode disabled, auto-starting text mode
 import { ConversationSummary } from "@/components/employee/ConversationSummary";
 import { useConversation } from "@/hooks/useConversation";
 import { useToast } from "@/hooks/use-toast";
@@ -19,7 +19,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { PlayCircle, CheckCircle2 } from "lucide-react";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 
-type ConversationStep = "consent" | "anonymization" | "mode-select" | "chat" | "voice" | "closing" | "evaluation" | "complete";
+type ConversationStep = "consent" | "anonymization" | "chat" | "closing" | "evaluation" | "complete";
 
 interface EmployeeSurveyFlowProps {
   surveyId: string;
@@ -44,7 +44,6 @@ export const EmployeeSurveyFlow = ({
 }: EmployeeSurveyFlowProps) => {
   const { isPreviewMode } = usePreviewMode();
   const [step, setStep] = useState<ConversationStep>("consent");
-  const [selectedMode, setSelectedMode] = useState<'text' | 'voice' | null>(null);
   const { conversationId, startConversation, endConversation } = useConversation(publicLinkId);
   const { toast } = useToast();
 
@@ -68,37 +67,7 @@ export const EmployeeSurveyFlow = ({
   };
 
   const handleAnonymizationComplete = async () => {
-    if (quickPreview) {
-      // In quick preview mode, skip mode selection, go directly to chat
-      try {
-        const sessionId = await startConversation(surveyId, null, publicLinkId);
-        if (sessionId) {
-          setStep("chat");
-        } else {
-          // If session creation failed, show error
-          toast({
-            title: "Preview Error",
-            description: "Failed to start preview conversation. Please try again.",
-            variant: "destructive",
-          });
-        }
-      } catch (error) {
-        console.error("Error starting preview conversation:", error);
-        toast({
-          title: "Preview Error",
-          description: "An error occurred while starting the preview. Please try again.",
-          variant: "destructive",
-        });
-      }
-    } else {
-      // Show mode selector
-      setStep("mode-select");
-    }
-  };
-
-  const handleModeSelect = async (mode: 'text' | 'voice') => {
-    setSelectedMode(mode);
-    
+    // Auto-start text mode conversation - voice mode disabled
     if (!surveyId) {
       toast({
         title: "Error",
@@ -109,18 +78,12 @@ export const EmployeeSurveyFlow = ({
     }
 
     try {
-      // Start conversation without mood (pass null or undefined)
       const sessionId = await startConversation(surveyId, null, publicLinkId);
       if (sessionId) {
-        // Go to the appropriate interface based on selected mode
-        if (mode === 'voice') {
-          setStep("voice");
-        } else {
-          setStep("chat");
-        }
+        setStep("chat");
       } else {
         toast({
-          title: "Error",
+          title: quickPreview ? "Preview Error" : "Error",
           description: "Failed to start conversation. Please try again.",
           variant: "destructive",
         });
@@ -128,7 +91,7 @@ export const EmployeeSurveyFlow = ({
     } catch (error) {
       console.error("Error starting conversation:", error);
       toast({
-        title: "Error",
+        title: quickPreview ? "Preview Error" : "Error",
         description: "An error occurred while starting the conversation.",
         variant: "destructive",
       });
@@ -268,14 +231,6 @@ export const EmployeeSurveyFlow = ({
             />
           )}
 
-          {step === "mode-select" && (
-            <SurveyModeSelector
-              onSelectMode={handleModeSelect}
-              surveyTitle={surveyDetails?.title || "Employee Feedback Survey"}
-              firstMessage={surveyDetails?.first_message}
-            />
-          )}
-
           {step === "chat" && conversationId && (
             <ChatErrorBoundary conversationId={conversationId} onExit={handleSaveAndExit}>
               <ChatInterface
@@ -285,16 +240,6 @@ export const EmployeeSurveyFlow = ({
                 showTrustFlow={!publicLinkId}
                 skipTrustFlow={!!publicLinkId}
                 publicLinkId={publicLinkId}
-              />
-            </ChatErrorBoundary>
-          )}
-
-          {step === "voice" && conversationId && (
-            <ChatErrorBoundary conversationId={conversationId} onExit={handleSaveAndExit}>
-              <VoiceInterface
-                conversationId={conversationId}
-                onSwitchToText={() => setStep("chat")}
-                onComplete={handleChatComplete}
               />
             </ChatErrorBoundary>
           )}
