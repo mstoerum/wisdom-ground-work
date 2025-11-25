@@ -38,11 +38,10 @@ const SpradleyEvaluations = () => {
     queryKey: ['spradley-evaluations'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('spradley_evaluations' as any)
+        .from('spradley_evaluations')
         .select(`
           *,
-          survey:surveys(id, title, created_at),
-          employee:profiles(id, full_name, email)
+          survey:surveys(id, title, created_at)
         `)
         .order('completed_at', { ascending: false });
 
