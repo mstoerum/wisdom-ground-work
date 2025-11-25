@@ -419,6 +419,53 @@ export type Database = {
           },
         ]
       }
+      narrative_reports: {
+        Row: {
+          audience_config: Json
+          chapters: Json
+          confidence_score: number | null
+          data_snapshot: Json
+          generated_at: string
+          generated_by: string
+          id: string
+          is_latest: boolean
+          report_version: number
+          survey_id: string
+        }
+        Insert: {
+          audience_config?: Json
+          chapters?: Json
+          confidence_score?: number | null
+          data_snapshot?: Json
+          generated_at?: string
+          generated_by: string
+          id?: string
+          is_latest?: boolean
+          report_version?: number
+          survey_id: string
+        }
+        Update: {
+          audience_config?: Json
+          chapters?: Json
+          confidence_score?: number | null
+          data_snapshot?: Json
+          generated_at?: string
+          generated_by?: string
+          id?: string
+          is_latest?: boolean
+          report_version?: number
+          survey_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "narrative_reports_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
