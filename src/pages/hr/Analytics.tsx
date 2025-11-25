@@ -38,6 +38,8 @@ import { SessionInsightsPanel } from "@/components/hr/analytics/SessionInsightsP
 import { SurveyAnalyticsDashboard } from "@/components/hr/analytics/SurveyAnalyticsDashboard";
 import { useSessionInsights } from "@/hooks/useSessionInsights";
 import { useSurveyAnalytics } from "@/hooks/useSurveyAnalytics";
+import { useNarrativeReports } from "@/hooks/useNarrativeReports";
+import { NarrativeReportViewer } from "@/components/hr/analytics/NarrativeReportViewer";
 import { useState as useReactState } from "react";
 
 const Analytics = () => {
@@ -69,6 +71,14 @@ const Analytics = () => {
 
   // Fetch survey-wide deep analytics
   const { data: surveyAnalytics, isLoading: isAnalyticsLoading, refetch: refetchAnalytics } = useSurveyAnalytics(filters.surveyId);
+
+  // Fetch narrative reports
+  const { 
+    latestReport, 
+    isLoading: isReportLoading, 
+    generateReport,
+    isGenerating 
+  } = useNarrativeReports(filters.surveyId || null);
 
   // Fetch urgent responses for the Urgent tab
   const { data: urgentResponses } = useQuery({
@@ -281,6 +291,26 @@ const Analytics = () => {
                     </>
                   ) : 'Run Deep Analysis'}
                 </Button>
+                <Button 
+                  onClick={async () => {
+                    if (!filters.surveyId) {
+                      toast.error("Please select a survey first");
+                      return;
+                    }
+                    generateReport({ surveyId: filters.surveyId });
+                  }}
+                  variant="default"
+                  size="sm"
+                  disabled={!filters.surveyId || isGenerating}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  {isGenerating ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : 'Generate Story Report'}
+                </Button>
                 <Button onClick={handleExport} variant="outline" size="sm">
                   <Download className="h-4 w-4 mr-2" />
                   Export CSV
@@ -429,10 +459,17 @@ const Analytics = () => {
             </div>
 
             <Tabs defaultValue="dashboard" className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-7">
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-8">
                 <TabsTrigger value="dashboard" className="flex items-center gap-2">
                   <BarChart3 className="h-4 w-4" />
                   Dashboard
+                </TabsTrigger>
+                <TabsTrigger value="story" className="flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Story
+                  {latestReport && (
+                    <Badge variant="secondary" className="ml-1">New</Badge>
+                  )}
                 </TabsTrigger>
                 <TabsTrigger value="ai-insights" className="flex items-center gap-2">
                   <Brain className="h-4 w-4" />
@@ -488,6 +525,57 @@ const Analytics = () => {
                     tabs?.click();
                   }}
                 />
+              </TabsContent>
+
+              {/* Story Report Tab */}
+              <TabsContent value="story" className="space-y-6">
+                {!filters.surveyId ? (
+                  <Card className="p-12 text-center">
+                    <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <p className="text-muted-foreground">
+                      Please select a survey to view or generate a story report
+                    </p>
+                  </Card>
+                ) : latestReport ? (
+                  <NarrativeReportViewer
+                    report={latestReport}
+                    onRegenerateWithAudience={(audience) => {
+                      if (filters.surveyId) {
+                        generateReport({ surveyId: filters.surveyId, audience });
+                      }
+                    }}
+                    isGenerating={isGenerating}
+                  />
+                ) : (
+                  <Card className="p-12 text-center">
+                    <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">No Story Report Yet</h3>
+                    <p className="text-muted-foreground mb-6">
+                      Generate an AI-powered narrative report that tells the story of this survey
+                    </p>
+                    <Button
+                      onClick={() => {
+                        if (filters.surveyId) {
+                          generateReport({ surveyId: filters.surveyId });
+                        }
+                      }}
+                      disabled={isGenerating}
+                      size="lg"
+                    >
+                      {isGenerating ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Generating Story...
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Generate Story Report
+                        </>
+                      )}
+                    </Button>
+                  </Card>
+                )}
               </TabsContent>
 
               {/* AI Insights Tab - Sprint 3 */}
