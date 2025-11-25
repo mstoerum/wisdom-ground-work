@@ -41,16 +41,35 @@ export const SpradleyEvaluation = ({
   const [sentimentData, setSentimentData] = useState<{ sentiment?: string; sentimentScore?: number }>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  
+  // Refs to prevent duplicate saves and avoid stale closures
+  const isCompletingRef = useRef(false);
+  const messagesRef = useRef<Message[]>([]);
+
+  // Keep messagesRef in sync with messages state
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   // Save evaluation and complete
   const handleComplete = useCallback(async () => {
+    // Prevent duplicate saves
+    if (isCompletingRef.current) {
+      console.log("⚠️ Completion already in progress, skipping duplicate save");
+      return;
+    }
+    isCompletingRef.current = true;
+
     try {
+      // Use messagesRef to get the latest messages (avoid stale closure)
+      const currentMessages = messagesRef.current;
+      
       // Get user if authenticated (may be null for anonymous surveys)
       const { data: { user } } = await supabase.auth.getUser();
       
       const duration = Math.floor((Date.now() - startTime) / 1000);
-      const userMessages = messages.filter(m => m.role === "user");
-      const assistantMessages = messages.filter(m => m.role === "assistant");
+      const userMessages = currentMessages.filter(m => m.role === "user");
+      const assistantMessages = currentMessages.filter(m => m.role === "assistant");
 
       // Validate that we have responses
       if (userMessages.length === 0) {
@@ -60,6 +79,7 @@ export const SpradleyEvaluation = ({
           description: "Please answer at least one question",
           variant: "destructive",
         });
+        isCompletingRef.current = false;
         return;
       }
 
@@ -70,6 +90,14 @@ export const SpradleyEvaluation = ({
         timestamp: msg.timestamp.toISOString(),
         questionNumber: idx + 1,
       }));
+
+      // Additional validation: ensure we have meaningful responses
+      if (evaluationResponses.length === 0) {
+        console.warn("⚠️ No evaluation responses to save, skipping");
+        isCompletingRef.current = false;
+        onComplete();
+        return;
+      }
 
       // Extract evaluation dimensions from responses
       const dimensions = {
@@ -151,10 +179,11 @@ export const SpradleyEvaluation = ({
       }, 1000);
     } catch (error) {
       console.error("Error completing evaluation:", error);
+      isCompletingRef.current = false;
       // Still complete even if save fails
       onComplete();
     }
-  }, [surveyId, conversationSessionId, messages, startTime, onComplete, toast, sentimentData]);
+  }, [surveyId, conversationSessionId, startTime, onComplete, toast, sentimentData]);
 
   // Track elapsed time
   useEffect(() => {
@@ -162,8 +191,8 @@ export const SpradleyEvaluation = ({
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
       setElapsedSeconds(elapsed);
       
-      // Auto-complete if time limit reached
-      if (elapsed >= MAX_DURATION_SECONDS) {
+      // Auto-complete if time limit reached (only if not already completing)
+      if (elapsed >= MAX_DURATION_SECONDS && !isCompletingRef.current) {
         handleComplete();
       }
     }, 1000);
@@ -270,7 +299,7 @@ export const SpradleyEvaluation = ({
         // Use updated messages count (includes the user message we just added)
         const userMessageCount = updatedMessages.filter(m => m.role === "user").length;
         // Updated to allow 4-5 questions instead of hard 4 limit
-        if (data.shouldComplete || userMessageCount >= 5) {
+        if ((data.shouldComplete || userMessageCount >= 5) && !isCompletingRef.current) {
           setTimeout(() => handleComplete(), 2000);
         }
         
