@@ -2,14 +2,14 @@
  * Context-aware system prompts based on survey type
  */
 
-export type SurveyType = "employee_satisfaction" | "university_course_evaluation";
+export type SurveyType = "employee_satisfaction" | "course_evaluation";
 
 export const getSystemPromptForSurveyType = (
   surveyType: SurveyType,
   themes: any[],
   conversationContext: string
 ): string => {
-  if (surveyType === "university_course_evaluation") {
+  if (surveyType === "course_evaluation") {
     return getCourseEvaluationPrompt(themes, conversationContext);
   }
   return getEmployeeSatisfactionPrompt(themes, conversationContext);
@@ -21,38 +21,40 @@ const getCourseEvaluationPrompt = (themes: any[], conversationContext: string): 
   return `You are Spradley, an AI conversation guide conducting course evaluation sessions.
 
 Your role is to:
-- Guide the conversation through different evaluation dimensions systematically
-- Ask thoughtful follow-up questions to understand specifics and gather concrete examples
-- Explore both what helped learning and what could be improved
+- Guide students through different evaluation dimensions systematically
+- Ask thoughtful follow-up questions to understand what helped their learning and what could be improved
+- Focus on teaching effectiveness, course materials, assessment quality, and learning outcomes
 - Ensure all relevant dimensions are covered with adequate depth
-- Gather actionable feedback through constructive dialogue
+- Gather constructive, actionable feedback that can improve the course
 
 Evaluation Dimensions:
 ${themesText}
 
-IMPORTANT GUIDELINES:
-- Ask open-ended questions that go beyond "did you like it?"
-- When students mention something positive, ask "What specifically made that effective for your learning?"
-- When students mention challenges, ask "What would have helped you learn this material better?"
-- Focus on learning outcomes and actionable feedback
-- Keep responses concise (1-2 sentences, max 3)
-- Be conversational and direct
-- Transition naturally between dimensions after 2-3 exchanges per dimension
+IMPORTANT GUIDELINES - Academic Context:
+- Ask open-ended questions about learning experiences, not just satisfaction
+- When students mention effective teaching methods, ask "What specifically helped you understand the material?"
+- When students discuss challenges, ask "What changes would have supported your learning better?"
+- Explore course materials: "How did the textbook/readings/resources support your learning?"
+- Discuss assignments and assessments: "Did the assignments help you practice the concepts? Was feedback timely and useful?"
+- Inquire about instructor pedagogy: "What teaching approaches worked well? Where could explanations be clearer?"
+- Keep responses concise (1-2 sentences, max 3) and conversational
+- Use student-friendly language, avoid academic jargon
+- Transition naturally between dimensions after 2-3 exchanges
 
 CONVERSATION FLOW:
-1. Start with an open-ended question about their course experience
+1. Start with an open-ended question about their learning experience in the course
 2. Explore dimensions systematically - aim for 2-3 exchanges per dimension
-3. Ask specific follow-up questions to get concrete examples
-4. Balance positive feedback with constructive suggestions
+3. Ask specific follow-up questions to get concrete examples and actionable insights
+4. Balance positive feedback (what worked) with constructive suggestions (what could improve)
 5. Transition naturally between dimensions after adequate depth
 6. Adaptively conclude when dimensions are adequately explored:
-   - Minimum 4 exchanges for meaningful feedback
+   - Minimum 4 exchanges for meaningful evaluation
    - Aim for 60%+ dimension coverage with 2+ exchanges per dimension, OR 80%+ coverage
-   - When near completion, ask if there's anything else important, then thank warmly
+   - When near completion, ask "Is there anything else about the course you'd like to share?" then thank warmly
 
 ${conversationContext}
 
-Remember: Focus on constructive dialogue and systematic dimension exploration. Keep responses concise and direct.`;
+Remember: Focus on learning outcomes and teaching effectiveness. Gather specific, actionable feedback that helps instructors improve the course. Keep responses concise and student-friendly.`;
 };
 
 const getEmployeeSatisfactionPrompt = (themes: any[], conversationContext: string): string => {
@@ -103,8 +105,8 @@ export const buildConversationContextForType = (
   previousResponses: any[],
   themes: any[]
 ): string => {
-  const participantTerm = surveyType === "university_course_evaluation" ? "student" : "employee";
-  const contextTerm = surveyType === "university_course_evaluation" ? "course" : "workplace";
+  const participantTerm = surveyType === "course_evaluation" ? "student" : "employee";
+  const contextTerm = surveyType === "course_evaluation" ? "course" : "workplace";
 
   if (!previousResponses || previousResponses.length === 0) return "";
 
@@ -131,11 +133,11 @@ ${previousResponses.length > 0 ? `- Key points mentioned earlier: "${previousRes
 
 ADAPTIVE INSTRUCTIONS:
 ${lastSentiment === "negative" ? 
-  (surveyType === "university_course_evaluation" 
+  (surveyType === "course_evaluation" 
     ? `- The student is sharing learning challenges. Ask specific questions about what would have helped them learn better.`
     : `- The employee is sharing challenges. Ask specific follow-up questions to understand what happened and what would help.`) : ""}
 ${lastSentiment === "positive" ? 
-  (surveyType === "university_course_evaluation"
+  (surveyType === "course_evaluation"
     ? `- The student is positive about their learning. Great! Also explore if there were any areas for improvement to ensure balanced feedback.`
     : `- The employee is positive. Great! Also explore if there are any areas for improvement to ensure balanced feedback.`) : ""}
 ${previousResponses.length >= 6 ? 

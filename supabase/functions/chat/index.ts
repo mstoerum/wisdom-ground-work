@@ -219,7 +219,7 @@ ${previousResponses.length < MIN_EXCHANGES ? "- Continue exploring to gather suf
  * Generate system prompt for constructive AI conversation
  */
 const getSystemPrompt = (conversationContext: string, isFirstMessage: boolean, surveyType?: SurveyType): string => {
-  const isCourseEvaluation = surveyType === "university_course_evaluation";
+  const isCourseEvaluation = surveyType === "course_evaluation";
   const experienceType = isCourseEvaluation ? "course experience" : "work experience";
   
   const introGuidance = isFirstMessage ? `
@@ -518,7 +518,7 @@ Be warm and appreciative. Keep it brief.`;
           );
         } else {
           // Generate consistent first message based on survey type
-          const experienceType = surveyType === "university_course_evaluation" ? "course experience" : "work experience";
+          const experienceType = surveyType === "course_evaluation" ? "course experience" : "work experience";
           const consistentFirstMessage = `Hi, I'm Spradley, the AI here to listen about your ${experienceType}.`;
           return new Response(
             JSON.stringify({ 
@@ -836,7 +836,7 @@ Be warm and appreciative. Keep it brief.`;
     if (shouldComplete && !isFinalResponse && !isIntroductionTrigger) {
       // Generate conversation summary
       const conversationContext = previousResponses?.map(r => r.content).join("\n") || "";
-      const summaryPrompt = `Based on this conversation about ${surveyType === 'university_course_evaluation' ? 'course evaluation' : 'workplace feedback'}, create a brief summary (2-3 sentences) of the key points the participant discussed: ${conversationContext}`;
+      const summaryPrompt = `Based on this conversation about ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'}, create a brief summary (2-3 sentences) of the key points the participant discussed: ${conversationContext}`;
       
       const summary = await callAI(
         LOVABLE_API_KEY,
@@ -941,7 +941,7 @@ Be warm and appreciative. Keep it brief.`;
           : "";
         
         let contextualGreeting = "";
-        if (surveyType === "university_course_evaluation") {
+        if (surveyType === "course_evaluation") {
           contextualGreeting = `Hi, I'm Spradley, here to learn about your course experience. ${themeContext} What's been on your mind about the course?`;
         } else {
           contextualGreeting = `Hi, I'm Spradley, here to listen about your work experience. ${themeContext} What's been on your mind lately at work?`;

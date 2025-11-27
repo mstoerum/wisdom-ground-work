@@ -30,6 +30,12 @@ export interface ContextualTerms {
   completedCount: string;
   analyticsTitle: string;
   exportPrefix: string;
+  targetingDepartmentLabel: string;
+  targetingAllLabel: string;
+  publicLinkDescription: string;
+  deployConfirmMessage: string;
+  previewDialogTitle: string;
+  previewDialogDescription: string;
 }
 
 export const terminology: Record<SurveyType, ContextualTerms> = {
@@ -61,6 +67,12 @@ export const terminology: Record<SurveyType, ContextualTerms> = {
     completedCount: "employees",
     analyticsTitle: "Employee Feedback Analytics",
     exportPrefix: "employee-feedback",
+    targetingDepartmentLabel: "Department",
+    targetingAllLabel: "All Employees",
+    publicLinkDescription: "Share with employees in your organization",
+    deployConfirmMessage: "Deploy this survey to employees?",
+    previewDialogTitle: "Employee Survey Preview",
+    previewDialogDescription: "Experience the survey as an employee would see it",
   },
   course_evaluation: {
     participant: "student",
@@ -90,6 +102,12 @@ export const terminology: Record<SurveyType, ContextualTerms> = {
     completedCount: "students",
     analyticsTitle: "Course Evaluation Analytics",
     exportPrefix: "course-evaluation",
+    targetingDepartmentLabel: "Program/Department",
+    targetingAllLabel: "All Enrolled Students",
+    publicLinkDescription: "Share with students enrolled in your course",
+    deployConfirmMessage: "Deploy this evaluation to students?",
+    previewDialogTitle: "Student Evaluation Preview",
+    previewDialogDescription: "Experience the evaluation as a student would see it",
   },
 };
 
