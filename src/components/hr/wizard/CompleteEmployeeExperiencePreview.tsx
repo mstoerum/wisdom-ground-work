@@ -15,6 +15,7 @@ import { PreviewModeProvider } from "@/contexts/PreviewModeContext";
 import { EmployeeSurveyFlow } from "@/components/employee/EmployeeSurveyFlow";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useContextualTerms } from "@/lib/contextualTerminology";
 
 // Error boundary for preview component
 class PreviewErrorBoundary extends Component<
@@ -83,6 +84,7 @@ export const CompleteEmployeeExperiencePreview = ({
   surveyData,
   surveyId,
 }: CompleteEmployeeExperiencePreviewProps) => {
+  const terms = useContextualTerms(surveyData.survey_type as any);
   const [loadedSurveyData, setLoadedSurveyData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -228,10 +230,10 @@ export const CompleteEmployeeExperiencePreview = ({
           <DialogHeader className="px-8 pt-6 pb-4 border-b bg-muted/30 flex-shrink-0">
             <DialogTitle className="text-xl font-bold flex items-center gap-2">
               <Eye className="h-5 w-5 text-primary" />
-              Survey Preview
+              {terms.previewDialogTitle}
             </DialogTitle>
             <DialogDescription className="text-sm mt-1">
-              Unable to preview survey
+              {terms.previewDialogDescription}
             </DialogDescription>
           </DialogHeader>
           
@@ -267,10 +269,10 @@ export const CompleteEmployeeExperiencePreview = ({
         <DialogHeader className="px-8 pt-6 pb-4 border-b bg-muted/30 flex-shrink-0">
           <DialogTitle className="text-xl font-bold flex items-center gap-2">
             <Eye className="h-5 w-5 text-primary" />
-            Survey Preview
+            {terms.previewDialogTitle}
           </DialogTitle>
           <DialogDescription className="text-sm mt-1">
-            Experience the employee survey flow - preview mode, no data saved.
+            {terms.previewDialogDescription}
           </DialogDescription>
         </DialogHeader>
 

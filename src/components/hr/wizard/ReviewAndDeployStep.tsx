@@ -10,6 +10,7 @@ import { useState } from "react";
 import { CompleteEmployeeExperiencePreview } from "./CompleteEmployeeExperiencePreview";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { useContextualTerms } from "@/lib/contextualTerminology";
 
 interface ReviewAndDeployStepProps {
   formData: SurveyFormData;
@@ -41,6 +42,7 @@ export const ReviewAndDeployStep = ({
   deployResult,
 }: ReviewAndDeployStepProps) => {
   const navigate = useNavigate();
+  const terms = useContextualTerms(formData.survey_type);
   const [showCompletePreview, setShowCompletePreview] = useState(false);
   const [showDeployConfirmation, setShowDeployConfirmation] = useState(false);
 
@@ -48,11 +50,11 @@ export const ReviewAndDeployStep = ({
   const getTargetDisplay = () => {
     switch (formData.target_type) {
       case 'all':
-        return `All employees (${targetCount} total)`;
+        return `All ${terms.participants} (${targetCount} total)`;
       case 'department':
-        return `${formData.target_departments?.length || 0} department(s) (${targetCount} employees)`;
+        return `${formData.target_departments?.length || 0} ${terms.targetingDepartmentLabel}(s) (${targetCount} ${terms.participants})`;
       case 'manual':
-        return `${formData.target_employees?.length || 0} selected employee(s)`;
+        return `${formData.target_employees?.length || 0} selected ${terms.participant}(s)`;
       case 'public_link':
         return 'Public link (anyone with link)';
       default:
@@ -169,7 +171,7 @@ export const ReviewAndDeployStep = ({
                 className="bg-primary"
               >
                 <Eye className="h-4 w-4 mr-2" />
-                Complete Employee Survey Preview
+                {terms.previewDialogTitle}
               </Button>
             </div>
           </div>
@@ -180,11 +182,11 @@ export const ReviewAndDeployStep = ({
               <Eye className="h-5 w-5 text-primary mt-0.5" />
               <div className="flex-1">
                 <p className="text-sm font-medium text-foreground mb-1">
-                  Complete Employee Survey Preview
+                  {terms.previewDialogTitle}
                 </p>
                 <p className="text-sm text-muted-foreground mb-3">
-                  Experience the complete end-to-end employee journey: consent, anonymization ritual, mood selection, 
-                  chat conversation, and closing ritual. This shows exactly what your employees will see and helps you 
+                  {terms.previewDialogDescription}. Experience the complete journey: consent, anonymization ritual, mood selection, 
+                  chat conversation, and closing ritual. This shows exactly what your {terms.participants} will see and helps you 
                   verify compliance and trust-building elements before deploying.
                 </p>
                 <Button 
@@ -321,7 +323,7 @@ export const ReviewAndDeployStep = ({
               Confirm Deployment
             </CardTitle>
             <CardDescription>
-              Are you ready to deploy this survey? This action cannot be undone.
+              {terms.deployConfirmMessage}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -330,10 +332,10 @@ export const ReviewAndDeployStep = ({
               <ul className="list-disc list-inside space-y-1 text-muted-foreground">
                 <li>The survey will be {formData.schedule_type === 'immediate' ? 'immediately available' : 'scheduled for launch'}</li>
                 {formData.target_type !== 'public_link' && (
-                  <li>{targetCount} {targetCount === 1 ? 'employee will' : 'employees will'} receive the survey assignment</li>
+                  <li>{targetCount} {targetCount === 1 ? terms.participant : terms.participants} will receive the survey assignment</li>
                 )}
                 {formData.target_type === 'public_link' && (
-                  <li>You'll receive a public link to share with participants</li>
+                  <li>You'll receive a public link to share with {terms.participants}</li>
                 )}
                 <li>Survey responses will start being collected</li>
                 <li>You can view analytics and insights from the dashboard</li>
@@ -366,6 +368,7 @@ export const ReviewAndDeployStep = ({
         open={showCompletePreview}
         onOpenChange={setShowCompletePreview}
         surveyData={{
+          survey_type: formData.survey_type,
           title: formData.title,
           themes: formData.themes || [],
           consent_config: {
