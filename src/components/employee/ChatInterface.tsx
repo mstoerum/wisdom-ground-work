@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ConversationBubble } from "./ConversationBubble";
 import { VoiceInterface } from "./VoiceInterface";
-import { Send, Loader2, Save, Mic, ArrowRight, CheckCircle, CheckCircle2 } from "lucide-react";
+import { Send, Loader2, Mic, CheckCircle, CheckCircle2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,12 +19,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FinishEarlyConfirmationDialog } from "./FinishEarlyConfirmationDialog";
 import { CompletionConfirmationButtons } from "./CompletionConfirmationButtons";
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-}
+import { Message, useChatMessages } from "@/hooks/useChatMessages";
+import { useChatAPI } from "@/hooks/useChatAPI";
 
 interface ChatInterfaceProps {
   conversationId: string;
@@ -95,21 +91,13 @@ export const ChatInterface = ({
   skipTrustFlow = false,
   publicLinkId 
 }: ChatInterfaceProps) => {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [isPublicLinkSession, setIsPublicLinkSession] = useState(false);
-  const [isInCompletionPhase, setIsInCompletionPhase] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
+  const { isPreviewMode, previewSurveyData } = usePreviewMode();
+  
   const [trustFlowStep, setTrustFlowStep] = useState<TrustFlowStep>(() => {
-    // For public links or skipTrustFlow, skip to chat
-    if (skipTrustFlow) {
-      return "chat";
-    }
-    // For demo/preview, skip to chat
-    if (showTrustFlow === false) {
-      return "chat";
-    }
-    // For regular authenticated users, start with introduction
+    if (skipTrustFlow) return "chat";
+    if (showTrustFlow === false) return "chat";
     return "introduction";
   });
   const [sessionId, setSessionId] = useState<string>("");
@@ -118,14 +106,55 @@ export const ChatInterface = ({
   const [voiceSupported, setVoiceSupported] = useState(false);
   const [finishEarlyStep, setFinishEarlyStep] = useState<FinishEarlyStep>("none");
   const [themeCoverage, setThemeCoverage] = useState({ discussed: 0, total: 0, percentage: 0 });
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
-  const { isPreviewMode, previewSurveyData } = usePreviewMode();
   
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  // Use extracted hooks for message and API management
+  const {
+    messages,
+    input,
+    setInput,
+    clearInput,
+    isLoading,
+    setIsLoading,
+    isInCompletionPhase,
+    setIsInCompletionPhase,
+    addMessage,
+    removeLastMessage,
+    userMessageCount,
+  } = useChatMessages({
+    conversationId,
+    onAutoScroll: () => scrollRef.current?.scrollIntoView({ behavior: "smooth" }),
+  });
+
+  const {
+    triggerIntroduction,
+    sendMessage,
+    handleFinalResponse,
+    handleConfirmFinishEarly,
+    transcribeAudio,
+  } = useChatAPI({
+    conversationId,
+    isPreviewMode,
+    previewSurveyData,
+    publicLinkId,
+    messages,
+    input,
+    isLoading,
+    finishEarlyStep,
+    themeCoverage,
+    setIsLoading,
+    addMessage,
+    addMessages: (msgs) => msgs.forEach(addMessage),
+    removeLastMessage,
+    clearInput,
+    setInput,
+    setIsInCompletionPhase,
+    onComplete,
+  });
 
   // Check if browser supports voice
   useEffect(() => {
@@ -176,194 +205,12 @@ export const ChatInterface = ({
     setTrustFlowStep("chat");
   };
 
-  // Load conversation history on mount
-  const loadConversation = useCallback(async () => {
-    // Fetch existing responses
-    const { data: existingResponses } = await supabase
-      .from("responses")
-      .select("content, ai_response, created_at")
-      .eq("conversation_session_id", conversationId)
-      .order("created_at", { ascending: true });
-
-    // Reconstruct message history if resuming (NO initial greeting)
-    if (existingResponses && existingResponses.length > 0) {
-      const history = existingResponses.flatMap(r => [
-        { role: "user" as const, content: r.content, timestamp: new Date(r.created_at) },
-        { role: "assistant" as const, content: r.ai_response || "", timestamp: new Date(r.created_at) }
-      ]);
-      setMessages(history);
-    } else {
-      // Start with empty messages - AI will introduce itself on first interaction
-      setMessages([]);
-    }
-  }, [conversationId]);
-
-  useEffect(() => {
-    loadConversation();
-  }, [loadConversation]);
-
   // Auto-trigger AI introduction when chat is empty
   useEffect(() => {
-    const triggerIntroduction = async () => {
-      // Only trigger if:
-      // 1. Chat is empty (no messages)
-      // 2. Trust flow is complete (in chat phase)
-      // 3. Not already loading
-      // 4. Conversation ID exists
-      if (messages.length === 0 && trustFlowStep === "chat" && !isLoading && conversationId) {
-        setIsLoading(true);
-        
-        // Show loading state immediately
-        console.log('Spradley is preparing introduction...');
-        
-        try {
-          // In preview mode, ensure we have survey data
-          if (isPreviewMode && !previewSurveyData) {
-            console.warn("Preview mode but no survey data available - using fallback");
-            // Fallback to default message
-            const fallbackMessage = "Hello! Thank you for taking the time to share your feedback with us. This conversation is confidential and will help us create a better workplace for everyone.";
-            setMessages([{
-              role: "assistant",
-              content: fallbackMessage,
-              timestamp: new Date()
-            }]);
-            setIsLoading(false);
-            return;
-          }
-          
-          // Additional safety check for preview mode data
-          if (isPreviewMode && previewSurveyData && !previewSurveyData.first_message) {
-            console.warn("Preview mode: first_message is missing, using default");
-          }
-          
-          let session = null;
-          if (!isPreviewMode) {
-            try {
-              session = await getSessionForConversation(conversationId, isPreviewMode, publicLinkId);
-            } catch (error) {
-              console.error("Error getting session for introduction:", error);
-              // Don't fail - public link sessions are allowed without auth
-              session = null;
-            }
-          }
-
-          // Validate conversationId exists
-          if (!conversationId) {
-            const errorMsg = isPreviewMode 
-              ? "Conversation ID is missing. Please try refreshing the preview."
-              : "Conversation ID is missing. Please try reloading the page.";
-            throw new Error(errorMsg);
-          }
-
-          // Send a special trigger message to request introduction
-          const requestBody: any = {
-            conversationId,
-            messages: [{ role: "user", content: "[START_CONVERSATION]" }],
-            testMode: isPreviewMode,
-          };
-
-          // Add preview-specific data
-          if (isPreviewMode && previewSurveyData) {
-            requestBody.themes = previewSurveyData.themes || undefined;
-            requestBody.firstMessage = previewSurveyData.first_message || undefined;
-          }
-
-          const response = await fetch(
-            `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
-              },
-              body: JSON.stringify(requestBody),
-            }
-          );
-
-          if (!response.ok) {
-            const errorText = await response.text().catch(() => "Unknown error");
-            console.error("Chat API error:", response.status, errorText);
-            throw new Error(`Failed to get introduction: ${response.status} ${errorText}`);
-          }
-
-          const responseData = await response.json().catch((err) => {
-            console.error("Failed to parse response:", err);
-            throw new Error("Invalid response from server");
-          });
-
-          if (!responseData || !responseData.message) {
-            throw new Error("Invalid response format from server");
-          }
-
-          const { message: aiResponse } = responseData;
-          
-          // Add only the AI introduction to messages (not the trigger)
-          const introMessage: Message = {
-            role: "assistant",
-            content: aiResponse,
-            timestamp: new Date()
-          };
-          
-          setMessages([introMessage]);
-          soundEffects.playSuccess();
-        } catch (error: any) {
-          console.error("Error getting AI introduction:", error);
-          
-          // In preview mode, provide more helpful error messages
-          const errorMessage = error?.message || "Unknown error";
-          const isNetworkError = errorMessage.includes("Failed to fetch") || errorMessage.includes("NetworkError");
-          const isApiError = errorMessage.includes("Failed to get introduction") || errorMessage.includes("status");
-          
-          // Fallback to a default greeting if AI fails
-          // Use first_message from preview data if available, otherwise use default
-          const fallbackMessage = isPreviewMode && previewSurveyData?.first_message 
-            ? previewSurveyData.first_message
-            : "Hi! I'm Spradley, your AI guide. How can I help you today?";
-          
-          try {
-            setMessages([{
-              role: "assistant",
-              content: fallbackMessage,
-              timestamp: new Date()
-            }]);
-            
-            // Show a warning toast in preview mode if there was an API error
-            if (isPreviewMode && (isNetworkError || isApiError)) {
-              toast({
-                title: "Preview Mode: Using Fallback",
-                description: "The chat API is unavailable. Showing preview with default message.",
-                variant: "default",
-              });
-            }
-          } catch (setStateError) {
-            console.error("Error setting fallback message:", setStateError);
-            // If even setting state fails, show error to user
-            toast({
-              title: "Connection Error",
-              description: isPreviewMode 
-                ? "Unable to start preview. Please check your connection and try again."
-                : "Unable to start conversation. Please try again.",
-              variant: "destructive",
-            });
-            // Re-throw only if it's a critical error that prevents the component from working
-            // This will be caught by the error boundary
-            if (setStateError instanceof Error && setStateError.message.includes("Cannot read")) {
-              throw setStateError;
-            }
-          }
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    triggerIntroduction();
-  }, [messages.length, trustFlowStep, isLoading, conversationId, isPreviewMode, previewSurveyData, toast]);
-
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    if (messages.length === 0 && trustFlowStep === "chat" && !isLoading && conversationId) {
+      triggerIntroduction();
+    }
+  }, [messages.length, trustFlowStep, isLoading, conversationId, triggerIntroduction]);
 
   // Voice recording functions
   const startRecording = async () => {
@@ -406,330 +253,10 @@ export const ChatInterface = ({
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
-      
-      // Play recording stop sound
       soundEffects.playRecordStop();
-      
-      // Play processing sound as transcription begins
       soundEffects.playProcessing();
     }
   };
-
-  const transcribeAudio = async (audioBlob: Blob) => {
-    setIsLoading(true);
-    try {
-      const reader = new FileReader();
-      reader.readAsDataURL(audioBlob);
-      reader.onloadend = async () => {
-        const base64Audio = (reader.result as string).split(',')[1];
-
-        try {
-          const session = await getSessionForConversation(conversationId, isPreviewMode, publicLinkId);
-          const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-audio`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
-            },
-            body: JSON.stringify({ audio: base64Audio }),
-          }
-        );
-
-        if (!response.ok) throw new Error("Transcription failed");
-
-        const { text } = await response.json();
-        
-        // Play success sound
-        soundEffects.playSuccess();
-        
-        setInput(text);
-        
-        // Auto-send after brief delay to allow user to see transcription
-        setTimeout(() => {
-          sendMessage();
-        }, 500);
-        } catch (error) {
-          console.error("Error in transcription:", error);
-          setIsLoading(false);
-          soundEffects.playError();
-          
-          // Enhanced error handling for public links
-          const errorMessage = error instanceof Error && error.message.includes("Authentication") 
-            ? (publicLinkId ? "Unable to connect. Please refresh the page and try again." : "Authentication required. Please sign in to continue.")
-            : "Please try again or type your message";
-            
-          toast({
-            title: "Transcription failed",
-            description: errorMessage,
-            variant: "destructive",
-          });
-        }
-      };
-    } catch (error) {
-      // Play error sound
-      soundEffects.playError();
-      
-      toast({
-        title: "Transcription failed",
-        description: "Please try again or type your message",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle final response and complete
-  const handleFinalResponse = useCallback(async (finalInput: string) => {
-    if (!finalInput.trim()) {
-      // No final response, just complete
-      setFinishEarlyStep("completing");
-      setTimeout(() => {
-        onComplete();
-      }, 1000);
-      return;
-    }
-
-    // Validate conversationId before proceeding
-    if (!conversationId) {
-      toast({
-        title: "Error",
-        description: "Conversation session is invalid. Please try reloading.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Prevent multiple simultaneous operations
-    if (isLoading) {
-      console.warn("Operation already in progress, skipping final response");
-      return;
-    }
-
-    // Send final response
-    setIsLoading(true);
-    try {
-      let authSession = null;
-      if (!isPreviewMode) {
-        try {
-          authSession = await getSessionForConversation(conversationId, isPreviewMode);
-        } catch (error) {
-          console.error("Error getting session for final response:", error);
-          toast({
-            title: "Error",
-            description: "Authentication required. Please sign in to continue.",
-            variant: "destructive",
-          });
-          setIsLoading(false);
-          return;
-        }
-      }
-      
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(authSession ? { Authorization: `Bearer ${authSession.access_token}` } : {}),
-          },
-          body: JSON.stringify({
-            conversationId,
-            messages: [
-              ...messages.map(m => ({ role: m.role, content: m.content })),
-              { role: "user", content: finalInput },
-            ],
-            isFinalResponse: true,
-            testMode: isPreviewMode,
-            themes: isPreviewMode ? previewSurveyData?.themes : undefined,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to send final response");
-      }
-
-      const data = await response.json();
-      const aiResponse = data?.message || "Thank you for your response.";
-      
-      setMessages(prev => [...prev,
-        { role: "user", content: finalInput, timestamp: new Date() },
-        { role: "assistant", content: aiResponse, timestamp: new Date() },
-      ]);
-
-      setFinishEarlyStep("completing");
-      setTimeout(() => {
-        onComplete();
-      }, 2000);
-    } catch (error) {
-      console.error("Error sending final response:", error);
-      toast({
-        title: "Error",
-        description: "Failed to send response. Completing survey anyway.",
-        variant: "destructive",
-      });
-      setFinishEarlyStep("completing");
-      setTimeout(() => {
-        onComplete();
-      }, 1000);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [conversationId, messages, isPreviewMode, previewSurveyData, toast, onComplete, isLoading]);
-
-  // Send message to AI
-  const sendMessage = useCallback(async () => {
-    if (!input.trim() || isLoading) return;
-
-    // Validate conversationId before proceeding
-    if (!conversationId) {
-      toast({
-        title: "Error",
-        description: "Conversation session is invalid. Please try reloading.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check if this is a final response (finish early flow)
-    if (finishEarlyStep === "final-question") {
-      await handleFinalResponse(input.trim());
-      return;
-    }
-
-    const userMessage: Message = {
-      role: "user",
-      content: input.trim(),
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    const currentInput = input;
-    setInput("");
-    setIsLoading(true);
-
-    try {
-      let session = null;
-      if (!isPreviewMode) {
-        try {
-          session = await getSessionForConversation(conversationId, isPreviewMode, publicLinkId);
-        } catch (error) {
-          // Don't fail for public link sessions - they're allowed without auth
-          console.log("Session retrieval error:", error);
-          session = null;
-        }
-      }
-
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      };
-      
-      // Only add auth header if we have a session
-      if (session?.access_token) {
-        headers["Authorization"] = `Bearer ${session.access_token}`;
-      }
-
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
-        {
-          method: "POST",
-          headers,
-        body: JSON.stringify({
-          conversationId,
-          messages: [...messages, userMessage].map(m => ({
-            role: m.role,
-            content: m.content
-          })),
-          isCompletionConfirmation: isInCompletionPhase,
-          testMode: isPreviewMode,
-          themes: isPreviewMode ? previewSurveyData?.themes : undefined,
-        }),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || "Failed to get response");
-      }
-
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      
-      // Validate response has message content
-      if (!data || !data.message) {
-        throw new Error("Invalid response from server - no message content");
-      }
-      
-      // Handle completion prompt (summary + final question)
-      if (data.isCompletionPrompt) {
-        const summaryMessage: Message = {
-          role: "assistant",
-          content: data.message,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, summaryMessage]);
-        setIsInCompletionPhase(true);
-        setIsLoading(false);
-        return;
-      }
-
-      // Handle final completion
-      if (data.shouldComplete && data.showSummary) {
-        const finalMessage: Message = {
-          role: "assistant",
-          content: data.message,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, finalMessage]);
-        
-        // Show animated transition to closing screen
-        setTimeout(() => {
-          onComplete();
-        }, 2000);
-        setIsLoading(false);
-        return;
-      }
-      
-      // Regular message
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: data.message,
-        timestamp: new Date()
-      };
-
-      setMessages(prev => [...prev, assistantMessage]);
-
-      // Auto-complete conversation after sufficient exchanges
-      if (data.shouldComplete) {
-        setTimeout(onComplete, 2000);
-      }
-    } catch (error: any) {
-      console.error("Chat error:", error);
-      
-      // Enhanced error handling for public links - never redirect
-      const errorMessage = error?.message?.includes("Authentication")
-        ? (publicLinkId ? "Connection error. Please refresh the page and try again." : "Authentication required. Please sign in to continue.")
-        : (error instanceof Error ? error.message : "An error occurred processing your request. Please try again.");
-      
-      toast({
-        title: "Message failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-      
-      // Restore state on error
-      setMessages(prev => prev.slice(0, -1));
-      setInput(currentInput);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [input, isLoading, conversationId, messages, onComplete, toast, isPreviewMode, previewSurveyData, finishEarlyStep, handleFinalResponse, publicLinkId]);
 
   // Handle Enter key to send message
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -804,120 +331,11 @@ export const ChatInterface = ({
     }
   }, [messages, trustFlowStep, calculateThemeCoverage]);
 
-  // Handle finish early request
-  const handleFinishEarly = useCallback(() => {
+
+  // Handle finish early - trigger confirmation dialog
+  const handleFinishEarlyClick = useCallback(() => {
     setFinishEarlyStep("confirming");
   }, []);
-
-  // Handle finish early confirmation
-  const handleConfirmFinishEarly = useCallback(async () => {
-    // Validate conversationId before proceeding
-    if (!conversationId) {
-      toast({
-        title: "Error",
-        description: "Conversation session is invalid. Cannot finish early.",
-        variant: "destructive",
-      });
-      setFinishEarlyStep("none");
-      return;
-    }
-
-    // Prevent multiple simultaneous operations
-    if (isLoading) {
-      console.warn("Operation already in progress, skipping finish early");
-      return;
-    }
-
-    setFinishEarlyStep("summarizing");
-    
-    try {
-      let authSession = null;
-      if (!isPreviewMode) {
-        try {
-          authSession = await getSessionForConversation(conversationId, isPreviewMode);
-        } catch (error) {
-          console.error("Error getting session for finish early:", error);
-          toast({
-            title: "Error",
-            description: "Authentication required. Please sign in to continue.",
-            variant: "destructive",
-          });
-          setFinishEarlyStep("none");
-          return;
-        }
-      }
-      
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(authSession ? { Authorization: `Bearer ${authSession.access_token}` } : {}),
-          },
-          body: JSON.stringify({
-            conversationId,
-            messages: messages.map(m => ({ role: m.role, content: m.content })),
-            finishEarly: true,
-            themeCoverage: themeCoverage.percentage,
-            testMode: isPreviewMode,
-            themes: isPreviewMode ? previewSurveyData?.themes : undefined,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to get summary");
-      }
-
-      const responseData = await response.json();
-      
-      // Validate response structure
-      if (!responseData) {
-        throw new Error("Empty response from server");
-      }
-      
-      const summaryMessage = responseData.message || "Thank you for your responses so far.";
-      const finalQuestion = responseData.finalQuestion;
-      
-      // Add summary message
-      setMessages(prev => [...prev, {
-        role: "assistant",
-        content: summaryMessage,
-        timestamp: new Date(),
-      }]);
-
-      setFinishEarlyStep("final-question");
-      
-      // If there's a final question, add it
-      if (finalQuestion) {
-        setTimeout(() => {
-          setMessages(prev => [...prev, {
-            role: "assistant",
-            content: finalQuestion,
-            timestamp: new Date(),
-          }]);
-        }, 1500);
-      } else {
-        // No final question needed, just ask if they want to add anything
-        setTimeout(() => {
-          setMessages(prev => [...prev, {
-            role: "assistant",
-            content: "Is there anything else you'd like to add before we finish?",
-            timestamp: new Date(),
-          }]);
-        }, 1500);
-      }
-    } catch (error) {
-      console.error("Error finishing early:", error);
-      toast({
-        title: "Error",
-        description: "Failed to generate summary. Please try again.",
-        variant: "destructive",
-      });
-      setFinishEarlyStep("none");
-    }
-  }, [conversationId, messages, themeCoverage, isPreviewMode, previewSurveyData, toast, isLoading]);
 
   // Handle completion confirmation via buttons
   const handleCompleteFromButtons = useCallback(async () => {
@@ -947,7 +365,6 @@ export const ChatInterface = ({
   }, [toast]);
 
   // Calculate conversation progress
-  const userMessageCount = messages.filter(m => m.role === "user").length;
   const progressPercent = Math.min((userMessageCount / ESTIMATED_TOTAL_QUESTIONS) * 100, PROGRESS_COMPLETE_THRESHOLD);
 
   // Show trust flow if enabled and not in chat step
@@ -1046,7 +463,7 @@ export const ChatInterface = ({
             )}
             <span className="text-sm font-medium">{Math.round(progressPercent)}%</span>
             <Button
-              onClick={handleFinishEarly}
+              onClick={handleFinishEarlyClick}
               variant="ghost"
               size="sm"
               className="h-7"
