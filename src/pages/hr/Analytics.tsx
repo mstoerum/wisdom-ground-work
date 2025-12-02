@@ -297,6 +297,7 @@ const Analytics = () => {
                   sentiment={sentiment}
                   urgentCount={urgentCount}
                   confidenceScore={qualityMetrics?.average_confidence_score}
+                  themes={themes}
                   latestReport={latestReport}
                   isReportLoading={isReportLoading}
                   isGenerating={isGenerating}
