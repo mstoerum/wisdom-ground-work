@@ -25,6 +25,11 @@ export interface MockThemeInsight {
   responseCount: number;
   avgSentiment: number;
   urgencyCount: number;
+  keySignals: {
+    concerns: string[];
+    positives: string[];
+    other: string[];
+  };
 }
 
 export interface MockUrgencyFlag {
@@ -78,56 +83,158 @@ export const generateMockThemes = (): MockThemeInsight[] => [
     name: "Work-Life Balance",
     responseCount: 156,
     avgSentiment: 42.3,
-    urgencyCount: 8
+    urgencyCount: 8,
+    keySignals: {
+      concerns: [
+        "Manager expects immediate responses to emails sent after 10pm...",
+        "Working weekends has become the norm, not the exception...",
+        "No boundaries between work and personal life anymore..."
+      ],
+      positives: [
+        "Flexible hours policy has been helpful for appointments..."
+      ],
+      other: [
+        "Would appreciate clearer guidelines on after-hours communication..."
+      ]
+    }
   },
   {
     id: "theme-2", 
     name: "Career Growth",
     responseCount: 134,
     avgSentiment: 78.9,
-    urgencyCount: 2
+    urgencyCount: 2,
+    keySignals: {
+      concerns: [
+        "Haven't had a promotion discussion in over 2 years..."
+      ],
+      positives: [
+        "The new mentorship program has been incredibly valuable...",
+        "Clear career ladder gives me visibility into growth path...",
+        "Manager actively supports my professional development goals..."
+      ],
+      other: [
+        "Would like more cross-functional project opportunities..."
+      ]
+    }
   },
   {
     id: "theme-3",
     name: "Team Collaboration",
     responseCount: 142,
     avgSentiment: 71.2,
-    urgencyCount: 1
+    urgencyCount: 1,
+    keySignals: {
+      concerns: [
+        "Silos between departments make collaboration difficult..."
+      ],
+      positives: [
+        "New collaboration tools have improved async communication...",
+        "Team standups help everyone stay aligned on priorities..."
+      ],
+      other: [
+        "More cross-team social events would help build relationships..."
+      ]
+    }
   },
   {
     id: "theme-4",
     name: "Leadership",
     responseCount: 98,
     avgSentiment: 58.7,
-    urgencyCount: 5
+    urgencyCount: 5,
+    keySignals: {
+      concerns: [
+        "Decisions are made without consulting the people affected...",
+        "Lack of transparency around company direction...",
+        "Middle management seems disconnected from day-to-day work..."
+      ],
+      positives: [
+        "Senior leadership town halls have been more frequent..."
+      ],
+      other: [
+        "Would appreciate more direct access to department heads..."
+      ]
+    }
   },
   {
     id: "theme-5",
     name: "Compensation",
     responseCount: 87,
     avgSentiment: 45.1,
-    urgencyCount: 6
+    urgencyCount: 6,
+    keySignals: {
+      concerns: [
+        "Salary hasn't kept pace with market rates for my role...",
+        "Benefits package is less competitive than other companies...",
+        "Unclear how compensation decisions are made..."
+      ],
+      positives: [
+        "Recent equity refresh was appreciated..."
+      ],
+      other: [
+        "More transparency around compensation bands would help..."
+      ]
+    }
   },
   {
     id: "theme-6",
     name: "Company Culture",
     responseCount: 123,
     avgSentiment: 65.8,
-    urgencyCount: 3
+    urgencyCount: 3,
+    keySignals: {
+      concerns: [
+        "Culture has shifted since rapid growth, feels less personal...",
+        "Core values don't seem to guide actual decisions..."
+      ],
+      positives: [
+        "DEI initiatives show genuine commitment to inclusion...",
+        "Team events help maintain connection despite remote work..."
+      ],
+      other: [
+        "Would like to see values reflected more in performance reviews..."
+      ]
+    }
   },
   {
     id: "theme-7",
     name: "Work Environment",
     responseCount: 76,
     avgSentiment: 72.4,
-    urgencyCount: 1
+    urgencyCount: 1,
+    keySignals: {
+      concerns: [
+        "Open office can be noisy and distracting..."
+      ],
+      positives: [
+        "Hybrid work policy gives great flexibility...",
+        "Office amenities have improved significantly..."
+      ],
+      other: [
+        "More quiet spaces for focused work would be helpful..."
+      ]
+    }
   },
   {
     id: "theme-8",
     name: "Communication",
     responseCount: 89,
     avgSentiment: 61.3,
-    urgencyCount: 4
+    urgencyCount: 4,
+    keySignals: {
+      concerns: [
+        "Important updates get lost in Slack noise...",
+        "Conflicting information from different sources...",
+        "Meeting overload leaves no time for actual work..."
+      ],
+      positives: [
+        "Weekly newsletter helps surface key announcements..."
+      ],
+      other: [
+        "Would appreciate a single source of truth for policies..."
+      ]
+    }
   }
 ];
 

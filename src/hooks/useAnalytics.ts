@@ -39,6 +39,11 @@ export interface ThemeInsight {
   responseCount: number;
   avgSentiment: number;
   urgencyCount: number;
+  keySignals: {
+    concerns: string[];
+    positives: string[];
+    other: string[];
+  };
 }
 
 /**
@@ -114,10 +119,27 @@ const calculateSentimentMetrics = (responses: any[]): SentimentMetrics => {
 };
 
 /**
- * Group responses by theme and calculate insights
+ * Truncate text to a maximum length with ellipsis
+ */
+const truncateText = (text: string, maxLength: number = 80): string => {
+  if (!text || text.length <= maxLength) return text;
+  return text.substring(0, maxLength).trim() + '...';
+};
+
+/**
+ * Group responses by theme and calculate insights with key signals
  */
 const calculateThemeInsights = (responses: any[]): ThemeInsight[] => {
-  const themeMap = new Map<string, ThemeInsight>();
+  const themeMap = new Map<string, {
+    id: string;
+    name: string;
+    responseCount: number;
+    sentimentSum: number;
+    urgencyCount: number;
+    concerns: string[];
+    positives: string[];
+    other: string[];
+  }>();
 
   responses?.forEach(r => {
     if (!r.theme_id || !r.survey_themes) return;
@@ -126,23 +148,48 @@ const calculateThemeInsights = (responses: any[]): ThemeInsight[] => {
       id: r.theme_id,
       name: r.survey_themes.name,
       responseCount: 0,
-      avgSentiment: 0,
+      sentimentSum: 0,
       urgencyCount: 0,
+      concerns: [],
+      positives: [],
+      other: [],
     };
 
     existing.responseCount++;
+    
     // Convert sentiment score from 0-1 range to 0-100 range if needed
     const score = Number(r.sentiment_score || 0);
     const normalizedScore = score <= 1 ? score * 100 : score;
-    existing.avgSentiment += normalizedScore;
+    existing.sentimentSum += normalizedScore;
+    
     if (r.urgency_escalated) existing.urgencyCount++;
+
+    // Group quotes by sentiment for key signals
+    if (r.content && r.content.trim()) {
+      const quote = truncateText(r.content);
+      if (r.sentiment === 'negative') {
+        existing.concerns.push(quote);
+      } else if (r.sentiment === 'positive') {
+        existing.positives.push(quote);
+      } else {
+        existing.other.push(quote);
+      }
+    }
 
     themeMap.set(r.theme_id, existing);
   });
 
   return Array.from(themeMap.values()).map(theme => ({
-    ...theme,
-    avgSentiment: theme.responseCount > 0 ? theme.avgSentiment / theme.responseCount : 0,
+    id: theme.id,
+    name: theme.name,
+    responseCount: theme.responseCount,
+    avgSentiment: theme.responseCount > 0 ? theme.sentimentSum / theme.responseCount : 0,
+    urgencyCount: theme.urgencyCount,
+    keySignals: {
+      concerns: theme.concerns.slice(0, 3),
+      positives: theme.positives.slice(0, 3),
+      other: theme.other.slice(0, 3),
+    },
   }));
 };
 
@@ -228,13 +275,13 @@ export const useAnalytics = (filters: AnalyticsFilters = {}) => {
     },
   });
 
-  // Fetch and calculate theme insights
+  // Fetch and calculate theme insights with key signals
   const themesQuery = useQuery({
     queryKey: ['analytics-themes', filters],
     queryFn: async () => {
       let query = supabase
         .from('responses')
-        .select('theme_id, sentiment_score, urgency_escalated, survey_themes(name)');
+        .select('theme_id, sentiment_score, urgency_escalated, sentiment, content, survey_themes(name)');
 
       if (filters.surveyId) {
         query = query.eq('survey_id', filters.surveyId);

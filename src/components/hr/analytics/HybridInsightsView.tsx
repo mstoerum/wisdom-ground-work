@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, RefreshCw, Sparkles } from "lucide-react";
 import { PulseHeader } from "./PulseHeader";
-import { ThemeSentimentBreakdown } from "./ThemeSentimentBreakdown";
+import { ThemeHealthList } from "./ThemeHealthList";
 import { NarrativeReportViewer } from "./NarrativeReportViewer";
 import type { NarrativeReport } from "@/hooks/useNarrativeReports";
 import type { ParticipationMetrics, SentimentMetrics, ThemeInsight } from "@/hooks/useAnalytics";
@@ -78,8 +78,8 @@ export function HybridInsightsView({
         isLoading={isLoading}
       />
 
-      {/* Theme Sentiment Breakdown - Benchmarkable Metrics */}
-      <ThemeSentimentBreakdown themes={themes} isLoading={isLoading} />
+      {/* Theme Health List - Expandable with Key Signals */}
+      <ThemeHealthList themes={themes} isLoading={isLoading} />
 
       {/* Story Report Section */}
       {latestReport ? (
