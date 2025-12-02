@@ -7,6 +7,8 @@ export interface NarrativeInsight {
   confidence: number;
   evidence_ids: string[];
   category?: string;
+  agreement_percentage?: number;
+  sample_size?: number;
 }
 
 export interface NarrativeChapter {

@@ -24,16 +24,12 @@ import {
   generateMockInterventions,
   generateMockQuickWins,
   generateMockImpactPredictions,
-  generateMockNLPAnalysis,
-  generateMockCulturalMap,
 } from "@/utils/demoAnalyticsData";
 import { toast } from "sonner";
 import { EmployeeVoiceGallery } from "@/components/hr/analytics/EmployeeVoiceGallery";
 import { EnhancedThemeAnalysis } from "@/components/hr/analytics/EnhancedThemeAnalysis";
 import { ActionableIntelligenceCenter } from "@/components/hr/analytics/ActionableIntelligenceCenter";
 import { ConversationQualityDashboard } from "@/components/hr/analytics/ConversationQualityDashboard";
-import { NLPInsights } from "@/components/hr/analytics/NLPInsights";
-import { CulturalPatterns } from "@/components/hr/analytics/CulturalPatterns";
 import { ExecutiveDashboard } from "@/components/hr/analytics/ExecutiveDashboard";
 import { ExportAuditLog } from "@/components/hr/analytics/ExportAuditLog";
 import { useConversationAnalytics } from "@/hooks/useConversationAnalytics";
@@ -246,8 +242,6 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
   const interventions = useRealData ? realAnalytics.interventions : generateMockInterventions();
   const quickWins = useRealData ? realAnalytics.quickWins : generateMockQuickWins();
   const impactPredictions = useRealData ? realAnalytics.impactPredictions : generateMockImpactPredictions();
-  const nlpAnalysis = useRealData ? realAnalytics.nlpAnalysis : generateMockNLPAnalysis();
-  const culturalMap = useRealData ? realAnalytics.culturalMap : generateMockCulturalMap();
 
   // Filter data based on selections (kept for potential future use)
   const filteredThemes = selectedTheme === "all" ? themes : themes.filter(t => t.id === selectedTheme);
@@ -717,8 +711,6 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                     <TabsTrigger value="themes">Themes</TabsTrigger>
                     <TabsTrigger value="voices">Voices</TabsTrigger>
                     <TabsTrigger value="quality">Quality</TabsTrigger>
-                    <TabsTrigger value="nlp">NLP</TabsTrigger>
-                    <TabsTrigger value="culture">Culture</TabsTrigger>
                   </TabsList>
                   <TabsContent value="themes">
                     <EnhancedThemeAnalysis themes={enhancedThemes} isLoading={false} />
@@ -728,12 +720,6 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                   </TabsContent>
                   <TabsContent value="quality">
                     <ConversationQualityDashboard qualityMetrics={qualityMetrics} qualityInsights={qualityInsights} isLoading={false} />
-                  </TabsContent>
-                  <TabsContent value="nlp">
-                    <NLPInsights nlpAnalysis={nlpAnalysis} isLoading={false} />
-                  </TabsContent>
-                  <TabsContent value="culture">
-                    <CulturalPatterns culturalMap={culturalMap} isLoading={false} />
                   </TabsContent>
                 </Tabs>
               </TabsContent>

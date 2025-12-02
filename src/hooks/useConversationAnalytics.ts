@@ -42,14 +42,6 @@ import {
   type ConversationQualityMetrics,
   type QualityInsight,
 } from "@/lib/conversationQuality";
-import {
-  performNLPAnalysis,
-  type NLPAnalysis,
-} from "@/lib/advancedNLP";
-import {
-  buildCulturalMap,
-  type CulturalMap,
-} from "@/lib/culturalPatterns";
 import { useAnalytics, type AnalyticsFilters } from "./useAnalytics";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -66,8 +58,6 @@ export interface EnhancedAnalyticsData {
   impactPredictions: ImpactPrediction[];
   qualityMetrics: AggregateQualityMetrics | null;
   qualityInsights: QualityInsight[];
-  nlpAnalysis: NLPAnalysis | null;
-  culturalMap: CulturalMap | null;
   isLoading: boolean;
   refetch: () => void;
 }
@@ -145,8 +135,6 @@ export function useConversationAnalytics(filters: AnalyticsFilters = {}): Enhanc
           impactPredictions: [],
           qualityMetrics: null,
           qualityInsights: [],
-          nlpAnalysis: null,
-          culturalMap: null,
         };
       }
 
@@ -204,12 +192,6 @@ export function useConversationAnalytics(filters: AnalyticsFilters = {}): Enhanc
       );
       const qualityInsights = generateQualityInsights(qualityMetrics, sessionQualityMetrics);
 
-      // Perform NLP analysis
-      const nlpAnalysis = performNLPAnalysis(responses);
-
-      // Build cultural map
-      const culturalMap = buildCulturalMap(responses, sessions, themes);
-
       return {
         quotes,
         themes,
@@ -221,8 +203,6 @@ export function useConversationAnalytics(filters: AnalyticsFilters = {}): Enhanc
         impactPredictions,
         qualityMetrics,
         qualityInsights,
-        nlpAnalysis,
-        culturalMap,
       };
     },
     enabled: !!responsesQuery.data && !!sessionsQuery.data,
@@ -250,8 +230,6 @@ export function useConversationAnalytics(filters: AnalyticsFilters = {}): Enhanc
     impactPredictions: enhancedDataQuery.data?.impactPredictions || [],
     qualityMetrics: enhancedDataQuery.data?.qualityMetrics || null,
     qualityInsights: enhancedDataQuery.data?.qualityInsights || [],
-    nlpAnalysis: enhancedDataQuery.data?.nlpAnalysis || null,
-    culturalMap: enhancedDataQuery.data?.culturalMap || null,
     isLoading: responsesQuery.isLoading || sessionsQuery.isLoading || enhancedDataQuery.isLoading,
     refetch,
   };
