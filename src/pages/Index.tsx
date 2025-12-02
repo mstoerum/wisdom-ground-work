@@ -5,7 +5,6 @@ import { useUserRole } from "@/hooks/useUserRole";
 import { Button } from "@/components/ui/button";
 import { MessageSquare, PlayCircle, Sparkles, Shield } from "lucide-react";
 import { SocialProof } from "@/components/employee/SocialProof";
-import { DebugPanel } from "@/components/DebugPanel";
 import { toast } from "sonner";
 
 const Index = () => {
@@ -138,8 +137,6 @@ const Index = () => {
         <div className="pt-4 max-w-md mx-auto">
           <SocialProof />
         </div>
-
-        <DebugPanel />
 
         <div className="pt-8 grid gap-6 sm:grid-cols-3 text-left">
           <div className="space-y-2 p-4 rounded-lg border border-border/50 bg-card/50">
