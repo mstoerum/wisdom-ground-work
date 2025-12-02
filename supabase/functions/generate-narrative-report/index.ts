@@ -125,6 +125,8 @@ Create a compelling 5-chapter narrative report that tells the story of what's ha
 1. Be written in engaging, human language (not corporate jargon)
 2. Include specific, evidence-backed insights with response IDs for drill-down
 3. Have confidence scores (1-5) for each insight
+4. Include an agreement percentage (0-100) estimating what % of respondents would agree with this insight
+5. Include sample size - the number of responses that support this insight
 
 The 5 chapters are:
 1. "The Pulse" - Overall organizational health and mood
@@ -176,9 +178,20 @@ ${audience === 'executive' ? 'Keep it concise and high-level. Executives want th
                                 items: { type: 'string' },
                                 description: 'Response IDs that support this insight'
                               },
-                              category: { type: 'string' }
+                              category: { type: 'string' },
+                              agreement_percentage: { 
+                                type: 'integer', 
+                                minimum: 0, 
+                                maximum: 100,
+                                description: 'Estimated percentage of respondents who would agree with this insight'
+                              },
+                              sample_size: { 
+                                type: 'integer',
+                                minimum: 0,
+                                description: 'Number of responses that support this insight'
+                              }
                             },
-                            required: ['text', 'confidence', 'evidence_ids']
+                            required: ['text', 'confidence', 'evidence_ids', 'agreement_percentage', 'sample_size']
                           }
                         }
                       },
