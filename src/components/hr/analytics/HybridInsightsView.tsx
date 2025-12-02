@@ -1,11 +1,12 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, RefreshCw, Sparkles } from "lucide-react";
 import { PulseHeader } from "./PulseHeader";
+import { ThemeSentimentBreakdown } from "./ThemeSentimentBreakdown";
 import { NarrativeReportViewer } from "./NarrativeReportViewer";
 import type { NarrativeReport } from "@/hooks/useNarrativeReports";
-import type { ParticipationMetrics, SentimentMetrics } from "@/hooks/useAnalytics";
+import type { ParticipationMetrics, SentimentMetrics, ThemeInsight } from "@/hooks/useAnalytics";
 
 interface HybridInsightsViewProps {
   // Metrics data
@@ -13,6 +14,7 @@ interface HybridInsightsViewProps {
   sentiment: SentimentMetrics | null;
   urgentCount: number;
   confidenceScore?: number;
+  themes: ThemeInsight[];
   
   // Narrative report
   latestReport: NarrativeReport | null;
@@ -32,6 +34,7 @@ export function HybridInsightsView({
   sentiment,
   urgentCount,
   confidenceScore,
+  themes,
   latestReport,
   isReportLoading,
   isGenerating,
@@ -74,6 +77,9 @@ export function HybridInsightsView({
         confidenceScore={confidenceScore}
         isLoading={isLoading}
       />
+
+      {/* Theme Sentiment Breakdown - Benchmarkable Metrics */}
+      <ThemeSentimentBreakdown themes={themes} isLoading={isLoading} />
 
       {/* Story Report Section */}
       {latestReport ? (
