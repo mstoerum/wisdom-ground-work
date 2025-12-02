@@ -136,6 +136,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
         responseCount: t.responseCount,
         avgSentiment: Math.round(t.avgSentiment),
         urgencyCount: t.urgencyCount,
+        keySignals: t.keySignals || { concerns: [], positives: [], other: [] },
       }))
     : generateMockThemes();
   
