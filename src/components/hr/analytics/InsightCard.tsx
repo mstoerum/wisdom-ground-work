@@ -98,7 +98,7 @@ export function InsightCard({ insight, colorClass }: InsightCardProps) {
         </div>
 
         {/* Evidence trail toggle */}
-        {insight.evidence_ids.length > 0 && (
+        {insight.evidence_ids && insight.evidence_ids.length > 0 && (
           <div>
             <Button
               variant="ghost"
