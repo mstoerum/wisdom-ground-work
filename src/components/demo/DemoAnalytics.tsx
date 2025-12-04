@@ -53,13 +53,13 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
 
   return (
     <HRLayout>
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 overflow-x-hidden">
         {/* Demo Story Banner */}
-        <div className="-mx-6 -mt-6 mb-6">
+        <div className="mb-6">
           <DemoStoryBanner onBackToMenu={onBackToMenu} />
         </div>
 
-        <div className="container mx-auto px-4 py-6 max-w-7xl">
+        <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 max-w-7xl">
           <div className="space-y-6">
             {/* Main Tabs - Aligned with real Analytics page */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

@@ -146,6 +146,64 @@ function KeySignalsPanel({ keySignals }: { keySignals: ThemeInsight['keySignals'
   );
 }
 
+// Mobile Card View for each theme
+function ThemeCard({ 
+  theme, 
+  isExpanded, 
+  onToggle 
+}: { 
+  theme: ThemeInsight; 
+  isExpanded: boolean; 
+  onToggle: () => void;
+}) {
+  const health = Math.round(theme.avgSentiment);
+  const status = getStatusFromHealth(health);
+  const config = getStatusConfig(status);
+
+  return (
+    <Collapsible open={isExpanded} onOpenChange={onToggle}>
+      <div className={`rounded-lg ${config.rowClass}`}>
+        <CollapsibleTrigger asChild>
+          <div className="p-4 cursor-pointer">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                )}
+                <span className="font-medium text-sm">{theme.name}</span>
+              </div>
+              <Badge variant="outline" className={`text-xs ${config.badgeClass}`}>
+                {config.label}
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between text-sm pl-6">
+              <div className="flex items-center gap-4">
+                <span className={`font-semibold ${
+                  health >= 70 ? 'text-green-600 dark:text-green-400' :
+                  health >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
+                  'text-destructive'
+                }`}>
+                  {health}% Health
+                </span>
+                <span className="flex items-center gap-1 text-muted-foreground">
+                  <MessageSquare className="h-3 w-3" />
+                  {theme.responseCount}
+                </span>
+              </div>
+              <UrgencyDots count={theme.urgencyCount} />
+            </div>
+          </div>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <KeySignalsPanel keySignals={theme.keySignals} />
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+}
+
 export function ThemeHealthList({ themes, isLoading }: ThemeHealthListProps) {
   const [expandedThemes, setExpandedThemes] = useState<Set<string>>(new Set());
 
@@ -199,86 +257,102 @@ export function ThemeHealthList({ themes, isLoading }: ThemeHealthListProps) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg">Theme Health</CardTitle>
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground hidden sm:block">
             Click row to see key signals
           </span>
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        {/* Table Header */}
-        <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-muted/50 text-xs font-medium text-muted-foreground border-b">
-          <div className="col-span-4">Theme</div>
-          <div className="col-span-2 text-center">Health</div>
-          <div className="col-span-2 text-center">Urgency</div>
-          <div className="col-span-2 text-center">Responses</div>
-          <div className="col-span-2 text-center">Status</div>
+        {/* Mobile Card View */}
+        <div className="md:hidden divide-y px-4 pb-4">
+          {sortedThemes.map((theme) => (
+            <div key={theme.id} className="py-2 first:pt-0">
+              <ThemeCard
+                theme={theme}
+                isExpanded={expandedThemes.has(theme.id)}
+                onToggle={() => toggleExpanded(theme.id)}
+              />
+            </div>
+          ))}
         </div>
 
-        {/* Theme Rows */}
-        <div className="divide-y">
-          {sortedThemes.map((theme) => {
-            const health = Math.round(theme.avgSentiment);
-            const status = getStatusFromHealth(health);
-            const config = getStatusConfig(status);
-            const isExpanded = expandedThemes.has(theme.id);
+        {/* Desktop Table View */}
+        <div className="hidden md:block">
+          {/* Table Header */}
+          <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-muted/50 text-xs font-medium text-muted-foreground border-b">
+            <div className="col-span-4">Theme</div>
+            <div className="col-span-2 text-center">Health</div>
+            <div className="col-span-2 text-center">Urgency</div>
+            <div className="col-span-2 text-center">Responses</div>
+            <div className="col-span-2 text-center">Status</div>
+          </div>
 
-            return (
-              <Collapsible
-                key={theme.id}
-                open={isExpanded}
-                onOpenChange={() => toggleExpanded(theme.id)}
-              >
-                <CollapsibleTrigger asChild>
-                  <div 
-                    className={`grid grid-cols-12 gap-2 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors ${config.rowClass}`}
-                  >
-                    {/* Theme Name */}
-                    <div className="col-span-4 flex items-center gap-2">
-                      {isExpanded ? (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      ) : (
-                        <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      )}
-                      <span className="font-medium text-sm truncate">{theme.name}</span>
+          {/* Theme Rows */}
+          <div className="divide-y">
+            {sortedThemes.map((theme) => {
+              const health = Math.round(theme.avgSentiment);
+              const status = getStatusFromHealth(health);
+              const config = getStatusConfig(status);
+              const isExpanded = expandedThemes.has(theme.id);
+
+              return (
+                <Collapsible
+                  key={theme.id}
+                  open={isExpanded}
+                  onOpenChange={() => toggleExpanded(theme.id)}
+                >
+                  <CollapsibleTrigger asChild>
+                    <div 
+                      className={`grid grid-cols-12 gap-2 px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors ${config.rowClass}`}
+                    >
+                      {/* Theme Name */}
+                      <div className="col-span-4 flex items-center gap-2">
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        )}
+                        <span className="font-medium text-sm truncate">{theme.name}</span>
+                      </div>
+
+                      {/* Health Score */}
+                      <div className="col-span-2 flex items-center justify-center">
+                        <span className={`text-sm font-semibold ${
+                          health >= 70 ? 'text-green-600 dark:text-green-400' :
+                          health >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
+                          'text-destructive'
+                        }`}>
+                          {health}%
+                        </span>
+                      </div>
+
+                      {/* Urgency Dots */}
+                      <div className="col-span-2 flex items-center justify-center">
+                        <UrgencyDots count={theme.urgencyCount} />
+                      </div>
+
+                      {/* Response Count */}
+                      <div className="col-span-2 flex items-center justify-center gap-1 text-sm text-muted-foreground">
+                        <MessageSquare className="h-3 w-3" />
+                        {theme.responseCount}
+                      </div>
+
+                      {/* Status Badge */}
+                      <div className="col-span-2 flex items-center justify-center">
+                        <Badge variant="outline" className={`text-xs ${config.badgeClass}`}>
+                          {config.label}
+                        </Badge>
+                      </div>
                     </div>
+                  </CollapsibleTrigger>
 
-                    {/* Health Score */}
-                    <div className="col-span-2 flex items-center justify-center">
-                      <span className={`text-sm font-semibold ${
-                        health >= 70 ? 'text-green-600 dark:text-green-400' :
-                        health >= 50 ? 'text-yellow-600 dark:text-yellow-400' :
-                        'text-destructive'
-                      }`}>
-                        {health}%
-                      </span>
-                    </div>
-
-                    {/* Urgency Dots */}
-                    <div className="col-span-2 flex items-center justify-center">
-                      <UrgencyDots count={theme.urgencyCount} />
-                    </div>
-
-                    {/* Response Count */}
-                    <div className="col-span-2 flex items-center justify-center gap-1 text-sm text-muted-foreground">
-                      <MessageSquare className="h-3 w-3" />
-                      {theme.responseCount}
-                    </div>
-
-                    {/* Status Badge */}
-                    <div className="col-span-2 flex items-center justify-center">
-                      <Badge variant="outline" className={`text-xs ${config.badgeClass}`}>
-                        {config.label}
-                      </Badge>
-                    </div>
-                  </div>
-                </CollapsibleTrigger>
-
-                <CollapsibleContent>
-                  <KeySignalsPanel keySignals={theme.keySignals} />
-                </CollapsibleContent>
-              </Collapsible>
-            );
-          })}
+                  <CollapsibleContent>
+                    <KeySignalsPanel keySignals={theme.keySignals} />
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            })}
+          </div>
         </div>
       </CardContent>
     </Card>
