@@ -35,22 +35,22 @@ export function NarrativeReportViewer({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div className="space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <BookOpen className="h-5 w-5 text-primary" />
-            <h2 className="text-2xl font-semibold">Story Report</h2>
-            <Badge variant="outline" className="ml-2">
+            <h2 className="text-xl sm:text-2xl font-semibold">Story Report</h2>
+            <Badge variant="outline" className="text-xs sm:text-sm">
               Confidence: {report.confidence_score}/5
             </Badge>
           </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="h-4 w-4" />
+          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground flex-wrap">
+            <Clock className="h-4 w-4 flex-shrink-0" />
             <span>Generated {format(new Date(report.generated_at), 'MMM d, yyyy h:mm a')}</span>
-            <span>•</span>
-            <span>{report.data_snapshot.total_sessions} sessions</span>
-            <span>•</span>
-            <span>{report.data_snapshot.total_responses} responses</span>
+            <span className="hidden sm:inline">•</span>
+            <span className="hidden sm:inline">{report.data_snapshot.total_sessions} sessions</span>
+            <span className="hidden sm:inline">•</span>
+            <span className="hidden sm:inline">{report.data_snapshot.total_responses} responses</span>
           </div>
         </div>
         
