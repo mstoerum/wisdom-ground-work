@@ -1,5 +1,6 @@
 import { Navbar } from "@/components/landing/Navbar";
 import { HeroSection } from "@/components/landing/HeroSection";
+import { ProblemSection } from "@/components/landing/ProblemSection";
 
 const Landing = () => {
   return (
@@ -7,7 +8,7 @@ const Landing = () => {
       <Navbar />
       <main>
         <HeroSection />
-        {/* More sections will be added here */}
+        <ProblemSection />
       </main>
     </div>
   );
