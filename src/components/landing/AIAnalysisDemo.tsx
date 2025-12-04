@@ -120,14 +120,24 @@ export const AIAnalysisDemo = () => {
     }
   };
 
-  const highlightText = (content: string, highlights?: string[]) => {
+  const highlightText = (content: string, highlights?: string[], themes?: string[]) => {
     if (!highlights) return content;
     
     let result = content;
-    highlights.forEach((phrase) => {
+    highlights.forEach((phrase, index) => {
+      // Assign theme color based on index pattern - distribute colors harmoniously
+      const themeKey = themes?.[Math.min(index, (themes?.length || 1) - 1)] || "Work-Life Balance";
+      const colorMap: Record<string, string> = {
+        "Work-Life Balance": "border-[hsl(var(--terracotta-primary))]",
+        "Productivity": "border-[hsl(210_60%_50%)]",
+        "Workload": "border-[hsl(var(--warning))]",
+        "Management": "border-[hsl(var(--success))]",
+        "Team Culture": "border-[hsl(280_60%_55%)]",
+      };
+      const borderClass = colorMap[themeKey] || colorMap["Work-Life Balance"];
       result = result.replace(
         phrase,
-        `<mark class="bg-[hsl(var(--butter-yellow))] px-1 rounded">${phrase}</mark>`
+        `<span class="border-b-2 ${borderClass} pb-0.5">${phrase}</span>`
       );
     });
     return result;
@@ -183,7 +193,7 @@ export const AIAnalysisDemo = () => {
                       <p 
                         className="text-sm leading-relaxed"
                         dangerouslySetInnerHTML={{ 
-                          __html: highlightText(step.content, step.highlights) 
+                          __html: highlightText(step.content, step.highlights, step.detectedThemes) 
                         }}
                       />
                     </div>
