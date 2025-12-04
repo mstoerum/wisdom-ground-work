@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/landing/Navbar";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { ProblemSection } from "@/components/landing/ProblemSection";
+import { DifferenceSection } from "@/components/landing/DifferenceSection";
 
 const Landing = () => {
   return (
@@ -9,6 +10,7 @@ const Landing = () => {
       <main>
         <HeroSection />
         <ProblemSection />
+        <DifferenceSection />
       </main>
     </div>
   );
