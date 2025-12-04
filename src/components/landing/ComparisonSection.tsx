@@ -9,19 +9,25 @@ const satisfactionData = [
 ];
 
 const themes = [
-  { name: "Meeting overload", percentage: 42, description: "Too many meetings reducing focus time for core work" },
-  { name: "Unclear priorities", percentage: 38, description: "Shifting goals creating stress and overtime" },
-  { name: "Deadline pressure", percentage: 28, description: "Tight timelines requiring extended hours regularly" },
+  // Positive first
+  { name: "Team collaboration", percentage: 78, description: "Strong peer support and knowledge sharing across teams", sentiment: "positive" as const },
+  { name: "Career development", percentage: 65, description: "Employees feel growth opportunities are expanding", sentiment: "positive" as const },
+  // Then constructive
+  { name: "Meeting overload", percentage: 42, description: "Too many meetings reducing focus time for core work", sentiment: "attention" as const },
 ];
 
 const representativeVoices = [
+  // Positive first
   {
-    quote: "I spend 4-5 hours daily in meetings. By the time I can focus on actual work, I'm already exhausted. I end up working evenings just to keep up.",
-    attribution: "Product team member",
-  },
-  {
-    quote: "Every week our priorities shift. I never know if what I'm working on will still matter by Friday. It's exhausting trying to keep up.",
+    quote: "The mentorship program has been fantastic. My manager genuinely invests in my growth and I can see a clear path forward.",
     attribution: "Engineering team member",
+    sentiment: "positive" as const,
+  },
+  // Then constructive
+  {
+    quote: "I love my team, but I spend 4-5 hours daily in meetings. By the time I can focus on actual work, I'm already exhausted.",
+    attribution: "Product team member",
+    sentiment: "attention" as const,
   },
 ];
 
@@ -131,7 +137,7 @@ export const ComparisonSection = () => {
             {/* Header bar - terracotta */}
             <div className="bg-[hsl(var(--terracotta))] px-6 py-4">
               <h3 className="text-lg font-semibold text-white">Spradley Insights</h3>
-              <p className="text-sm text-white/80">Deep understanding with actionable context</p>
+              <p className="text-sm text-white font-medium">Deep understanding with actionable context</p>
             </div>
             
             <div className="p-6 lg:p-8">
@@ -142,11 +148,19 @@ export const ComparisonSection = () => {
                   {themes.map((theme) => (
                     <div 
                       key={theme.name} 
-                      className="bg-white rounded-lg p-3 border-l-4 border-[hsl(var(--terracotta))] shadow-sm"
+                      className={`bg-white rounded-lg p-3 border-l-4 shadow-sm ${
+                        theme.sentiment === "positive" 
+                          ? "border-emerald-500" 
+                          : "border-[hsl(var(--terracotta))]"
+                      }`}
                     >
                       <div className="flex items-center justify-between mb-1">
                         <span className="font-medium text-gray-800 text-sm">{theme.name}</span>
-                        <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[hsl(var(--terracotta))]/15 text-[hsl(var(--terracotta))]">
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                          theme.sentiment === "positive"
+                            ? "bg-emerald-100 text-emerald-700"
+                            : "bg-[hsl(var(--terracotta))]/15 text-[hsl(var(--terracotta))]"
+                        }`}>
                           {theme.percentage}%
                         </span>
                       </div>
@@ -161,7 +175,14 @@ export const ComparisonSection = () => {
                 <p className="text-sm font-medium text-gray-700 mb-3">Representative Voices</p>
                 <div className="space-y-2.5">
                   {representativeVoices.map((voice, index) => (
-                    <div key={index} className="bg-white rounded-lg p-4 border-l-4 border-teal-500 shadow-sm">
+                    <div 
+                      key={index} 
+                      className={`bg-white rounded-lg p-4 border-l-4 shadow-sm ${
+                        voice.sentiment === "positive" 
+                          ? "border-emerald-500" 
+                          : "border-amber-500"
+                      }`}
+                    >
                       <p className="text-sm text-gray-700 italic mb-2">"{voice.quote}"</p>
                       <p className="text-xs text-gray-500 font-medium">— {voice.attribution}</p>
                     </div>
