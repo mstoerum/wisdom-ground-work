@@ -29,6 +29,7 @@ interface ChatInterfaceProps {
   showTrustFlow?: boolean;
   skipTrustFlow?: boolean;
   publicLinkId?: string;
+  minimalUI?: boolean; // Simplified UI for demo mode
 }
 
 // Constants
@@ -89,7 +90,8 @@ export const ChatInterface = ({
   onSaveAndExit, 
   showTrustFlow = true, 
   skipTrustFlow = false,
-  publicLinkId 
+  publicLinkId,
+  minimalUI = false
 }: ChatInterfaceProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -399,7 +401,7 @@ export const ChatInterface = ({
   }
 
   return (
-    <div className="flex flex-col min-h-[500px] max-h-[80vh] bg-card rounded-lg border border-border/50">
+    <div className={`flex flex-col bg-card rounded-lg border border-border/50 ${minimalUI ? 'min-h-[400px] max-h-[70vh]' : 'min-h-[500px] max-h-[80vh]'}`}>
       {/* ARIA Live Region for Screen Readers */}
       <div 
         role="status" 
@@ -412,13 +414,13 @@ export const ChatInterface = ({
         {messages.length > 0 && messages[messages.length - 1].role === 'assistant' && 'Spradley has responded. Check the conversation for the message.'}
       </div>
 
-      {/* Trust Indicators */}
-      {!skipTrustFlow && sessionId && (
+      {/* Trust Indicators - hide in minimal UI */}
+      {!minimalUI && !skipTrustFlow && sessionId && (
         <TrustIndicators sessionId={sessionId} />
       )}
 
-      {/* Voice Mode Promotion Banner - Only show for real employees, not in preview/demo */}
-      {!skipTrustFlow && !isPreviewMode && voiceSupported && !isVoiceMode && trustFlowStep === "chat" && (
+      {/* Voice Mode Promotion Banner - Only show for real employees, not in preview/demo/minimal */}
+      {!minimalUI && !skipTrustFlow && !isPreviewMode && voiceSupported && !isVoiceMode && trustFlowStep === "chat" && (
         <Alert className="mx-4 mt-4 border-[hsl(var(--lime-green))] bg-[hsl(var(--lime-green))]/10">
           <Mic className="h-4 w-4 text-[hsl(var(--lime-green))]" />
           <AlertDescription className="flex items-center justify-between">
@@ -438,49 +440,60 @@ export const ChatInterface = ({
         </Alert>
       )}
       
-      {/* Progress Indicator with Voice Mode Toggle */}
-      <div className="p-3 border-b border-border/50">
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              {userMessageCount > 0 && userMessageCount < ESTIMATED_TOTAL_QUESTIONS && `Question ${userMessageCount} of ~${ESTIMATED_TOTAL_QUESTIONS}`}
-              {userMessageCount >= 6 && userMessageCount < ESTIMATED_TOTAL_QUESTIONS && " • Almost done!"}
-              {userMessageCount >= ESTIMATED_TOTAL_QUESTIONS && "Wrapping up..."}
-            </span>
+      {/* Progress Indicator - Simplified for minimal UI */}
+      <div className={`border-b border-border/50 ${minimalUI ? 'px-4 py-2' : 'p-3'}`}>
+        {minimalUI ? (
+          // Minimal progress bar only
+          <div className="flex items-center gap-3">
+            <Progress value={progressPercent} className="h-1.5 flex-1" />
+            <span className="text-xs text-muted-foreground whitespace-nowrap">{Math.round(progressPercent)}%</span>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Voice Mode Toggle - Always visible */}
-            {voiceSupported && (
-              <Button
-                onClick={() => setIsVoiceMode(true)}
-                variant="outline"
-                size="sm"
-                className="h-7 border-[hsl(var(--lime-green))]/50 hover:bg-[hsl(var(--lime-green))]/10"
-              >
-                <Mic className="h-3 w-3 mr-1 text-[hsl(var(--lime-green))]" />
-                Voice Mode
-              </Button>
-            )}
-            <span className="text-sm font-medium">{Math.round(progressPercent)}%</span>
-            <Button
-              onClick={handleFinishEarlyClick}
-              variant="ghost"
-              size="sm"
-              className="h-7"
-              disabled={finishEarlyStep !== "none" || isLoading}
-            >
-              <CheckCircle className="h-3 w-3 mr-1" />
-              Finish Early
-            </Button>
-          </div>
-        </div>
-        <Progress value={progressPercent} className="h-1.5" />
+        ) : (
+          // Full progress header
+          <>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-muted-foreground">
+                  {userMessageCount > 0 && userMessageCount < ESTIMATED_TOTAL_QUESTIONS && `Question ${userMessageCount} of ~${ESTIMATED_TOTAL_QUESTIONS}`}
+                  {userMessageCount >= 6 && userMessageCount < ESTIMATED_TOTAL_QUESTIONS && " • Almost done!"}
+                  {userMessageCount >= ESTIMATED_TOTAL_QUESTIONS && "Wrapping up..."}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* Voice Mode Toggle - Always visible */}
+                {voiceSupported && (
+                  <Button
+                    onClick={() => setIsVoiceMode(true)}
+                    variant="outline"
+                    size="sm"
+                    className="h-7 border-[hsl(var(--lime-green))]/50 hover:bg-[hsl(var(--lime-green))]/10"
+                  >
+                    <Mic className="h-3 w-3 mr-1 text-[hsl(var(--lime-green))]" />
+                    Voice Mode
+                  </Button>
+                )}
+                <span className="text-sm font-medium">{Math.round(progressPercent)}%</span>
+                <Button
+                  onClick={handleFinishEarlyClick}
+                  variant="ghost"
+                  size="sm"
+                  className="h-7"
+                  disabled={finishEarlyStep !== "none" || isLoading}
+                >
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Finish Early
+                </Button>
+              </div>
+            </div>
+            <Progress value={progressPercent} className="h-1.5" />
+          </>
+        )}
       </div>
       
       <ScrollArea className="flex-1 p-4 overflow-y-auto">
         <div className="space-y-3">
-          {/* Completion phase indicator */}
-          {isInCompletionPhase && (
+          {/* Completion phase indicator - hide in minimal UI */}
+          {!minimalUI && isInCompletionPhase && (
             <Alert className="mx-4 mb-2 border-[hsl(var(--lime-green))] bg-[hsl(var(--lime-green))]/10">
               <CheckCircle2 className="h-4 w-4 text-[hsl(var(--lime-green))]" />
               <AlertDescription>
