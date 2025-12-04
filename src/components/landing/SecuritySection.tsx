@@ -28,23 +28,6 @@ const securityFeatures = [
   },
 ];
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as const },
-  },
-};
-
 export const SecuritySection = () => {
   return (
     <section id="security" className="py-24 bg-card relative overflow-hidden">
@@ -58,8 +41,8 @@ export const SecuritySection = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.5 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="text-center mb-16"
         >
           <p className="text-sm font-medium text-[hsl(var(--success))] tracking-wide uppercase mb-4">
@@ -75,16 +58,15 @@ export const SecuritySection = () => {
 
         {/* Security features grid */}
         <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="grid md:grid-cols-2 gap-6"
         >
           {securityFeatures.map((feature) => (
-            <motion.div
+            <div
               key={feature.title}
-              variants={itemVariants}
               className="group bg-background rounded-xl p-8 border border-border/50 hover:border-[hsl(var(--success))]/30 transition-all duration-300 hover:shadow-md"
             >
               {/* Icon */}
@@ -108,7 +90,7 @@ export const SecuritySection = () => {
                   </span>
                 ))}
               </div>
-            </motion.div>
+            </div>
           ))}
         </motion.div>
 
@@ -116,8 +98,8 @@ export const SecuritySection = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.3 }}
+          viewport={{ once: true, amount: 0.5 }}
+          transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
           className="mt-16 text-center"
         >
           <div className="inline-flex flex-wrap items-center justify-center gap-6 px-8 py-5 rounded-xl bg-background border border-border/50">

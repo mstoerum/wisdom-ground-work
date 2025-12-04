@@ -19,23 +19,6 @@ const painPoints = [
   },
 ];
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.15 },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as const },
-  },
-};
-
 export const ProblemSection = () => {
   return (
     <section className="py-24 bg-gradient-to-b from-[hsl(var(--coral-pale))] to-background">
@@ -44,8 +27,8 @@ export const ProblemSection = () => {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.5 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="text-center mb-16"
         >
           <h2 className="text-3xl sm:text-4xl font-display font-semibold text-foreground mb-4">
@@ -58,17 +41,16 @@ export const ProblemSection = () => {
 
         {/* Pain point cards */}
         <motion.div 
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="grid md:grid-cols-3 gap-6 lg:gap-8"
         >
           {painPoints.map((point, index) => (
-            <motion.div
+            <div
               key={index}
-              variants={itemVariants}
-              className="bg-card rounded-xl p-8 shadow-sm hover:shadow-md transition-shadow border border-border/50"
+              className="bg-card rounded-xl p-8 shadow-sm hover:shadow-md transition-shadow duration-300 border border-border/50"
             >
               <div className="w-12 h-12 rounded-xl bg-[hsl(var(--coral-accent)/0.1)] flex items-center justify-center mb-6">
                 <point.icon className="w-6 h-6 text-[hsl(var(--coral-accent))]" />
@@ -79,7 +61,7 @@ export const ProblemSection = () => {
               <p className="text-muted-foreground leading-relaxed">
                 {point.description}
               </p>
-            </motion.div>
+            </div>
           ))}
         </motion.div>
       </div>

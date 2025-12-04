@@ -53,23 +53,6 @@ const personas = [
   },
 ];
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.15 },
-  },
-};
-
-const cardVariants = {
-  hidden: { opacity: 0, y: 40 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as const },
-  },
-};
-
 export const PersonasSection = () => {
   return (
     <section className="py-24 bg-background overflow-hidden">
@@ -78,8 +61,8 @@ export const PersonasSection = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.5 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="text-center mb-16"
         >
           <p className="text-sm font-medium text-primary tracking-wide uppercase mb-4">
@@ -95,17 +78,16 @@ export const PersonasSection = () => {
 
         {/* Persona cards */}
         <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="grid lg:grid-cols-3 gap-6 lg:gap-8"
         >
           {personas.map((persona) => (
-            <motion.div
+            <div
               key={persona.name}
-              variants={cardVariants}
-              className="group relative bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-border/50"
+              className="group relative bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow duration-300 border border-border/50"
             >
               {/* Subtle background */}
               <div className={`absolute inset-0 ${persona.bgColor} opacity-30`} />
@@ -170,7 +152,7 @@ export const PersonasSection = () => {
                   </p>
                 </div>
               </div>
-            </motion.div>
+            </div>
           ))}
         </motion.div>
       </div>

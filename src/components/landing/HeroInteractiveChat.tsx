@@ -140,10 +140,10 @@ export const HeroInteractiveChat = () => {
           <div className="flex gap-3 animate-fade-in">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-[hsl(var(--coral-accent))] flex-shrink-0 opacity-90" />
             <div className="bg-muted/80 px-4 py-3 rounded-2xl rounded-tl-sm">
-              <div className="flex gap-1.5">
-                <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse" />
-                <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse [animation-delay:150ms]" />
-                <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse [animation-delay:300ms]" />
+            <div className="flex gap-1.5">
+                <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse-subtle" />
+                <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse-subtle delay-100" />
+                <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse-subtle delay-200" />
               </div>
             </div>
           </div>
