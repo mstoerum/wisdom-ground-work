@@ -29,13 +29,6 @@ const securityFeatures = [
   },
 ];
 
-const trustStats = [
-  { value: "0", label: "Data breaches", suffix: "" },
-  { value: "100", label: "GDPR compliance", suffix: "%" },
-  { value: "256", label: "Bit encryption", suffix: "-bit" },
-  { value: "99.9", label: "Uptime SLA", suffix: "%" },
-];
-
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
@@ -84,27 +77,6 @@ export const SecuritySection = () => {
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
             Your employees trust you with their honest feedback. We built Spradley to be worthy of that trust.
           </p>
-        </motion.div>
-
-        {/* Trust stats bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-20"
-        >
-          {trustStats.map((stat, index) => (
-            <div 
-              key={index}
-              className="text-center p-6 rounded-2xl bg-background border border-border/50"
-            >
-              <div className="text-4xl font-bold text-foreground mb-1">
-                {stat.value}<span className="text-[hsl(var(--success))]">{stat.suffix}</span>
-              </div>
-              <div className="text-sm text-muted-foreground font-medium">{stat.label}</div>
-            </div>
-          ))}
         </motion.div>
 
         {/* Security features grid */}
