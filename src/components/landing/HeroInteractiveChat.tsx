@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Shield, Heart, ArrowRight } from "lucide-react";
+import { Send, Shield, Heart, ArrowRight, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 
 interface Message {
@@ -11,21 +11,16 @@ interface Message {
   liked?: boolean;
 }
 
-const INITIAL_MESSAGE = "Hi! I'm Spradley, here to understand your experience at work. No surveys, just a conversation. What's been on your mind lately about your day-to-day?";
-
-const RESPONSES = [
-  "I hear you. That sounds like it's been weighing on you. Can you tell me more about what specifically feels challenging?",
-  "Thank you for sharing that. It takes courage to be open. What would make the biggest difference for you right now?",
-  "That's really valuable insight. I want to make sure I understand—how long has this been affecting your experience?",
-];
+const INITIAL_MESSAGE = "Hi! I'm Spradley. How's work been going for you lately—anything on your mind?";
 
 export const HeroInteractiveChat = () => {
   const [messages, setMessages] = useState<Message[]>([
     { role: "assistant", content: INITIAL_MESSAGE, timestamp: new Date() }
   ]);
   const [input, setInput] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [exchangeCount, setExchangeCount] = useState(0);
+  const [conversationId] = useState(() => `preview-hero-${Date.now()}`);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const maxExchanges = 2;
@@ -34,10 +29,10 @@ export const HeroInteractiveChat = () => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages, isTyping]);
+  }, [messages, isLoading]);
 
-  const handleSend = () => {
-    if (!input.trim() || exchangeCount >= maxExchanges) return;
+  const handleSend = async () => {
+    if (!input.trim() || exchangeCount >= maxExchanges || isLoading) return;
 
     const userMessage: Message = {
       role: "user",
@@ -45,20 +40,54 @@ export const HeroInteractiveChat = () => {
       timestamp: new Date(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
     setInput("");
-    setIsTyping(true);
+    setIsLoading(true);
 
-    setTimeout(() => {
-      const response = RESPONSES[exchangeCount] || RESPONSES[0];
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            conversationId,
+            messages: updatedMessages.map(m => ({
+              role: m.role,
+              content: m.content
+            })),
+            testMode: true,
+            surveyType: "employee_satisfaction",
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to get response");
+      }
+
+      const data = await response.json();
+      const aiContent = data.response || data.message || "Thanks for sharing. Could you tell me more about that?";
+
       setMessages(prev => [...prev, {
         role: "assistant",
-        content: response,
+        content: aiContent,
         timestamp: new Date(),
       }]);
-      setIsTyping(false);
       setExchangeCount(prev => prev + 1);
-    }, 1500);
+    } catch (error) {
+      console.error("Chat error:", error);
+      // Fallback response if API fails
+      setMessages(prev => [...prev, {
+        role: "assistant",
+        content: "I appreciate you sharing that. What would make the biggest difference for you right now?",
+        timestamp: new Date(),
+      }]);
+      setExchangeCount(prev => prev + 1);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -136,14 +165,14 @@ export const HeroInteractiveChat = () => {
           </div>
         ))}
 
-        {isTyping && (
+        {isLoading && (
           <div className="flex gap-3 animate-fade-in">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-[hsl(var(--coral-accent))] flex-shrink-0 opacity-90" />
             <div className="bg-muted/80 px-4 py-3 rounded-2xl rounded-tl-sm">
-            <div className="flex gap-1.5">
-                <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse-subtle" />
-                <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse-subtle delay-100" />
-                <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse-subtle delay-200" />
+              <div className="flex gap-1.5">
+                <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse" />
+                <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse delay-100" />
+                <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse delay-200" />
               </div>
             </div>
           </div>
@@ -161,14 +190,15 @@ export const HeroInteractiveChat = () => {
               placeholder="Share what's on your mind..."
               className="min-h-[44px] max-h-[88px] resize-none border-border/50 bg-background"
               rows={1}
+              disabled={isLoading}
             />
             <Button
               onClick={handleSend}
-              disabled={!input.trim() || isTyping}
+              disabled={!input.trim() || isLoading}
               size="icon"
               className="flex-shrink-0"
             >
-              <Send className="w-4 h-4" />
+              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </Button>
           </div>
         ) : (
