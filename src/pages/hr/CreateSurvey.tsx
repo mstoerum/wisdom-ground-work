@@ -139,6 +139,7 @@ const CreateSurvey = () => {
       if (!user) throw new Error('Not authenticated');
 
       const surveyData = {
+        survey_type: values.survey_type,
         title: values.title || 'Untitled Survey',
         description: values.description,
         themes: values.themes,
