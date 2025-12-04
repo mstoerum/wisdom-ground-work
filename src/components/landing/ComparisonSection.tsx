@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Check, Quote } from "lucide-react";
+import { motion } from "framer-motion";
 
 const satisfactionData = [
   { label: "Very Satisfied", value: 15, color: "bg-emerald-500" },
@@ -31,12 +32,52 @@ const recommendedActions = [
   "Create meeting efficiency guidelines (max 30min, clear agendas)",
 ];
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.2,
+    },
+  },
+};
+
+const cardVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.6,
+      ease: [0.25, 0.46, 0.45, 0.94] as const,
+    },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, x: -10 },
+  visible: {
+    opacity: 1,
+    x: 0,
+    transition: {
+      duration: 0.4,
+      ease: [0.25, 0.46, 0.45, 0.94] as const,
+    },
+  },
+};
+
 export const ComparisonSection = () => {
   return (
     <section className="py-20 bg-muted/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
-        <div className="text-center mb-16">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-16"
+        >
           <Badge variant="secondary" className="bg-[hsl(var(--terracotta-pale))] text-[hsl(var(--terracotta-primary))] border-0 mb-4">
             The Difference
           </Badge>
@@ -46,12 +87,18 @@ export const ComparisonSection = () => {
           <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
             Traditional surveys tell you there's a problem. Spradley tells you how to solve it.
           </p>
-        </div>
+        </motion.div>
 
         {/* Comparison cards */}
-        <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto">
+        <motion.div
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-50px" }}
+          className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto"
+        >
           {/* Traditional Survey Analytics Card */}
-          <div className="bg-muted/50 border border-border rounded-2xl p-6 lg:p-8">
+          <motion.div variants={cardVariants} className="bg-muted/50 border border-border rounded-2xl p-6 lg:p-8">
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-foreground mb-1">Traditional Survey Analytics</h3>
               <p className="text-sm text-muted-foreground">Surface-level statistics without context</p>
@@ -61,30 +108,46 @@ export const ComparisonSection = () => {
             <div className="mb-6">
               <p className="text-sm font-medium text-muted-foreground mb-3">Work-Life Balance Satisfaction</p>
               <div className="space-y-3">
-                {satisfactionData.map((item) => (
-                  <div key={item.label} className="flex items-center gap-3">
+                {satisfactionData.map((item, index) => (
+                  <motion.div
+                    key={item.label}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1, duration: 0.4 }}
+                    className="flex items-center gap-3"
+                  >
                     <span className="text-xs text-muted-foreground w-24 shrink-0">{item.label}</span>
                     <div className="flex-1 h-6 bg-background rounded-full overflow-hidden">
-                      <div
-                        className={`h-full ${item.color} rounded-full transition-all duration-500`}
-                        style={{ width: `${item.value}%` }}
+                      <motion.div
+                        initial={{ width: 0 }}
+                        whileInView={{ width: `${item.value}%` }}
+                        viewport={{ once: true }}
+                        transition={{ delay: 0.3 + index * 0.1, duration: 0.8, ease: "easeOut" }}
+                        className={`h-full ${item.color} rounded-full`}
                       />
                     </div>
                     <span className="text-xs font-medium text-muted-foreground w-8">{item.value}%</span>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             </div>
 
             {/* Overall Score */}
-            <div className="bg-background rounded-xl p-4 mb-6">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              whileInView={{ opacity: 1, scale: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.4, duration: 0.4 }}
+              className="bg-background rounded-xl p-4 mb-6"
+            >
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-bold text-foreground">6.2</span>
                 <span className="text-lg text-muted-foreground">/10</span>
                 <span className="text-sm text-destructive ml-2">-0.3 from last quarter</span>
               </div>
               <p className="text-sm text-muted-foreground mt-1">Overall Score</p>
-            </div>
+            </motion.div>
 
             {/* Warning List */}
             <div className="space-y-2 mb-6">
@@ -93,23 +156,33 @@ export const ComparisonSection = () => {
                 "Satisfaction decreased this quarter",
                 "25% are actively dissatisfied",
               ].map((warning, index) => (
-                <div key={index} className="flex items-start gap-2">
+                <motion.div
+                  key={index}
+                  variants={itemVariants}
+                  className="flex items-start gap-2"
+                >
                   <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
                   <span className="text-sm text-muted-foreground">{warning}</span>
-                </div>
+                </motion.div>
               ))}
             </div>
 
             {/* Conclusion Box */}
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.6, duration: 0.4 }}
+              className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4"
+            >
               <p className="text-sm text-amber-700 dark:text-amber-400">
                 <strong>What you know:</strong> Half your team has work-life balance issues, but you don't know why or what to do about it.
               </p>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           {/* Spradley Insights Card */}
-          <div className="bg-card border-l-4 border-l-[hsl(var(--success))] border border-border rounded-2xl p-6 lg:p-8 shadow-lg">
+          <motion.div variants={cardVariants} className="bg-card border-l-4 border-l-[hsl(var(--success))] border border-border rounded-2xl p-6 lg:p-8 shadow-lg">
             <div className="mb-6">
               <h3 className="text-lg font-semibold text-foreground mb-1">Spradley Insights</h3>
               <p className="text-sm text-muted-foreground">Deep understanding with actionable context</p>
@@ -119,8 +192,15 @@ export const ComparisonSection = () => {
             <div className="mb-6">
               <p className="text-sm font-medium text-muted-foreground mb-3">Key Themes Identified</p>
               <div className="space-y-3">
-                {themes.map((theme) => (
-                  <div key={theme.name} className="bg-muted/50 rounded-lg p-3">
+                {themes.map((theme, index) => (
+                  <motion.div
+                    key={theme.name}
+                    initial={{ opacity: 0, x: 20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.15, duration: 0.4 }}
+                    className="bg-muted/50 rounded-lg p-3"
+                  >
                     <div className="flex items-center justify-between mb-1">
                       <span className="font-medium text-foreground text-sm">{theme.name}</span>
                       <Badge variant="secondary" className="bg-[hsl(var(--terracotta-pale))] text-[hsl(var(--terracotta-primary))] border-0 text-xs">
@@ -128,7 +208,7 @@ export const ComparisonSection = () => {
                       </Badge>
                     </div>
                     <p className="text-xs text-muted-foreground">{theme.description}</p>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             </div>
@@ -138,29 +218,49 @@ export const ComparisonSection = () => {
               <p className="text-sm font-medium text-muted-foreground mb-3">Representative Voices</p>
               <div className="space-y-3">
                 {representativeVoices.map((voice, index) => (
-                  <div key={index} className="relative bg-muted/30 rounded-lg p-4 pl-10">
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 15 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.3 + index * 0.15, duration: 0.4 }}
+                    className="relative bg-muted/30 rounded-lg p-4 pl-10"
+                  >
                     <Quote className="absolute left-3 top-3 w-5 h-5 text-[hsl(var(--terracotta-primary))]/40" />
                     <p className="text-sm text-foreground italic mb-2">"{voice.quote}"</p>
                     <p className="text-xs text-muted-foreground">— {voice.attribution}</p>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             </div>
 
             {/* Recommended Actions */}
-            <div className="bg-[hsl(var(--success))]/10 border border-[hsl(var(--success))]/20 rounded-xl p-4">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.6, duration: 0.4 }}
+              className="bg-[hsl(var(--success))]/10 border border-[hsl(var(--success))]/20 rounded-xl p-4"
+            >
               <p className="text-sm font-medium text-[hsl(var(--success))] mb-3">Recommended Actions</p>
               <div className="space-y-2">
                 {recommendedActions.map((action, index) => (
-                  <div key={index} className="flex items-start gap-2">
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: 10 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: 0.7 + index * 0.1, duration: 0.3 }}
+                    className="flex items-start gap-2"
+                  >
                     <Check className="w-4 h-4 text-[hsl(var(--success))] mt-0.5 shrink-0" />
                     <span className="text-sm text-foreground">{action}</span>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
-            </div>
-          </div>
-        </div>
+            </motion.div>
+          </motion.div>
+        </motion.div>
       </div>
     </section>
   );
