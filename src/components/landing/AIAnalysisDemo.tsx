@@ -149,8 +149,8 @@ export const AIAnalysisDemo = () => {
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.5 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="text-center mb-16"
         >
           <p className="text-sm font-medium text-primary tracking-wide uppercase mb-4 flex items-center justify-center gap-2">
@@ -165,15 +165,15 @@ export const AIAnalysisDemo = () => {
           </p>
         </motion.div>
 
-        <div className="grid lg:grid-cols-5 gap-6 lg:gap-8 items-start">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="grid lg:grid-cols-5 gap-6 lg:gap-8 items-start"
+        >
           {/* Conversation panel */}
-          <motion.div 
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-            className="lg:col-span-3 bg-card rounded-xl overflow-hidden shadow-sm border border-border/50"
-          >
+          <div className="lg:col-span-3 bg-card rounded-xl overflow-hidden shadow-sm border border-border/50">
             <div className="bg-gradient-to-r from-primary/90 to-[hsl(var(--coral-accent)/0.85)] px-5 py-3.5 flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full bg-white/40" />
               <span className="text-sm font-medium text-white">Live Conversation</span>
@@ -183,7 +183,7 @@ export const AIAnalysisDemo = () => {
               {conversationSteps.slice(0, visibleSteps).map((step, index) => (
                 <div
                   key={index}
-                  className={`flex gap-3 ${step.role === "user" ? "justify-end" : "justify-start"} animate-fade-in`}
+                  className={`flex gap-3 ${step.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   {step.role === "assistant" && (
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-[hsl(var(--coral-accent))] flex-shrink-0 opacity-90" />
@@ -206,7 +206,7 @@ export const AIAnalysisDemo = () => {
                     </div>
                     
                     {step.detectedThemes && step.detectedThemes.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-2 animate-fade-in">
+                      <div className="flex flex-wrap gap-1.5 mt-2">
                         {step.detectedThemes.map((theme) => {
                           const colors = getThemeColor(theme);
                           return (
@@ -235,28 +235,22 @@ export const AIAnalysisDemo = () => {
               ))}
               
               {visibleSteps < conversationSteps.length && (
-                <div className="flex gap-3 animate-fade-in">
+                <div className="flex gap-3">
                   <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-[hsl(var(--coral-accent))] flex-shrink-0 opacity-90" />
                   <div className="bg-muted/80 px-4 py-3 rounded-2xl rounded-tl-sm">
                     <div className="flex gap-1.5">
-                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse" />
-                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse [animation-delay:150ms]" />
-                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse [animation-delay:300ms]" />
+                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse-subtle" />
+                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse-subtle delay-100" />
+                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse-subtle delay-200" />
                     </div>
                   </div>
                 </div>
               )}
             </div>
-          </motion.div>
+          </div>
 
           {/* Themes panel */}
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="lg:col-span-2 bg-card rounded-xl overflow-hidden shadow-sm border border-border/50"
-          >
+          <div className="lg:col-span-2 bg-card rounded-xl overflow-hidden shadow-sm border border-border/50">
             <div className="bg-foreground px-5 py-3.5 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-background" />
               <span className="text-sm font-medium text-background">Themes Identified</span>
@@ -277,19 +271,19 @@ export const AIAnalysisDemo = () => {
                       }`}
                     >
                       <div
-                        className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                        className={`w-2.5 h-2.5 rounded-full transition-colors duration-500 ${
                           isDetected ? colors.dot : "bg-muted-foreground/30"
                         }`}
                       />
                       <span
-                        className={`text-sm font-medium transition-colors flex-1 ${
+                        className={`text-sm font-medium transition-colors duration-500 flex-1 ${
                           isDetected ? "text-foreground" : "text-muted-foreground"
                         }`}
                       >
                         {theme}
                       </span>
                       {isDetected && (
-                        <span className={`text-xs font-medium ${colors.text} animate-scale-in`}>
+                        <span className={`text-xs font-medium ${colors.text}`}>
                           Detected
                         </span>
                       )}
@@ -302,8 +296,8 @@ export const AIAnalysisDemo = () => {
                 Themes are extracted automatically as the conversation unfolds
               </p>
             </div>
-          </motion.div>
-        </div>
+          </div>
+        </motion.div>
       </div>
     </section>
   );
