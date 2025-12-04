@@ -1,5 +1,4 @@
-import { Badge } from "@/components/ui/badge";
-import { Shield, MessageCircle, Sparkles, Settings, Brain, TrendingUp, Clock, BarChart3, Zap } from "lucide-react";
+import { Shield, MessageCircle, Sparkles, Brain, TrendingUp, Clock, BarChart3, Zap } from "lucide-react";
 import { motion } from "framer-motion";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
@@ -17,10 +16,8 @@ const personas = [
       { icon: Sparkles, text: "See real change from your words" },
     ],
     closer: "Your voice finally matters.",
-    gradient: "from-[hsl(var(--terracotta-primary))] to-[hsl(var(--terracotta-accent))]",
-    bgGradient: "from-[hsl(var(--terracotta-pale))] via-[hsl(var(--terracotta-pale)/0.5)] to-transparent",
-    accentColor: "hsl(var(--terracotta-primary))",
-    borderColor: "border-l-[hsl(var(--terracotta-primary))]",
+    accentColor: "hsl(var(--primary))",
+    bgColor: "bg-[hsl(var(--terracotta-pale))]",
   },
   {
     name: "Jens",
@@ -35,10 +32,8 @@ const personas = [
       { icon: Brain, text: "AI catches what surveys miss" },
     ],
     closer: "Command your people strategy.",
-    gradient: "from-[hsl(var(--success))] to-[hsl(var(--lime-pale))]",
-    bgGradient: "from-[hsl(var(--lime-pale))] via-[hsl(var(--lime-pale)/0.5)] to-transparent",
     accentColor: "hsl(var(--success))",
-    borderColor: "border-l-[hsl(var(--success))]",
+    bgColor: "bg-emerald-50",
   },
   {
     name: "Sofie",
@@ -53,10 +48,8 @@ const personas = [
       { icon: Clock, text: "Predict issues before they explode" },
     ],
     closer: "See around corners.",
-    gradient: "from-[hsl(var(--coral-primary))] to-[hsl(var(--coral-accent))]",
-    bgGradient: "from-[hsl(var(--coral-pale))] via-[hsl(var(--coral-pale)/0.5)] to-transparent",
-    accentColor: "hsl(var(--coral-primary))",
-    borderColor: "border-l-[hsl(var(--coral-primary))]",
+    accentColor: "hsl(var(--coral-accent))",
+    bgColor: "bg-[hsl(var(--coral-pale))]",
   },
 ];
 
@@ -64,22 +57,16 @@ const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.2,
-    },
+    transition: { staggerChildren: 0.15 },
   },
 };
 
 const cardVariants = {
-  hidden: { opacity: 0, y: 60, scale: 0.95 },
+  hidden: { opacity: 0, y: 40 },
   visible: {
     opacity: 1,
     y: 0,
-    scale: 1,
-    transition: {
-      duration: 0.6,
-      ease: [0.25, 0.46, 0.45, 0.94] as const,
-    },
+    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as const },
   },
 };
 
@@ -89,19 +76,19 @@ export const PersonasSection = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-20"
+          transition={{ duration: 0.5 }}
+          className="text-center mb-16"
         >
-          <Badge variant="secondary" className="bg-primary/10 text-primary border-0 mb-6 px-4 py-1.5 text-sm font-medium">
+          <p className="text-sm font-medium text-primary tracking-wide uppercase mb-4">
             Built For You
-          </Badge>
-          <h2 className="text-4xl sm:text-5xl font-bold text-foreground mb-6 tracking-tight">
+          </p>
+          <h2 className="text-3xl sm:text-4xl font-display font-semibold text-foreground mb-4">
             Find yourself in Spradley
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             We built this with you in mind. Here's how your experience transforms.
           </p>
         </motion.div>
@@ -112,87 +99,71 @@ export const PersonasSection = () => {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
-          className="grid lg:grid-cols-3 gap-8 lg:gap-10"
+          className="grid lg:grid-cols-3 gap-6 lg:gap-8"
         >
-          {personas.map((persona, index) => (
+          {personas.map((persona) => (
             <motion.div
               key={persona.name}
               variants={cardVariants}
-              className={`group relative bg-card rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 border-l-4 ${persona.borderColor}`}
-              style={{ borderLeftColor: persona.accentColor }}
+              className="group relative bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 border border-border/50"
             >
-              {/* Background gradient */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${persona.bgGradient} opacity-60`} />
+              {/* Subtle background */}
+              <div className={`absolute inset-0 ${persona.bgColor} opacity-30`} />
               
-              <div className="relative p-8 lg:p-10 flex flex-col h-full">
+              <div className="relative p-8 flex flex-col h-full">
                 {/* Avatar and identity */}
-                <div className="flex items-center gap-5 mb-8">
-                  <Avatar className="w-20 h-20 ring-4 ring-background shadow-xl">
+                <div className="flex items-center gap-4 mb-6">
+                  <Avatar className="w-16 h-16 ring-2 ring-background shadow-md">
                     <AvatarImage src={persona.avatar} alt={persona.name} className="object-cover" />
-                    <AvatarFallback className="text-2xl font-bold bg-gradient-to-br text-foreground" style={{ background: `linear-gradient(135deg, ${persona.accentColor}, transparent)` }}>
+                    <AvatarFallback className="text-xl font-semibold bg-muted">
                       {persona.name[0]}
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <h3 className="text-2xl font-bold text-foreground">{persona.name}</h3>
-                    <p className="text-muted-foreground font-medium">{persona.role}, {persona.age}</p>
+                    <h3 className="text-xl font-semibold text-foreground">{persona.name}</h3>
+                    <p className="text-muted-foreground text-sm">{persona.role}, {persona.age}</p>
                   </div>
                 </div>
 
-                {/* Quote - the emotional hook */}
-                <blockquote className="relative mb-8">
-                  <div 
-                    className="absolute -left-2 -top-2 text-6xl opacity-20 font-serif leading-none"
-                    style={{ color: persona.accentColor }}
-                  >
-                    "
-                  </div>
-                  <p className="text-lg text-foreground/90 italic pl-6 leading-relaxed">
-                    {persona.quote}
+                {/* Quote */}
+                <blockquote className="relative mb-6">
+                  <p className="text-foreground/90 italic leading-relaxed">
+                    "{persona.quote}"
                   </p>
                 </blockquote>
 
-                {/* Pain point - the before */}
-                <div className="mb-8">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-destructive/10 text-destructive text-sm font-medium">
-                    <span className="w-2 h-2 rounded-full bg-destructive animate-pulse" />
-                    The Before: {persona.painPoint}
-                  </div>
+                {/* Pain point */}
+                <div className="mb-6">
+                  <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-rose-50 text-rose-600 text-xs font-medium">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                    Before: {persona.painPoint}
+                  </span>
                 </div>
 
-                {/* Superpowers - the transformation */}
-                <div className="flex-1 mb-8">
-                  <h4 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground mb-4">
+                {/* Superpowers */}
+                <div className="flex-1 mb-6">
+                  <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground mb-3">
                     Your Superpowers
-                  </h4>
-                  <div className="space-y-4">
+                  </p>
+                  <div className="space-y-3">
                     {persona.superpowers.map((power, powerIndex) => (
-                      <motion.div
-                        key={powerIndex}
-                        initial={{ opacity: 0, x: -20 }}
-                        whileInView={{ opacity: 1, x: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ delay: 0.4 + powerIndex * 0.1, duration: 0.4 }}
-                        className="flex items-start gap-4"
-                      >
+                      <div key={powerIndex} className="flex items-start gap-3">
                         <div 
-                          className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
-                          style={{ backgroundColor: `${persona.accentColor}20` }}
+                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                          style={{ backgroundColor: `${persona.accentColor}15` }}
                         >
-                          <power.icon className="w-5 h-5" style={{ color: persona.accentColor }} />
+                          <power.icon className="w-4 h-4" style={{ color: persona.accentColor }} />
                         </div>
-                        <span className="text-foreground/80 pt-2 leading-tight">{power.text}</span>
-                      </motion.div>
+                        <span className="text-sm text-muted-foreground pt-1.5">{power.text}</span>
+                      </div>
                     ))}
                   </div>
                 </div>
 
-                {/* Emotional closer */}
-                <div 
-                  className="pt-6 border-t border-border/50"
-                >
+                {/* Closer */}
+                <div className="pt-5 border-t border-border/50">
                   <p 
-                    className="text-xl font-bold tracking-tight"
+                    className="text-lg font-semibold"
                     style={{ color: persona.accentColor }}
                   >
                     {persona.closer}
@@ -202,17 +173,6 @@ export const PersonasSection = () => {
             </motion.div>
           ))}
         </motion.div>
-
-        {/* Bottom text */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.8, duration: 0.6 }}
-          className="text-center mt-16 text-lg text-muted-foreground"
-        >
-          Which role resonates with you?
-        </motion.p>
       </div>
     </section>
   );

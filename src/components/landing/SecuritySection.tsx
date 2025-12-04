@@ -1,5 +1,4 @@
-import { Badge } from "@/components/ui/badge";
-import { Shield, Lock, Eye, FileCheck, Server, Users, CheckCircle2 } from "lucide-react";
+import { Shield, Lock, Eye, Server, CheckCircle2 } from "lucide-react";
 import { motion } from "framer-motion";
 
 const securityFeatures = [
@@ -33,48 +32,43 @@ const containerVariants = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.15,
-    },
+    transition: { staggerChildren: 0.1 },
   },
 };
 
 const itemVariants = {
-  hidden: { opacity: 0, y: 30 },
+  hidden: { opacity: 0, y: 20 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: {
-      duration: 0.5,
-      ease: [0.25, 0.46, 0.45, 0.94] as const,
-    },
+    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as const },
   },
 };
 
 export const SecuritySection = () => {
   return (
-    <section className="py-24 bg-card relative overflow-hidden">
-      {/* Subtle grid pattern */}
-      <div className="absolute inset-0 opacity-[0.03]" style={{
+    <section id="security" className="py-24 bg-card relative overflow-hidden">
+      {/* Subtle pattern */}
+      <div className="absolute inset-0 opacity-[0.02]" style={{
         backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
       }} />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         {/* Section header */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-20"
+          transition={{ duration: 0.5 }}
+          className="text-center mb-16"
         >
-          <Badge variant="secondary" className="bg-[hsl(var(--success))]/10 text-[hsl(var(--success))] border-0 mb-6 px-4 py-1.5 text-sm font-medium">
+          <p className="text-sm font-medium text-[hsl(var(--success))] tracking-wide uppercase mb-4">
             Enterprise-Grade Security
-          </Badge>
-          <h2 className="text-4xl sm:text-5xl font-bold text-foreground mb-6 tracking-tight">
+          </p>
+          <h2 className="text-3xl sm:text-4xl font-display font-semibold text-foreground mb-4">
             Trust is our foundation
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             Your employees trust you with their honest feedback. We built Spradley to be worthy of that trust.
           </p>
         </motion.div>
@@ -85,31 +79,31 @@ export const SecuritySection = () => {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-50px" }}
-          className="grid md:grid-cols-2 gap-8"
+          className="grid md:grid-cols-2 gap-6"
         >
-          {securityFeatures.map((feature, index) => (
+          {securityFeatures.map((feature) => (
             <motion.div
               key={feature.title}
               variants={itemVariants}
-              className="group relative bg-background rounded-3xl p-8 border border-border/50 hover:border-[hsl(var(--success))]/30 transition-all duration-300 hover:shadow-lg"
+              className="group bg-background rounded-xl p-8 border border-border/50 hover:border-[hsl(var(--success))]/30 transition-all duration-300 hover:shadow-md"
             >
               {/* Icon */}
-              <div className="w-14 h-14 rounded-2xl bg-[hsl(var(--success))]/10 flex items-center justify-center mb-6">
-                <feature.icon className="w-7 h-7 text-[hsl(var(--success))]" />
+              <div className="w-12 h-12 rounded-xl bg-[hsl(var(--success))]/10 flex items-center justify-center mb-5">
+                <feature.icon className="w-6 h-6 text-[hsl(var(--success))]" />
               </div>
 
               {/* Content */}
-              <h3 className="text-xl font-bold text-foreground mb-3">{feature.title}</h3>
-              <p className="text-muted-foreground mb-6 leading-relaxed">{feature.description}</p>
+              <h3 className="text-lg font-semibold text-foreground mb-2">{feature.title}</h3>
+              <p className="text-muted-foreground mb-5 leading-relaxed">{feature.description}</p>
 
               {/* Highlights */}
               <div className="flex flex-wrap gap-2">
                 {feature.highlights.map((highlight, i) => (
                   <span 
                     key={i}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[hsl(var(--success))]/5 text-[hsl(var(--success))] text-sm font-medium"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[hsl(var(--success))]/5 text-[hsl(var(--success))] text-xs font-medium"
                   >
-                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    <CheckCircle2 className="w-3 h-3" />
                     {highlight}
                   </span>
                 ))}
@@ -118,27 +112,33 @@ export const SecuritySection = () => {
           ))}
         </motion.div>
 
-        {/* Bottom trust seal */}
+        {/* Trust badges */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.5, delay: 0.4 }}
-          className="mt-20 text-center"
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="mt-16 text-center"
         >
-          <div className="inline-flex items-center gap-6 px-8 py-5 rounded-2xl bg-background border border-border/50">
+          <div className="inline-flex flex-wrap items-center justify-center gap-6 px-8 py-5 rounded-xl bg-background border border-border/50">
             <div className="flex items-center gap-2">
-              <FileCheck className="w-5 h-5 text-[hsl(var(--success))]" />
+              <div className="w-8 h-8 rounded-lg bg-[hsl(var(--success))]/10 flex items-center justify-center">
+                <Shield className="w-4 h-4 text-[hsl(var(--success))]" />
+              </div>
               <span className="text-sm font-medium text-foreground">SOC 2 Type II</span>
             </div>
-            <div className="w-px h-6 bg-border" />
+            <div className="w-px h-6 bg-border hidden sm:block" />
             <div className="flex items-center gap-2">
-              <Shield className="w-5 h-5 text-[hsl(var(--success))]" />
+              <div className="w-8 h-8 rounded-lg bg-[hsl(var(--success))]/10 flex items-center justify-center">
+                <Lock className="w-4 h-4 text-[hsl(var(--success))]" />
+              </div>
               <span className="text-sm font-medium text-foreground">ISO 27001</span>
             </div>
-            <div className="w-px h-6 bg-border" />
+            <div className="w-px h-6 bg-border hidden sm:block" />
             <div className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-[hsl(var(--success))]" />
+              <div className="w-8 h-8 rounded-lg bg-[hsl(var(--success))]/10 flex items-center justify-center">
+                <Eye className="w-4 h-4 text-[hsl(var(--success))]" />
+              </div>
               <span className="text-sm font-medium text-foreground">GDPR Ready</span>
             </div>
           </div>

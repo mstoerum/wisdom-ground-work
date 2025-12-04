@@ -1,5 +1,4 @@
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { ArrowRight, Shield, Lock } from "lucide-react";
 import { HeroInteractiveChat } from "./HeroInteractiveChat";
@@ -7,40 +6,43 @@ import { HeroInteractiveChat } from "./HeroInteractiveChat";
 export const HeroSection = () => {
   return (
     <section className="relative overflow-hidden">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[hsl(var(--terracotta-pale))] to-background" />
+      {/* Subtle background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-[hsl(var(--terracotta-pale))] via-background to-background" />
       
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+      {/* Subtle radial glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-gradient-radial from-[hsl(var(--terracotta-light)/0.3)] to-transparent opacity-50" />
+      
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           {/* Left column - Copy */}
           <div className="space-y-8">
-            <Badge variant="secondary" className="bg-[hsl(var(--butter-yellow))] text-foreground border-0">
+            <p className="text-sm font-medium text-primary tracking-wide uppercase">
               AI-Powered Employee Feedback
-            </Badge>
+            </p>
             
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-tight">
+            <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-display font-semibold text-foreground leading-[1.1]">
               Understand your people,{" "}
-              <span className="text-[hsl(var(--terracotta-primary))]">
+              <span className="text-primary">
                 not just their answers
               </span>
             </h1>
             
-            <p className="text-lg text-muted-foreground max-w-xl">
+            <p className="text-lg text-muted-foreground max-w-xl leading-relaxed">
               Spradley replaces static surveys with empathetic AI conversations 
               that uncover authentic insights. Your employees share more because 
               they feel heard—not interrogated.
             </p>
 
             {/* CTAs */}
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-4 pt-2">
               <Link to="/demo/employee">
-                <Button size="lg" className="w-full sm:w-auto gap-2">
+                <Button size="lg" className="w-full sm:w-auto gap-2 font-medium shadow-sm">
                   Try the Experience
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </Link>
               <Link to="/demo/hr">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto font-medium">
                   View HR Dashboard
                 </Button>
               </Link>
@@ -61,9 +63,9 @@ export const HeroSection = () => {
 
           {/* Right column - Interactive Chat */}
           <div className="relative">
-            {/* Decorative elements */}
-            <div className="absolute -top-8 -right-8 w-32 h-32 bg-[hsl(var(--butter-yellow))] rounded-full opacity-50 blur-3xl" />
-            <div className="absolute -bottom-8 -left-8 w-40 h-40 bg-[hsl(var(--coral-pink))] rounded-full opacity-30 blur-3xl" />
+            {/* Decorative elements - softened */}
+            <div className="absolute -top-12 -right-12 w-40 h-40 bg-[hsl(var(--butter-yellow))] rounded-full opacity-20 blur-3xl" />
+            <div className="absolute -bottom-12 -left-12 w-48 h-48 bg-[hsl(var(--coral-pink))] rounded-full opacity-15 blur-3xl" />
             
             <HeroInteractiveChat />
           </div>

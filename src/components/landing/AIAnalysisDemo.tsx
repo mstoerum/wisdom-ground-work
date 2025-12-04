@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Sparkles, Tag } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface ConversationStep {
   role: "assistant" | "user";
@@ -37,37 +37,36 @@ const conversationSteps: ConversationStep[] = [
 
 const allThemes = ["Work-Life Balance", "Productivity", "Workload", "Management", "Team Culture"];
 
-// Distinct color map for each theme
 const themeColors: Record<string, { bg: string; border: string; dot: string; text: string }> = {
   "Work-Life Balance": {
     bg: "bg-[hsl(var(--terracotta-pale))]",
-    border: "border-[hsl(var(--terracotta-primary))]",
-    dot: "bg-[hsl(var(--terracotta-primary))]",
-    text: "text-[hsl(var(--terracotta-primary))]",
+    border: "border-primary/30",
+    dot: "bg-primary",
+    text: "text-primary",
   },
   "Productivity": {
-    bg: "bg-[hsl(210_60%_95%)]",
-    border: "border-[hsl(210_60%_50%)]",
-    dot: "bg-[hsl(210_60%_50%)]",
-    text: "text-[hsl(210_60%_45%)]",
+    bg: "bg-blue-50",
+    border: "border-blue-300/50",
+    dot: "bg-blue-500",
+    text: "text-blue-600",
   },
   "Workload": {
-    bg: "bg-[hsl(38_80%_92%)]",
-    border: "border-[hsl(var(--warning))]",
-    dot: "bg-[hsl(var(--warning))]",
-    text: "text-[hsl(38_80%_40%)]",
+    bg: "bg-amber-50",
+    border: "border-amber-300/50",
+    dot: "bg-amber-500",
+    text: "text-amber-600",
   },
   "Management": {
-    bg: "bg-[hsl(142_65%_92%)]",
-    border: "border-[hsl(var(--success))]",
-    dot: "bg-[hsl(var(--success))]",
-    text: "text-[hsl(142_65%_35%)]",
+    bg: "bg-emerald-50",
+    border: "border-emerald-300/50",
+    dot: "bg-emerald-500",
+    text: "text-emerald-600",
   },
   "Team Culture": {
-    bg: "bg-[hsl(280_60%_94%)]",
-    border: "border-[hsl(280_60%_55%)]",
-    dot: "bg-[hsl(280_60%_55%)]",
-    text: "text-[hsl(280_60%_45%)]",
+    bg: "bg-purple-50",
+    border: "border-purple-300/50",
+    dot: "bg-purple-500",
+    text: "text-purple-600",
   },
 };
 
@@ -77,18 +76,15 @@ export const AIAnalysisDemo = () => {
   const [hasCompleted, setHasCompleted] = useState(false);
 
   useEffect(() => {
-    // Don't run if already completed
     if (hasCompleted) return;
 
     const interval = setInterval(() => {
       setVisibleSteps((prev) => {
         if (prev >= conversationSteps.length) {
-          // Stop playing - don't reset
           setHasCompleted(true);
           return prev;
         }
         
-        // Add themes from current step
         const currentStep = conversationSteps[prev];
         if (currentStep?.detectedThemes) {
           setDetectedThemes((prevThemes) => {
@@ -112,11 +108,11 @@ export const AIAnalysisDemo = () => {
   const getSentimentColor = (sentiment?: string) => {
     switch (sentiment) {
       case "positive":
-        return "text-[hsl(var(--success))]";
+        return "text-emerald-600";
       case "negative":
-        return "text-[hsl(var(--destructive))]";
+        return "text-rose-600";
       default:
-        return "text-[hsl(var(--warning))]";
+        return "text-amber-600";
     }
   };
 
@@ -125,14 +121,13 @@ export const AIAnalysisDemo = () => {
     
     let result = content;
     highlights.forEach((phrase, index) => {
-      // Assign theme color based on index pattern - distribute colors harmoniously
       const themeKey = themes?.[Math.min(index, (themes?.length || 1) - 1)] || "Work-Life Balance";
       const colorMap: Record<string, string> = {
-        "Work-Life Balance": "border-[hsl(var(--terracotta-primary))]",
-        "Productivity": "border-[hsl(210_60%_50%)]",
-        "Workload": "border-[hsl(var(--warning))]",
-        "Management": "border-[hsl(var(--success))]",
-        "Team Culture": "border-[hsl(280_60%_55%)]",
+        "Work-Life Balance": "border-primary/60",
+        "Productivity": "border-blue-400/60",
+        "Workload": "border-amber-400/60",
+        "Management": "border-emerald-400/60",
+        "Team Culture": "border-purple-400/60",
       };
       const borderClass = colorMap[themeKey] || colorMap["Work-Life Balance"];
       result = result.replace(
@@ -148,27 +143,39 @@ export const AIAnalysisDemo = () => {
   };
 
   return (
-    <section id="how-it-works" className="py-20 bg-muted/30">
+    <section id="how-it-works" className="py-24 bg-muted/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
-        <div className="text-center mb-16">
-          <Badge variant="secondary" className="bg-[hsl(var(--butter-yellow))] text-foreground border-0 mb-4">
-            <Sparkles className="w-3 h-3 mr-1" />
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-16"
+        >
+          <p className="text-sm font-medium text-primary tracking-wide uppercase mb-4 flex items-center justify-center gap-2">
+            <Sparkles className="w-4 h-4" />
             AI-Powered Analysis
-          </Badge>
-          <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
+          </p>
+          <h2 className="text-3xl sm:text-4xl font-display font-semibold text-foreground mb-4">
             Watch insights emerge in real-time
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             As employees share, our AI identifies themes, sentiment, and urgency—giving you understanding, not just data.
           </p>
-        </div>
+        </motion.div>
 
-        <div className="grid lg:grid-cols-5 gap-8 items-start">
+        <div className="grid lg:grid-cols-5 gap-6 lg:gap-8 items-start">
           {/* Conversation panel */}
-          <div className="lg:col-span-3 bg-card border-2 border-foreground rounded-2xl overflow-hidden">
-            <div className="bg-[hsl(var(--terracotta-primary))] px-4 py-3 flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-white/30" />
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+            className="lg:col-span-3 bg-card rounded-xl overflow-hidden shadow-sm border border-border/50"
+          >
+            <div className="bg-gradient-to-r from-primary/90 to-[hsl(var(--coral-accent)/0.85)] px-5 py-3.5 flex items-center gap-2">
+              <div className="w-2.5 h-2.5 rounded-full bg-white/40" />
               <span className="text-sm font-medium text-white">Live Conversation</span>
             </div>
             
@@ -179,15 +186,15 @@ export const AIAnalysisDemo = () => {
                   className={`flex gap-3 ${step.role === "user" ? "justify-end" : "justify-start"} animate-fade-in`}
                 >
                   {step.role === "assistant" && (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--terracotta-primary))] to-[hsl(var(--coral-pink))] flex-shrink-0" />
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-[hsl(var(--coral-accent))] flex-shrink-0 opacity-90" />
                   )}
                   
                   <div className={`max-w-[80%] ${step.role === "user" ? "order-first" : ""}`}>
                     <div
                       className={`px-4 py-3 rounded-2xl ${
                         step.role === "user"
-                          ? "bg-[hsl(var(--coral-pink))] text-foreground rounded-tr-md"
-                          : "bg-muted text-foreground rounded-tl-md"
+                          ? "bg-primary/10 text-foreground rounded-tr-sm"
+                          : "bg-muted/80 text-foreground rounded-tl-sm"
                       }`}
                     >
                       <p 
@@ -198,24 +205,22 @@ export const AIAnalysisDemo = () => {
                       />
                     </div>
                     
-                    {/* Detected themes badge - color-coded */}
                     {step.detectedThemes && step.detectedThemes.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2 animate-fade-in">
+                      <div className="flex flex-wrap gap-1.5 mt-2 animate-fade-in">
                         {step.detectedThemes.map((theme) => {
                           const colors = getThemeColor(theme);
                           return (
-                            <Badge 
+                            <span 
                               key={theme} 
-                              variant="outline" 
-                              className={`text-xs bg-background ${colors.border} ${colors.text}`}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}
                             >
-                              <Tag className="w-2.5 h-2.5 mr-1" />
+                              <Tag className="w-2.5 h-2.5" />
                               {theme}
-                            </Badge>
+                            </span>
                           );
                         })}
                         {step.sentiment && (
-                          <span className={`text-xs ${getSentimentColor(step.sentiment)}`}>
+                          <span className={`text-xs font-medium ${getSentimentColor(step.sentiment)}`}>
                             • {step.sentiment}
                           </span>
                         )}
@@ -224,29 +229,35 @@ export const AIAnalysisDemo = () => {
                   </div>
 
                   {step.role === "user" && (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--butter-yellow))] to-[hsl(var(--coral-pink))] flex-shrink-0" />
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--butter-yellow))] to-[hsl(var(--coral-pink))] flex-shrink-0 opacity-90" />
                   )}
                 </div>
               ))}
               
               {visibleSteps < conversationSteps.length && (
                 <div className="flex gap-3 animate-fade-in">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--terracotta-primary))] to-[hsl(var(--coral-pink))] flex-shrink-0" />
-                  <div className="bg-muted px-4 py-3 rounded-2xl rounded-tl-md">
-                    <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-pulse" />
-                      <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-pulse [animation-delay:150ms]" />
-                      <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-pulse [animation-delay:300ms]" />
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-[hsl(var(--coral-accent))] flex-shrink-0 opacity-90" />
+                  <div className="bg-muted/80 px-4 py-3 rounded-2xl rounded-tl-sm">
+                    <div className="flex gap-1.5">
+                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse" />
+                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse [animation-delay:150ms]" />
+                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse [animation-delay:300ms]" />
                     </div>
                   </div>
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
 
-          {/* Themes panel - color-coded */}
-          <div className="lg:col-span-2 bg-card border-2 border-foreground rounded-2xl overflow-hidden">
-            <div className="bg-foreground px-4 py-3 flex items-center gap-2">
+          {/* Themes panel */}
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="lg:col-span-2 bg-card rounded-xl overflow-hidden shadow-sm border border-border/50"
+          >
+            <div className="bg-foreground px-5 py-3.5 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-background" />
               <span className="text-sm font-medium text-background">Themes Identified</span>
             </div>
@@ -266,23 +277,21 @@ export const AIAnalysisDemo = () => {
                       }`}
                     >
                       <div
-                        className={`w-3 h-3 rounded-full transition-colors ${
-                          isDetected
-                            ? colors.dot
-                            : "bg-muted-foreground/30"
+                        className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                          isDetected ? colors.dot : "bg-muted-foreground/30"
                         }`}
                       />
                       <span
-                        className={`text-sm font-medium transition-colors ${
+                        className={`text-sm font-medium transition-colors flex-1 ${
                           isDetected ? "text-foreground" : "text-muted-foreground"
                         }`}
                       >
                         {theme}
                       </span>
                       {isDetected && (
-                        <Badge className={`ml-auto text-xs ${colors.dot} animate-scale-in`}>
+                        <span className={`text-xs font-medium ${colors.text} animate-scale-in`}>
                           Detected
-                        </Badge>
+                        </span>
                       )}
                     </div>
                   );
@@ -293,7 +302,7 @@ export const AIAnalysisDemo = () => {
                 Themes are extracted automatically as the conversation unfolds
               </p>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
     </section>

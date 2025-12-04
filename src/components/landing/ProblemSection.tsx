@@ -1,4 +1,5 @@
 import { MessageSquareOff, TrendingDown, Clock } from "lucide-react";
+import { motion } from "framer-motion";
 
 const painPoints = [
   {
@@ -18,39 +19,69 @@ const painPoints = [
   },
 ];
 
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.15 },
+  },
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] as const },
+  },
+};
+
 export const ProblemSection = () => {
   return (
-    <section className="bg-[hsl(var(--coral-accent))] py-20">
+    <section className="py-24 bg-gradient-to-b from-[hsl(var(--coral-pale))] to-background">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
-        <div className="text-center mb-16">
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-100px" }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-16"
+        >
+          <h2 className="text-3xl sm:text-4xl font-display font-semibold text-foreground mb-4">
             Traditional surveys are broken
           </h2>
-          <p className="text-lg text-white/80 max-w-2xl mx-auto">
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             You're collecting data, but are you really understanding your people?
           </p>
-        </div>
+        </motion.div>
 
         {/* Pain point cards */}
-        <div className="grid md:grid-cols-3 gap-8">
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-50px" }}
+          className="grid md:grid-cols-3 gap-6 lg:gap-8"
+        >
           {painPoints.map((point, index) => (
-            <div
+            <motion.div
               key={index}
-              className="bg-white/10 backdrop-blur-sm rounded-2xl p-8 border border-white/20 hover:bg-white/15 transition-colors"
+              variants={itemVariants}
+              className="bg-card rounded-xl p-8 shadow-sm hover:shadow-md transition-shadow border border-border/50"
             >
-              <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center mb-6">
-                <point.icon className="w-7 h-7 text-white" />
+              <div className="w-12 h-12 rounded-xl bg-[hsl(var(--coral-accent)/0.1)] flex items-center justify-center mb-6">
+                <point.icon className="w-6 h-6 text-[hsl(var(--coral-accent))]" />
               </div>
-              <h3 className="text-xl font-semibold text-white mb-3">
+              <h3 className="text-lg font-semibold text-foreground mb-3">
                 {point.title}
               </h3>
-              <p className="text-white/80 leading-relaxed">
+              <p className="text-muted-foreground leading-relaxed">
                 {point.description}
               </p>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );
