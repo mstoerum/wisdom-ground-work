@@ -28,6 +28,7 @@ interface EmployeeSurveyFlowProps {
   onExit?: () => void;
   quickPreview?: boolean;
   publicLinkId?: string;
+  skipIntro?: boolean; // Skip consent and anonymization screens for demo
 }
 
 /**
@@ -41,11 +42,38 @@ export const EmployeeSurveyFlow = ({
   onExit,
   quickPreview = false,
   publicLinkId,
+  skipIntro = false,
 }: EmployeeSurveyFlowProps) => {
   const { isPreviewMode } = usePreviewMode();
-  const [step, setStep] = useState<ConversationStep>("consent");
+  // Skip directly to chat for demo mode (skipIntro)
+  const [step, setStep] = useState<ConversationStep>(skipIntro ? "chat" : "consent");
+  const [autoStarted, setAutoStarted] = useState(false);
   const { conversationId, startConversation, endConversation } = useConversation(publicLinkId);
   const { toast } = useToast();
+
+  // Auto-start conversation for skipIntro mode
+  const autoStartConversation = async () => {
+    if (autoStarted || !surveyId) return;
+    setAutoStarted(true);
+    
+    try {
+      const sessionId = await startConversation(surveyId, null, publicLinkId);
+      if (!sessionId) {
+        toast({
+          title: "Error",
+          description: "Failed to start conversation. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error auto-starting conversation:", error);
+    }
+  };
+
+  // Effect to auto-start conversation when skipIntro is true
+  if (skipIntro && step === "chat" && !conversationId && !autoStarted) {
+    autoStartConversation();
+  }
 
   const handleConsent = async () => {
     if (!isPreviewMode && surveyId && surveyDetails) {
@@ -237,9 +265,10 @@ export const EmployeeSurveyFlow = ({
                 conversationId={conversationId}
                 onComplete={handleChatComplete}
                 onSaveAndExit={handleSaveAndExit}
-                showTrustFlow={!publicLinkId}
-                skipTrustFlow={!!publicLinkId}
+                showTrustFlow={!publicLinkId && !skipIntro}
+                skipTrustFlow={!!publicLinkId || skipIntro}
                 publicLinkId={publicLinkId}
+                minimalUI={skipIntro}
               />
             </ChatErrorBoundary>
           )}

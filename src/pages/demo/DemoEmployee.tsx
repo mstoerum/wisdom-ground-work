@@ -103,7 +103,7 @@ export default function DemoEmployee() {
         </div>
       </div>
 
-      {/* Real Survey Flow in Preview Mode */}
+      {/* Real Survey Flow in Preview Mode - Skip intro for demo */}
       <PreviewModeProvider
         isPreviewMode={true}
         previewSurveyId={demoSurveyData.id}
@@ -115,6 +115,7 @@ export default function DemoEmployee() {
           onComplete={handleComplete}
           onExit={handleExit}
           quickPreview={true}
+          skipIntro={true}
         />
       </PreviewModeProvider>
     </div>
