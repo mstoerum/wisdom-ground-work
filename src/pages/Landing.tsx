@@ -6,6 +6,7 @@ import { AIAnalysisDemo } from "@/components/landing/AIAnalysisDemo";
 import { ComparisonSection } from "@/components/landing/ComparisonSection";
 import { PersonasSection } from "@/components/landing/PersonasSection";
 import { SecuritySection } from "@/components/landing/SecuritySection";
+import { Footer } from "@/components/landing/Footer";
 
 const Landing = () => {
   return (
@@ -20,6 +21,7 @@ const Landing = () => {
         <PersonasSection />
         <SecuritySection />
       </main>
+      <Footer />
     </div>
   );
 };
