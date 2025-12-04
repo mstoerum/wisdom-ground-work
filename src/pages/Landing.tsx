@@ -5,6 +5,7 @@ import { DifferenceSection } from "@/components/landing/DifferenceSection";
 import { AIAnalysisDemo } from "@/components/landing/AIAnalysisDemo";
 import { ComparisonSection } from "@/components/landing/ComparisonSection";
 import { PersonasSection } from "@/components/landing/PersonasSection";
+import { SecuritySection } from "@/components/landing/SecuritySection";
 
 const Landing = () => {
   return (
@@ -17,6 +18,7 @@ const Landing = () => {
         <AIAnalysisDemo />
         <ComparisonSection />
         <PersonasSection />
+        <SecuritySection />
       </main>
     </div>
   );
