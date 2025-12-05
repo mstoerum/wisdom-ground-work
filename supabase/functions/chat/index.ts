@@ -10,6 +10,8 @@ const corsHeaders = {
 // Constants
 const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
 const RATE_LIMIT_MAX_REQUESTS = 10;
+const PREVIEW_RATE_LIMIT_MAX_REQUESTS = 5; // Stricter limit for unauthenticated preview mode
+const PREVIEW_RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
 const MAX_MESSAGE_LENGTH = 2000;
 const MIN_EXCHANGES = 4; // Minimum exchanges for meaningful conversation
 const MAX_EXCHANGES = 20; // Maximum exchanges to prevent overly long conversations
@@ -18,6 +20,7 @@ const AI_MODEL_LITE = "google/gemini-2.5-flash-lite";
 
 // Rate limiting map (simple in-memory, production should use Redis)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+const previewRateLimitMap = new Map<string, { count: number; resetTime: number }>();
 
 /**
  * Check if user has exceeded rate limit
@@ -32,6 +35,26 @@ const checkRateLimit = (userId: string): boolean => {
   }
   
   if (limit.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+  
+  limit.count++;
+  return true;
+};
+
+/**
+ * Check rate limit for preview/unauthenticated requests (IP-based, stricter)
+ */
+const checkPreviewRateLimit = (identifier: string): boolean => {
+  const now = Date.now();
+  const limit = previewRateLimitMap.get(identifier);
+  
+  if (!limit || now > limit.resetTime) {
+    previewRateLimitMap.set(identifier, { count: 1, resetTime: now + PREVIEW_RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  
+  if (limit.count >= PREVIEW_RATE_LIMIT_MAX_REQUESTS) {
     return false;
   }
   
@@ -395,6 +418,19 @@ serve(async (req) => {
     const isPreviewMode = testMode || (conversationId && typeof conversationId === 'string' && conversationId.startsWith("preview-"));
     
      if (isPreviewMode) {
+      // Apply stricter IP-based rate limiting for unauthenticated preview requests
+      const clientIP = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
+                       req.headers.get("x-real-ip") || 
+                       "unknown";
+      const rateLimitKey = `preview_${clientIP}_${conversationId.substring(0, 20)}`;
+      
+      if (!checkPreviewRateLimit(rateLimitKey)) {
+        console.warn(`Preview rate limit exceeded for: ${clientIP}`);
+        return new Response(
+          JSON.stringify({ error: "Too many requests. Please wait a moment and try again." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       // Handle preview mode without database access
       const turnCount = messages.filter((m: any) => m.role === "user").length;
       
