@@ -188,8 +188,18 @@ export const AIAnalysisDemo = () => {
   const [detectedThemes, setDetectedThemes] = useState<string[]>([]);
   const [hasCompleted, setHasCompleted] = useState(false);
   const [phase, setPhase] = useState<Phase>("conversation");
+  const [hoveredTheme, setHoveredTheme] = useState<string | null>(null);
 
   const dots = useMemo(() => generateDotClusters(), []);
+  
+  // Count dots per theme for tooltip
+  const dotsPerTheme = useMemo(() => {
+    const counts: Record<string, number> = {};
+    dots.forEach(dot => {
+      counts[dot.theme] = (counts[dot.theme] || 0) + 1;
+    });
+    return counts;
+  }, [dots]);
 
   // Conversation progression
   useEffect(() => {
@@ -487,31 +497,42 @@ export const AIAnalysisDemo = () => {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                 className="absolute inset-0"
+                onMouseLeave={() => setHoveredTheme(null)}
               >
                 <div className="relative w-full h-[500px]">
                   {/* Dots */}
-                  {dots.map((dot, index) => (
-                    <motion.div
-                      key={dot.id}
-                      initial={{ opacity: 0, scale: 0 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{
-                        delay: index * 0.008,
-                        duration: 0.4,
-                        ease: [0.16, 1, 0.3, 1],
-                      }}
-                      className={`absolute rounded-full ${dot.isCurrent ? "z-10" : ""}`}
-                      style={{
-                        left: `${dot.x}%`,
-                        top: `${dot.y}%`,
-                        width: dot.isCurrent ? "12px" : "6px",
-                        height: dot.isCurrent ? "12px" : "6px",
-                        backgroundColor: themeColors[dot.theme]?.dot || "hsl(var(--muted-foreground))",
-                        opacity: dot.isCurrent ? 1 : 0.6,
-                        boxShadow: dot.isCurrent ? `0 0 20px ${themeColors[dot.theme]?.dot}` : "none",
-                      }}
-                    />
-                  ))}
+                  {dots.map((dot, index) => {
+                    const isHighlighted = hoveredTheme === null || hoveredTheme === dot.theme;
+                    const dotScale = hoveredTheme === dot.theme ? 1.5 : hoveredTheme !== null ? 0.8 : 1;
+                    
+                    return (
+                      <motion.div
+                        key={dot.id}
+                        initial={{ opacity: 0, scale: 0 }}
+                        animate={{ 
+                          opacity: isHighlighted ? (dot.isCurrent ? 1 : 0.7) : 0.15, 
+                          scale: dot.isCurrent ? 1.2 : dotScale
+                        }}
+                        transition={{
+                          delay: index * 0.008,
+                          duration: 0.2,
+                          ease: "easeOut",
+                        }}
+                        onMouseEnter={() => setHoveredTheme(dot.theme)}
+                        className={`absolute rounded-full cursor-pointer transition-all duration-200 ${dot.isCurrent ? "z-10" : ""}`}
+                        style={{
+                          left: `${dot.x}%`,
+                          top: `${dot.y}%`,
+                          width: dot.isCurrent ? "12px" : "6px",
+                          height: dot.isCurrent ? "12px" : "6px",
+                          backgroundColor: themeColors[dot.theme]?.dot || "hsl(var(--muted-foreground))",
+                          boxShadow: dot.isCurrent || hoveredTheme === dot.theme 
+                            ? `0 0 20px ${themeColors[dot.theme]?.dot}` 
+                            : "none",
+                        }}
+                      />
+                    );
+                  })}
 
                   {/* Theme cluster labels */}
                   {allThemes.map((theme, index) => {
@@ -523,18 +544,26 @@ export const AIAnalysisDemo = () => {
                       "Team Culture": { x: 70, y: 90 },
                     };
                     const pos = positions[theme];
+                    const isHovered = hoveredTheme === theme;
                     
                     return (
                       <motion.div
                         key={theme}
                         initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.6 + index * 0.1, duration: 0.4 }}
-                        className="absolute text-xs font-medium text-muted-foreground"
+                        animate={{ 
+                          opacity: hoveredTheme === null || isHovered ? 1 : 0.3,
+                          y: 0,
+                          scale: isHovered ? 1.1 : 1
+                        }}
+                        transition={{ delay: 0.6 + index * 0.1, duration: 0.2 }}
+                        onMouseEnter={() => setHoveredTheme(theme)}
+                        className="absolute text-xs font-medium cursor-pointer transition-all duration-200"
                         style={{
                           left: `${pos.x}%`,
                           top: `${pos.y}%`,
                           transform: "translateX(-50%)",
+                          color: isHovered ? themeColors[theme]?.dot : "hsl(var(--muted-foreground))",
+                          fontWeight: isHovered ? 600 : 500,
                         }}
                       >
                         {theme}
@@ -542,11 +571,82 @@ export const AIAnalysisDemo = () => {
                     );
                   })}
 
+                  {/* Floating Tooltip */}
+                  <AnimatePresence>
+                    {hoveredTheme && phase === "dotField" && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 5, scale: 0.95 }}
+                        transition={{ duration: 0.15, ease: "easeOut" }}
+                        className="absolute z-30 bg-card rounded-xl shadow-lg border border-border/50 p-4 min-w-[200px] pointer-events-none"
+                        style={{
+                          left: `${(() => {
+                            const positions: Record<string, number> = {
+                              "Work-Life Balance": 20,
+                              "Productivity": 50,
+                              "Workload": 75,
+                              "Management": 35,
+                              "Team Culture": 65,
+                            };
+                            return positions[hoveredTheme] || 50;
+                          })()}%`,
+                          top: `${(() => {
+                            const positions: Record<string, number> = {
+                              "Work-Life Balance": 8,
+                              "Productivity": 0,
+                              "Workload": 12,
+                              "Management": 55,
+                              "Team Culture": 58,
+                            };
+                            return positions[hoveredTheme] || 10;
+                          })()}%`,
+                          transform: "translateX(-50%)",
+                        }}
+                      >
+                        {/* Theme name with color */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <div 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: themeColors[hoveredTheme]?.dot }}
+                          />
+                          <span 
+                            className="font-semibold text-sm"
+                            style={{ color: themeColors[hoveredTheme]?.dot }}
+                          >
+                            {hoveredTheme}
+                          </span>
+                        </div>
+                        
+                        {/* Conversation count */}
+                        <p className="text-xs text-muted-foreground mb-2">
+                          {dotsPerTheme[hoveredTheme] || 0} conversations
+                        </p>
+                        
+                        {/* Health score */}
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className={`w-2 h-2 rounded-full ${getHealthColor(themeInsights[hoveredTheme]?.healthLabel)}`} />
+                          <span className="text-lg font-bold text-foreground">
+                            {themeInsights[hoveredTheme]?.healthScore}
+                          </span>
+                          <span className="text-xs text-muted-foreground capitalize">
+                            {themeInsights[hoveredTheme]?.healthLabel}
+                          </span>
+                        </div>
+                        
+                        {/* Key insight */}
+                        <p className="text-xs text-muted-foreground border-t border-border/50 pt-2">
+                          {themeInsights[hoveredTheme]?.keyInsight}
+                        </p>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                   {/* Current conversation indicator */}
                   <motion.div
                     initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.3, duration: 0.4 }}
+                    animate={{ opacity: hoveredTheme ? 0.3 : 1 }}
+                    transition={{ delay: 0.3, duration: 0.2 }}
                     className="absolute text-xs font-medium text-primary"
                     style={{
                       left: "20%",
