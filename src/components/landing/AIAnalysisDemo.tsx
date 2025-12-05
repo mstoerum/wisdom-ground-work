@@ -469,19 +469,38 @@ export const AIAnalysisDemo = () => {
             </div>
           </motion.div>
 
-          {/* Narrative text: "From one voice..." */}
+          {/* Narrative text: "From one voice..." → "...to the full picture" */}
           <AnimatePresence>
             {(phase === "zooming" || phase === "dotField") && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
+                className="absolute top-4 left-0 right-0 z-20 text-center pointer-events-none"
               >
-                <h3 className="text-3xl sm:text-4xl font-display font-semibold text-foreground">
+                <motion.h3
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ 
+                    opacity: phase === "dotField" ? 0.5 : 1,
+                    y: 0
+                  }}
+                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                  className="text-2xl sm:text-3xl font-display font-semibold text-foreground"
+                >
                   From one voice...
-                </h3>
+                </motion.h3>
+                <motion.h3
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ 
+                    opacity: phase === "dotField" ? 1 : 0,
+                    y: phase === "dotField" ? 0 : 10
+                  }}
+                  transition={{ delay: 0.3, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  className="text-2xl sm:text-3xl font-display font-semibold text-primary mt-1"
+                >
+                  ...to the full picture
+                </motion.h3>
               </motion.div>
             )}
           </AnimatePresence>
@@ -498,41 +517,49 @@ export const AIAnalysisDemo = () => {
                 onMouseLeave={() => setHoveredTheme(null)}
               >
                 <div className="relative w-full h-[500px]">
-                  {/* Dots */}
-                  {dots.map((dot, index) => {
-                    const isHighlighted = hoveredTheme === null || hoveredTheme === dot.theme;
-                    const dotScale = hoveredTheme === dot.theme ? 1.5 : hoveredTheme !== null ? 0.8 : 1;
-                    
-                    return (
-                      <motion.div
-                        key={dot.id}
-                        initial={{ opacity: 0, scale: 0 }}
-                        animate={{ 
-                          opacity: isHighlighted ? (dot.isCurrent ? 1 : 0.7) : 0.15, 
-                          scale: dot.isCurrent ? 1.2 : dotScale
-                        }}
-                        transition={{
-                          delay: index * 0.008,
-                          duration: 0.2,
-                          ease: "easeOut",
-                        }}
-                        onMouseEnter={() => setHoveredTheme(dot.theme)}
-                        className={`absolute rounded-full cursor-pointer transition-all duration-200 ${dot.isCurrent ? "z-10" : ""}`}
-                        style={{
-                          left: `${dot.x}%`,
-                          top: `${dot.y}%`,
-                          width: dot.isCurrent ? "12px" : "6px",
-                          height: dot.isCurrent ? "12px" : "6px",
-                          backgroundColor: themeColors[dot.theme]?.dot || "hsl(var(--muted-foreground))",
-                          boxShadow: dot.isCurrent || hoveredTheme === dot.theme 
-                            ? `0 0 20px ${themeColors[dot.theme]?.dot}` 
-                            : "none",
-                        }}
-                      />
-                    );
-                  })}
+                  {/* Dots - using CSS transitions for instant hover response */}
+                  {dots.map((dot, index) => (
+                    <motion.div
+                      key={dot.id}
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{ opacity: 0.7, scale: 1 }}
+                      transition={{
+                        delay: index * 0.005,
+                        duration: 0.25,
+                        ease: "easeOut",
+                      }}
+                      onMouseEnter={() => setHoveredTheme(dot.theme)}
+                      className={`absolute rounded-full cursor-pointer ${dot.isCurrent ? "z-10" : ""}`}
+                      style={{
+                        left: `${dot.x}%`,
+                        top: `${dot.y}%`,
+                        width: dot.isCurrent ? "12px" : "6px",
+                        height: dot.isCurrent ? "12px" : "6px",
+                        backgroundColor: themeColors[dot.theme]?.dot || "hsl(var(--muted-foreground))",
+                        // CSS transitions for instant hover response
+                        opacity: hoveredTheme === null 
+                          ? (dot.isCurrent ? 1 : 0.7) 
+                          : hoveredTheme === dot.theme 
+                            ? (dot.isCurrent ? 1 : 0.85) 
+                            : 0.12,
+                        transform: `scale(${
+                          dot.isCurrent 
+                            ? 1.2 
+                            : hoveredTheme === dot.theme 
+                              ? 1.4 
+                              : hoveredTheme !== null 
+                                ? 0.8 
+                                : 1
+                        })`,
+                        boxShadow: dot.isCurrent || hoveredTheme === dot.theme 
+                          ? `0 0 20px ${themeColors[dot.theme]?.dot}` 
+                          : "none",
+                        transition: "opacity 80ms ease-out, transform 80ms ease-out, box-shadow 80ms ease-out",
+                      }}
+                    />
+                  ))}
 
-                  {/* Theme cluster labels */}
+                  {/* Theme cluster labels - CSS transitions for instant response */}
                   {allThemes.map((theme, index) => {
                     const positions: Record<string, { x: number; y: number }> = {
                       "Work-Life Balance": { x: 20, y: 48 },
@@ -548,20 +575,18 @@ export const AIAnalysisDemo = () => {
                       <motion.div
                         key={theme}
                         initial={{ opacity: 0, y: 10 }}
-                        animate={{ 
-                          opacity: hoveredTheme === null || isHovered ? 1 : 0.3,
-                          y: 0,
-                          scale: isHovered ? 1.1 : 1
-                        }}
-                        transition={{ delay: 0.6 + index * 0.1, duration: 0.2 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.6 + index * 0.08, duration: 0.3 }}
                         onMouseEnter={() => setHoveredTheme(theme)}
-                        className="absolute text-xs font-medium cursor-pointer transition-all duration-200"
+                        className="absolute text-xs cursor-pointer"
                         style={{
                           left: `${pos.x}%`,
                           top: `${pos.y}%`,
-                          transform: "translateX(-50%)",
+                          transform: `translateX(-50%) scale(${isHovered ? 1.1 : 1})`,
+                          opacity: hoveredTheme === null || isHovered ? 1 : 0.3,
                           color: isHovered ? themeColors[theme]?.dot : "hsl(var(--muted-foreground))",
                           fontWeight: isHovered ? 600 : 500,
+                          transition: "opacity 80ms ease-out, transform 80ms ease-out, color 80ms ease-out",
                         }}
                       >
                         {theme}
