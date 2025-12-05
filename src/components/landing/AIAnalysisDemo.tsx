@@ -27,7 +27,7 @@ interface ConversationDot {
   isCurrent?: boolean;
 }
 
-type Phase = "conversation" | "zooming" | "dotField" | "dashboard";
+type Phase = "conversation" | "zooming" | "dotField";
 
 const conversationSteps: ConversationStep[] = [
   {
@@ -238,12 +238,10 @@ export const AIAnalysisDemo = () => {
 
     const timer1 = setTimeout(() => setPhase("zooming"), 1500);
     const timer2 = setTimeout(() => setPhase("dotField"), 2700);
-    const timer3 = setTimeout(() => setPhase("dashboard"), 4200);
 
     return () => {
       clearTimeout(timer1);
       clearTimeout(timer2);
-      clearTimeout(timer3);
     };
   }, [hasCompleted]);
 
@@ -313,13 +311,13 @@ export const AIAnalysisDemo = () => {
           <motion.div
             initial={{ opacity: 1, scale: 1 }}
             animate={{
-              opacity: phase === "zooming" ? 0.8 : phase === "dotField" || phase === "dashboard" ? 0 : 1,
-              scale: phase === "zooming" ? 0.6 : phase === "dotField" || phase === "dashboard" ? 0.1 : 1,
+              opacity: phase === "zooming" ? 0.8 : phase === "dotField" ? 0 : 1,
+              scale: phase === "zooming" ? 0.6 : phase === "dotField" ? 0.1 : 1,
               y: phase === "zooming" ? -50 : 0,
             }}
             transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
             className={`grid lg:grid-cols-5 gap-6 lg:gap-8 items-start ${
-              phase === "dotField" || phase === "dashboard" ? "pointer-events-none absolute inset-0" : ""
+              phase === "dotField" ? "pointer-events-none absolute inset-0" : ""
             }`}
           >
             {/* Conversation panel */}
@@ -490,10 +488,10 @@ export const AIAnalysisDemo = () => {
 
           {/* Phase 3: Dot Field */}
           <AnimatePresence>
-            {(phase === "dotField" || phase === "dashboard") && (
+            {phase === "dotField" && (
               <motion.div
                 initial={{ opacity: 0 }}
-                animate={{ opacity: phase === "dashboard" ? 0.15 : 1 }}
+                animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                 className="absolute inset-0"
@@ -573,7 +571,7 @@ export const AIAnalysisDemo = () => {
 
                   {/* Floating Tooltip */}
                   <AnimatePresence>
-                    {hoveredTheme && phase === "dotField" && (
+                    {hoveredTheme && (
                       <motion.div
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -657,87 +655,28 @@ export const AIAnalysisDemo = () => {
                     ↑ This conversation
                   </motion.div>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
-          {/* Phase 4: Dashboard Overlay */}
-          <AnimatePresence>
-            {phase === "dashboard" && (
-              <motion.div
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute inset-0 flex flex-col items-center justify-center z-20"
-              >
-                {/* Narrative text */}
-                <motion.h3
+                {/* CTA Below Dot Field */}
+                <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2, duration: 0.4 }}
-                  className="text-3xl sm:text-4xl font-display font-semibold text-foreground mb-8"
+                  transition={{ delay: 1.2, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  className="flex flex-col items-center gap-4 mt-4"
                 >
-                  ...to the full picture
-                </motion.h3>
-
-                {/* Dashboard card */}
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 0.4, duration: 0.5 }}
-                  className="bg-card rounded-2xl shadow-xl border border-border/50 p-6 max-w-3xl w-full mx-4"
-                >
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <h4 className="text-lg font-semibold text-foreground">Organizational Health</h4>
-                      <p className="text-sm text-muted-foreground">247 conversations analyzed</p>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      Live
-                    </div>
-                  </div>
-
-                  {/* Theme health cards */}
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
-                    {allThemes.map((theme, index) => {
-                      const insight = themeInsights[theme];
-                      return (
-                        <motion.div
-                          key={theme}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: 0.6 + index * 0.08, duration: 0.3 }}
-                          className="bg-muted/30 rounded-xl p-3 text-center"
-                        >
-                          <div className="flex items-center justify-center gap-1.5 mb-1">
-                            <div className={`w-2 h-2 rounded-full ${getHealthColor(insight.healthLabel)}`} />
-                            <span className="text-2xl font-bold text-foreground">{insight.healthScore}</span>
-                          </div>
-                          <p className="text-xs text-muted-foreground line-clamp-1">{theme}</p>
-                        </motion.div>
-                      );
-                    })}
-                  </div>
-
-                  {/* CTA */}
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 1, duration: 0.4 }}
-                    className="flex justify-center"
-                  >
-                    <Button asChild className="group">
-                      <Link to="/demo/hr">
-                        Explore Full Dashboard
-                        <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                      </Link>
-                    </Button>
-                  </motion.div>
+                  <p className="text-sm text-muted-foreground">
+                    Hover over clusters to explore themes
+                  </p>
+                  <Button asChild size="lg" className="group">
+                    <Link to="/demo/hr">
+                      Explore Full Dashboard
+                      <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  </Button>
                 </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
+
         </div>
       </div>
     </section>
