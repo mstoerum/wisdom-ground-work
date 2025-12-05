@@ -469,38 +469,19 @@ export const AIAnalysisDemo = () => {
             </div>
           </motion.div>
 
-          {/* Narrative text: "From one voice..." → "...to the full picture" */}
+          {/* "From one voice..." - only during zooming phase, centered */}
           <AnimatePresence>
-            {(phase === "zooming" || phase === "dotField") && (
+            {phase === "zooming" && (
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute top-4 left-0 right-0 z-20 text-center pointer-events-none"
+                className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none"
               >
-                <motion.h3
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ 
-                    opacity: phase === "dotField" ? 0.5 : 1,
-                    y: 0
-                  }}
-                  transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-                  className="text-2xl sm:text-3xl font-display font-semibold text-foreground"
-                >
+                <h3 className="text-3xl sm:text-4xl font-display font-semibold text-foreground">
                   From one voice...
-                </motion.h3>
-                <motion.h3
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ 
-                    opacity: phase === "dotField" ? 1 : 0,
-                    y: phase === "dotField" ? 0 : 10
-                  }}
-                  transition={{ delay: 0.3, duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                  className="text-2xl sm:text-3xl font-display font-semibold text-primary mt-1"
-                >
-                  ...to the full picture
-                </motion.h3>
+                </h3>
               </motion.div>
             )}
           </AnimatePresence>
@@ -516,7 +497,24 @@ export const AIAnalysisDemo = () => {
                 className="absolute inset-0"
                 onMouseLeave={() => setHoveredTheme(null)}
               >
-                <div className="relative w-full h-[500px]">
+              <div className="relative w-full h-[500px]">
+                  {/* "...to the full picture" - centered in dot field */}
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.4, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                    className="absolute z-20 pointer-events-none"
+                    style={{
+                      left: "50%",
+                      top: "45%",
+                      transform: "translate(-50%, -50%)",
+                    }}
+                  >
+                    <h3 className="text-2xl sm:text-3xl font-display font-semibold text-primary whitespace-nowrap px-4 py-2 bg-background/70 backdrop-blur-sm rounded-full">
+                      ...to the full picture
+                    </h3>
+                  </motion.div>
+
                   {/* Dots - using CSS transitions for instant hover response */}
                   {dots.map((dot, index) => (
                     <motion.div
