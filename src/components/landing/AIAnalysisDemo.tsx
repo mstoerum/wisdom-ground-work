@@ -1,6 +1,8 @@
-import { useState, useEffect } from "react";
-import { Sparkles, Tag } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Sparkles, Tag, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 interface ConversationStep {
   role: "assistant" | "user";
@@ -14,7 +16,18 @@ interface ThemeInsight {
   name: string;
   healthLabel: "critical" | "attention" | "healthy" | "thriving";
   keyInsight: string;
+  healthScore: number;
 }
+
+interface ConversationDot {
+  id: number;
+  theme: string;
+  x: number;
+  y: number;
+  isCurrent?: boolean;
+}
+
+type Phase = "conversation" | "zooming" | "dotField" | "dashboard";
 
 const conversationSteps: ConversationStep[] = [
   {
@@ -46,51 +59,61 @@ const themeInsights: Record<string, ThemeInsight> = {
     name: "Work-Life Balance",
     healthLabel: "critical",
     keyInsight: "Meeting overload impacting focus time",
+    healthScore: 38,
   },
   "Productivity": {
     name: "Productivity",
     healthLabel: "attention",
     keyInsight: "Deep work time being fragmented",
+    healthScore: 52,
   },
   "Workload": {
     name: "Workload",
     healthLabel: "attention",
     keyInsight: "Overtime becoming normalized",
+    healthScore: 48,
   },
   "Management": {
     name: "Management",
     healthLabel: "healthy",
     keyInsight: "Strong manager support acknowledged",
+    healthScore: 76,
   },
   "Team Culture": {
     name: "Team Culture",
     healthLabel: "thriving",
     keyInsight: "Team bonds driving retention",
+    healthScore: 85,
   },
 };
 
 const allThemes = ["Work-Life Balance", "Productivity", "Workload", "Management", "Team Culture"];
 
-const themeColors: Record<string, { bg: string; text: string }> = {
+const themeColors: Record<string, { bg: string; text: string; dot: string }> = {
   "Work-Life Balance": {
     bg: "bg-[hsl(var(--terracotta-pale))]",
     text: "text-primary",
+    dot: "hsl(347, 77%, 50%)",
   },
   "Productivity": {
     bg: "bg-blue-50",
     text: "text-blue-600",
+    dot: "hsl(217, 91%, 60%)",
   },
   "Workload": {
     bg: "bg-amber-50",
     text: "text-amber-600",
+    dot: "hsl(38, 92%, 50%)",
   },
   "Management": {
     bg: "bg-emerald-50",
     text: "text-emerald-600",
+    dot: "hsl(142, 71%, 45%)",
   },
   "Team Culture": {
     bg: "bg-purple-50",
     text: "text-purple-600",
+    dot: "hsl(271, 81%, 56%)",
   },
 };
 
@@ -109,11 +132,66 @@ const getHealthColor = (healthLabel: ThemeInsight["healthLabel"]) => {
   }
 };
 
+const getHealthColorHex = (healthLabel: ThemeInsight["healthLabel"]): string => {
+  switch (healthLabel) {
+    case "critical":
+      return "hsl(347, 77%, 50%)";
+    case "attention":
+      return "hsl(38, 92%, 50%)";
+    case "healthy":
+    case "thriving":
+      return "hsl(142, 71%, 45%)";
+    default:
+      return "transparent";
+  }
+};
+
+// Generate dot clusters for each theme
+const generateDotClusters = (): ConversationDot[] => {
+  const dots: ConversationDot[] = [];
+  const clusterCenters: Record<string, { x: number; y: number }> = {
+    "Work-Life Balance": { x: 20, y: 30 },
+    "Productivity": { x: 50, y: 20 },
+    "Workload": { x: 80, y: 35 },
+    "Management": { x: 35, y: 70 },
+    "Team Culture": { x: 70, y: 75 },
+  };
+
+  let id = 0;
+  allThemes.forEach((theme) => {
+    const center = clusterCenters[theme];
+    const dotsPerCluster = 15 + Math.floor(Math.random() * 10);
+    
+    for (let i = 0; i < dotsPerCluster; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const radius = Math.random() * 12 + 2;
+      dots.push({
+        id: id++,
+        theme,
+        x: center.x + Math.cos(angle) * radius,
+        y: center.y + Math.sin(angle) * radius,
+      });
+    }
+  });
+
+  // Mark one dot as current (in Work-Life Balance cluster)
+  const wlbDots = dots.filter(d => d.theme === "Work-Life Balance");
+  if (wlbDots.length > 0) {
+    wlbDots[Math.floor(wlbDots.length / 2)].isCurrent = true;
+  }
+
+  return dots;
+};
+
 export const AIAnalysisDemo = () => {
   const [visibleSteps, setVisibleSteps] = useState(0);
   const [detectedThemes, setDetectedThemes] = useState<string[]>([]);
   const [hasCompleted, setHasCompleted] = useState(false);
+  const [phase, setPhase] = useState<Phase>("conversation");
 
+  const dots = useMemo(() => generateDotClusters(), []);
+
+  // Conversation progression
   useEffect(() => {
     if (hasCompleted) return;
 
@@ -142,6 +220,21 @@ export const AIAnalysisDemo = () => {
     }, 2500);
 
     return () => clearInterval(interval);
+  }, [hasCompleted]);
+
+  // Phase transitions after completion
+  useEffect(() => {
+    if (!hasCompleted) return;
+
+    const timer1 = setTimeout(() => setPhase("zooming"), 1500);
+    const timer2 = setTimeout(() => setPhase("dotField"), 2700);
+    const timer3 = setTimeout(() => setPhase("dashboard"), 4200);
+
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+    };
   }, [hasCompleted]);
 
   const getSentimentColor = (sentiment?: string) => {
@@ -182,7 +275,7 @@ export const AIAnalysisDemo = () => {
   };
 
   return (
-    <section id="how-it-works" className="py-24 bg-muted/30">
+    <section id="how-it-works" className="py-24 bg-muted/30 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section header */}
         <motion.div 
@@ -204,178 +297,349 @@ export const AIAnalysisDemo = () => {
           </p>
         </motion.div>
 
-        <motion.div 
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.2 }}
-          transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-          className="grid lg:grid-cols-5 gap-6 lg:gap-8 items-start"
-        >
-          {/* Conversation panel */}
-          <div className="lg:col-span-3 bg-card rounded-xl overflow-hidden shadow-sm border border-border/50">
-            <div className="bg-gradient-to-r from-primary/90 to-[hsl(var(--coral-accent)/0.85)] px-5 py-3.5 flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-full bg-white/40" />
-              <span className="text-sm font-medium text-white">Live Conversation</span>
-            </div>
-            
-            <div className="p-6 space-y-4 min-h-[320px]">
-              {conversationSteps.slice(0, visibleSteps).map((step, index) => (
-                <div
-                  key={index}
-                  className={`flex gap-3 ${step.role === "user" ? "justify-end" : "justify-start"}`}
-                >
-                  {step.role === "assistant" && (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-[hsl(var(--coral-accent))] flex-shrink-0 opacity-90" />
-                  )}
-                  
-                  <div className={`max-w-[80%] ${step.role === "user" ? "order-first" : ""}`}>
-                    <div
-                      className={`px-4 py-3 rounded-2xl ${
-                        step.role === "user"
-                          ? "bg-primary/10 text-foreground rounded-tr-sm"
-                          : "bg-muted/80 text-foreground rounded-tl-sm"
-                      }`}
-                    >
-                      <p 
-                        className="text-sm leading-relaxed"
-                        dangerouslySetInnerHTML={{ 
-                          __html: highlightText(step.content, step.highlights, step.detectedThemes) 
-                        }}
-                      />
-                    </div>
+        {/* Main demo area with phase transitions */}
+        <div className="relative min-h-[500px]">
+          {/* Phase 1 & 2: Conversation + Themes panels */}
+          <motion.div
+            initial={{ opacity: 1, scale: 1 }}
+            animate={{
+              opacity: phase === "zooming" ? 0.8 : phase === "dotField" || phase === "dashboard" ? 0 : 1,
+              scale: phase === "zooming" ? 0.6 : phase === "dotField" || phase === "dashboard" ? 0.1 : 1,
+              y: phase === "zooming" ? -50 : 0,
+            }}
+            transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
+            className={`grid lg:grid-cols-5 gap-6 lg:gap-8 items-start ${
+              phase === "dotField" || phase === "dashboard" ? "pointer-events-none absolute inset-0" : ""
+            }`}
+          >
+            {/* Conversation panel */}
+            <div className="lg:col-span-3 bg-card rounded-xl overflow-hidden shadow-sm border border-border/50">
+              <div className="bg-gradient-to-r from-primary/90 to-[hsl(var(--coral-accent)/0.85)] px-5 py-3.5 flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-white/40" />
+                <span className="text-sm font-medium text-white">Live Conversation</span>
+              </div>
+              
+              <div className="p-6 space-y-4 min-h-[320px]">
+                {conversationSteps.slice(0, visibleSteps).map((step, index) => (
+                  <div
+                    key={index}
+                    className={`flex gap-3 ${step.role === "user" ? "justify-end" : "justify-start"}`}
+                  >
+                    {step.role === "assistant" && (
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-[hsl(var(--coral-accent))] flex-shrink-0 opacity-90" />
+                    )}
                     
-                    {step.detectedThemes && step.detectedThemes.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {step.detectedThemes.map((theme) => {
-                          const colors = getThemeColor(theme);
-                          return (
-                            <span 
-                              key={theme} 
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}
-                            >
-                              <Tag className="w-2.5 h-2.5" />
-                              {theme}
-                            </span>
-                          );
-                        })}
-                        {step.sentiment && (
-                          <span className={`text-xs font-medium ${getSentimentColor(step.sentiment)}`}>
-                            • {step.sentiment}
-                          </span>
-                        )}
+                    <div className={`max-w-[80%] ${step.role === "user" ? "order-first" : ""}`}>
+                      <div
+                        className={`px-4 py-3 rounded-2xl ${
+                          step.role === "user"
+                            ? "bg-primary/10 text-foreground rounded-tr-sm"
+                            : "bg-muted/80 text-foreground rounded-tl-sm"
+                        }`}
+                      >
+                        <p 
+                          className="text-sm leading-relaxed"
+                          dangerouslySetInnerHTML={{ 
+                            __html: highlightText(step.content, step.highlights, step.detectedThemes) 
+                          }}
+                        />
                       </div>
+                      
+                      {step.detectedThemes && step.detectedThemes.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {step.detectedThemes.map((theme) => {
+                            const colors = getThemeColor(theme);
+                            return (
+                              <span 
+                                key={theme} 
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${colors.bg} ${colors.text}`}
+                              >
+                                <Tag className="w-2.5 h-2.5" />
+                                {theme}
+                              </span>
+                            );
+                          })}
+                          {step.sentiment && (
+                            <span className={`text-xs font-medium ${getSentimentColor(step.sentiment)}`}>
+                              • {step.sentiment}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {step.role === "user" && (
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--butter-yellow))] to-[hsl(var(--coral-pink))] flex-shrink-0 opacity-90" />
                     )}
                   </div>
-
-                  {step.role === "user" && (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[hsl(var(--butter-yellow))] to-[hsl(var(--coral-pink))] flex-shrink-0 opacity-90" />
-                  )}
-                </div>
-              ))}
-              
-              {visibleSteps < conversationSteps.length && (
-                <div className="flex gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-[hsl(var(--coral-accent))] flex-shrink-0 opacity-90" />
-                  <div className="bg-muted/80 px-4 py-3 rounded-2xl rounded-tl-sm">
-                    <div className="flex gap-1.5">
-                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse-subtle" />
-                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse-subtle delay-100" />
-                      <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse-subtle delay-200" />
+                ))}
+                
+                {visibleSteps < conversationSteps.length && (
+                  <div className="flex gap-3">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-[hsl(var(--coral-accent))] flex-shrink-0 opacity-90" />
+                    <div className="bg-muted/80 px-4 py-3 rounded-2xl rounded-tl-sm">
+                      <div className="flex gap-1.5">
+                        <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse-subtle" />
+                        <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse-subtle delay-100" />
+                        <span className="w-2 h-2 bg-muted-foreground/40 rounded-full animate-pulse-subtle delay-200" />
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Simplified Themes panel */}
-          <div className="lg:col-span-2 bg-card rounded-xl overflow-hidden shadow-sm border border-border/50">
-            <div className="bg-foreground px-5 py-3.5 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-background" />
-              <span className="text-sm font-medium text-background">Themes Detected</span>
+            {/* Themes panel */}
+            <div className="lg:col-span-2 bg-card rounded-xl overflow-hidden shadow-sm border border-border/50">
+              <div className="bg-foreground px-5 py-3.5 flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-background" />
+                <span className="text-sm font-medium text-background">Themes Detected</span>
+              </div>
+              
+              <div className="p-4">
+                <div className="space-y-2">
+                  <AnimatePresence>
+                    {allThemes.map((theme) => {
+                      const isDetected = detectedThemes.includes(theme);
+                      const insight = themeInsights[theme];
+                      
+                      return (
+                        <motion.div
+                          key={theme}
+                          initial={{ opacity: 0.4 }}
+                          animate={{ opacity: isDetected ? 1 : 0.4 }}
+                          transition={{ duration: 0.3 }}
+                          className={`px-3 py-2.5 rounded-lg border-l-3 transition-colors duration-300 ${
+                            isDetected
+                              ? "bg-muted/40 border-l-[3px]"
+                              : "bg-transparent border-l-[3px] border-transparent"
+                          }`}
+                          style={{
+                            borderLeftColor: isDetected ? getHealthColorHex(insight.healthLabel) : "transparent"
+                          }}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div
+                              className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                                isDetected ? getHealthColor(insight.healthLabel) : "bg-muted-foreground/20"
+                              }`}
+                            />
+                            <span
+                              className={`text-sm font-medium transition-colors duration-300 ${
+                                isDetected ? "text-foreground" : "text-muted-foreground/60"
+                              }`}
+                            >
+                              {theme}
+                            </span>
+                          </div>
+                          
+                          {isDetected && (
+                            <motion.p
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              transition={{ delay: 0.15, duration: 0.2 }}
+                              className="text-xs text-muted-foreground mt-1.5 pl-[18px]"
+                            >
+                              {insight.keyInsight}
+                            </motion.p>
+                          )}
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
+                
+                <div className="mt-4 pt-3 border-t border-border/50 text-center">
+                  <p className="text-xs text-muted-foreground">
+                    {hasCompleted 
+                      ? "Themes aggregate across all conversations"
+                      : "Detecting patterns..."
+                    }
+                  </p>
+                </div>
+              </div>
             </div>
-            
-            <div className="p-4">
-              <div className="space-y-2">
-                <AnimatePresence>
-                  {allThemes.map((theme) => {
-                    const isDetected = detectedThemes.includes(theme);
-                    const insight = themeInsights[theme];
+          </motion.div>
+
+          {/* Narrative text: "From one voice..." */}
+          <AnimatePresence>
+            {(phase === "zooming" || phase === "dotField") && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none"
+              >
+                <h3 className="text-3xl sm:text-4xl font-display font-semibold text-foreground">
+                  From one voice...
+                </h3>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Phase 3: Dot Field */}
+          <AnimatePresence>
+            {(phase === "dotField" || phase === "dashboard") && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: phase === "dashboard" ? 0.15 : 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute inset-0"
+              >
+                <div className="relative w-full h-[500px]">
+                  {/* Dots */}
+                  {dots.map((dot, index) => (
+                    <motion.div
+                      key={dot.id}
+                      initial={{ opacity: 0, scale: 0 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{
+                        delay: index * 0.008,
+                        duration: 0.4,
+                        ease: [0.16, 1, 0.3, 1],
+                      }}
+                      className={`absolute rounded-full ${dot.isCurrent ? "z-10" : ""}`}
+                      style={{
+                        left: `${dot.x}%`,
+                        top: `${dot.y}%`,
+                        width: dot.isCurrent ? "12px" : "6px",
+                        height: dot.isCurrent ? "12px" : "6px",
+                        backgroundColor: themeColors[dot.theme]?.dot || "hsl(var(--muted-foreground))",
+                        opacity: dot.isCurrent ? 1 : 0.6,
+                        boxShadow: dot.isCurrent ? `0 0 20px ${themeColors[dot.theme]?.dot}` : "none",
+                      }}
+                    />
+                  ))}
+
+                  {/* Theme cluster labels */}
+                  {allThemes.map((theme, index) => {
+                    const positions: Record<string, { x: number; y: number }> = {
+                      "Work-Life Balance": { x: 20, y: 48 },
+                      "Productivity": { x: 50, y: 38 },
+                      "Workload": { x: 80, y: 52 },
+                      "Management": { x: 35, y: 85 },
+                      "Team Culture": { x: 70, y: 90 },
+                    };
+                    const pos = positions[theme];
                     
                     return (
                       <motion.div
                         key={theme}
-                        initial={{ opacity: 0.4 }}
-                        animate={{ opacity: isDetected ? 1 : 0.4 }}
-                        transition={{ duration: 0.3 }}
-                        className={`px-3 py-2.5 rounded-lg border-l-3 transition-colors duration-300 ${
-                          isDetected
-                            ? "bg-muted/40 border-l-[3px]"
-                            : "bg-transparent border-l-[3px] border-transparent"
-                        }`}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.6 + index * 0.1, duration: 0.4 }}
+                        className="absolute text-xs font-medium text-muted-foreground"
                         style={{
-                          borderLeftColor: isDetected ? getHealthColorHex(insight.healthLabel) : "transparent"
+                          left: `${pos.x}%`,
+                          top: `${pos.y}%`,
+                          transform: "translateX(-50%)",
                         }}
                       >
-                        <div className="flex items-center gap-2.5">
-                          <div
-                            className={`w-2 h-2 rounded-full transition-colors duration-300 ${
-                              isDetected ? getHealthColor(insight.healthLabel) : "bg-muted-foreground/20"
-                            }`}
-                          />
-                          <span
-                            className={`text-sm font-medium transition-colors duration-300 ${
-                              isDetected ? "text-foreground" : "text-muted-foreground/60"
-                            }`}
-                          >
-                            {theme}
-                          </span>
-                        </div>
-                        
-                        {isDetected && (
-                          <motion.p
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            transition={{ delay: 0.15, duration: 0.2 }}
-                            className="text-xs text-muted-foreground mt-1.5 pl-[18px]"
-                          >
-                            {insight.keyInsight}
-                          </motion.p>
-                        )}
+                        {theme}
                       </motion.div>
                     );
                   })}
-                </AnimatePresence>
-              </div>
-              
-              {/* Footer */}
-              <div className="mt-4 pt-3 border-t border-border/50 text-center">
-                <p className="text-xs text-muted-foreground">
-                  {hasCompleted 
-                    ? "Themes aggregate across all conversations"
-                    : "Detecting patterns..."
-                  }
-                </p>
-              </div>
-            </div>
-          </div>
-        </motion.div>
+
+                  {/* Current conversation indicator */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.3, duration: 0.4 }}
+                    className="absolute text-xs font-medium text-primary"
+                    style={{
+                      left: "20%",
+                      top: "18%",
+                      transform: "translateX(-50%)",
+                    }}
+                  >
+                    ↑ This conversation
+                  </motion.div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Phase 4: Dashboard Overlay */}
+          <AnimatePresence>
+            {phase === "dashboard" && (
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute inset-0 flex flex-col items-center justify-center z-20"
+              >
+                {/* Narrative text */}
+                <motion.h3
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2, duration: 0.4 }}
+                  className="text-3xl sm:text-4xl font-display font-semibold text-foreground mb-8"
+                >
+                  ...to the full picture
+                </motion.h3>
+
+                {/* Dashboard card */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.4, duration: 0.5 }}
+                  className="bg-card rounded-2xl shadow-xl border border-border/50 p-6 max-w-3xl w-full mx-4"
+                >
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <h4 className="text-lg font-semibold text-foreground">Organizational Health</h4>
+                      <p className="text-sm text-muted-foreground">247 conversations analyzed</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Live
+                    </div>
+                  </div>
+
+                  {/* Theme health cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
+                    {allThemes.map((theme, index) => {
+                      const insight = themeInsights[theme];
+                      return (
+                        <motion.div
+                          key={theme}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: 0.6 + index * 0.08, duration: 0.3 }}
+                          className="bg-muted/30 rounded-xl p-3 text-center"
+                        >
+                          <div className="flex items-center justify-center gap-1.5 mb-1">
+                            <div className={`w-2 h-2 rounded-full ${getHealthColor(insight.healthLabel)}`} />
+                            <span className="text-2xl font-bold text-foreground">{insight.healthScore}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-1">{theme}</p>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+
+                  {/* CTA */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 1, duration: 0.4 }}
+                    className="flex justify-center"
+                  >
+                    <Button asChild className="group">
+                      <Link to="/demo/hr">
+                        Explore Full Dashboard
+                        <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                      </Link>
+                    </Button>
+                  </motion.div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
     </section>
   );
 };
-
-// Helper for inline border color
-function getHealthColorHex(healthLabel: ThemeInsight["healthLabel"]): string {
-  switch (healthLabel) {
-    case "critical":
-      return "hsl(347, 77%, 50%)"; // rose-500
-    case "attention":
-      return "hsl(38, 92%, 50%)"; // amber-500
-    case "healthy":
-    case "thriving":
-      return "hsl(142, 71%, 45%)"; // emerald-500
-    default:
-      return "transparent";
-  }
-}
