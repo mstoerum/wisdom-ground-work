@@ -17,14 +17,22 @@ interface ThemeInsight {
   healthLabel: "critical" | "attention" | "healthy" | "thriving";
   keyInsight: string;
   healthScore: number;
+  statementCount: number;
+  conversationCount: number;
 }
 
-interface ConversationDot {
+interface SemanticStatement {
   id: number;
   theme: string;
   x: number;
   y: number;
   isCurrent?: boolean;
+}
+
+interface SemanticConnection {
+  from: string;
+  to: string;
+  strength: number; // 0.3 to 1.0
 }
 
 type Phase = "conversation" | "zooming" | "dotField";
@@ -60,34 +68,63 @@ const themeInsights: Record<string, ThemeInsight> = {
     healthLabel: "critical",
     keyInsight: "Meeting overload impacting focus time",
     healthScore: 38,
+    statementCount: 47,
+    conversationCount: 23,
   },
   "Productivity": {
     name: "Productivity",
     healthLabel: "attention",
     keyInsight: "Deep work time being fragmented",
     healthScore: 52,
+    statementCount: 38,
+    conversationCount: 19,
   },
   "Workload": {
     name: "Workload",
     healthLabel: "attention",
     keyInsight: "Overtime becoming normalized",
     healthScore: 48,
+    statementCount: 31,
+    conversationCount: 16,
   },
   "Management": {
     name: "Management",
     healthLabel: "healthy",
     keyInsight: "Strong manager support acknowledged",
     healthScore: 76,
+    statementCount: 24,
+    conversationCount: 14,
   },
   "Team Culture": {
     name: "Team Culture",
     healthLabel: "thriving",
     keyInsight: "Team bonds driving retention",
     healthScore: 85,
+    statementCount: 29,
+    conversationCount: 18,
   },
 };
 
+// Semantic connections between themes (representing conceptual relationships)
+const semanticConnections: SemanticConnection[] = [
+  { from: "Work-Life Balance", to: "Productivity", strength: 0.85 },
+  { from: "Work-Life Balance", to: "Workload", strength: 0.78 },
+  { from: "Workload", to: "Productivity", strength: 0.65 },
+  { from: "Management", to: "Team Culture", strength: 0.6 },
+  { from: "Team Culture", to: "Productivity", strength: 0.4 },
+  { from: "Workload", to: "Management", strength: 0.35 },
+];
+
 const allThemes = ["Work-Life Balance", "Productivity", "Workload", "Management", "Team Culture"];
+
+// Cluster centers for positioning
+const clusterCenters: Record<string, { x: number; y: number }> = {
+  "Work-Life Balance": { x: 20, y: 30 },
+  "Productivity": { x: 50, y: 20 },
+  "Workload": { x: 80, y: 35 },
+  "Management": { x: 35, y: 70 },
+  "Team Culture": { x: 70, y: 75 },
+};
 
 const themeColors: Record<string, { bg: string; text: string; dot: string }> = {
   "Work-Life Balance": {
@@ -146,26 +183,20 @@ const getHealthColorHex = (healthLabel: ThemeInsight["healthLabel"]): string => 
   }
 };
 
-// Generate dot clusters for each theme
-const generateDotClusters = (): ConversationDot[] => {
-  const dots: ConversationDot[] = [];
-  const clusterCenters: Record<string, { x: number; y: number }> = {
-    "Work-Life Balance": { x: 20, y: 30 },
-    "Productivity": { x: 50, y: 20 },
-    "Workload": { x: 80, y: 35 },
-    "Management": { x: 35, y: 70 },
-    "Team Culture": { x: 70, y: 75 },
-  };
+// Generate semantic statement clusters for each theme
+const generateSemanticStatements = (): SemanticStatement[] => {
+  const statements: SemanticStatement[] = [];
 
   let id = 0;
   allThemes.forEach((theme) => {
     const center = clusterCenters[theme];
-    const dotsPerCluster = 15 + Math.floor(Math.random() * 10);
+    // More statements per cluster (20-28)
+    const statementsPerCluster = 20 + Math.floor(Math.random() * 8);
     
-    for (let i = 0; i < dotsPerCluster; i++) {
+    for (let i = 0; i < statementsPerCluster; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const radius = Math.random() * 12 + 2;
-      dots.push({
+      const radius = Math.random() * 14 + 2;
+      statements.push({
         id: id++,
         theme,
         x: center.x + Math.cos(angle) * radius,
@@ -174,13 +205,26 @@ const generateDotClusters = (): ConversationDot[] => {
     }
   });
 
-  // Mark one dot as current (in Work-Life Balance cluster)
-  const wlbDots = dots.filter(d => d.theme === "Work-Life Balance");
-  if (wlbDots.length > 0) {
-    wlbDots[Math.floor(wlbDots.length / 2)].isCurrent = true;
+  // Mark one statement as current (in Work-Life Balance cluster)
+  const wlbStatements = statements.filter(d => d.theme === "Work-Life Balance");
+  if (wlbStatements.length > 0) {
+    wlbStatements[Math.floor(wlbStatements.length / 2)].isCurrent = true;
   }
 
-  return dots;
+  return statements;
+};
+
+// Get related themes for a given theme
+const getRelatedThemes = (theme: string): { theme: string; strength: number }[] => {
+  const related: { theme: string; strength: number }[] = [];
+  semanticConnections.forEach(conn => {
+    if (conn.from === theme) {
+      related.push({ theme: conn.to, strength: conn.strength });
+    } else if (conn.to === theme) {
+      related.push({ theme: conn.from, strength: conn.strength });
+    }
+  });
+  return related.sort((a, b) => b.strength - a.strength);
 };
 
 export const AIAnalysisDemo = () => {
@@ -190,18 +234,18 @@ export const AIAnalysisDemo = () => {
   const [phase, setPhase] = useState<Phase>("conversation");
   const [hoveredTheme, setHoveredTheme] = useState<string | null>(null);
 
-  const dots = useMemo(() => generateDotClusters(), []);
+  const statements = useMemo(() => generateSemanticStatements(), []);
   
-  // Count dots per theme for tooltip
-  const dotsPerTheme = useMemo(() => {
+  // Count statements per theme for tooltip
+  const statementsPerTheme = useMemo(() => {
     const counts: Record<string, number> = {};
-    dots.forEach(dot => {
-      counts[dot.theme] = (counts[dot.theme] || 0) + 1;
+    statements.forEach(statement => {
+      counts[statement.theme] = (counts[statement.theme] || 0) + 1;
     });
     return counts;
-  }, [dots]);
+  }, [statements]);
 
-  // Conversation progression
+  // Conversation progression - FASTER interval (1500ms instead of 2500ms)
   useEffect(() => {
     if (hasCompleted) return;
 
@@ -227,12 +271,12 @@ export const AIAnalysisDemo = () => {
         
         return prev + 1;
       });
-    }, 2500);
+    }, 1500); // Faster conversation exchanges
 
     return () => clearInterval(interval);
   }, [hasCompleted]);
 
-  // Phase transitions after completion
+  // Phase transitions after completion (keeping original timing)
   useEffect(() => {
     if (!hasCompleted) return;
 
@@ -282,6 +326,12 @@ export const AIAnalysisDemo = () => {
     return themeColors[theme] || themeColors["Work-Life Balance"];
   };
 
+  // Check if a connection involves the hovered theme
+  const isConnectionHighlighted = (conn: SemanticConnection) => {
+    if (!hoveredTheme) return false;
+    return conn.from === hoveredTheme || conn.to === hoveredTheme;
+  };
+
   return (
     <section id="how-it-works" className="py-24 bg-muted/30 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -301,7 +351,7 @@ export const AIAnalysisDemo = () => {
             Watch insights emerge in real-time
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            As employees share, our AI identifies themes, sentiment, and urgency—giving you understanding, not just data.
+            As employees share, our AI extracts semantic patterns—clustering similar statements to reveal organizational truths.
           </p>
         </motion.div>
 
@@ -460,7 +510,7 @@ export const AIAnalysisDemo = () => {
                 <div className="mt-4 pt-3 border-t border-border/50 text-center">
                   <p className="text-xs text-muted-foreground">
                     {hasCompleted 
-                      ? "Themes aggregate across all conversations"
+                      ? "Extracting semantic patterns..."
                       : "Detecting patterns..."
                     }
                   </p>
@@ -486,7 +536,7 @@ export const AIAnalysisDemo = () => {
             )}
           </AnimatePresence>
 
-          {/* Phase 3: Dot Field */}
+          {/* Phase 3: Semantic Network Dot Field */}
           <AnimatePresence>
             {phase === "dotField" && (
               <motion.div
@@ -498,7 +548,44 @@ export const AIAnalysisDemo = () => {
                 onMouseLeave={() => setHoveredTheme(null)}
               >
               <div className="relative w-full h-[500px]">
-                  {/* "...to the full picture" - centered in dot field */}
+                  {/* SVG Network Connections Layer */}
+                  <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
+                    {semanticConnections.map((conn, index) => {
+                      const fromCenter = clusterCenters[conn.from];
+                      const toCenter = clusterCenters[conn.to];
+                      const isHighlighted = isConnectionHighlighted(conn);
+                      
+                      return (
+                        <motion.line
+                          key={`${conn.from}-${conn.to}`}
+                          x1={`${fromCenter.x}%`}
+                          y1={`${fromCenter.y}%`}
+                          x2={`${toCenter.x}%`}
+                          y2={`${toCenter.y}%`}
+                          stroke={isHighlighted 
+                            ? themeColors[hoveredTheme!]?.dot || "hsl(var(--muted-foreground))"
+                            : "hsl(var(--muted-foreground))"
+                          }
+                          strokeWidth={isHighlighted ? conn.strength * 3 + 1 : conn.strength * 2}
+                          strokeOpacity={isHighlighted ? 0.6 : hoveredTheme ? 0.08 : 0.15}
+                          strokeDasharray={conn.strength < 0.5 ? "4 4" : "none"}
+                          initial={{ pathLength: 0, opacity: 0 }}
+                          animate={{ 
+                            pathLength: 1, 
+                            opacity: 1,
+                            strokeOpacity: isHighlighted ? 0.6 : hoveredTheme ? 0.08 : 0.15,
+                          }}
+                          transition={{ 
+                            pathLength: { delay: 0.3 + index * 0.1, duration: 0.6, ease: "easeOut" },
+                            opacity: { delay: 0.3, duration: 0.4 },
+                            strokeOpacity: { duration: 0.15 },
+                          }}
+                        />
+                      );
+                    })}
+                  </svg>
+
+                  {/* "...to semantic patterns" - centered in dot field */}
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
@@ -511,62 +598,61 @@ export const AIAnalysisDemo = () => {
                     }}
                   >
                     <h3 className="text-2xl sm:text-3xl font-display font-semibold text-primary whitespace-nowrap px-4 py-2 bg-background/70 backdrop-blur-sm rounded-full">
-                      ...to the full picture
+                      ...to semantic patterns
                     </h3>
                   </motion.div>
 
-                  {/* Dots - using CSS transitions for instant hover response */}
-                  {dots.map((dot, index) => (
+                  {/* Semantic Statement Dots */}
+                  {statements.map((statement, index) => (
                     <motion.div
-                      key={dot.id}
+                      key={statement.id}
                       initial={{ opacity: 0, scale: 0 }}
                       animate={{ opacity: 0.7, scale: 1 }}
                       transition={{
-                        delay: index * 0.005,
+                        delay: index * 0.004,
                         duration: 0.25,
                         ease: "easeOut",
                       }}
-                      onMouseEnter={() => setHoveredTheme(dot.theme)}
-                      className={`absolute rounded-full cursor-pointer ${dot.isCurrent ? "z-10" : ""}`}
+                      onMouseEnter={() => setHoveredTheme(statement.theme)}
+                      className={`absolute rounded-full cursor-pointer ${statement.isCurrent ? "z-10" : ""}`}
                       style={{
-                        left: `${dot.x}%`,
-                        top: `${dot.y}%`,
-                        width: dot.isCurrent ? "12px" : "6px",
-                        height: dot.isCurrent ? "12px" : "6px",
-                        backgroundColor: themeColors[dot.theme]?.dot || "hsl(var(--muted-foreground))",
-                        // CSS transitions for instant hover response
+                        left: `${statement.x}%`,
+                        top: `${statement.y}%`,
+                        width: statement.isCurrent ? "12px" : "5px",
+                        height: statement.isCurrent ? "12px" : "5px",
+                        backgroundColor: themeColors[statement.theme]?.dot || "hsl(var(--muted-foreground))",
                         opacity: hoveredTheme === null 
-                          ? (dot.isCurrent ? 1 : 0.7) 
-                          : hoveredTheme === dot.theme 
-                            ? (dot.isCurrent ? 1 : 0.85) 
+                          ? (statement.isCurrent ? 1 : 0.7) 
+                          : hoveredTheme === statement.theme 
+                            ? (statement.isCurrent ? 1 : 0.85) 
                             : 0.12,
                         transform: `scale(${
-                          dot.isCurrent 
+                          statement.isCurrent 
                             ? 1.2 
-                            : hoveredTheme === dot.theme 
+                            : hoveredTheme === statement.theme 
                               ? 1.4 
                               : hoveredTheme !== null 
                                 ? 0.8 
                                 : 1
                         })`,
-                        boxShadow: dot.isCurrent || hoveredTheme === dot.theme 
-                          ? `0 0 20px ${themeColors[dot.theme]?.dot}` 
+                        boxShadow: statement.isCurrent || hoveredTheme === statement.theme 
+                          ? `0 0 20px ${themeColors[statement.theme]?.dot}` 
                           : "none",
                         transition: "opacity 80ms ease-out, transform 80ms ease-out, box-shadow 80ms ease-out",
                       }}
                     />
                   ))}
 
-                  {/* Theme cluster labels - CSS transitions for instant response */}
+                  {/* Theme cluster labels */}
                   {allThemes.map((theme, index) => {
-                    const positions: Record<string, { x: number; y: number }> = {
+                    const labelPositions: Record<string, { x: number; y: number }> = {
                       "Work-Life Balance": { x: 20, y: 48 },
                       "Productivity": { x: 50, y: 38 },
                       "Workload": { x: 80, y: 52 },
                       "Management": { x: 35, y: 85 },
                       "Team Culture": { x: 70, y: 90 },
                     };
-                    const pos = positions[theme];
+                    const pos = labelPositions[theme];
                     const isHovered = hoveredTheme === theme;
                     
                     return (
@@ -592,7 +678,7 @@ export const AIAnalysisDemo = () => {
                     );
                   })}
 
-                  {/* Floating Tooltip */}
+                  {/* Enhanced Floating Tooltip with semantic relationships */}
                   <AnimatePresence>
                     {hoveredTheme && (
                       <motion.div
@@ -600,7 +686,7 @@ export const AIAnalysisDemo = () => {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 5, scale: 0.95 }}
                         transition={{ duration: 0.15, ease: "easeOut" }}
-                        className="absolute z-30 bg-card rounded-xl shadow-lg border border-border/50 p-4 min-w-[200px] pointer-events-none"
+                        className="absolute z-30 bg-card rounded-xl shadow-lg border border-border/50 p-4 min-w-[240px] pointer-events-none"
                         style={{
                           left: `${(() => {
                             const positions: Record<string, number> = {
@@ -639,13 +725,13 @@ export const AIAnalysisDemo = () => {
                           </span>
                         </div>
                         
-                        {/* Conversation count */}
+                        {/* Statement count - semantic framing */}
                         <p className="text-xs text-muted-foreground mb-2">
-                          {dotsPerTheme[hoveredTheme] || 0} conversations
+                          <span className="font-medium text-foreground">{themeInsights[hoveredTheme]?.statementCount}</span> statements extracted from <span className="font-medium text-foreground">{themeInsights[hoveredTheme]?.conversationCount}</span> conversations
                         </p>
                         
                         {/* Health score */}
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2 mb-3">
                           <div className={`w-2 h-2 rounded-full ${getHealthColor(themeInsights[hoveredTheme]?.healthLabel)}`} />
                           <span className="text-lg font-bold text-foreground">
                             {themeInsights[hoveredTheme]?.healthScore}
@@ -655,6 +741,23 @@ export const AIAnalysisDemo = () => {
                           </span>
                         </div>
                         
+                        {/* Related themes with connection strength */}
+                        {getRelatedThemes(hoveredTheme).length > 0 && (
+                          <div className="border-t border-border/50 pt-2 mb-2">
+                            <p className="text-xs font-medium text-muted-foreground mb-1.5">Related themes:</p>
+                            <div className="space-y-1">
+                              {getRelatedThemes(hoveredTheme).slice(0, 3).map(({ theme, strength }) => (
+                                <div key={theme} className="flex items-center justify-between text-xs">
+                                  <span className="text-foreground/80">{theme}</span>
+                                  <span className="text-muted-foreground">
+                                    {Math.round(strength * 100)}% similar
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
                         {/* Key insight */}
                         <p className="text-xs text-muted-foreground border-t border-border/50 pt-2">
                           {themeInsights[hoveredTheme]?.keyInsight}
@@ -663,7 +766,7 @@ export const AIAnalysisDemo = () => {
                     )}
                   </AnimatePresence>
 
-                  {/* Current conversation indicator */}
+                  {/* Current statement indicator */}
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: hoveredTheme ? 0.3 : 1 }}
@@ -675,7 +778,7 @@ export const AIAnalysisDemo = () => {
                       transform: "translateX(-50%)",
                     }}
                   >
-                    ↑ This conversation
+                    ↑ This statement
                   </motion.div>
                 </div>
 
@@ -687,7 +790,7 @@ export const AIAnalysisDemo = () => {
                   className="flex flex-col items-center gap-4 mt-4"
                 >
                   <p className="text-sm text-muted-foreground">
-                    Hover over clusters to explore themes
+                    Hover to explore how statements cluster by meaning
                   </p>
                   <Button asChild size="lg" className="group">
                     <Link to="/demo/hr">
