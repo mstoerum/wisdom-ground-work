@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Aalto Design System Colors */
+.bg-aalto-dark {
+  background-color: hsl(25, 15%, 8%);
+}
+
+.text-aalto-warm-white {
+  color: hsl(30, 8%, 95%);
+}
+
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
 All colors MUST be HSL.
 */
