@@ -25,6 +25,7 @@ import PublicSurvey from "./pages/PublicSurvey";
 import AcceptInvitation from "./pages/AcceptInvitation";
 import TestTrustFlow from "./pages/TestTrustFlow";
 import TestSurveyChat from "./pages/hr/TestSurveyChat";
+import AaltoLanding from "./pages/AaltoLanding";
 
 const queryClient = new QueryClient();
 
@@ -50,6 +51,9 @@ const App = () => (
             
             {/* Test Routes */}
             <Route path="/test/trust-flow" element={<TestTrustFlow />} />
+            
+            {/* Aalto Design Experiment */}
+            <Route path="/aalto-landing" element={<AaltoLanding />} />
             
           <Route
             path="/employee/dashboard" 
