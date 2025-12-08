@@ -5,42 +5,58 @@ interface VoiceHeroProps {
   scrollProgress: MotionValue<number>;
 }
 
-const quote = "I feel like my voice gets lost in the noise. Nobody really listens anymore.";
+const quote = "I love my team, but I spend 4-5 hours daily in meetings. By the time I can focus on actual work, I'm already exhausted.";
 const words = quote.split(' ');
 
 // Define semantic groupings that should stay together during fragmentation
 const semanticGroups = [
-  { words: ['voice', 'gets', 'lost'], cluster: 'safety' },
-  { words: ['Nobody', 'really', 'listens'], cluster: 'recognition' },
+  { words: ['love', 'my', 'team,'], cluster: 'connection', color: 'text-emerald-400/90' },
+  { words: ['4-5', 'hours', 'daily', 'meetings.'], cluster: 'meetings', color: 'text-primary/90' },
+  { words: ['exhausted.'], cluster: 'energy', color: 'text-coral/90' },
 ];
 
 const getWordCluster = (word: string): string | null => {
   for (const group of semanticGroups) {
-    if (group.words.includes(word.replace(/[.,!?]/g, ''))) {
+    if (group.words.includes(word)) {
       return group.cluster;
     }
   }
   return null;
 };
 
-// Generate fragmentation positions for each word
+const getWordColor = (word: string): string => {
+  for (const group of semanticGroups) {
+    if (group.words.includes(word)) {
+      return group.color;
+    }
+  }
+  return '';
+};
+
+// Generate fragmentation positions for each word - drift toward cluster positions
 const fragmentPositions = words.map((word, index) => {
   const cluster = getWordCluster(word);
   
-  // Words in semantic groups drift together
-  if (cluster === 'safety') {
-    return { x: -30 + (index % 3) * 5, y: -20 + (index % 2) * 10, rotate: -5 + Math.random() * 10, scale: 1.1 };
+  // Words in semantic groups drift toward their cluster areas
+  if (cluster === 'connection') {
+    // Drift toward Team Connection cluster (top-left area - sage green)
+    return { x: -35 + (index % 3) * 8, y: -25 + (index % 2) * 12, rotate: -3 + Math.random() * 6, scale: 1.1 };
   }
-  if (cluster === 'recognition') {
-    return { x: 25 + (index % 3) * 5, y: 15 + (index % 2) * 10, rotate: -3 + Math.random() * 6, scale: 1.1 };
+  if (cluster === 'meetings') {
+    // Drift toward Time & Meetings cluster (center-right area - terracotta)
+    return { x: 40 + (index % 4) * 6, y: 5 + (index % 2) * 10, rotate: -2 + Math.random() * 4, scale: 1.1 };
+  }
+  if (cluster === 'energy') {
+    // Drift toward Energy & Focus cluster (bottom-center area - coral)
+    return { x: 10, y: 35, rotate: -5, scale: 1.15 };
   }
   
-  // Other words scatter more randomly
+  // Other words scatter more subtly
   return {
-    x: (Math.random() - 0.5) * 80,
-    y: (Math.random() - 0.5) * 60,
-    rotate: (Math.random() - 0.5) * 30,
-    scale: 0.8 + Math.random() * 0.3
+    x: (Math.random() - 0.5) * 60,
+    y: (Math.random() - 0.5) * 40,
+    rotate: (Math.random() - 0.5) * 20,
+    scale: 0.85 + Math.random() * 0.2
   };
 });
 
@@ -85,14 +101,15 @@ export const VoiceHero = ({ scrollProgress }: VoiceHeroProps) => {
 
           {/* Words */}
           <p className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl leading-tight tracking-tight text-aalto-warm-white">
-            {words.map((word, index) => {
+          {words.map((word, index) => {
               const cluster = getWordCluster(word);
               const isSemanticWord = cluster !== null;
+              const wordColor = getWordColor(word);
               
               return (
                 <motion.span
                   key={index}
-                  className={`inline-block mr-[0.25em] ${isSemanticWord ? 'text-primary/90' : ''}`}
+                  className={`inline-block mr-[0.25em] ${wordColor}`}
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ 
                     opacity: index < revealedWords ? 1 : 0,

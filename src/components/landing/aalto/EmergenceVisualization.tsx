@@ -7,48 +7,48 @@ interface EmergenceVisualizationProps {
   scrollProgress: MotionValue<number>;
 }
 
-// Semantic clusters with their phrases and source quotes
+// Semantic clusters with their phrases and source quotes - balanced positive and constructive
 const clusters = [
   {
-    id: 'safety',
-    label: 'Psychological Safety',
-    color: 'hsl(12, 45%, 55%)', // terracotta
+    id: 'connection',
+    label: 'Team Connection',
+    color: 'hsl(152, 50%, 45%)', // sage green - positive/healthy
     position: { x: 25, y: 35 },
     phrases: [
-      { text: 'voice gets lost', quote: 'I feel like my voice gets lost in the noise.', attribution: 'Anonymous, Engineering' },
-      { text: 'afraid to speak up', quote: 'I\'m afraid to speak up in meetings because my ideas get dismissed.', attribution: 'Anonymous, Product' },
-      { text: 'dismissed in meetings', quote: 'Every time I share something, it feels dismissed in meetings.', attribution: 'Anonymous, Design' },
+      { text: 'love my team', quote: 'I love my team, they always have my back when things get tough.', attribution: 'Anonymous, Engineering' },
+      { text: 'great collaboration', quote: 'The collaboration here is unlike anywhere I\'ve worked before.', attribution: 'Anonymous, Product' },
+      { text: 'supportive manager', quote: 'My manager is incredibly supportive and advocates for our growth.', attribution: 'Anonymous, Design' },
     ]
   },
   {
-    id: 'recognition',
-    label: 'Recognition',
-    color: 'hsl(152, 50%, 45%)', // sage green
-    position: { x: 70, y: 45 },
+    id: 'meetings',
+    label: 'Time & Meetings',
+    color: 'hsl(12, 45%, 55%)', // terracotta - attention needed
+    position: { x: 70, y: 40 },
     phrases: [
-      { text: 'nobody listens', quote: 'Nobody really listens anymore.', attribution: 'Anonymous, Sales' },
-      { text: 'work goes unnoticed', quote: 'My work goes unnoticed most of the time.', attribution: 'Anonymous, Support' },
-      { text: 'need acknowledgment', quote: 'Sometimes I just need acknowledgment that I exist.', attribution: 'Anonymous, Marketing' },
+      { text: '4-5 hours daily', quote: 'I spend 4-5 hours daily in meetings with little time to execute.', attribution: 'Anonymous, Engineering' },
+      { text: 'meeting overload', quote: 'The meeting overload is real. My calendar is a wall of color blocks.', attribution: 'Anonymous, Sales' },
+      { text: 'could be an email', quote: 'Half of these meetings could have been an email or a quick Slack.', attribution: 'Anonymous, Marketing' },
     ]
   },
   {
-    id: 'workload',
-    label: 'Workload',
-    color: 'hsl(10, 55%, 58%)', // coral
-    position: { x: 45, y: 70 },
+    id: 'energy',
+    label: 'Energy & Focus',
+    color: 'hsl(10, 55%, 58%)', // coral - needs attention
+    position: { x: 48, y: 70 },
     phrases: [
-      { text: 'overwhelmed constantly', quote: 'I feel overwhelmed constantly with no end in sight.', attribution: 'Anonymous, Operations' },
-      { text: 'no time to think', quote: 'There\'s no time to think, just react to the next fire.', attribution: 'Anonymous, Engineering' },
-      { text: 'burning out', quote: 'I can feel myself burning out but can\'t stop.', attribution: 'Anonymous, Product' },
+      { text: 'already exhausted', quote: 'By the time I can focus on actual work, I\'m already exhausted.', attribution: 'Anonymous, Product' },
+      { text: 'no deep work', quote: 'I can\'t remember the last time I had 2 hours of uninterrupted focus.', attribution: 'Anonymous, Engineering' },
+      { text: 'context switching', quote: 'The constant context switching is draining my creative energy.', attribution: 'Anonymous, Design' },
     ]
   }
 ];
 
-// Connection lines between related clusters
+// Connection lines between related clusters - showing how themes interrelate
 const connections = [
-  { from: 'safety', to: 'recognition', strength: 0.8 },
-  { from: 'recognition', to: 'workload', strength: 0.5 },
-  { from: 'workload', to: 'safety', strength: 0.6 },
+  { from: 'connection', to: 'meetings', strength: 0.7 },  // Good teams still have meeting problems
+  { from: 'meetings', to: 'energy', strength: 0.9 },      // Meetings → exhaustion (strong link)
+  { from: 'energy', to: 'connection', strength: 0.5 },    // Energy affects team dynamics
 ];
 
 export const EmergenceVisualization = ({ scrollProgress }: EmergenceVisualizationProps) => {
