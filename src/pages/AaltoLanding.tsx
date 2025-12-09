@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { VoiceHero } from '@/components/landing/aalto/VoiceHero';
 import { EmergenceVisualization } from '@/components/landing/aalto/EmergenceVisualization';
+import { InsightsEmergence } from '@/components/landing/aalto/InsightsEmergence';
 import { Button } from '@/components/ui/button';
 import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -14,12 +15,13 @@ const AaltoLanding = () => {
   });
 
   // Transform scroll progress to different phases
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.4, 0.5], [1, 1, 0]);
-  const emergenceOpacity = useTransform(scrollYProgress, [0.35, 0.5, 0.95, 1], [0, 1, 1, 0]);
-  const ctaOpacity = useTransform(scrollYProgress, [0.9, 1], [0, 1]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.25, 0.3], [1, 1, 0]);
+  const emergenceOpacity = useTransform(scrollYProgress, [0.2, 0.3, 0.5, 0.55], [0, 1, 1, 0]);
+  const insightsOpacity = useTransform(scrollYProgress, [0.5, 0.6, 0.85, 0.9], [0, 1, 1, 0]);
+  const ctaOpacity = useTransform(scrollYProgress, [0.85, 0.95], [0, 1]);
 
   return (
-    <div ref={containerRef} className="min-h-[400vh] relative bg-aalto-dark">
+    <div ref={containerRef} className="min-h-[500vh] relative bg-aalto-dark">
       {/* Sticky viewport for scroll-based animations */}
       <div className="sticky top-0 h-screen overflow-hidden">
         {/* Voice Hero - fragmenting quote */}
@@ -36,6 +38,14 @@ const AaltoLanding = () => {
           className="absolute inset-0"
         >
           <EmergenceVisualization scrollProgress={scrollYProgress} />
+        </motion.div>
+
+        {/* Insights Emergence - metrics and recommendations */}
+        <motion.div 
+          style={{ opacity: insightsOpacity }}
+          className="absolute inset-0"
+        >
+          <InsightsEmergence scrollProgress={scrollYProgress} />
         </motion.div>
 
         {/* CTA Section */}
