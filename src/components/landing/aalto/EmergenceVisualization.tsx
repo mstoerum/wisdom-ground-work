@@ -56,11 +56,36 @@ export const EmergenceVisualization = ({ scrollProgress }: EmergenceVisualizatio
   const [hoveredPhrase, setHoveredPhrase] = useState<{ clusterId: string; phraseIndex: number } | null>(null);
 
   // Phase transitions based on scroll
-  const clusterFormation = useTransform(scrollProgress, [0.45, 0.65], [0, 1]);
-  const phrasesVisible = useTransform(scrollProgress, [0.55, 0.75], [0, 1]);
-  const labelsVisible = useTransform(scrollProgress, [0.65, 0.8], [0, 1]);
-  const connectionsVisible = useTransform(scrollProgress, [0.7, 0.85], [0, 1]);
-  const backgroundTransition = useTransform(scrollProgress, [0.4, 0.6], [0, 1]);
+  const clusterFormation = useTransform(scrollProgress, [0.25, 0.4], [0, 1]);
+  const phrasesVisible = useTransform(scrollProgress, [0.3, 0.45], [0, 1]);
+  const labelsVisible = useTransform(scrollProgress, [0.35, 0.45], [0, 1]);
+  const connectionsVisible = useTransform(scrollProgress, [0.4, 0.5], [0, 1]);
+  const backgroundTransition = useTransform(scrollProgress, [0.25, 0.4], [0, 1]);
+  
+  // Compression phase - clusters compress into dots before transitioning to InsightsEmergence
+  const compressionProgress = useTransform(scrollProgress, [0.48, 0.58], [0, 1]);
+  const clusterScale = useTransform(compressionProgress, [0, 1], [1, 0.15]);
+  const clusterOpacity = useTransform(compressionProgress, [0.7, 1], [1, 0]);
+  const phraseOpacity = useTransform(compressionProgress, [0, 0.4], [1, 0]);
+  const labelOpacity = useTransform(compressionProgress, [0, 0.3], [1, 0]);
+  const connectionOpacity = useTransform(compressionProgress, [0, 0.2], [1, 0]);
+  
+  // Move clusters toward center positions that map to metric cards
+  const connectionCenterX = useTransform(compressionProgress, [0, 1], [25, 20]);
+  const connectionCenterY = useTransform(compressionProgress, [0, 1], [35, 50]);
+  const meetingsCenterX = useTransform(compressionProgress, [0, 1], [70, 50]);
+  const meetingsCenterY = useTransform(compressionProgress, [0, 1], [40, 50]);
+  const energyCenterX = useTransform(compressionProgress, [0, 1], [48, 80]);
+  const energyCenterY = useTransform(compressionProgress, [0, 1], [70, 50]);
+
+  const getClusterPosition = (clusterId: string) => {
+    switch(clusterId) {
+      case 'connection': return { x: connectionCenterX, y: connectionCenterY };
+      case 'meetings': return { x: meetingsCenterX, y: meetingsCenterY };
+      case 'energy': return { x: energyCenterX, y: energyCenterY };
+      default: return { x: 50, y: 50 };
+    }
+  };
 
   return (
     <div className="h-full w-full relative overflow-hidden">
@@ -77,7 +102,10 @@ export const EmergenceVisualization = ({ scrollProgress }: EmergenceVisualizatio
       />
 
       {/* SVG layer for connection lines */}
-      <svg className="absolute inset-0 w-full h-full pointer-events-none">
+      <motion.svg 
+        className="absolute inset-0 w-full h-full pointer-events-none"
+        style={{ opacity: connectionOpacity }}
+      >
         <defs>
           <linearGradient id="connection-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="hsl(30, 10%, 50%)" stopOpacity="0.3" />
@@ -110,38 +138,70 @@ export const EmergenceVisualization = ({ scrollProgress }: EmergenceVisualizatio
             />
           );
         })}
-      </svg>
+      </motion.svg>
 
       {/* Floating phrases that drift toward clusters */}
-      {clusters.map((cluster) => (
-        cluster.phrases.map((phrase, phraseIndex) => (
-          <FloatingPhrase
-            key={`${cluster.id}-${phraseIndex}`}
-            phrase={phrase}
-            cluster={cluster}
-            phraseIndex={phraseIndex}
-            totalPhrases={cluster.phrases.length}
-            formationProgress={clusterFormation}
-            visibilityProgress={phrasesVisible}
-            isHovered={hoveredPhrase?.clusterId === cluster.id && hoveredPhrase?.phraseIndex === phraseIndex}
-            isClusterHovered={hoveredCluster === cluster.id}
-            onHover={() => setHoveredPhrase({ clusterId: cluster.id, phraseIndex })}
-            onLeave={() => setHoveredPhrase(null)}
-          />
-        ))
-      ))}
+      <motion.div style={{ opacity: phraseOpacity }}>
+        {clusters.map((cluster) => (
+          cluster.phrases.map((phrase, phraseIndex) => (
+            <FloatingPhrase
+              key={`${cluster.id}-${phraseIndex}`}
+              phrase={phrase}
+              cluster={cluster}
+              phraseIndex={phraseIndex}
+              totalPhrases={cluster.phrases.length}
+              formationProgress={clusterFormation}
+              visibilityProgress={phrasesVisible}
+              isHovered={hoveredPhrase?.clusterId === cluster.id && hoveredPhrase?.phraseIndex === phraseIndex}
+              isClusterHovered={hoveredCluster === cluster.id}
+              onHover={() => setHoveredPhrase({ clusterId: cluster.id, phraseIndex })}
+              onLeave={() => setHoveredPhrase(null)}
+            />
+          ))
+        ))}
+      </motion.div>
 
-      {/* Cluster labels */}
-      {clusters.map((cluster) => (
-        <SemanticCluster
-          key={cluster.id}
-          cluster={cluster}
-          labelVisibility={labelsVisible}
-          isHovered={hoveredCluster === cluster.id}
-          onHover={() => setHoveredCluster(cluster.id)}
-          onLeave={() => setHoveredCluster(null)}
-        />
-      ))}
+      {/* Cluster labels with compression animation */}
+      {clusters.map((cluster) => {
+        const pos = getClusterPosition(cluster.id);
+        return (
+          <motion.div
+            key={cluster.id}
+            className="absolute"
+            style={{
+              left: pos.x,
+              top: pos.y,
+              x: '-50%',
+              y: '-50%',
+              scale: clusterScale,
+            }}
+          >
+            {/* Compressed dot visualization */}
+            <motion.div
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+              style={{
+                width: 80,
+                height: 80,
+                backgroundColor: cluster.color,
+                opacity: useTransform(compressionProgress, [0.3, 0.8], [0, 0.9]),
+                boxShadow: `0 0 40px ${cluster.color}`,
+              }}
+            />
+            
+            {/* Original cluster label */}
+            <motion.div style={{ opacity: labelOpacity }}>
+              <SemanticCluster
+                cluster={cluster}
+                labelVisibility={labelsVisible}
+                isHovered={hoveredCluster === cluster.id}
+                onHover={() => setHoveredCluster(cluster.id)}
+                onLeave={() => setHoveredCluster(null)}
+                isStatic
+              />
+            </motion.div>
+          </motion.div>
+        );
+      })}
 
       {/* Instruction text */}
       <motion.p
@@ -149,6 +209,16 @@ export const EmergenceVisualization = ({ scrollProgress }: EmergenceVisualizatio
         style={{ opacity: useTransform(labelsVisible, [0.5, 1], [0, 1]) }}
       >
         Hover clusters to explore connections
+      </motion.p>
+      
+      {/* Compression phase text */}
+      <motion.p
+        className="absolute top-1/4 left-1/2 -translate-x-1/2 text-center font-display text-2xl md:text-3xl text-foreground/80"
+        style={{ 
+          opacity: useTransform(compressionProgress, [0.3, 0.5, 0.8, 1], [0, 1, 1, 0])
+        }}
+      >
+        Patterns crystallize...
       </motion.p>
     </div>
   );

@@ -14,6 +14,7 @@ interface SemanticClusterProps {
   isHovered: boolean;
   onHover: () => void;
   onLeave: () => void;
+  isStatic?: boolean;
 }
 
 export const SemanticCluster = ({
@@ -21,15 +22,19 @@ export const SemanticCluster = ({
   labelVisibility,
   isHovered,
   onHover,
-  onLeave
+  onLeave,
+  isStatic = false
 }: SemanticClusterProps) => {
   return (
     <motion.div
-      className="absolute cursor-pointer"
+      className="cursor-pointer"
       style={{
-        left: `${cluster.position.x}%`,
-        top: `${cluster.position.y}%`,
-        transform: 'translate(-50%, -50%)',
+        ...(isStatic ? {} : {
+          position: 'absolute',
+          left: `${cluster.position.x}%`,
+          top: `${cluster.position.y}%`,
+          transform: 'translate(-50%, -50%)',
+        }),
       }}
       onMouseEnter={onHover}
       onMouseLeave={onLeave}
