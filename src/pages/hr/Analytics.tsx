@@ -367,9 +367,10 @@ const Analytics = () => {
 
               {/* EXPORT TAB - Reports & Downloads */}
               <TabsContent value="export" className="space-y-6">
-                <ReportsExportTab 
+              <ReportsExportTab 
                   surveys={surveys} 
                   departments={Array.from(new Set(departmentData?.map(d => d.department) || []))}
+                  selectedSurveyId={filters.surveyId}
                 />
               </TabsContent>
             </Tabs>
