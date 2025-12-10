@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Settings, Sparkles } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { FileText, Settings, Sparkles, Info } from "lucide-react";
 import { TemplateCard } from "./TemplateCard";
 import { CustomReportBuilder, ReportConfig } from "./CustomReportBuilder";
 import { ExportAuditLog } from "./ExportAuditLog";
@@ -32,8 +33,12 @@ export function ReportsExportTab({ surveys = [], departments = [], selectedSurve
     name: string;
     onExport: () => void;
   } | null>(null);
-  const { participation, sentiment, themes, urgency } = useAnalytics({});
-  const { quotes, rootCauses, interventions, quickWins } = useConversationAnalytics({});
+  const { participation, sentiment, themes, urgency } = useAnalytics(
+    selectedSurveyId ? { surveyId: selectedSurveyId } : {}
+  );
+  const { quotes, rootCauses, interventions, quickWins } = useConversationAnalytics(
+    selectedSurveyId ? { surveyId: selectedSurveyId } : {}
+  );
   const { latestReport, generateReport, isGenerating } = useNarrativeReports(selectedSurveyId ?? null);
   
   const selectedSurvey = surveys.find(s => s.id === selectedSurveyId);
@@ -360,6 +365,14 @@ export function ReportsExportTab({ surveys = [], departments = [], selectedSurve
 
   return (
     <div className="space-y-8">
+      {!selectedSurveyId && (
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            Select a survey above to generate reports with survey-specific data.
+          </AlertDescription>
+        </Alert>
+      )}
       {/* Pre-built Templates */}
       <section>
         <div className="flex items-center justify-between mb-4">
