@@ -1,10 +1,12 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, RefreshCw, Sparkles } from "lucide-react";
+import { FileText, RefreshCw, Sparkles, Download } from "lucide-react";
 import { PulseHeader } from "./PulseHeader";
 import { ThemeHealthList } from "./ThemeHealthList";
 import { NarrativeReportViewer } from "./NarrativeReportViewer";
+import { exportStoryReport } from "@/lib/exportStoryReport";
+import { toast } from "sonner";
 import type { NarrativeReport } from "@/hooks/useNarrativeReports";
 import type { ParticipationMetrics, SentimentMetrics, ThemeInsight } from "@/hooks/useAnalytics";
 
@@ -25,6 +27,7 @@ interface HybridInsightsViewProps {
   // Survey info
   surveyId: string | null;
   surveyTitle?: string;
+  urgentFlags?: any[];
   
   isLoading?: boolean;
 }
@@ -41,8 +44,33 @@ export function HybridInsightsView({
   onGenerateReport,
   surveyId,
   surveyTitle,
+  urgentFlags,
   isLoading,
 }: HybridInsightsViewProps) {
+  
+  const handleExportPDF = async () => {
+    if (!participation || !sentiment || !latestReport) {
+      toast.error("Generate a story report first before exporting");
+      return;
+    }
+
+    toast.info("Generating PDF...");
+    try {
+      await exportStoryReport({
+        surveyName: surveyTitle || 'Survey Report',
+        generatedAt: new Date(),
+        participation,
+        sentiment,
+        themes,
+        narrativeReport: latestReport,
+        urgentCount: (urgentFlags || []).filter((u: any) => !u.resolved_at).length,
+      });
+      toast.success("PDF exported successfully!");
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export PDF");
+    }
+  };
   
   // Show empty state when no survey selected
   if (!surveyId) {
@@ -83,11 +111,19 @@ export function HybridInsightsView({
 
       {/* Story Report Section */}
       {latestReport ? (
-        <NarrativeReportViewer
-          report={latestReport}
-          onRegenerateWithAudience={(audience) => onGenerateReport(audience)}
-          isGenerating={isGenerating}
-        />
+        <div className="space-y-3">
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={handleExportPDF}>
+              <Download className="h-4 w-4 mr-2" />
+              Export as PDF
+            </Button>
+          </div>
+          <NarrativeReportViewer
+            report={latestReport}
+            onRegenerateWithAudience={(audience) => onGenerateReport(audience)}
+            isGenerating={isGenerating}
+          />
+        </div>
       ) : (
         <Card className="border-dashed border-2">
           <CardContent className="p-12 text-center">

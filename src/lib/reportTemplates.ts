@@ -12,6 +12,17 @@ export interface ReportTemplate {
 }
 
 export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
+  storyReport: {
+    id: 'storyReport',
+    name: 'Story Report',
+    description: 'Comprehensive AI-generated narrative combining theme health, pulse metrics, and actionable insights',
+    audience: 'All Stakeholders',
+    pageCount: 8,
+    defaultMetrics: ['participation', 'sentiment', 'urgent', 'themes', 'actions'],
+    includesCharts: true,
+    includesQuotes: true,
+    icon: 'BookOpen'
+  },
   executive: {
     id: 'executive',
     name: 'Executive Summary',
