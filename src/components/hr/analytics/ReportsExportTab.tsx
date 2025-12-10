@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Settings } from "lucide-react";
+import { FileText, Settings, Sparkles } from "lucide-react";
 import { TemplateCard } from "./TemplateCard";
 import { CustomReportBuilder, ReportConfig } from "./CustomReportBuilder";
 import { ExportAuditLog } from "./ExportAuditLog";
@@ -11,17 +11,20 @@ import { exportExecutiveReport } from "@/lib/exportExecutiveReport";
 import { exportDepartmentReview } from "@/lib/exportDepartmentReview";
 import { exportManagerBriefing } from "@/lib/exportManagerBriefing";
 import { exportComplianceReport } from "@/lib/exportComplianceReport";
+import { exportStoryReport } from "@/lib/exportStoryReport";
 import { toast } from "sonner";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useConversationAnalytics } from "@/hooks/useConversationAnalytics";
+import { useNarrativeReports } from "@/hooks/useNarrativeReports";
 import jsPDF from "jspdf";
 
 interface ReportsExportTabProps {
   surveys?: Array<{ id: string; title: string }>;
   departments?: string[];
+  selectedSurveyId?: string | null;
 }
 
-export function ReportsExportTab({ surveys = [], departments = [] }: ReportsExportTabProps) {
+export function ReportsExportTab({ surveys = [], departments = [], selectedSurveyId }: ReportsExportTabProps) {
   const [builderOpen, setBuilderOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewConfig, setPreviewConfig] = useState<{
@@ -31,6 +34,9 @@ export function ReportsExportTab({ surveys = [], departments = [] }: ReportsExpo
   } | null>(null);
   const { participation, sentiment, themes, urgency } = useAnalytics({});
   const { quotes, rootCauses, interventions, quickWins } = useConversationAnalytics({});
+  const { latestReport, generateReport, isGenerating } = useNarrativeReports(selectedSurveyId ?? null);
+  
+  const selectedSurvey = surveys.find(s => s.id === selectedSurveyId);
 
   const handleGenerateExecutive = async () => {
     if (!participation || !sentiment) {
@@ -270,12 +276,71 @@ export function ReportsExportTab({ surveys = [], departments = [] }: ReportsExpo
     }
   };
 
+  const handleGenerateStoryReport = async () => {
+    if (!participation || !sentiment || !themes) {
+      toast.error("Loading analytics data...");
+      return;
+    }
+
+    if (!latestReport) {
+      if (!selectedSurveyId) {
+        toast.error("Please select a survey first");
+        return;
+      }
+      toast.info("Generating story report... This may take a moment.");
+      generateReport({ surveyId: selectedSurveyId });
+      return;
+    }
+
+    const generator = async (): Promise<jsPDF> => {
+      const pdf = await exportStoryReport({
+        surveyName: selectedSurvey?.title || 'Survey Report',
+        generatedAt: new Date(),
+        participation,
+        sentiment,
+        themes: themes || [],
+        narrativeReport: latestReport,
+        urgentCount: (urgency || []).filter((u: any) => !u.resolved_at).length,
+      }, true);
+      return pdf;
+    };
+
+    const onExport = async () => {
+      toast.info("Generating Story Report PDF...");
+      try {
+        await exportStoryReport({
+          surveyName: selectedSurvey?.title || 'Survey Report',
+          generatedAt: new Date(),
+          participation,
+          sentiment,
+          themes: themes || [],
+          narrativeReport: latestReport,
+          urgentCount: (urgency || []).filter((u: any) => !u.resolved_at).length,
+        });
+        toast.success("Story Report generated successfully!");
+      } catch (error) {
+        console.error("Report generation error:", error);
+        toast.error("Failed to generate report");
+      }
+    };
+
+    setPreviewConfig({
+      generator,
+      name: "Story Report",
+      onExport
+    });
+    setPreviewOpen(true);
+  };
+
   const handleCustomReport = (config: ReportConfig) => {
     toast.info("Generating custom report...");
     console.log("Custom report config:", config);
     
     // Route to appropriate export function based on template
     switch (config.templateId) {
+      case 'storyReport':
+        handleGenerateStoryReport();
+        break;
       case 'executive':
         handleGenerateExecutive();
         break;
@@ -307,6 +372,20 @@ export function ReportsExportTab({ surveys = [], departments = [] }: ReportsExpo
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Story Report - Featured */}
+          <div className="md:col-span-2 lg:col-span-1">
+            <TemplateCard
+              template={REPORT_TEMPLATES.storyReport}
+              onGenerate={handleGenerateStoryReport}
+              disabled={!participation || !sentiment || isGenerating}
+            />
+            {!latestReport && selectedSurveyId && (
+              <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                <Sparkles className="h-3 w-3" />
+                Will generate AI narrative first
+              </p>
+            )}
+          </div>
           <TemplateCard
             template={REPORT_TEMPLATES.executive}
             onGenerate={handleGenerateExecutive}
