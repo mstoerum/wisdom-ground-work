@@ -12,11 +12,12 @@ import { exportExecutiveReport } from "@/lib/exportExecutiveReport";
 import { exportDepartmentReview } from "@/lib/exportDepartmentReview";
 import { exportManagerBriefing } from "@/lib/exportManagerBriefing";
 import { exportComplianceReport } from "@/lib/exportComplianceReport";
-import { exportStoryReport } from "@/lib/exportStoryReport";
+import { exportStoryReport, QuoteLookup } from "@/lib/exportStoryReport";
 import { toast } from "sonner";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import { useConversationAnalytics } from "@/hooks/useConversationAnalytics";
 import { useNarrativeReports } from "@/hooks/useNarrativeReports";
+import { supabase } from "@/integrations/supabase/client";
 import jsPDF from "jspdf";
 
 interface ReportsExportTabProps {
@@ -297,31 +298,55 @@ export function ReportsExportTab({ surveys = [], departments = [], selectedSurve
       return;
     }
 
+    // Collect all evidence_ids from insights to fetch quotes
+    const evidenceIds: string[] = [];
+    latestReport.chapters.forEach(chapter => {
+      chapter.insights?.forEach(insight => {
+        if (insight.evidence_ids) {
+          evidenceIds.push(...insight.evidence_ids);
+        }
+      });
+    });
+
+    // Fetch quotes for evidence_ids
+    let quotesLookup: QuoteLookup = {};
+    if (evidenceIds.length > 0) {
+      const uniqueIds = [...new Set(evidenceIds)];
+      const { data: responsesData } = await supabase
+        .from('responses')
+        .select('id, content, sentiment')
+        .in('id', uniqueIds.slice(0, 50)); // Limit to 50 for performance
+
+      if (responsesData) {
+        responsesData.forEach(response => {
+          quotesLookup[response.id] = {
+            text: response.content,
+            sentiment: response.sentiment || undefined
+          };
+        });
+      }
+    }
+
+    const reportData = {
+      surveyName: selectedSurvey?.title || 'Survey Report',
+      generatedAt: new Date(),
+      participation,
+      sentiment,
+      themes: themes || [],
+      narrativeReport: latestReport,
+      urgentCount: (urgency || []).filter((u: any) => !u.resolved_at).length,
+      quotes: quotesLookup,
+    };
+
     const generator = async (): Promise<jsPDF> => {
-      const pdf = await exportStoryReport({
-        surveyName: selectedSurvey?.title || 'Survey Report',
-        generatedAt: new Date(),
-        participation,
-        sentiment,
-        themes: themes || [],
-        narrativeReport: latestReport,
-        urgentCount: (urgency || []).filter((u: any) => !u.resolved_at).length,
-      }, true);
+      const pdf = await exportStoryReport(reportData, true);
       return pdf;
     };
 
     const onExport = async () => {
       toast.info("Generating Story Report PDF...");
       try {
-        await exportStoryReport({
-          surveyName: selectedSurvey?.title || 'Survey Report',
-          generatedAt: new Date(),
-          participation,
-          sentiment,
-          themes: themes || [],
-          narrativeReport: latestReport,
-          urgentCount: (urgency || []).filter((u: any) => !u.resolved_at).length,
-        });
+        await exportStoryReport(reportData);
         toast.success("Story Report generated successfully!");
       } catch (error) {
         console.error("Report generation error:", error);
