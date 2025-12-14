@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,34 +24,48 @@ export function ReportPreview({
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfInstance, setPdfInstance] = useState<jsPDF | null>(null);
+  const pdfUrlRef = useRef<string | null>(null);
+  const hasGeneratedRef = useRef(false);
 
   useEffect(() => {
     if (!open) {
       // Cleanup blob URL when dialog closes
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
-        setPdfUrl(null);
+      if (pdfUrlRef.current) {
+        URL.revokeObjectURL(pdfUrlRef.current);
+        pdfUrlRef.current = null;
       }
+      setPdfUrl(null);
       setPdfInstance(null);
       setIsLoading(true);
       setError(null);
+      hasGeneratedRef.current = false;
       return;
     }
+
+    // Prevent double generation
+    if (hasGeneratedRef.current) return;
+    hasGeneratedRef.current = true;
 
     const generatePreview = async () => {
       setIsLoading(true);
       setError(null);
       
       try {
+        console.log('[ReportPreview] Starting PDF generation...');
         const pdf = await reportGenerator();
+        console.log('[ReportPreview] PDF generated, creating blob...');
         setPdfInstance(pdf);
         
-        // Create blob URL for iframe
-        const blob = pdf.output('blob');
-        const url = URL.createObjectURL(blob);
+        // Create blob with explicit MIME type for browser compatibility
+        const rawBlob = pdf.output('blob');
+        const typedBlob = new Blob([rawBlob], { type: 'application/pdf' });
+        const url = URL.createObjectURL(typedBlob);
+        
+        console.log('[ReportPreview] Blob URL created:', url);
+        pdfUrlRef.current = url;
         setPdfUrl(url);
       } catch (err) {
-        console.error('Preview generation error:', err);
+        console.error('[ReportPreview] Generation error:', err);
         setError('Failed to generate preview. You can still try exporting the report.');
       } finally {
         setIsLoading(false);
@@ -60,10 +74,11 @@ export function ReportPreview({
 
     generatePreview();
 
-    // Cleanup on unmount
+    // Cleanup on unmount using ref
     return () => {
-      if (pdfUrl) {
-        URL.revokeObjectURL(pdfUrl);
+      if (pdfUrlRef.current) {
+        URL.revokeObjectURL(pdfUrlRef.current);
+        pdfUrlRef.current = null;
       }
     };
   }, [open, reportGenerator]);
@@ -120,7 +135,7 @@ export function ReportPreview({
 
           {!isLoading && !error && pdfUrl && (
             <iframe
-              src={pdfUrl}
+              src={pdfUrl + '#toolbar=1&navpanes=0'}
               className="w-full h-full rounded-lg border-0"
               title={`Preview: ${reportName}`}
               style={{ minHeight: '600px' }}
