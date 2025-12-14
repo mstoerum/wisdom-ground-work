@@ -5,3 +5,4 @@ export { EmotionIndicator, EmotionBadge, EmotionSpectrumBar } from './EmotionInd
 export { VoicesFirstSection } from './VoicesFirstSection';
 export { SprintActionCard, SprintBoard } from './SprintActionCard';
 export { CommitmentSection } from './CommitmentSection';
+export { InteractiveReportViewer } from './InteractiveReportViewer';
