@@ -2,11 +2,12 @@ import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { FileText, Settings, Sparkles, Info } from "lucide-react";
+import { FileText, Settings, Sparkles, Info, Eye } from "lucide-react";
 import { TemplateCard } from "./TemplateCard";
 import { CustomReportBuilder, ReportConfig } from "./CustomReportBuilder";
 import { ExportAuditLog } from "./ExportAuditLog";
 import { ReportPreview } from "./ReportPreview";
+import { InteractiveReportViewer } from "@/components/hr/reports";
 import { REPORT_TEMPLATES } from "@/lib/reportTemplates";
 import { exportExecutiveReport } from "@/lib/exportExecutiveReport";
 import { exportDepartmentReview } from "@/lib/exportDepartmentReview";
@@ -29,6 +30,7 @@ interface ReportsExportTabProps {
 export function ReportsExportTab({ surveys = [], departments = [], selectedSurveyId }: ReportsExportTabProps) {
   const [builderOpen, setBuilderOpen] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [interactivePreviewOpen, setInteractivePreviewOpen] = useState(false);
   const [previewConfig, setPreviewConfig] = useState<{
     generator: () => Promise<jsPDF>;
     name: string;
@@ -443,6 +445,35 @@ export function ReportsExportTab({ surveys = [], departments = [], selectedSurve
             template={REPORT_TEMPLATES.compliance}
             onGenerate={handleGenerateCompliance}
           />
+          
+          {/* Interactive Preview Card */}
+          <Card 
+            className="cursor-pointer transition-all hover:shadow-lg border-2 border-dashed border-primary/30 hover:border-primary/50"
+            onClick={() => setInteractivePreviewOpen(true)}
+          >
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <Eye className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">New Report Design Preview</CardTitle>
+                  <CardDescription className="text-xs mt-1">
+                    Explore the redesigned report components
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-3">
+                Interactive preview of new emotion indicators, sprint actions, commitments, and chapter navigation.
+              </p>
+              <Button variant="outline" size="sm" className="w-full">
+                <Eye className="h-4 w-4 mr-2" />
+                Open Preview
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </section>
 
@@ -497,6 +528,14 @@ export function ReportsExportTab({ surveys = [], departments = [], selectedSurve
           reportName={previewConfig.name}
         />
       )}
+
+      {/* Interactive Report Preview */}
+      <InteractiveReportViewer
+        open={interactivePreviewOpen}
+        onClose={() => setInteractivePreviewOpen(false)}
+        surveyName={selectedSurvey?.title || "Employee Feedback Survey"}
+        onExportPDF={handleGenerateStoryReport}
+      />
     </div>
   );
 }
