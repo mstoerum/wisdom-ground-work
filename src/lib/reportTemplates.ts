@@ -1,3 +1,8 @@
+import { REPORT_TIERS, CHAPTER_STRUCTURE, EMOTION_SPECTRUM } from './reportDesignSystem';
+
+// Re-export from design system for backward compatibility
+export { REPORT_TIERS, CHAPTER_STRUCTURE, EMOTION_SPECTRUM };
+
 export interface ReportTemplate {
   id: string;
   name: string;
@@ -9,19 +14,33 @@ export interface ReportTemplate {
   includesQuotes: boolean;
   interactive?: boolean;
   icon: string;
+  tier?: 'spark' | 'story' | 'strategy';
 }
 
 export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
+  spark: {
+    id: 'spark',
+    name: 'Spark Summary',
+    description: 'One-page visual snapshot with key metrics, top themes, and headline insight for quick sharing',
+    audience: 'All Stakeholders',
+    pageCount: 1,
+    defaultMetrics: ['participation', 'sentiment', 'themes'],
+    includesCharts: false,
+    includesQuotes: true,
+    icon: 'Zap',
+    tier: 'spark',
+  },
   storyReport: {
     id: 'storyReport',
     name: 'Story Report',
-    description: 'Comprehensive AI-generated narrative combining theme health, pulse metrics, and actionable insights',
-    audience: 'All Stakeholders',
+    description: 'Comprehensive 6-chapter narrative journey from voices to commitment with emotion timeline and action sprints',
+    audience: 'Leadership & HR',
     pageCount: 8,
     defaultMetrics: ['participation', 'sentiment', 'urgent', 'themes', 'actions'],
     includesCharts: true,
     includesQuotes: true,
-    icon: 'BookOpen'
+    icon: 'BookOpen',
+    tier: 'story',
   },
   executive: {
     id: 'executive',
@@ -32,7 +51,7 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
     defaultMetrics: ['participation', 'sentiment', 'urgent', 'themes'],
     includesCharts: true,
     includesQuotes: false,
-    icon: 'FileText'
+    icon: 'FileText',
   },
   departmentReview: {
     id: 'departmentReview',
@@ -44,7 +63,7 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
     includesCharts: true,
     includesQuotes: true,
     interactive: true,
-    icon: 'Users'
+    icon: 'Users',
   },
   managerBriefing: {
     id: 'managerBriefing',
@@ -55,7 +74,7 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
     defaultMetrics: ['sentiment', 'themes', 'actions'],
     includesCharts: true,
     includesQuotes: false,
-    icon: 'TrendingUp'
+    icon: 'TrendingUp',
   },
   compliance: {
     id: 'compliance',
@@ -66,7 +85,7 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
     defaultMetrics: ['compliance'],
     includesCharts: false,
     includesQuotes: false,
-    icon: 'Shield'
+    icon: 'Shield',
   },
   blank: {
     id: 'blank',
@@ -77,7 +96,7 @@ export const REPORT_TEMPLATES: Record<string, ReportTemplate> = {
     defaultMetrics: [],
     includesCharts: true,
     includesQuotes: true,
-    icon: 'PlusCircle'
+    icon: 'PlusCircle',
   }
 };
 
@@ -115,6 +134,18 @@ export interface ChartStyle {
 }
 
 export const CHART_STYLES: ChartStyle[] = [
+  {
+    id: 'emotion',
+    name: 'Emotion Spectrum',
+    description: 'Gradient colors from the new emotion design system',
+    colors: [
+      EMOTION_SPECTRUM.thriving.primary,
+      EMOTION_SPECTRUM.growing.primary,
+      EMOTION_SPECTRUM.emerging.primary,
+      EMOTION_SPECTRUM.challenged.primary,
+      EMOTION_SPECTRUM.critical.primary,
+    ]
+  },
   {
     id: 'professional',
     name: 'Professional',
