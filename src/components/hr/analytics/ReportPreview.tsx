@@ -24,6 +24,7 @@ export function ReportPreview({
   const [error, setError] = useState<string | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfInstance, setPdfInstance] = useState<jsPDF | null>(null);
+  const [iframeFailed, setIframeFailed] = useState(false);
   const pdfUrlRef = useRef<string | null>(null);
   const hasGeneratedRef = useRef(false);
 
@@ -38,6 +39,7 @@ export function ReportPreview({
       setPdfInstance(null);
       setIsLoading(true);
       setError(null);
+      setIframeFailed(false);
       hasGeneratedRef.current = false;
       return;
     }
@@ -133,13 +135,29 @@ export function ReportPreview({
             </div>
           )}
 
-          {!isLoading && !error && pdfUrl && (
+          {!isLoading && !error && pdfUrl && !iframeFailed && (
             <iframe
               src={pdfUrl + '#toolbar=1&navpanes=0'}
               className="w-full h-full rounded-lg border-0"
               title={`Preview: ${reportName}`}
               style={{ minHeight: '600px' }}
+              onError={() => setIframeFailed(true)}
             />
+          )}
+
+          {!isLoading && !error && pdfUrl && iframeFailed && (
+            <div className="flex flex-col items-center justify-center h-full gap-4">
+              <div className="text-center">
+                <p className="font-medium mb-2">Preview not supported in this browser</p>
+                <p className="text-sm text-muted-foreground">
+                  Your browser cannot display the PDF inline. Click below to download it directly.
+                </p>
+              </div>
+              <Button onClick={handleExport}>
+                <FileDown className="h-4 w-4 mr-2" />
+                Download PDF
+              </Button>
+            </div>
           )}
         </div>
 
