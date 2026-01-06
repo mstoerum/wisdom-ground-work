@@ -1,22 +1,18 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { ChatInterface } from "@/components/employee/ChatInterface";
-import { VoiceInterface } from "@/components/employee/VoiceInterface";
+import { FocusedInterviewInterface } from "@/components/employee/FocusedInterviewInterface";
 import { AnonymizationBanner } from "@/components/employee/AnonymizationBanner";
 import { AnonymizationRitual } from "@/components/employee/AnonymizationRitual";
 import { ConsentModal } from "@/components/employee/ConsentModal";
 import { ClosingRitual } from "@/components/employee/ClosingRitual";
 import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
 import { SpradleyEvaluation } from "@/components/employee/SpradleyEvaluation";
-// SurveyModeSelector removed - voice mode disabled, auto-starting text mode
-import { ConversationSummary } from "@/components/employee/ConversationSummary";
 import { useConversation } from "@/hooks/useConversation";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlayCircle, CheckCircle2 } from "lucide-react";
+import { PlayCircle } from "lucide-react";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 
 type ConversationStep = "consent" | "anonymization" | "chat" | "closing" | "evaluation" | "complete";
@@ -261,12 +257,10 @@ export const EmployeeSurveyFlow = ({
 
           {step === "chat" && conversationId && (
             <ChatErrorBoundary conversationId={conversationId} onExit={handleSaveAndExit}>
-              <ChatInterface
+              <FocusedInterviewInterface
                 conversationId={conversationId}
                 onComplete={handleChatComplete}
                 onSaveAndExit={handleSaveAndExit}
-                showTrustFlow={!publicLinkId && !skipIntro}
-                skipTrustFlow={!!publicLinkId || skipIntro}
                 publicLinkId={publicLinkId}
                 minimalUI={skipIntro}
               />
