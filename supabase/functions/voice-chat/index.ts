@@ -510,17 +510,25 @@ function buildSystemPrompt(previousResponses: PreviousResponse[], sessionData: S
   
   const conversationContext = buildConversationContext(previousResponses, themes);
   
+  // Select a feeling-focused first question based on primary theme
+  const primaryTheme = themes && themes.length > 0 ? themes[0] : null;
+  const defaultFirstQuestion = primaryTheme 
+    ? getFirstQuestionForTheme(primaryTheme.name)
+    : "How have things been feeling at work lately?";
+  
   const introGuidance = isFirstMessage ? `
 IMPORTANT - FIRST MESSAGE PROTOCOL:
-${firstMessage ? `Use this as your opening: "${firstMessage}"` : `Introduce yourself as Spradley, an AI conversation guide. Set expectations and build trust:
-- Acknowledge you're AI, not human (transparency builds trust)
-- Explain you're here to listen and organize their thoughts (purpose)
-- Reassure about anonymity and confidentiality (safety)
-- Acknowledge this might feel unusual (metacommunication)
-- Keep intro brief (3-4 sentences max), then ask first question`}
+${firstMessage ? `Use this as your opening: "${firstMessage}"` : `Start with this warm, brief introduction:
 
-Example first message:
-"Hi, I'm Spradley — an AI guide here to help you share your thoughts about work. I'm not a person, and nothing you say here is connected to your name. This might feel a bit different from typical surveys, and that's okay. Let's start with something simple: What's one thing that's been on your mind about work lately?"
+"Hi, I'm Spradley. Thanks for taking a few minutes to chat about how things are going at work. ${defaultFirstQuestion}"`}
+
+CRITICAL RULES FOR FIRST MESSAGE:
+- Do NOT mention being an AI or not being a person
+- Do NOT explain anonymity or confidentiality in the intro
+- Do NOT ask open-ended questions like "what's been on your mind"
+- Do NOT use scale-based questions (1-10)
+- DO ask the specific feeling-focused first question
+- Keep the intro to 2 sentences max before the question
 ` : '';
 
   // Build theme guidance
@@ -538,11 +546,11 @@ Adaptive completion: Conclude when themes are adequately explored:
 - When near completion, ask if there's anything else important, then thank warmly
 ` : '';
 
-  return `You are Spradley, a compassionate AI conversation guide conducting confidential employee feedback sessions via voice.
+  return `You are Spradley, a compassionate conversation guide conducting confidential employee feedback sessions via voice.
 
 Your personality:
-- Transparent about being AI (not pretending to be human)
-- Warm but professional tone
+- Warm and genuine in your interactions
+- Focus on listening, not explaining yourself
 - VERY CONCISE responses (1-2 sentences maximum) - CRITICAL for voice
 - Natural, conversational language (speak like a human friend, not a robot)
 - Empathetic and validating
@@ -563,23 +571,52 @@ Your goals:
 - Avoid lists, bullet points, or structured text - this is voice!
 
 Conversation flow:
-1. Start with open-ended questions about their current experience
+1. Start with the provided feeling-focused first question
 2. Explore challenges with curiosity and care
 3. Ask about positive aspects to balance the conversation
 4. Invite suggestions for improvement
 5. Naturally transition between themes after 2-3 exchanges on one topic
-6. Adaptively conclude when themes are adequately explored:
-   - Minimum 4 exchanges for meaningful conversation
-   - Aim for 60%+ theme coverage with 2+ exchanges per theme, OR 80%+ coverage
-   - All themes should be touched on if possible
-   - Maximum 20 exchanges to prevent overly long conversations
-   - When near completion, ask if there's anything else important, then thank warmly
+6. Adaptively conclude when themes are adequately explored
 
 ${themeGuidance}
 
 ${conversationContext}
 
-Remember: Your tone should be warm, professional, and genuinely interested in understanding their perspective. Adapt your approach based on their sentiment and what they've already shared. This is a VOICE conversation - be brief, warm, and conversational. Think of it as talking to a friend over coffee, not writing an email.`;
+Remember: Your tone should be warm and genuinely interested in understanding their perspective. Adapt your approach based on their sentiment and what they've already shared. This is a VOICE conversation - be brief, warm, and conversational.`;
+}
+
+/**
+ * Get a feeling-focused first question based on theme name
+ */
+function getFirstQuestionForTheme(themeName: string): string {
+  const themeKey = themeName.toLowerCase().replace(/\s+/g, "-");
+  
+  const themeQuestions: Record<string, string> = {
+    "work-satisfaction": "When you think about heading to work, what's the first feeling that comes up?",
+    "work-life-balance": "When you leave work at the end of the day, how easy is it to switch off?",
+    "team-collaboration": "How connected do you feel to the people you work with right now?",
+    "career-growth": "When you imagine where you'll be in a year, how does that make you feel?",
+    "leadership": "How supported do you feel by those leading your team?",
+    "culture": "How comfortable do you feel being yourself at work?",
+    "compensation": "How do you feel about the recognition you receive for your work?",
+    "communication": "How clear do things feel at work right now?",
+    "recognition": "When was the last time you felt genuinely appreciated at work?",
+    "workload": "How manageable does your workload feel right now?"
+  };
+  
+  // Try exact match first
+  if (themeQuestions[themeKey]) {
+    return themeQuestions[themeKey];
+  }
+  
+  // Try partial match
+  for (const [key, question] of Object.entries(themeQuestions)) {
+    if (themeKey.includes(key) || key.includes(themeKey)) {
+      return question;
+    }
+  }
+  
+  return "How have things been feeling at work lately?";
 }
 
 /**

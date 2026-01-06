@@ -63,9 +63,9 @@ export const generateResponse = (state: ConversationState, userMessage: string):
   let response = "";
   let theme = "";
   
-  // Opening greeting
+  // Opening greeting - warm and feeling-focused
   if (state.exchangeCount === 0) {
-    response = "Hi! Thank you for trying Spradley. I'm here to understand your work experience. How are you feeling about work lately?";
+    response = "Hi, I'm Spradley. Thanks for taking a few minutes to chat about how things are going at work. When you think about heading to work tomorrow, what's the first feeling that comes up?";
     theme = "opening";
   }
   // First response based on sentiment

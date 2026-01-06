@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getSystemPromptForSurveyType, buildConversationContextForType, type SurveyType } from "./context-prompts.ts";
+import { selectFirstQuestion } from "./first-questions.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -241,20 +242,31 @@ ${previousResponses.length < MIN_EXCHANGES ? "- Continue exploring to gather suf
 /**
  * Generate system prompt for constructive AI conversation
  */
-const getSystemPrompt = (conversationContext: string, isFirstMessage: boolean, surveyType?: SurveyType): string => {
+const getSystemPrompt = (conversationContext: string, isFirstMessage: boolean, surveyType?: SurveyType, firstQuestion?: string): string => {
   const isCourseEvaluation = surveyType === "course_evaluation";
-  const experienceType = isCourseEvaluation ? "course experience" : "work experience";
+  const context = isCourseEvaluation ? "your learning experience" : "how things are going at work";
   
   const introGuidance = isFirstMessage ? `
 IMPORTANT - FIRST MESSAGE PROTOCOL:
-Use this exact first message (or the provided firstMessage if available):
-"Hi, I'm Spradley, the AI here to listen about your ${experienceType}."
-Then immediately ask your first question to get the conversation started.
+Start with this warm, brief introduction and first question:
+
+"Hi, I'm Spradley. Thanks for taking a few minutes to chat about ${context}.
+
+${firstQuestion || "How have things been feeling lately?"}"
+
+CRITICAL RULES FOR FIRST MESSAGE:
+- Do NOT mention being an AI or not being a person
+- Do NOT explain anonymity or confidentiality in the intro
+- Do NOT ask open-ended questions like "tell me about your experience"
+- Do NOT use scale-based questions (1-10)
+- DO ask the specific feeling-focused first question above
+- Keep the intro to 2 sentences max before the question
 ` : '';
 
-  return `You are Spradley, an AI conversation guide conducting feedback sessions.
+  return `You are Spradley, a conversation guide conducting feedback sessions.
 
 Your personality:
+- Warm and genuine in your interactions
 - Direct and conversational
 - Concise responses (1-2 sentences, max 3)
 - Focused on gathering constructive feedback
@@ -271,7 +283,7 @@ Your goals:
 ${introGuidance}
 
 Conversation flow:
-1. Start with an open-ended question about their ${experienceType}
+1. Start with the provided first question - a feeling-focused question
 2. Explore themes systematically - aim for 2-3 exchanges per theme
 3. Ask specific follow-up questions to get concrete examples
 4. Balance positive feedback with constructive suggestions
@@ -541,7 +553,7 @@ Be warm and appreciative. Keep it brief.`;
       let systemPrompt = getSystemPromptForSurveyType(surveyType, themes, conversationContext);
       
       // If firstMessage is provided and this is an introduction, use it as the initial message
-      // Otherwise, generate a simple consistent first message
+      // Otherwise, generate a warm, feeling-focused first message
       if (isIntroductionTrigger) {
         if (requestFirstMessage) {
           // Use the provided first message directly
@@ -553,12 +565,13 @@ Be warm and appreciative. Keep it brief.`;
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
         } else {
-          // Generate consistent first message based on survey type
-          const experienceType = surveyType === "course_evaluation" ? "course experience" : "work experience";
-          const consistentFirstMessage = `Hi, I'm Spradley, the AI here to listen about your ${experienceType}.`;
+          // Generate warm first message with feeling-focused question based on themes
+          const firstQuestion = selectFirstQuestion(themes || [], surveyType);
+          const context = surveyType === "course_evaluation" ? "your learning experience" : "how things are going at work";
+          const warmFirstMessage = `Hi, I'm Spradley. Thanks for taking a few minutes to chat about ${context}.\n\n${firstQuestion}`;
           return new Response(
             JSON.stringify({ 
-              message: consistentFirstMessage,
+              message: warmFirstMessage,
               shouldComplete: false
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -971,21 +984,14 @@ Be warm and appreciative. Keep it brief.`;
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       } else {
-        // Generate context-aware first message based on survey type and themes
-        const themeContext = themes && themes.length > 0 
-          ? `We'll explore topics like ${themes.slice(0, 3).map((t: any) => t.name.toLowerCase()).join(", ")}.`
-          : "";
-        
-        let contextualGreeting = "";
-        if (surveyType === "course_evaluation") {
-          contextualGreeting = `Hi, I'm Spradley, here to learn about your course experience. ${themeContext} What's been on your mind about the course?`;
-        } else {
-          contextualGreeting = `Hi, I'm Spradley, here to listen about your work experience. ${themeContext} What's been on your mind lately at work?`;
-        }
+        // Generate warm first message with feeling-focused question based on themes
+        const firstQuestion = selectFirstQuestion(themes || [], surveyType);
+        const context = surveyType === "course_evaluation" ? "your learning experience" : "how things are going at work";
+        const warmFirstMessage = `Hi, I'm Spradley. Thanks for taking a few minutes to chat about ${context}.\n\n${firstQuestion}`;
         
         return new Response(
           JSON.stringify({ 
-            message: contextualGreeting,
+            message: warmFirstMessage,
             shouldComplete: false
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }

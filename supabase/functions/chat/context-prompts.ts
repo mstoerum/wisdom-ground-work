@@ -42,7 +42,7 @@ IMPORTANT GUIDELINES - Academic Context:
 - Transition naturally between dimensions after 2-3 exchanges
 
 CONVERSATION FLOW:
-1. Start with an open-ended question about their learning experience in the course
+1. Start with the provided first question - do NOT ask open-ended or scale-based questions
 2. Explore dimensions systematically - aim for 2-3 exchanges per dimension
 3. Ask specific follow-up questions to get concrete examples and actionable insights
 4. Balance positive feedback (what worked) with constructive suggestions (what could improve)
@@ -82,7 +82,7 @@ IMPORTANT GUIDELINES:
 - Transition naturally between themes after 2-3 exchanges per theme
 
 CONVERSATION FLOW:
-1. Start with an open-ended question about their work experience
+1. Start with the provided first question - a feeling-focused question about the primary theme
 2. Explore themes systematically - aim for 2-3 exchanges per theme
 3. Ask specific follow-up questions to get concrete examples
 4. Balance positive feedback with constructive suggestions
