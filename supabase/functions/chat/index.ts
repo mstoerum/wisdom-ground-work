@@ -171,6 +171,45 @@ const shouldCompleteBasedOnThemes = (
 };
 
 /**
+ * Build theme progress data for frontend visualization
+ */
+const buildThemeProgress = (
+  previousResponses: any[],
+  themes: any[],
+  currentThemeId: string | null
+): {
+  themes: Array<{ id: string; name: string; discussed: boolean; current: boolean }>;
+  coveragePercent: number;
+  discussedCount: number;
+  totalCount: number;
+} => {
+  const discussedThemeIds = new Set(
+    previousResponses
+      .filter(r => r.theme_id)
+      .map(r => r.theme_id)
+      .filter(Boolean)
+  );
+
+  const themeProgress = themes.map(t => ({
+    id: t.id,
+    name: t.name,
+    discussed: discussedThemeIds.has(t.id),
+    current: t.id === currentThemeId,
+  }));
+
+  const discussedCount = discussedThemeIds.size;
+  const totalCount = themes.length;
+  const coveragePercent = totalCount > 0 ? (discussedCount / totalCount) * 100 : 0;
+
+  return {
+    themes: themeProgress,
+    coveragePercent,
+    discussedCount,
+    totalCount,
+  };
+};
+
+/**
  * Build adaptive conversation context from previous responses
  */
 const buildConversationContext = (previousResponses: any[], themes: any[]): string => {
@@ -555,12 +594,16 @@ Be warm and appreciative. Keep it brief.`;
       // If firstMessage is provided and this is an introduction, use it as the initial message
       // Otherwise, generate a warm, feeling-focused first message
       if (isIntroductionTrigger) {
+        // Build initial theme progress for preview mode
+        const initialThemeProgress = buildThemeProgress([], themes, null);
+        
         if (requestFirstMessage) {
           // Use the provided first message directly
           return new Response(
             JSON.stringify({ 
               message: requestFirstMessage,
-              shouldComplete: false
+              shouldComplete: false,
+              themeProgress: initialThemeProgress
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
@@ -572,7 +615,8 @@ Be warm and appreciative. Keep it brief.`;
           return new Response(
             JSON.stringify({ 
               message: warmFirstMessage,
-              shouldComplete: false
+              shouldComplete: false,
+              themeProgress: initialThemeProgress
             }),
             { headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
@@ -593,10 +637,18 @@ Be warm and appreciative. Keep it brief.`;
         200
       );
 
+      // For preview mode, estimate which theme is being discussed based on exchange count
+      const previewThemeProgress = buildThemeProgress(
+        mockResponses, 
+        themes, 
+        themes[Math.min(turnCount, themes.length - 1)]?.id || null
+      );
+
       return new Response(
         JSON.stringify({ 
           message: aiMessage,
-          shouldComplete: shouldComplete 
+          shouldComplete: shouldComplete,
+          themeProgress: previewThemeProgress
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -1229,10 +1281,43 @@ Be warm and appreciative. Keep it brief.`;
       }
     }
 
+    // Build theme progress - for non-introduction messages, re-fetch the latest detected theme
+    // For introduction trigger, just use previous responses
+    let currentThemeId: string | null = null;
+    let updatedResponses: any[] = previousResponses || [];
+    
+    if (!isIntroductionTrigger) {
+      // Get the most recent response's theme_id (we just inserted it)
+      const { data: latestResponse } = await supabase
+        .from("responses")
+        .select("theme_id")
+        .eq("conversation_session_id", conversationId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single();
+      
+      currentThemeId = latestResponse?.theme_id || null;
+      
+      // Re-fetch all responses to get accurate progress
+      const { data: allResponses } = await supabase
+        .from("responses")
+        .select("theme_id")
+        .eq("conversation_session_id", conversationId);
+      
+      updatedResponses = allResponses || [];
+    }
+    
+    const themeProgress = buildThemeProgress(
+      updatedResponses,
+      themes || [],
+      currentThemeId
+    );
+
     return new Response(
       JSON.stringify({ 
         message: aiMessage,
-        shouldComplete: shouldComplete 
+        shouldComplete: shouldComplete,
+        themeProgress
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

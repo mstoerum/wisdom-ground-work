@@ -3,16 +3,23 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { QuestionCard } from "./QuestionCard";
 import { AnswerInput } from "./AnswerInput";
-import { InterviewProgress } from "./InterviewProgress";
+import { ThemeRingProgress } from "./ThemeRingProgress";
 import { useToast } from "@/hooks/use-toast";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle, X } from "lucide-react";
+import { CheckCircle } from "lucide-react";
 import { FinishEarlyConfirmationDialog } from "./FinishEarlyConfirmationDialog";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
+}
+
+interface ThemeProgress {
+  themes: Array<{ id: string; name: string; discussed: boolean; current: boolean }>;
+  coveragePercent: number;
+  discussedCount: number;
+  totalCount: number;
 }
 
 interface FocusedInterviewInterfaceProps {
@@ -22,8 +29,6 @@ interface FocusedInterviewInterfaceProps {
   publicLinkId?: string;
   minimalUI?: boolean;
 }
-
-const ESTIMATED_QUESTIONS = 6;
 
 export const FocusedInterviewInterface = ({
   conversationId,
@@ -43,6 +48,7 @@ export const FocusedInterviewInterface = ({
   const [isInitialized, setIsInitialized] = useState(false);
   const [showFinishDialog, setShowFinishDialog] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [themeProgress, setThemeProgress] = useState<ThemeProgress | null>(null);
 
   // Get session for authenticated requests
   const getSession = useCallback(async () => {
@@ -92,6 +98,11 @@ export const FocusedInterviewInterface = ({
 
         const data = await response.json();
         const introMessage = data.message || "How have things been feeling at work lately?";
+        
+        // Set theme progress if available
+        if (data.themeProgress) {
+          setThemeProgress(data.themeProgress);
+        }
         
         setCurrentQuestion(introMessage);
         setConversationHistory([{ role: "assistant", content: introMessage }]);
@@ -153,6 +164,11 @@ export const FocusedInterviewInterface = ({
       }
 
       const data = await response.json();
+
+      // Update theme progress if available
+      if (data.themeProgress) {
+        setThemeProgress(data.themeProgress);
+      }
 
       // Handle completion
       if (data.shouldComplete || data.isCompletionPrompt) {
@@ -273,13 +289,8 @@ export const FocusedInterviewInterface = ({
 
   return (
     <div className="min-h-[70vh] flex flex-col">
-      {/* Header with progress and actions */}
-      <div className="flex items-center justify-between px-4 py-4 border-b border-border/30">
-        <InterviewProgress 
-          currentQuestion={questionNumber} 
-          estimatedTotal={ESTIMATED_QUESTIONS} 
-        />
-        
+      {/* Header with actions */}
+      <div className="flex items-center justify-end px-4 py-4 border-b border-border/30">
         {!minimalUI && (
           <div className="flex items-center gap-2">
             <Button
@@ -297,7 +308,16 @@ export const FocusedInterviewInterface = ({
       </div>
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-12 gap-12">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-8">
+        {/* Theme Ring Progress */}
+        {themeProgress && themeProgress.themes.length > 0 && (
+          <ThemeRingProgress
+            themes={themeProgress.themes}
+            coveragePercent={themeProgress.coveragePercent}
+            size="md"
+          />
+        )}
+
         <QuestionCard
           question={currentQuestion}
           questionNumber={questionNumber}
@@ -325,7 +345,11 @@ export const FocusedInterviewInterface = ({
       {/* Finish Early Dialog */}
       <FinishEarlyConfirmationDialog
         open={showFinishDialog}
-        themeCoverage={{ discussed: questionNumber, total: ESTIMATED_QUESTIONS, percentage: (questionNumber / ESTIMATED_QUESTIONS) * 100 }}
+        themeCoverage={{ 
+          discussed: themeProgress?.discussedCount || questionNumber, 
+          total: themeProgress?.totalCount || 6, 
+          percentage: themeProgress?.coveragePercent || (questionNumber / 6) * 100 
+        }}
         exchangeCount={questionNumber}
         minExchanges={3}
         onConfirm={handleFinishEarly}
