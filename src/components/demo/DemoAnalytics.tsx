@@ -70,6 +70,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
             </div>
 
             {/* HybridInsightsView - Same as Analytics page */}
+            {/* Use real survey ID so theme analytics can fetch actual data */}
             <HybridInsightsView
               participation={showcaseParticipation}
               sentiment={showcaseSentiment}
@@ -78,7 +79,7 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
               isReportLoading={false}
               isGenerating={isGenerating}
               onGenerateReport={handleGenerateReport}
-              surveyId="demo-ux-survey"
+              surveyId="99e58381-8736-4641-a2d3-632c809dd29b"
               surveyTitle={showcaseCourse.surveyName}
               isLoading={false}
             />
