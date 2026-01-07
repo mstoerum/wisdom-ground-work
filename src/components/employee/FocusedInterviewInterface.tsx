@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { QuestionCard } from "./QuestionCard";
 import { AnswerInput } from "./AnswerInput";
-import { ThemeRingProgress } from "./ThemeRingProgress";
+import { ThemeJourneyPath } from "./ThemeJourneyPath";
 import { useToast } from "@/hooks/use-toast";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -290,9 +290,16 @@ export const FocusedInterviewInterface = ({
   return (
     <div className="min-h-[70vh] flex flex-col">
       {/* Header with actions */}
-      <div className="flex items-center justify-end px-4 py-4 border-b border-border/30">
+      <div className="flex items-center justify-between px-4 py-4 border-b border-border/30">
+        {/* Mobile progress indicator */}
+        <div className="md:hidden text-sm text-muted-foreground">
+          {themeProgress && (
+            <span>Topic {themeProgress.discussedCount + 1} of {themeProgress.totalCount}</span>
+          )}
+        </div>
+        
         {!minimalUI && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 ml-auto">
             <Button
               variant="ghost"
               size="sm"
@@ -307,32 +314,43 @@ export const FocusedInterviewInterface = ({
         )}
       </div>
 
-      {/* Main content area */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-8">
-        {/* Theme Ring Progress */}
+      {/* Main content area with side panel */}
+      <div className="flex-1 flex">
+        {/* Side panel with journey path - hidden on mobile */}
         {themeProgress && themeProgress.themes.length > 0 && (
-          <ThemeRingProgress
-            themes={themeProgress.themes}
-            coveragePercent={themeProgress.coveragePercent}
-            size="md"
-          />
+          <motion.aside
+            className="hidden md:flex flex-col w-[240px] border-r border-border/30 p-4 bg-muted/20"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <h3 className="text-sm font-medium text-muted-foreground mb-4">Your Journey</h3>
+            <ThemeJourneyPath
+              themes={themeProgress.themes}
+              coveragePercent={themeProgress.coveragePercent}
+              className="flex-1"
+            />
+          </motion.aside>
         )}
 
-        <QuestionCard
-          question={currentQuestion}
-          questionNumber={questionNumber}
-          isLoading={isLoading && !currentQuestion}
-        />
+        {/* Main content */}
+        <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-8">
+          <QuestionCard
+            question={currentQuestion}
+            questionNumber={questionNumber}
+            isLoading={isLoading && !currentQuestion}
+          />
 
-        <AnswerInput
-          value={currentAnswer}
-          onChange={setCurrentAnswer}
-          onSubmit={handleSubmit}
-          onTranscribe={handleTranscribe}
-          isLoading={isLoading || isTranscribing}
-          placeholder="Share your thoughts..."
-          disabled={isLoading}
-        />
+          <AnswerInput
+            value={currentAnswer}
+            onChange={setCurrentAnswer}
+            onSubmit={handleSubmit}
+            onTranscribe={handleTranscribe}
+            isLoading={isLoading || isTranscribing}
+            placeholder="Share your thoughts..."
+            disabled={isLoading}
+          />
+        </div>
       </div>
 
       {/* Footer hint */}
