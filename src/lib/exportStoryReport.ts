@@ -37,11 +37,16 @@ const COLORS = {
 };
 
 const CHAPTER_LABELS: Record<string, string> = {
-  pulse: 'The Pulse',
-  working: 'What\'s Working',
-  warnings: 'Warning Signs',
-  why: 'The Why',
+  pulse: 'The Voices',
+  voices: 'The Voices',
+  working: 'The Landscape',
+  landscape: 'The Landscape',
+  warnings: 'Frictions',
+  frictions: 'Frictions',
+  why: 'Root Causes',
+  root_causes: 'Root Causes',
   forward: 'The Path Forward',
+  commitment: 'Our Commitment',
 };
 
 const getHealthStatus = (health: number): { label: string; color: [number, number, number] } => {

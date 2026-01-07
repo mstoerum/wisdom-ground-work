@@ -1,29 +1,35 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Clock } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { BookOpen, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { StoryChapter } from "./StoryChapter";
 import { AudienceToggle } from "./AudienceToggle";
+import { ChapterProgressNav } from "./ChapterProgressNav";
+import { ReadingTimeEstimate } from "./ReadingTimeEstimate";
 import { NarrativeReport } from "@/hooks/useNarrativeReports";
+import { CONFIDENCE_CONFIG } from "@/lib/reportDesignSystem";
 import { format } from "date-fns";
 
 interface NarrativeReportViewerProps {
   report: NarrativeReport;
   onRegenerateWithAudience?: (audience: 'executive' | 'manager') => void;
   isGenerating?: boolean;
+  onExport?: () => void;
 }
 
 export function NarrativeReportViewer({ 
   report, 
   onRegenerateWithAudience,
-  isGenerating 
+  isGenerating,
+  onExport
 }: NarrativeReportViewerProps) {
   const [activeChapter, setActiveChapter] = useState(0);
   const [audience, setAudience] = useState<'executive' | 'manager'>(
     report.audience_config.audience
   );
+  const [visitedChapters, setVisitedChapters] = useState<number[]>([0]);
 
   const handleAudienceChange = (newAudience: 'executive' | 'manager') => {
     setAudience(newAudience);
@@ -32,75 +38,139 @@ export function NarrativeReportViewer({
     }
   };
 
+  const handleChapterChange = (index: number) => {
+    setActiveChapter(index);
+    if (!visitedChapters.includes(index)) {
+      setVisitedChapters(prev => [...prev, index]);
+    }
+  };
+
+  const goToNextChapter = () => {
+    if (activeChapter < report.chapters.length - 1) {
+      handleChapterChange(activeChapter + 1);
+    }
+  };
+
+  const goToPrevChapter = () => {
+    if (activeChapter > 0) {
+      handleChapterChange(activeChapter - 1);
+    }
+  };
+
+  const confidenceLabel = CONFIDENCE_CONFIG.labels[report.confidence_score] || 'Good';
+  const confidenceColors = CONFIDENCE_CONFIG.colors[report.confidence_score] || CONFIDENCE_CONFIG.colors[3];
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <BookOpen className="h-5 w-5 text-primary" />
-            <h2 className="text-xl sm:text-2xl font-semibold">Story Report</h2>
-            <Badge variant="outline" className="text-xs sm:text-sm">
-              Confidence: {report.confidence_score}/5
-            </Badge>
+    <div className="space-y-8">
+      {/* Header - Apple-inspired clean design */}
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="space-y-6"
+      >
+        {/* Title row */}
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <BookOpen className="h-5 w-5 text-muted-foreground" />
+              <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight">
+                Story Report
+              </h2>
+            </div>
+            <div className="w-12 h-0.5 bg-primary/60 rounded-full" />
           </div>
-          <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground flex-wrap">
-            <Clock className="h-4 w-4 flex-shrink-0" />
-            <span>Generated {format(new Date(report.generated_at), 'MMM d, yyyy h:mm a')}</span>
-            <span className="hidden sm:inline">•</span>
-            <span className="hidden sm:inline">{report.data_snapshot.total_sessions} sessions</span>
-            <span className="hidden sm:inline">•</span>
-            <span className="hidden sm:inline">{report.data_snapshot.total_responses} responses</span>
+          
+          <div className="flex items-center gap-3">
+            <AudienceToggle 
+              value={audience}
+              onChange={handleAudienceChange}
+              disabled={isGenerating}
+            />
+            {onExport && (
+              <Button variant="outline" size="sm" onClick={onExport} className="gap-2">
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
+            )}
           </div>
         </div>
-        
-        <AudienceToggle 
-          value={audience}
-          onChange={handleAudienceChange}
-          disabled={isGenerating}
+
+        {/* Metrics pills */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Badge 
+            variant="outline" 
+            className={`px-3 py-1.5 ${confidenceColors.bg} ${confidenceColors.text} border-0`}
+          >
+            {confidenceLabel} Confidence
+          </Badge>
+          <Badge variant="outline" className="px-3 py-1.5">
+            {report.data_snapshot.total_sessions} sessions
+          </Badge>
+          <Badge variant="outline" className="px-3 py-1.5">
+            {report.data_snapshot.total_responses} responses
+          </Badge>
+          <ReadingTimeEstimate chapters={report.chapters} />
+        </div>
+
+        {/* Generation date */}
+        <p className="text-sm text-muted-foreground">
+          Generated {format(new Date(report.generated_at), 'MMMM d, yyyy')}
+        </p>
+      </motion.div>
+
+      {/* Chapter Progress Navigation */}
+      <Card className="border-0 shadow-sm bg-card/50 backdrop-blur-sm">
+        <ChapterProgressNav
+          chapters={report.chapters.map(c => ({ key: c.key, title: c.title }))}
+          activeIndex={activeChapter}
+          onChapterSelect={handleChapterChange}
+          completedIndices={visitedChapters}
         />
-      </div>
+      </Card>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Chapter Navigation Sidebar */}
-        <Card className="lg:col-span-1 p-4 h-fit sticky top-4">
-          <h3 className="text-sm font-semibold mb-3 text-muted-foreground uppercase">
-            Chapters
-          </h3>
-          <ScrollArea className="h-[400px]">
-            <div className="space-y-1">
-              {report.chapters.map((chapter, index) => (
-                <Button
-                  key={chapter.key}
-                  variant={activeChapter === index ? "secondary" : "ghost"}
-                  className="w-full justify-start text-left h-auto py-3"
-                  onClick={() => setActiveChapter(index)}
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium text-muted-foreground">
-                        {index + 1}
-                      </span>
-                      <span className="font-medium">{chapter.title}</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      {chapter.insights.length} insights
-                    </div>
-                  </div>
-                </Button>
-              ))}
-            </div>
-          </ScrollArea>
-        </Card>
-
-        {/* Active Chapter Content */}
-        <div className="lg:col-span-3">
+      {/* Active Chapter Content */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeChapter}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+        >
           <StoryChapter 
             chapter={report.chapters[activeChapter]}
             chapterNumber={activeChapter + 1}
+            totalChapters={report.chapters.length}
           />
-        </div>
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Chapter Navigation Footer */}
+      <div className="flex items-center justify-between pt-4 border-t">
+        <Button
+          variant="ghost"
+          onClick={goToPrevChapter}
+          disabled={activeChapter === 0}
+          className="gap-2"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          <span className="hidden sm:inline">Previous</span>
+        </Button>
+        
+        <span className="text-sm text-muted-foreground">
+          {activeChapter + 1} of {report.chapters.length}
+        </span>
+        
+        <Button
+          variant="ghost"
+          onClick={goToNextChapter}
+          disabled={activeChapter === report.chapters.length - 1}
+          className="gap-2"
+        >
+          <span className="hidden sm:inline">Next</span>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
       </div>
     </div>
   );
