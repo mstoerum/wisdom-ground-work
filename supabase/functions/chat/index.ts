@@ -172,13 +172,14 @@ const shouldCompleteBasedOnThemes = (
 
 /**
  * Build theme progress data for frontend visualization
+ * Now includes depth tracking for each theme based on exploration level
  */
 const buildThemeProgress = (
   previousResponses: any[],
   themes: any[],
   currentThemeId: string | null
 ): {
-  themes: Array<{ id: string; name: string; discussed: boolean; current: boolean }>;
+  themes: Array<{ id: string; name: string; discussed: boolean; current: boolean; depth: number }>;
   coveragePercent: number;
   discussedCount: number;
   totalCount: number;
@@ -190,11 +191,33 @@ const buildThemeProgress = (
       .filter(Boolean)
   );
 
+  // Count exchanges per theme for depth calculation
+  const themeExchangeCounts = new Map<string, number>();
+  previousResponses.forEach(r => {
+    if (r.theme_id) {
+      themeExchangeCounts.set(r.theme_id, (themeExchangeCounts.get(r.theme_id) || 0) + 1);
+    }
+  });
+
+  // Calculate depth for each theme (0-100)
+  // - First mention: 25%
+  // - Each additional exchange: +20%
+  // - Maximum: 100%
+  const calculateDepth = (themeId: string): number => {
+    const exchangeCount = themeExchangeCounts.get(themeId) || 0;
+    if (exchangeCount === 0) return 0;
+    
+    // Initial mention = 25%, each additional = +20%, capped at 100%
+    const depth = Math.min(100, 25 + (exchangeCount - 1) * 20);
+    return depth;
+  };
+
   const themeProgress = themes.map(t => ({
     id: t.id,
     name: t.name,
     discussed: discussedThemeIds.has(t.id),
     current: t.id === currentThemeId,
+    depth: calculateDepth(t.id),
   }));
 
   const discussedCount = discussedThemeIds.size;

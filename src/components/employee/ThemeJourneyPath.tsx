@@ -7,6 +7,7 @@ interface ThemeJourneyPathProps {
     name: string;
     discussed: boolean;
     current: boolean;
+    depth?: number; // 0-100 exploration depth
   }>;
   coveragePercent: number;
   className?: string;
@@ -20,9 +21,13 @@ export const ThemeJourneyPath = ({ themes, coveragePercent, className = "" }: Th
   const nodeSpacing = 80;
   const pathWidth = 200;
   const nodeRadius = 12;
+  const depthRingRadius = 18;
   const curveOffset = 30;
   
   const height = (themes.length - 1) * nodeSpacing + 60;
+  
+  // Calculate circumference for depth ring
+  const circumference = 2 * Math.PI * depthRingRadius;
   
   // Generate the winding path
   const generatePath = () => {
@@ -84,80 +89,160 @@ export const ThemeJourneyPath = ({ themes, coveragePercent, className = "" }: Th
             animate={{ pathLength: getProgressPercent() }}
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.3 }}
           />
+          
+          {/* Theme waypoints with depth rings */}
+          {themes.map((theme, index) => {
+            const y = 30 + index * nodeSpacing;
+            const x = pathWidth / 2;
+            const depth = theme.depth || 0;
+            const depthOffset = circumference * (1 - depth / 100);
+            
+            return (
+              <g key={theme.id}>
+                {/* Depth ring background (track) */}
+                <circle
+                  cx={x}
+                  cy={y}
+                  r={depthRingRadius}
+                  fill="none"
+                  stroke="hsl(var(--muted-foreground) / 0.15)"
+                  strokeWidth={3}
+                />
+                
+                {/* Depth ring progress */}
+                <motion.circle
+                  cx={x}
+                  cy={y}
+                  r={depthRingRadius}
+                  fill="none"
+                  stroke="hsl(var(--primary) / 0.4)"
+                  strokeWidth={3}
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  initial={{ strokeDashoffset: circumference }}
+                  animate={{ strokeDashoffset: depthOffset }}
+                  transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 * index }}
+                  style={{ 
+                    transform: `rotate(-90deg)`,
+                    transformOrigin: `${x}px ${y}px`
+                  }}
+                />
+                
+                {/* Pulsing glow for current theme */}
+                {theme.current && (
+                  <>
+                    <motion.circle
+                      cx={x}
+                      cy={y}
+                      r={depthRingRadius + 4}
+                      fill="none"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={2}
+                      initial={{ opacity: 0.6, scale: 1 }}
+                      animate={{ 
+                        opacity: [0.6, 0],
+                        scale: [1, 1.3]
+                      }}
+                      transition={{ 
+                        duration: 1.5,
+                        repeat: Infinity,
+                        ease: "easeOut"
+                      }}
+                      style={{ transformOrigin: `${x}px ${y}px` }}
+                    />
+                    <motion.circle
+                      cx={x}
+                      cy={y}
+                      r={depthRingRadius + 2}
+                      fill="none"
+                      stroke="hsl(var(--primary))"
+                      strokeWidth={1.5}
+                      initial={{ opacity: 0.4 }}
+                      animate={{ 
+                        opacity: [0.4, 0.8, 0.4]
+                      }}
+                      transition={{ 
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "easeInOut"
+                      }}
+                    />
+                  </>
+                )}
+                
+                {/* Inner node circle */}
+                <motion.circle
+                  cx={x}
+                  cy={y}
+                  r={nodeRadius}
+                  fill={theme.current || theme.discussed 
+                    ? "hsl(var(--primary))" 
+                    : "hsl(var(--background))"
+                  }
+                  stroke={theme.current || theme.discussed 
+                    ? "hsl(var(--primary))" 
+                    : "hsl(var(--muted-foreground) / 0.3)"
+                  }
+                  strokeWidth={2}
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 0.1 * index, duration: 0.3 }}
+                />
+                
+                {/* Checkmark for discussed themes */}
+                {theme.discussed && !theme.current && (
+                  <motion.g
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.2 * index, duration: 0.2 }}
+                  >
+                    <path
+                      d={`M ${x - 4} ${y} L ${x - 1} ${y + 3} L ${x + 4} ${y - 3}`}
+                      fill="none"
+                      stroke="hsl(var(--primary-foreground))"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </motion.g>
+                )}
+                
+                {/* Current theme inner dot */}
+                {theme.current && (
+                  <motion.circle
+                    cx={x}
+                    cy={y}
+                    r={4}
+                    fill="hsl(var(--primary-foreground))"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: 0.3, duration: 0.2 }}
+                  />
+                )}
+              </g>
+            );
+          })}
         </svg>
         
-        {/* Theme waypoints */}
+        {/* Theme labels - positioned outside SVG for better text rendering */}
         {themes.map((theme, index) => {
           const y = 30 + index * nodeSpacing;
-          const isLeft = index % 2 === 0;
           
           return (
             <motion.div
-              key={theme.id}
-              className="absolute flex items-center gap-3"
+              key={`label-${theme.id}`}
+              className="absolute flex items-center"
               style={{
-                top: y - nodeRadius,
-                left: isLeft ? pathWidth / 2 - nodeRadius : pathWidth / 2 - nodeRadius,
+                top: y - 10,
+                left: pathWidth / 2 + depthRingRadius + 10,
               }}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1 * index, duration: 0.3 }}
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.15 * index, duration: 0.3 }}
             >
-              {/* Node circle */}
-              <div className="relative">
-                <motion.div
-                  className={`
-                    w-6 h-6 rounded-full border-2 flex items-center justify-center
-                    transition-colors duration-300
-                    ${theme.current 
-                      ? 'bg-primary border-primary' 
-                      : theme.discussed 
-                        ? 'bg-primary border-primary' 
-                        : 'bg-background border-muted-foreground/30'
-                    }
-                  `}
-                  animate={theme.current ? {
-                    boxShadow: [
-                      "0 0 0 0 hsl(var(--primary) / 0.4)",
-                      "0 0 0 8px hsl(var(--primary) / 0)",
-                    ]
-                  } : {}}
-                  transition={theme.current ? {
-                    duration: 1.5,
-                    repeat: Infinity,
-                    ease: "easeOut"
-                  } : {}}
-                >
-                  {theme.discussed && !theme.current && (
-                    <Check className="w-3 h-3 text-primary-foreground" />
-                  )}
-                  {theme.current && (
-                    <div className="w-2 h-2 rounded-full bg-primary-foreground" />
-                  )}
-                </motion.div>
-                
-                {/* "You are here" indicator */}
-                {theme.current && (
-                  <motion.div
-                    className="absolute -right-2 top-1/2 -translate-y-1/2 translate-x-full"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.5, duration: 0.3 }}
-                  >
-                    <div className="flex items-center gap-1 ml-2">
-                      <div className="w-0 h-0 border-t-4 border-b-4 border-r-6 border-transparent border-r-primary" />
-                      <span className="text-xs font-medium text-primary whitespace-nowrap">
-                        You're here
-                      </span>
-                    </div>
-                  </motion.div>
-                )}
-              </div>
-              
-              {/* Theme label */}
-              <motion.span
+              <span
                 className={`
-                  text-sm max-w-[140px] leading-tight
+                  text-sm max-w-[120px] leading-tight
                   ${theme.current 
                     ? 'font-medium text-foreground' 
                     : theme.discussed 
@@ -165,15 +250,15 @@ export const ThemeJourneyPath = ({ themes, coveragePercent, className = "" }: Th
                       : 'text-muted-foreground'
                   }
                 `}
-                style={{
-                  position: 'absolute',
-                  left: nodeRadius * 2 + 12,
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                }}
               >
                 {theme.name}
-              </motion.span>
+              </span>
+              {/* Depth percentage for explored themes */}
+              {(theme.depth || 0) > 0 && (
+                <span className="ml-2 text-xs text-muted-foreground/70">
+                  {theme.depth}%
+                </span>
+              )}
             </motion.div>
           );
         })}
