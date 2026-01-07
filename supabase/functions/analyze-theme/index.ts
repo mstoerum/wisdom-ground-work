@@ -192,9 +192,10 @@ serve(async (req) => {
       console.log(`[analyze-theme] Processing theme: ${themeData.name} (${themeResponses.length} responses)`);
 
       // Calculate base metrics
+      // Sentiment scores are stored as 0-100, normalize to 0-1
       const sentimentScores = themeResponses
         .filter(r => r.sentiment_score !== null && r.sentiment_score !== undefined)
-        .map(r => Number(r.sentiment_score));
+        .map(r => Number(r.sentiment_score) / 100);
 
       const intensity = calculateIntensity(sentimentScores);
       const direction = calculateDirection(sentimentScores);
