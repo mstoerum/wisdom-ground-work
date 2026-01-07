@@ -1,7 +1,6 @@
 import { motion } from "framer-motion";
 import { AlertTriangle, ChevronDown } from "lucide-react";
 import { useState } from "react";
-import { InlineSparkline } from "./InlineSparkline";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { ThemeInsight } from "@/hooks/useAnalytics";
 
@@ -11,42 +10,32 @@ interface ThemeTerrainProps {
 }
 
 // Emotion spectrum from reportDesignSystem.ts - Aalto color restraint
-const getHealthColor = (health: number): { bg: string; bar: string; text: string } => {
+const getHealthColor = (health: number): { bg: string; bar: string; text: string; status: string } => {
   if (health >= 80) return {
     bg: "bg-emerald-50 dark:bg-emerald-950/20",
     bar: "bg-emerald-500",
     text: "text-emerald-700 dark:text-emerald-400",
+    status: "Thriving",
   };
   if (health >= 60) return {
     bg: "bg-teal-50 dark:bg-teal-950/20",
     bar: "bg-teal-500",
     text: "text-teal-700 dark:text-teal-400",
+    status: "Growing",
   };
   if (health >= 45) return {
     bg: "bg-amber-50 dark:bg-amber-950/20",
     bar: "bg-amber-500",
     text: "text-amber-700 dark:text-amber-400",
+    status: "Emerging",
   };
   return {
     bg: "bg-rose-50 dark:bg-rose-950/20",
     bar: "bg-rose-500",
     text: "text-rose-700 dark:text-rose-400",
+    status: "Friction",
   };
 };
-
-// Generate mock trend data
-function generateTrendData(currentValue: number): number[] {
-  const points = 7;
-  const data: number[] = [];
-  let value = currentValue - 10;
-  
-  for (let i = 0; i < points; i++) {
-    value = Math.max(0, Math.min(100, value + (Math.random() - 0.4) * 8));
-    data.push(value);
-  }
-  data[points - 1] = currentValue;
-  return data;
-}
 
 /**
  * Theme Terrain: Tufte-inspired small multiples with horizontal health bars
@@ -79,9 +68,9 @@ export function ThemeTerrain({ themes, isLoading }: ThemeTerrainProps) {
 
   return (
     <div className="space-y-2">
-      {/* Section label - minimal */}
-      <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider px-1">
-        Theme Landscape
+      {/* Section label - sentence case per Aalto */}
+      <h3 className="text-xs font-medium text-muted-foreground tracking-wide px-1">
+        Theme landscape
       </h3>
 
       <div className="space-y-1.5">
@@ -89,7 +78,6 @@ export function ThemeTerrain({ themes, isLoading }: ThemeTerrainProps) {
           const colors = getHealthColor(theme.avgSentiment);
           const isFriction = theme.avgSentiment < 60;
           const isExpanded = expandedTheme === theme.id;
-          const trendData = generateTrendData(theme.avgSentiment);
 
           return (
             <motion.div
@@ -127,14 +115,10 @@ export function ThemeTerrain({ themes, isLoading }: ThemeTerrainProps) {
                         {theme.avgSentiment}%
                       </span>
 
-                      {/* Inline sparkline - 7-day trend */}
-                      <InlineSparkline
-                        data={trendData}
-                        color={isFriction ? "hsl(var(--warning))" : "hsl(var(--muted-foreground))"}
-                        width={36}
-                        height={12}
-                        className="opacity-60 group-hover:opacity-100 transition-opacity"
-                      />
+                      {/* Status label - explicit for clarity */}
+                      <span className={`text-[10px] w-14 text-muted-foreground`}>
+                        {colors.status}
+                      </span>
 
                       {/* Response count - muted */}
                       <span className="text-[10px] text-muted-foreground w-12 text-right">

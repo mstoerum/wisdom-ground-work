@@ -1,6 +1,5 @@
-import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { AgreementBar } from "./AgreementBar";
 
 interface Response {
   id: string;
@@ -9,69 +8,96 @@ interface Response {
   sentiment_score: number | null;
   urgency_score: number | null;
   created_at: string | null;
+  agreementPercentage?: number;
+  voiceCount?: number;
 }
 
 interface QuoteCarouselProps {
   responses: Response[];
 }
 
+/**
+ * QuoteCarousel: Tufte-inspired quote display
+ * - Text size scales by agreement (importance)
+ * - Left border indicates sentiment
+ * - Minimal attribution styling
+ */
 export function QuoteCarousel({ responses }: QuoteCarouselProps) {
-  const getSentimentColor = (sentiment: string | null) => {
+  const getSentimentBorderColor = (sentiment: string | null) => {
     switch (sentiment?.toLowerCase()) {
       case 'positive':
-        return 'bg-green-500/20 text-green-700 dark:text-green-300 border-green-500/40';
+        return 'border-l-emerald-400';
       case 'negative':
-        return 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/40';
+        return 'border-l-rose-400';
       case 'neutral':
-        return 'bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/40';
+        return 'border-l-slate-300 dark:border-l-slate-600';
       default:
-        return 'bg-muted border-border';
+        return 'border-l-muted';
     }
   };
 
-  const getUrgencyBadge = (score: number | null) => {
-    if (!score) return null;
-    if (score >= 4) return { label: 'High Urgency', color: 'bg-red-500/20 text-red-700 dark:text-red-300' };
-    if (score >= 3) return { label: 'Medium Urgency', color: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-300' };
-    return null;
+  const getTextSize = (agreementPercentage?: number) => {
+    // Scale text size by agreement - Tufte: data is the decoration
+    if (!agreementPercentage) return 'text-sm';
+    if (agreementPercentage >= 70) return 'text-base font-medium';
+    if (agreementPercentage >= 50) return 'text-sm';
+    return 'text-sm';
+  };
+
+  const getUrgencyIndicator = (score: number | null) => {
+    if (!score || score < 4) return null;
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] text-rose-600 dark:text-rose-400">
+        <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+        urgent
+      </span>
+    );
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {responses.map((response) => {
-        const urgencyBadge = getUrgencyBadge(response.urgency_score);
+        const urgencyIndicator = getUrgencyIndicator(response.urgency_score);
         
         return (
-          <Card 
+          <div 
             key={response.id}
             className={cn(
-              "p-3 border-l-4 transition-all hover:shadow-sm",
-              getSentimentColor(response.sentiment)
+              "border-l-4 pl-4 py-2 transition-all hover:bg-muted/30 rounded-r-lg",
+              getSentimentBorderColor(response.sentiment)
             )}
           >
-            <div className="space-y-2">
-              <p className="text-sm leading-relaxed">
-                "{response.content}"
-              </p>
-              <div className="flex items-center gap-2 flex-wrap">
-                {response.sentiment && (
-                  <Badge variant="outline" className="text-xs">
-                    {response.sentiment}
-                  </Badge>
-                )}
-                {urgencyBadge && (
-                  <Badge variant="outline" className={cn("text-xs", urgencyBadge.color)}>
-                    {urgencyBadge.label}
-                  </Badge>
-                )}
-                {response.sentiment_score !== null && (
-                  <span className="text-xs text-muted-foreground">
-                    Score: {response.sentiment_score.toFixed(1)}
-                  </span>
-                )}
-              </div>
+            {/* Quote text - sized by importance */}
+            <p className={cn(
+              "leading-relaxed text-foreground/90 italic",
+              getTextSize(response.agreementPercentage)
+            )}>
+              "{response.content}"
+            </p>
+            
+            {/* Attribution row - minimal */}
+            <div className="flex items-center gap-3 mt-2 flex-wrap">
+              {/* Anonymous attribution */}
+              <span className="text-[11px] text-muted-foreground/50">
+                — Anonymous
+              </span>
+              
+              {/* Agreement bar - if available */}
+              {response.agreementPercentage !== undefined && (
+                <div className="flex items-center gap-2">
+                  <AgreementBar percentage={response.agreementPercentage} />
+                  {response.voiceCount !== undefined && (
+                    <span className="text-[10px] text-muted-foreground">
+                      {response.voiceCount} voices agree
+                    </span>
+                  )}
+                </div>
+              )}
+              
+              {/* Urgency indicator */}
+              {urgencyIndicator}
             </div>
-          </Card>
+          </div>
         );
       })}
     </div>
