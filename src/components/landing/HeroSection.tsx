@@ -39,9 +39,9 @@ export const HeroSection = () => {
             <p className="text-sm font-medium text-primary tracking-wide uppercase">AI-POWERED EMPLOYEE INSIGHTS</p>
             
             <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-display font-semibold text-foreground leading-[1.1]">
-              Understand your people,{" "}
+              Beyond engagement scores:{" "}
               <span className="text-primary">
-                not just their answers
+                real insight into your people.
               </span>
             </h1>
             
