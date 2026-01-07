@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["Satoshi", "system-ui", "sans-serif"],
         display: ["Fraunces", "Georgia", "serif"],
       },
       colors: {
@@ -42,6 +42,11 @@ export default {
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
+        },
+        teal: {
+          DEFAULT: "hsl(var(--teal-accent))",
+          light: "hsl(var(--teal-light))",
+          pale: "hsl(var(--teal-pale))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",

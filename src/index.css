@@ -17,161 +17,172 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Warm Empathy Design Language - Primary Palette */
-    --background: 30 15% 97%;
-    --foreground: 25 20% 18%;
+    /* Clean, Bright, Empathic Design Language */
+    --background: 30 12% 98%;
+    --foreground: 220 15% 20%;
 
     --card: 0 0% 100%;
-    --card-foreground: 25 20% 18%;
+    --card-foreground: 220 15% 20%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 25 20% 18%;
+    --popover-foreground: 220 15% 20%;
 
-    /* Primary - Terracotta (softened) */
-    --primary: 12 45% 55%;
+    /* Primary - Brightened Terracotta (warmer, cleaner) */
+    --primary: 14 58% 52%;
     --primary-foreground: 0 0% 100%;
     
-    /* Secondary - Butter Yellow (muted) */
-    --secondary: 42 55% 78%;
-    --secondary-foreground: 30 30% 20%;
+    /* Secondary - Soft Cream (cleaner than butter) */
+    --secondary: 40 45% 92%;
+    --secondary-foreground: 220 15% 25%;
 
-    /* Muted - Warm Greige */
-    --muted: 30 10% 94%;
-    --muted-foreground: 25 12% 50%;
+    /* Muted - Cool Gray with warmth */
+    --muted: 220 8% 95%;
+    --muted-foreground: 220 10% 46%;
 
-    /* Accent - Sage Green (softer than lime) */
-    --accent: 145 35% 72%;
-    --accent-foreground: 145 30% 18%;
+    /* Accent - Fresh Teal (cleaner than sage) */
+    --accent: 172 42% 68%;
+    --accent-foreground: 172 40% 18%;
 
     /* Destructive - Soft Red */
     --destructive: 0 55% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders & Inputs */
-    --border: 30 10% 90%;
-    --input: 30 10% 90%;
-    --ring: 12 45% 55%;
+    /* Borders & Inputs - Cooler, cleaner */
+    --border: 220 10% 92%;
+    --input: 220 10% 92%;
+    --ring: 14 58% 52%;
 
     /* Semantic Colors */
-    --success: 152 50% 45%;
+    --success: 160 55% 42%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 70% 55%;
-    --warning-foreground: 30 30% 20%;
+    --warning: 38 75% 52%;
+    --warning-foreground: 38 75% 15%;
 
-    /* Warm Empathy Custom Tokens (refined) */
-    --terracotta-primary: 12 45% 55%;
-    --terracotta-deep: 12 50% 45%;
-    --terracotta-light: 12 50% 82%;
-    --terracotta-pale: 12 40% 96%;
+    /* Empathy Palette - Refined & Bright */
+    --terracotta-primary: 14 58% 52%;
+    --terracotta-deep: 14 55% 42%;
+    --terracotta-light: 14 55% 85%;
+    --terracotta-pale: 14 45% 97%;
 
-    --butter-yellow: 42 55% 78%;
-    --butter-yellow-light: 42 50% 90%;
-    --butter-yellow-pale: 42 45% 96%;
+    --butter-yellow: 42 60% 82%;
+    --butter-yellow-light: 42 55% 92%;
+    --butter-yellow-pale: 42 50% 97%;
 
-    --lime-green: 152 50% 45%;
-    --lime-pale: 152 40% 92%;
-    --coral-pink: 10 65% 92%;
-    --coral-accent: 10 55% 58%;
-    --coral-primary: 10 55% 58%;
-    --coral-pale: 10 50% 96%;
+    --lime-green: 160 55% 42%;
+    --lime-pale: 160 45% 94%;
+    --coral-pink: 12 70% 94%;
+    --coral-accent: 12 60% 58%;
+    --coral-primary: 12 60% 58%;
+    --coral-pale: 12 55% 97%;
 
-    --divider: 30 8% 92%;
+    /* Fresh Teal Accent */
+    --teal-accent: 172 42% 55%;
+    --teal-light: 172 40% 85%;
+    --teal-pale: 172 35% 96%;
 
-    /* Chart Colors */
-    --chart-terracotta: 12 45% 55%;
-    --chart-coral: 10 55% 58%;
-    --chart-yellow: 42 55% 78%;
-    --chart-lime: 152 50% 45%;
-    --chart-pink: 350 60% 75%;
-    --chart-gray: 30 8% 65%;
-    --chart-hatch: 30 8% 55%;
+    --divider: 220 8% 94%;
+
+    /* Chart Colors - Brighter */
+    --chart-terracotta: 14 58% 52%;
+    --chart-coral: 12 60% 58%;
+    --chart-yellow: 42 60% 72%;
+    --chart-lime: 160 55% 42%;
+    --chart-teal: 172 42% 55%;
+    --chart-pink: 350 65% 72%;
+    --chart-gray: 220 8% 60%;
+    --chart-hatch: 220 8% 50%;
 
     /* Spacing & Layout */
-    --radius: 0.75rem;
-    --radius-lg: 1rem;
-    --radius-xl: 1.25rem;
+    --radius: 0.625rem;
+    --radius-lg: 0.875rem;
+    --radius-xl: 1.125rem;
     --radius-full: 9999px;
 
-    /* Sidebar */
-    --sidebar-background: 30 12% 97%;
-    --sidebar-foreground: 25 20% 18%;
-    --sidebar-primary: 12 45% 55%;
+    /* Sidebar - Cleaner */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 15% 20%;
+    --sidebar-primary: 14 58% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 10% 94%;
-    --sidebar-accent-foreground: 25 20% 18%;
-    --sidebar-border: 30 10% 90%;
-    --sidebar-ring: 12 45% 55%;
+    --sidebar-accent: 220 8% 96%;
+    --sidebar-accent-foreground: 220 15% 20%;
+    --sidebar-border: 220 10% 92%;
+    --sidebar-ring: 14 58% 52%;
   }
 
   .dark {
-    --background: 25 18% 8%;
-    --foreground: 30 8% 95%;
+    --background: 220 18% 8%;
+    --foreground: 220 8% 95%;
 
-    --card: 25 15% 11%;
-    --card-foreground: 30 8% 95%;
+    --card: 220 15% 11%;
+    --card-foreground: 220 8% 95%;
 
-    --popover: 25 15% 11%;
-    --popover-foreground: 30 8% 95%;
+    --popover: 220 15% 11%;
+    --popover-foreground: 220 8% 95%;
 
-    --primary: 12 45% 55%;
+    --primary: 14 58% 52%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 42 55% 78%;
-    --secondary-foreground: 25 18% 8%;
+    --secondary: 40 45% 82%;
+    --secondary-foreground: 220 18% 8%;
 
-    --muted: 25 15% 18%;
-    --muted-foreground: 30 8% 60%;
+    --muted: 220 15% 18%;
+    --muted-foreground: 220 8% 60%;
 
-    --accent: 152 35% 50%;
-    --accent-foreground: 25 18% 8%;
+    --accent: 172 42% 50%;
+    --accent-foreground: 220 18% 8%;
 
     --destructive: 0 55% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 25 15% 20%;
-    --input: 25 15% 20%;
-    --ring: 12 45% 55%;
+    --border: 220 15% 20%;
+    --input: 220 15% 20%;
+    --ring: 14 58% 52%;
 
-    --success: 152 50% 45%;
+    --success: 160 55% 42%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 70% 55%;
-    --warning-foreground: 25 18% 8%;
+    --warning: 38 75% 52%;
+    --warning-foreground: 220 18% 8%;
 
-    /* Dark mode custom tokens */
-    --terracotta-primary: 12 45% 55%;
-    --terracotta-deep: 12 50% 45%;
-    --terracotta-light: 12 50% 28%;
-    --terracotta-pale: 12 40% 14%;
+    /* Dark mode empathy tokens */
+    --terracotta-primary: 14 58% 52%;
+    --terracotta-deep: 14 55% 42%;
+    --terracotta-light: 14 50% 28%;
+    --terracotta-pale: 14 40% 14%;
 
-    --butter-yellow: 42 55% 78%;
+    --butter-yellow: 42 60% 82%;
     --butter-yellow-light: 42 50% 28%;
     --butter-yellow-pale: 42 45% 14%;
 
-    --lime-green: 152 50% 45%;
-    --lime-pale: 152 40% 18%;
-    --coral-pink: 10 65% 28%;
-    --coral-accent: 10 55% 58%;
-    --coral-primary: 10 55% 58%;
-    --coral-pale: 10 50% 14%;
+    --lime-green: 160 55% 42%;
+    --lime-pale: 160 40% 18%;
+    --coral-pink: 12 65% 28%;
+    --coral-accent: 12 60% 58%;
+    --coral-primary: 12 60% 58%;
+    --coral-pale: 12 50% 14%;
 
-    --divider: 25 15% 16%;
+    --teal-accent: 172 42% 50%;
+    --teal-light: 172 40% 25%;
+    --teal-pale: 172 35% 14%;
 
-    --chart-terracotta: 12 45% 55%;
-    --chart-coral: 10 55% 58%;
-    --chart-yellow: 42 55% 78%;
-    --chart-lime: 152 50% 45%;
-    --chart-pink: 350 60% 38%;
-    --chart-gray: 30 8% 45%;
-    --chart-hatch: 30 8% 40%;
+    --divider: 220 15% 16%;
 
-    --sidebar-background: 25 18% 9%;
-    --sidebar-foreground: 30 8% 95%;
-    --sidebar-primary: 12 45% 55%;
+    --chart-terracotta: 14 58% 52%;
+    --chart-coral: 12 60% 58%;
+    --chart-yellow: 42 60% 72%;
+    --chart-lime: 160 55% 42%;
+    --chart-teal: 172 42% 50%;
+    --chart-pink: 350 65% 42%;
+    --chart-gray: 220 8% 45%;
+    --chart-hatch: 220 8% 40%;
+
+    --sidebar-background: 220 18% 9%;
+    --sidebar-foreground: 220 8% 95%;
+    --sidebar-primary: 14 58% 52%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 25 15% 18%;
-    --sidebar-accent-foreground: 30 8% 95%;
-    --sidebar-border: 25 15% 20%;
-    --sidebar-ring: 12 45% 55%;
+    --sidebar-accent: 220 15% 18%;
+    --sidebar-accent-foreground: 220 8% 95%;
+    --sidebar-border: 220 15% 20%;
+    --sidebar-ring: 14 58% 52%;
   }
 }
 
@@ -188,11 +199,18 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground font-sans;
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-feature-settings: "ss01", "ss02";
+    letter-spacing: -0.01em;
   }
 
   h1, h2, h3 {
-    @apply font-display tracking-tight;
+    @apply font-display;
+    letter-spacing: -0.025em;
+  }
+
+  h4, h5, h6 {
+    @apply font-sans font-semibold;
+    letter-spacing: -0.015em;
   }
 }
 
