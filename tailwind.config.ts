@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Satoshi", "system-ui", "sans-serif"],
-        display: ["Fraunces", "Georgia", "serif"],
+        sans: ["Instrument Sans", "system-ui", "sans-serif"],
+        display: ["Newsreader", "Georgia", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -44,9 +44,21 @@ export default {
           foreground: "hsl(var(--accent-foreground))",
         },
         teal: {
-          DEFAULT: "hsl(var(--teal-accent))",
+          DEFAULT: "hsl(var(--teal-primary))",
+          deep: "hsl(var(--teal-deep))",
           light: "hsl(var(--teal-light))",
           pale: "hsl(var(--teal-pale))",
+        },
+        lavender: {
+          DEFAULT: "hsl(var(--lavender-primary))",
+          light: "hsl(var(--lavender-light))",
+          pale: "hsl(var(--lavender-pale))",
+          deep: "hsl(var(--lavender-deep))",
+        },
+        violet: {
+          DEFAULT: "hsl(var(--violet-accent))",
+          light: "hsl(var(--violet-light))",
+          pale: "hsl(var(--violet-pale))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",
