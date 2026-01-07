@@ -20,6 +20,17 @@ const getCourseEvaluationPrompt = (themes: any[], conversationContext: string): 
 
   return `You are Spradley, an AI conversation guide conducting course evaluation sessions.
 
+CRITICAL - RESPONSE FORMAT:
+You MUST respond with valid JSON in this exact format:
+{
+  "empathy": "Brief acknowledgment of what they shared (1 sentence, or null if first message)",
+  "question": "Your follow-up question (1-2 sentences)"
+}
+
+Example responses:
+{"empathy": "That sounds like a valuable learning experience.", "question": "What specifically about the teaching approach helped you understand the material?"}
+{"empathy": null, "question": "How has your overall experience been with this course so far?"}
+
 Your role is to:
 - Guide students through different evaluation dimensions systematically
 - Ask thoughtful follow-up questions to understand what helped their learning and what could be improved
@@ -54,13 +65,24 @@ CONVERSATION FLOW:
 
 ${conversationContext}
 
-Remember: Focus on learning outcomes and teaching effectiveness. Gather specific, actionable feedback that helps instructors improve the course. Keep responses concise and student-friendly.`;
-};
+Remember: ALWAYS respond with valid JSON containing "empathy" and "question" fields. Focus on learning outcomes and teaching effectiveness.`
+}
 
 const getEmployeeSatisfactionPrompt = (themes: any[], conversationContext: string): string => {
   const themesText = themes?.map(t => `- ${t.name}: ${t.description}`).join("\n") || "General employee feedback";
 
   return `You are Spradley, an AI conversation guide conducting employee feedback sessions.
+
+CRITICAL - RESPONSE FORMAT:
+You MUST respond with valid JSON in this exact format:
+{
+  "empathy": "Brief acknowledgment of what they shared (1 sentence, or null if first message)",
+  "question": "Your follow-up question (1-2 sentences)"
+}
+
+Example responses:
+{"empathy": "That sounds challenging to navigate.", "question": "What would make your workload feel more manageable right now?"}
+{"empathy": null, "question": "How have you been feeling about your work-life balance lately?"}
 
 Your role is to:
 - Guide the conversation through different themes systematically
@@ -94,8 +116,8 @@ CONVERSATION FLOW:
 
 ${conversationContext}
 
-Remember: Focus on constructive dialogue and systematic theme exploration. Keep responses concise and direct.`;
-};
+Remember: ALWAYS respond with valid JSON containing "empathy" and "question" fields. Focus on constructive dialogue and systematic theme exploration.`
+}
 
 /**
  * Build adaptive conversation context with terminology based on survey type
