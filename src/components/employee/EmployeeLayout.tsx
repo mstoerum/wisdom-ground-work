@@ -38,19 +38,18 @@ export const EmployeeLayout = ({ children }: EmployeeLayoutProps) => {
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        // Demo mode: return mock profile
-        return { full_name: 'Demo User', department: 'Demo', email: 'demo@example.com' };
+        throw new Error('Not authenticated');
       }
       
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
       
       if (error) {
-        // Return demo profile on error
-        return { full_name: 'Demo User', department: 'Demo', email: 'demo@example.com' };
+        console.error('Error fetching profile:', error);
+        throw error;
       }
       return data;
     },
@@ -78,8 +77,8 @@ export const EmployeeLayout = ({ children }: EmployeeLayoutProps) => {
             <h2 className="text-lg font-semibold">Spradley</h2>
             {profile && (
               <div className="mt-2">
-                <p className="text-sm font-medium">{profile.full_name}</p>
-                <p className="text-xs text-muted-foreground">{profile.department}</p>
+                <p className="text-sm font-medium">{profile.full_name || 'Employee'}</p>
+                <p className="text-xs text-muted-foreground">{profile.department || 'No department'}</p>
               </div>
             )}
           </div>
