@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { MessageCircle } from "lucide-react";
 
 interface AIResponseDisplayProps {
   empathy?: string;
@@ -35,31 +34,28 @@ export const AIResponseDisplay = ({ empathy, question, isLoading }: AIResponseDi
 
   return (
     <motion.div
-      className="flex flex-col items-center justify-center text-center px-4 gap-6 max-w-2xl"
+      className="flex flex-col items-center justify-center text-center px-4 gap-2 max-w-2xl"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
-      {/* Empathy/Context Section */}
+      {/* Empathy - simple muted text, flows naturally into question */}
       {empathy && (
-        <motion.div
-          className="flex items-start gap-3 bg-muted/30 rounded-xl px-4 py-3 w-full"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
+        <motion.p
+          className="text-sm md:text-base text-muted-foreground italic leading-relaxed"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ duration: 0.3 }}
         >
-          <MessageCircle className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-          <p className="text-sm text-muted-foreground italic leading-relaxed text-left">
-            {empathy}
-          </p>
-        </motion.div>
+          {empathy}
+        </motion.p>
       )}
 
-      {/* Question Section */}
+      {/* Question - prominent, immediately following */}
       <motion.p
         className="text-2xl md:text-3xl font-medium text-foreground leading-relaxed"
-        initial={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.4, delay: empathy ? 0.2 : 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: empathy ? 0.15 : 0 }}
       >
         {question}
       </motion.p>
