@@ -93,8 +93,6 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                   participation={showcaseParticipation}
                   sentiment={showcaseSentiment}
                   themes={showcaseThemes}
-                  urgentCount={unresolvedUrgentCount}
-                  confidenceScore={showcaseQualityMetrics.average_confidence_score}
                   latestReport={showcaseNarrativeReport as any}
                   isReportLoading={false}
                   isGenerating={isGenerating}
