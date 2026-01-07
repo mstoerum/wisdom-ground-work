@@ -2,13 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Aalto Design System Colors */
-.bg-aalto-dark {
-  background-color: hsl(25, 15%, 8%);
+/* Calm Tech Design System */
+.bg-calm-dark {
+  background-color: hsl(240, 15%, 8%);
 }
 
-.text-aalto-warm-white {
-  color: hsl(30, 8%, 95%);
+.text-calm-warm-white {
+  color: hsl(240, 8%, 96%);
 }
 
 /* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
@@ -17,80 +17,77 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Clean, Bright, Empathic Design Language */
-    --background: 30 12% 98%;
-    --foreground: 220 15% 20%;
+    /* Calm Tech Design Language - Lavender + Teal */
+    --background: 250 25% 98%;
+    --foreground: 240 20% 16%;
 
     --card: 0 0% 100%;
-    --card-foreground: 220 15% 20%;
+    --card-foreground: 240 20% 16%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 15% 20%;
+    --popover-foreground: 240 20% 16%;
 
-    /* Primary - Brightened Terracotta (warmer, cleaner) */
-    --primary: 14 58% 52%;
+    /* Primary - Deep Teal */
+    --primary: 175 55% 38%;
     --primary-foreground: 0 0% 100%;
     
-    /* Secondary - Soft Cream (cleaner than butter) */
-    --secondary: 40 45% 92%;
-    --secondary-foreground: 220 15% 25%;
+    /* Secondary - Soft Lavender */
+    --secondary: 260 35% 92%;
+    --secondary-foreground: 260 30% 25%;
 
-    /* Muted - Cool Gray with warmth */
-    --muted: 220 8% 95%;
-    --muted-foreground: 220 10% 46%;
+    /* Muted - Lavender Gray */
+    --muted: 255 15% 95%;
+    --muted-foreground: 250 10% 45%;
 
-    /* Accent - Fresh Teal (cleaner than sage) */
-    --accent: 172 42% 68%;
-    --accent-foreground: 172 40% 18%;
+    /* Accent - Warm Lavender */
+    --accent: 270 40% 78%;
+    --accent-foreground: 270 35% 20%;
 
-    /* Destructive - Soft Red */
-    --destructive: 0 55% 55%;
+    /* Destructive - Soft Coral */
+    --destructive: 0 60% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Borders & Inputs - Cooler, cleaner */
-    --border: 220 10% 92%;
-    --input: 220 10% 92%;
-    --ring: 14 58% 52%;
+    /* Borders & Inputs */
+    --border: 255 15% 90%;
+    --input: 255 15% 90%;
+    --ring: 175 55% 38%;
 
     /* Semantic Colors */
-    --success: 160 55% 42%;
+    --success: 165 55% 40%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 75% 52%;
-    --warning-foreground: 38 75% 15%;
+    --warning: 42 75% 52%;
+    --warning-foreground: 42 75% 15%;
 
-    /* Empathy Palette - Refined & Bright */
-    --terracotta-primary: 14 58% 52%;
-    --terracotta-deep: 14 55% 42%;
-    --terracotta-light: 14 55% 85%;
-    --terracotta-pale: 14 45% 97%;
+    /* Calm Tech Custom Tokens */
+    --teal-primary: 175 55% 38%;
+    --teal-deep: 175 60% 30%;
+    --teal-light: 175 45% 80%;
+    --teal-pale: 175 35% 96%;
 
-    --butter-yellow: 42 60% 82%;
-    --butter-yellow-light: 42 55% 92%;
-    --butter-yellow-pale: 42 50% 97%;
+    --lavender-primary: 260 35% 72%;
+    --lavender-light: 260 30% 88%;
+    --lavender-pale: 260 25% 96%;
+    --lavender-deep: 260 40% 55%;
 
-    --lime-green: 160 55% 42%;
-    --lime-pale: 160 45% 94%;
-    --coral-pink: 12 70% 94%;
-    --coral-accent: 12 60% 58%;
-    --coral-primary: 12 60% 58%;
-    --coral-pale: 12 55% 97%;
+    --violet-accent: 270 40% 65%;
+    --violet-light: 270 35% 88%;
+    --violet-pale: 270 30% 96%;
 
-    /* Fresh Teal Accent */
-    --teal-accent: 172 42% 55%;
-    --teal-light: 172 40% 85%;
-    --teal-pale: 172 35% 96%;
+    /* Warm accents for empathy */
+    --coral-soft: 12 55% 92%;
+    --coral-accent: 12 50% 62%;
+    --peach-light: 25 50% 94%;
 
-    --divider: 220 8% 94%;
+    --divider: 255 12% 92%;
 
-    /* Chart Colors - Brighter */
-    --chart-terracotta: 14 58% 52%;
-    --chart-coral: 12 60% 58%;
-    --chart-yellow: 42 60% 72%;
-    --chart-lime: 160 55% 42%;
-    --chart-teal: 172 42% 55%;
-    --chart-pink: 350 65% 72%;
-    --chart-gray: 220 8% 60%;
-    --chart-hatch: 220 8% 50%;
+    /* Chart Colors - Calm Palette */
+    --chart-teal: 175 55% 38%;
+    --chart-lavender: 260 35% 72%;
+    --chart-violet: 270 40% 65%;
+    --chart-coral: 12 50% 62%;
+    --chart-mint: 165 45% 55%;
+    --chart-slate: 240 10% 55%;
+    --chart-hatch: 240 10% 45%;
 
     /* Spacing & Layout */
     --radius: 0.625rem;
@@ -98,91 +95,88 @@ All colors MUST be HSL.
     --radius-xl: 1.125rem;
     --radius-full: 9999px;
 
-    /* Sidebar - Cleaner */
+    /* Sidebar */
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 220 15% 20%;
-    --sidebar-primary: 14 58% 52%;
+    --sidebar-foreground: 240 20% 16%;
+    --sidebar-primary: 175 55% 38%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 8% 96%;
-    --sidebar-accent-foreground: 220 15% 20%;
-    --sidebar-border: 220 10% 92%;
-    --sidebar-ring: 14 58% 52%;
+    --sidebar-accent: 260 25% 96%;
+    --sidebar-accent-foreground: 240 20% 16%;
+    --sidebar-border: 255 15% 90%;
+    --sidebar-ring: 175 55% 38%;
   }
 
   .dark {
-    --background: 220 18% 8%;
-    --foreground: 220 8% 95%;
+    --background: 240 18% 8%;
+    --foreground: 250 10% 95%;
 
-    --card: 220 15% 11%;
-    --card-foreground: 220 8% 95%;
+    --card: 240 16% 11%;
+    --card-foreground: 250 10% 95%;
 
-    --popover: 220 15% 11%;
-    --popover-foreground: 220 8% 95%;
+    --popover: 240 16% 11%;
+    --popover-foreground: 250 10% 95%;
 
-    --primary: 14 58% 52%;
+    --primary: 175 55% 42%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 40 45% 82%;
-    --secondary-foreground: 220 18% 8%;
+    --secondary: 260 30% 25%;
+    --secondary-foreground: 260 25% 90%;
 
-    --muted: 220 15% 18%;
-    --muted-foreground: 220 8% 60%;
+    --muted: 240 15% 18%;
+    --muted-foreground: 250 10% 60%;
 
-    --accent: 172 42% 50%;
-    --accent-foreground: 220 18% 8%;
+    --accent: 270 35% 45%;
+    --accent-foreground: 270 30% 95%;
 
-    --destructive: 0 55% 55%;
+    --destructive: 0 60% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 20%;
-    --input: 220 15% 20%;
-    --ring: 14 58% 52%;
+    --border: 240 15% 20%;
+    --input: 240 15% 20%;
+    --ring: 175 55% 42%;
 
-    --success: 160 55% 42%;
+    --success: 165 55% 40%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 75% 52%;
-    --warning-foreground: 220 18% 8%;
+    --warning: 42 75% 52%;
+    --warning-foreground: 240 18% 8%;
 
-    /* Dark mode empathy tokens */
-    --terracotta-primary: 14 58% 52%;
-    --terracotta-deep: 14 55% 42%;
-    --terracotta-light: 14 50% 28%;
-    --terracotta-pale: 14 40% 14%;
+    /* Dark mode calm tokens */
+    --teal-primary: 175 55% 42%;
+    --teal-deep: 175 60% 30%;
+    --teal-light: 175 45% 25%;
+    --teal-pale: 175 35% 14%;
 
-    --butter-yellow: 42 60% 82%;
-    --butter-yellow-light: 42 50% 28%;
-    --butter-yellow-pale: 42 45% 14%;
+    --lavender-primary: 260 35% 55%;
+    --lavender-light: 260 30% 28%;
+    --lavender-pale: 260 25% 14%;
+    --lavender-deep: 260 40% 45%;
 
-    --lime-green: 160 55% 42%;
-    --lime-pale: 160 40% 18%;
-    --coral-pink: 12 65% 28%;
-    --coral-accent: 12 60% 58%;
-    --coral-primary: 12 60% 58%;
-    --coral-pale: 12 50% 14%;
+    --violet-accent: 270 40% 50%;
+    --violet-light: 270 35% 25%;
+    --violet-pale: 270 30% 14%;
 
-    --teal-accent: 172 42% 50%;
-    --teal-light: 172 40% 25%;
-    --teal-pale: 172 35% 14%;
+    --coral-soft: 12 55% 22%;
+    --coral-accent: 12 50% 55%;
+    --peach-light: 25 50% 20%;
 
-    --divider: 220 15% 16%;
+    --divider: 240 15% 16%;
 
-    --chart-terracotta: 14 58% 52%;
-    --chart-coral: 12 60% 58%;
-    --chart-yellow: 42 60% 72%;
-    --chart-lime: 160 55% 42%;
-    --chart-teal: 172 42% 50%;
-    --chart-pink: 350 65% 42%;
-    --chart-gray: 220 8% 45%;
-    --chart-hatch: 220 8% 40%;
+    --chart-teal: 175 55% 42%;
+    --chart-lavender: 260 35% 55%;
+    --chart-violet: 270 40% 50%;
+    --chart-coral: 12 50% 55%;
+    --chart-mint: 165 45% 45%;
+    --chart-slate: 240 10% 45%;
+    --chart-hatch: 240 10% 35%;
 
-    --sidebar-background: 220 18% 9%;
-    --sidebar-foreground: 220 8% 95%;
-    --sidebar-primary: 14 58% 52%;
+    --sidebar-background: 240 18% 9%;
+    --sidebar-foreground: 250 10% 95%;
+    --sidebar-primary: 175 55% 42%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 15% 18%;
-    --sidebar-accent-foreground: 220 8% 95%;
-    --sidebar-border: 220 15% 20%;
-    --sidebar-ring: 14 58% 52%;
+    --sidebar-accent: 240 15% 18%;
+    --sidebar-accent-foreground: 250 10% 95%;
+    --sidebar-border: 240 15% 20%;
+    --sidebar-ring: 175 55% 42%;
   }
 }
 
