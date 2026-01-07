@@ -61,14 +61,33 @@ function calculateDirection(sentimentScores: number[]): number {
 }
 
 /**
- * Calculate Theme Health Index (0-100)
- * Formula: THI = (intensity × direction × 50) + 50
+ * Calculate Theme Health Index (0-100) based on sentiment distribution
+ * Improved formula that captures net sentiment rather than intensity×direction
  */
-function calculateTHI(intensity: number, direction: number): number {
-  // When direction is positive and intensity is high → higher score
-  // When direction is negative and intensity is high → lower score
-  const rawScore = (intensity * direction * 50) + 50;
-  return Math.round(Math.max(0, Math.min(100, rawScore)));
+function calculateTHI(
+  responses: { sentiment: string; sentiment_score: number | null }[],
+  polarizationLevel: 'low' | 'medium' | 'high'
+): number {
+  if (responses.length === 0) return 50;
+  
+  // Count by sentiment category
+  const positive = responses.filter(r => r.sentiment === 'positive').length;
+  const negative = responses.filter(r => r.sentiment === 'negative').length;
+  const total = responses.length;
+  
+  // Calculate ratios
+  const positiveRatio = positive / total;  // 0-1
+  const negativeRatio = negative / total;  // 0-1
+  
+  // Base score from net sentiment (0-100)
+  // positiveRatio - negativeRatio gives -1 to 1, normalize to 0-100
+  const netSentimentScore = ((positiveRatio - negativeRatio + 1) / 2) * 100;
+  
+  // Apply polarization penalty (high polarization = mixed signals = reduce score)
+  const polarizationPenalty = polarizationLevel === 'high' ? 10 : (polarizationLevel === 'medium' ? 5 : 0);
+  
+  // Final THI
+  return Math.round(Math.max(0, Math.min(100, netSentimentScore - polarizationPenalty)));
 }
 
 /**
@@ -96,14 +115,33 @@ function detectPolarization(sentimentScores: number[]): { level: 'low' | 'medium
 }
 
 /**
- * Map THI to health status
+ * Map THI to health status with polarization awareness
  */
-function getHealthStatus(thi: number): 'thriving' | 'stable' | 'emerging' | 'friction' | 'critical' {
+function getHealthStatus(
+  thi: number, 
+  polarizationLevel: 'low' | 'medium' | 'high'
+): 'thriving' | 'stable' | 'emerging' | 'friction' | 'critical' {
+  // High polarization overrides to 'friction' if score would otherwise be 'stable' or 'emerging'
+  // This flags that even if average is ok, there's division that needs attention
+  if (polarizationLevel === 'high' && thi >= 50 && thi < 85) {
+    return 'friction';
+  }
+  
   if (thi >= 85) return 'thriving';
   if (thi >= 70) return 'stable';
   if (thi >= 50) return 'emerging';
   if (thi >= 30) return 'friction';
   return 'critical';
+}
+
+/**
+ * Calculate confidence level based on response count
+ */
+function getConfidenceLevel(responseCount: number): number {
+  if (responseCount >= 10) return 5;  // High confidence
+  if (responseCount >= 5) return 4;   // Good confidence
+  if (responseCount >= 3) return 3;   // Moderate confidence
+  return 2;                            // Low confidence
 }
 
 serve(async (req) => {
@@ -199,11 +237,14 @@ serve(async (req) => {
 
       const intensity = calculateIntensity(sentimentScores);
       const direction = calculateDirection(sentimentScores);
-      const thi = calculateTHI(intensity, direction);
       const polarization = detectPolarization(sentimentScores);
-      const baseHealthStatus = getHealthStatus(thi);
+      
+      // Use improved THI formula based on sentiment distribution
+      const thi = calculateTHI(themeResponses, polarization.level);
+      const baseHealthStatus = getHealthStatus(thi, polarization.level);
+      const baseConfidence = getConfidenceLevel(themeResponses.length);
 
-      console.log(`[analyze-theme] ${themeData.name}: THI=${thi}, intensity=${intensity.toFixed(2)}, direction=${direction.toFixed(2)}, polarization=${polarization.level}`);
+      console.log(`[analyze-theme] ${themeData.name}: THI=${thi}, intensity=${intensity.toFixed(2)}, direction=${direction.toFixed(2)}, polarization=${polarization.level}, confidence=${baseConfidence}`);
 
       // Prepare content for AI analysis
       const responseTexts = themeResponses
@@ -367,7 +408,7 @@ Identify:
           });
         }
 
-        // Upsert fallback to database
+        // Upsert fallback to database - use baseConfidence instead of AI confidence
         const { error: upsertError } = await supabase
           .from("theme_analytics")
           .upsert({
@@ -381,7 +422,7 @@ Identify:
             polarization_score: polarization.score,
             insights: fallbackAnalysis.insights,
             root_causes: fallbackAnalysis.root_causes,
-            confidence_score: fallbackAnalysis.confidence_score,
+            confidence_score: baseConfidence, // Use response-count based confidence
             response_count: themeResponses.length,
             analyzed_at: new Date().toISOString()
           }, {
@@ -441,7 +482,8 @@ Identify:
         };
       }
 
-      // Upsert to database
+      // Upsert to database - round confidence_score to integer for DB compatibility
+      const finalConfidence = Math.round(analysisResult.confidence_score) || baseConfidence;
       const { error: upsertError } = await supabase
         .from("theme_analytics")
         .upsert({
@@ -455,7 +497,7 @@ Identify:
           polarization_score: polarization.score,
           insights: analysisResult.insights,
           root_causes: analysisResult.root_causes,
-          confidence_score: analysisResult.confidence_score,
+          confidence_score: finalConfidence, // Rounded to integer
           response_count: themeResponses.length,
           analyzed_at: new Date().toISOString()
         }, {
