@@ -713,9 +713,14 @@ Be warm and appreciative. Keep it brief.`;
         themes[Math.min(turnCount, themes.length - 1)]?.id || null
       );
 
+      // Parse structured response for preview mode
+      const { empathy, question } = parseStructuredResponse(aiMessage);
+      console.log("Preview mode parsed response:", { empathy, question: question.substring(0, 50) });
+      
       return new Response(
         JSON.stringify({ 
-          message: aiMessage,
+          message: question,
+          empathy: empathy,
           shouldComplete: shouldComplete,
           themeProgress: previewThemeProgress
         }),
