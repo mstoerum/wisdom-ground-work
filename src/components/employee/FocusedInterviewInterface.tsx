@@ -16,7 +16,7 @@ interface Message {
 }
 
 interface ThemeProgress {
-  themes: Array<{ id: string; name: string; discussed: boolean; current: boolean }>;
+  themes: Array<{ id: string; name: string; discussed: boolean; current: boolean; depth?: number }>;
   coveragePercent: number;
   discussedCount: number;
   totalCount: number;
