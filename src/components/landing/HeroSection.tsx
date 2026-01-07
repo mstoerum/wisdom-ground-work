@@ -36,7 +36,7 @@ export const HeroSection = () => {
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           {/* Left column - Copy */}
           <div className="space-y-8">
-            <p className="text-sm font-medium text-primary tracking-wide uppercase">AI-POWERED EMPLOYEE INSIGHTS</p>
+            <p className="text-sm font-medium text-primary tracking-wide uppercase">AI-POWERED WORKPLACE INSIGHTS</p>
             
             <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-display font-semibold text-foreground leading-[1.1]">
               Beyond engagement scores:{" "}
@@ -45,11 +45,7 @@ export const HeroSection = () => {
               </span>
             </h1>
             
-            <p className="text-lg text-muted-foreground max-w-xl leading-relaxed">
-              Spradley replaces static surveys with empathetic AI conversations 
-              that uncover authentic insights. Your employees share more because 
-              they feel heard—not interrogated.
-            </p>
+            <p className="text-lg text-muted-foreground max-w-xl leading-relaxed">Spradley moves you beyond checkbox surveys to AI‑driven employee interviews that reveal what really works, what holds people back, and why. Uncover everyday frictions and hidden successes on the ground.</p>
 
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
