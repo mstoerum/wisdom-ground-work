@@ -1019,6 +1019,75 @@ export type Database = {
         }
         Relationships: []
       }
+      theme_analytics: {
+        Row: {
+          analyzed_at: string
+          confidence_score: number | null
+          created_at: string
+          direction_score: number
+          health_index: number
+          health_status: string
+          id: string
+          insights: Json
+          intensity_score: number
+          polarization_level: string
+          polarization_score: number | null
+          response_count: number
+          root_causes: Json | null
+          survey_id: string
+          theme_id: string
+        }
+        Insert: {
+          analyzed_at?: string
+          confidence_score?: number | null
+          created_at?: string
+          direction_score: number
+          health_index: number
+          health_status: string
+          id?: string
+          insights?: Json
+          intensity_score: number
+          polarization_level: string
+          polarization_score?: number | null
+          response_count?: number
+          root_causes?: Json | null
+          survey_id: string
+          theme_id: string
+        }
+        Update: {
+          analyzed_at?: string
+          confidence_score?: number | null
+          created_at?: string
+          direction_score?: number
+          health_index?: number
+          health_status?: string
+          id?: string
+          insights?: Json
+          intensity_score?: number
+          polarization_level?: string
+          polarization_score?: number | null
+          response_count?: number
+          root_causes?: Json | null
+          survey_id?: string
+          theme_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "theme_analytics_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "theme_analytics_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "survey_themes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           id: string

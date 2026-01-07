@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, RefreshCw, Sparkles, Download, ChevronDown, ChevronUp } from "lucide-react";
+import { FileText, RefreshCw, Sparkles, Download, ChevronDown, ChevronUp, Wand2 } from "lucide-react";
 import { PulseSummary } from "./PulseSummary";
 import { ThemeTerrain } from "./ThemeTerrain";
 import { QuickInsightBadges } from "./QuickInsightBadges";
@@ -10,6 +10,7 @@ import { NarrativeReportViewer } from "./NarrativeReportViewer";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { exportStoryReport } from "@/lib/exportStoryReport";
 import { toast } from "sonner";
+import { useThemeAnalytics } from "@/hooks/useThemeAnalytics";
 import type { NarrativeReport } from "@/hooks/useNarrativeReports";
 import type { ParticipationMetrics, SentimentMetrics, ThemeInsight } from "@/hooks/useAnalytics";
 
@@ -45,6 +46,14 @@ export function HybridInsightsView({
   isLoading,
 }: HybridInsightsViewProps) {
   const [storyExpanded, setStoryExpanded] = useState(true);
+  
+  // Theme analytics hook
+  const { 
+    data: enrichedThemes, 
+    isAnalyzing, 
+    hasAnalysis, 
+    analyzeThemes 
+  } = useThemeAnalytics(surveyId);
   
   const handleExportPDF = async () => {
     if (!participation || !sentiment || !latestReport) {
@@ -97,7 +106,36 @@ export function HybridInsightsView({
       <QuickInsightBadges themes={themes} isLoading={isLoading} />
 
       {/* Section 3: Theme Terrain - Visual health landscape */}
-      <ThemeTerrain themes={themes} isLoading={isLoading} />
+      <div className="space-y-2">
+        <ThemeTerrain 
+          themes={themes} 
+          enrichedThemes={enrichedThemes}
+          isLoading={isLoading || isAnalyzing} 
+        />
+        
+        {/* Generate Theme Insights button */}
+        {!hasAnalysis && themes.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => analyzeThemes()}
+            disabled={isAnalyzing}
+            className="mt-2"
+          >
+            {isAnalyzing ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Analyzing themes...
+              </>
+            ) : (
+              <>
+                <Wand2 className="h-4 w-4 mr-2" />
+                Generate Theme Insights
+              </>
+            )}
+          </Button>
+        )}
+      </div>
 
       {/* Section 3: Story Report - Collapsible narrative deep-dive */}
       <div className="space-y-3">
