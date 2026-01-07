@@ -303,6 +303,7 @@ ${previousResponses.length < MIN_EXCHANGES ? "- Continue exploring to gather suf
 
 /**
  * Generate system prompt for constructive AI conversation
+ * Now returns structured JSON with empathy and question separated
  */
 const getSystemPrompt = (conversationContext: string, isFirstMessage: boolean, surveyType?: SurveyType, firstQuestion?: string): string => {
   const isCourseEvaluation = surveyType === "course_evaluation";
@@ -310,27 +311,41 @@ const getSystemPrompt = (conversationContext: string, isFirstMessage: boolean, s
   
   const introGuidance = isFirstMessage ? `
 IMPORTANT - FIRST MESSAGE PROTOCOL:
-Start with this warm, brief introduction and first question:
+This is the FIRST message. Return ONLY the question, no empathy needed.
 
-"Hi, I'm Spradley. Thanks for taking a few minutes to chat about ${context}.
+First question to use: "${firstQuestion || "How have things been feeling lately?"}"
+Introduction: "Hi, I'm Spradley. Thanks for taking a few minutes to chat about ${context}."
 
-${firstQuestion || "How have things been feeling lately?"}"
+For your JSON response:
+- empathy: null (not needed for first message)
+- question: The full intro + first question combined
 
 CRITICAL RULES FOR FIRST MESSAGE:
 - Do NOT mention being an AI or not being a person
 - Do NOT explain anonymity or confidentiality in the intro
 - Do NOT ask open-ended questions like "tell me about your experience"
 - Do NOT use scale-based questions (1-10)
-- DO ask the specific feeling-focused first question above
 - Keep the intro to 2 sentences max before the question
 ` : '';
 
   return `You are Spradley, a conversation guide conducting feedback sessions.
 
+CRITICAL - RESPONSE FORMAT:
+You MUST respond with valid JSON in this exact format:
+{
+  "empathy": "Brief acknowledgment of what they shared (1 sentence, or null if first message)",
+  "question": "Your follow-up question (1-2 sentences)"
+}
+
+Example responses:
+{"empathy": "That sounds like a lot to juggle.", "question": "What would make your workload feel more manageable right now?"}
+{"empathy": "It's great to hear you're feeling supported.", "question": "What specifically has been working well for you?"}
+{"empathy": null, "question": "Hi, I'm Spradley. Thanks for taking a few minutes to chat. How have things been feeling at work lately?"}
+
 Your personality:
 - Warm and genuine in your interactions
 - Direct and conversational
-- Concise responses (1-2 sentences, max 3)
+- Concise responses
 - Focused on gathering constructive feedback
 - Professional but approachable tone
 
@@ -359,7 +374,38 @@ Conversation flow:
 
 ${conversationContext}
 
-Remember: Focus on constructive dialogue and systematic theme exploration. Keep responses concise and direct.`;
+Remember: 
+- ALWAYS respond with valid JSON containing "empathy" and "question" fields
+- Keep empathy brief (1 sentence max) - it acknowledges their feelings, not summarizes everything
+- Keep questions focused and specific
+- For first messages, set empathy to null`;
+};
+
+/**
+ * Parse structured AI response into empathy and question
+ */
+const parseStructuredResponse = (aiMessage: string): { empathy: string | null; question: string; raw: string } => {
+  try {
+    // Try to parse as JSON first
+    const parsed = JSON.parse(aiMessage.trim());
+    if (parsed.question) {
+      return {
+        empathy: parsed.empathy || null,
+        question: parsed.question,
+        raw: aiMessage
+      };
+    }
+  } catch (e) {
+    // JSON parsing failed, try to extract from text
+    console.log("Failed to parse structured response, using fallback");
+  }
+  
+  // Fallback: treat entire message as question
+  return {
+    empathy: null,
+    question: aiMessage,
+    raw: aiMessage
+  };
 };
 
 /**
@@ -1093,13 +1139,17 @@ Be warm and appreciative. Keep it brief.`;
       : messages.map((m: any) => ({ role: m.role, content: m.content }));
 
     // Get AI response
-    const aiMessage = await callAI(
+    const aiMessageRaw = await callAI(
       LOVABLE_API_KEY,
       AI_MODEL,
       [{ role: "system", content: systemPrompt }, ...filteredMessages],
       0.8,
-      200
+      250
     );
+
+    // Parse structured response
+    const { empathy, question, raw } = parseStructuredResponse(aiMessageRaw);
+    const aiMessage = question; // Use question as the main message for storage
 
       // IMPORTANT: Don't save the [START_CONVERSATION] trigger to database
     if (!isIntroductionTrigger) {
@@ -1339,6 +1389,7 @@ Be warm and appreciative. Keep it brief.`;
     return new Response(
       JSON.stringify({ 
         message: aiMessage,
+        empathy: empathy,
         shouldComplete: shouldComplete,
         themeProgress
       }),
