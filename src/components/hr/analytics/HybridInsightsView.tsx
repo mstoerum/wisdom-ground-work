@@ -1,9 +1,12 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { FileText, RefreshCw, Sparkles, Download } from "lucide-react";
-import { ThemeHealthList } from "./ThemeHealthList";
+import { FileText, RefreshCw, Sparkles, Download, ChevronDown, ChevronUp } from "lucide-react";
+import { PulseSummary } from "./PulseSummary";
+import { ThemeTerrain } from "./ThemeTerrain";
 import { NarrativeReportViewer } from "./NarrativeReportViewer";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { exportStoryReport } from "@/lib/exportStoryReport";
 import { toast } from "sonner";
 import type { NarrativeReport } from "@/hooks/useNarrativeReports";
@@ -40,6 +43,7 @@ export function HybridInsightsView({
   surveyTitle,
   isLoading,
 }: HybridInsightsViewProps) {
+  const [storyExpanded, setStoryExpanded] = useState(true);
   
   const handleExportPDF = async () => {
     if (!participation || !sentiment || !latestReport) {
@@ -80,70 +84,92 @@ export function HybridInsightsView({
 
   return (
     <div className="space-y-8">
-      {/* Story Report Section - Now First */}
-      {latestReport ? (
-        <div className="space-y-3">
-          <div className="flex justify-end">
-            <Button variant="outline" size="sm" onClick={handleExportPDF}>
-              <Download className="h-4 w-4 mr-2" />
-              Export as PDF
-            </Button>
-          </div>
-          <NarrativeReportViewer
-            report={latestReport}
-            onRegenerateWithAudience={(audience) => onGenerateReport(audience)}
-            isGenerating={isGenerating}
-          />
-        </div>
-      ) : (
-        <Card className="border-dashed border-2">
-          <CardContent className="p-12 text-center">
-            <div className="max-w-md mx-auto space-y-4">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                <FileText className="h-8 w-8 text-primary" />
-              </div>
-              
-              <div>
-                <h3 className="text-xl font-semibold mb-2">Generate Your First Story Report</h3>
-                <p className="text-muted-foreground">
-                  Transform survey data into actionable insights with an AI-powered narrative that tells the story behind the numbers.
-                </p>
-              </div>
+      {/* Section 1: Pulse Summary - Key metrics at a glance */}
+      <PulseSummary
+        participation={participation}
+        sentiment={sentiment}
+        themes={themes}
+        isLoading={isLoading}
+      />
 
-              <div className="flex flex-wrap gap-2 justify-center text-sm text-muted-foreground">
-                <Badge variant="outline" className="gap-1">
-                  <Sparkles className="h-3 w-3" />
-                  AI-Powered Analysis
-                </Badge>
-                <Badge variant="outline">Evidence-Based Insights</Badge>
-                <Badge variant="outline">Actionable Recommendations</Badge>
-              </div>
+      {/* Section 2: Theme Terrain - Visual health landscape */}
+      <ThemeTerrain themes={themes} isLoading={isLoading} />
 
-              <Button
-                onClick={() => onGenerateReport()}
-                disabled={isGenerating}
-                size="lg"
-                className="mt-4"
-              >
-                {isGenerating ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                    Generating Story...
-                  </>
+      {/* Section 3: Story Report - Collapsible narrative deep-dive */}
+      <div className="space-y-3">
+        {latestReport ? (
+          <Collapsible open={storyExpanded} onOpenChange={setStoryExpanded}>
+            <div className="flex items-center justify-between">
+              <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-70 transition-opacity">
+                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                  Story Report
+                </h3>
+                {storyExpanded ? (
+                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
                 ) : (
-                  <>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Generate Story Report
-                  </>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
                 )}
+              </CollapsibleTrigger>
+              <Button variant="outline" size="sm" onClick={handleExportPDF}>
+                <Download className="h-4 w-4 mr-2" />
+                Export PDF
               </Button>
             </div>
-          </CardContent>
-        </Card>
-      )}
+            <CollapsibleContent className="mt-3">
+              <NarrativeReportViewer
+                report={latestReport}
+                onRegenerateWithAudience={(audience) => onGenerateReport(audience)}
+                isGenerating={isGenerating}
+              />
+            </CollapsibleContent>
+          </Collapsible>
+        ) : (
+          <Card className="border-dashed border-2">
+            <CardContent className="p-8 text-center">
+              <div className="max-w-md mx-auto space-y-4">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                  <FileText className="h-6 w-6 text-primary" />
+                </div>
+                
+                <div>
+                  <h3 className="text-lg font-semibold mb-1">Generate Story Report</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Transform data into actionable insights with AI-powered narrative analysis.
+                  </p>
+                </div>
 
-      {/* Theme Health List - Now Second */}
-      <ThemeHealthList themes={themes} isLoading={isLoading} />
+                <div className="flex flex-wrap gap-2 justify-center text-xs text-muted-foreground">
+                  <Badge variant="outline" className="gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    AI Analysis
+                  </Badge>
+                  <Badge variant="outline">Evidence-Based</Badge>
+                  <Badge variant="outline">Actionable</Badge>
+                </div>
+
+                <Button
+                  onClick={() => onGenerateReport()}
+                  disabled={isGenerating}
+                  size="default"
+                  className="mt-2"
+                >
+                  {isGenerating ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Generate Report
+                    </>
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
