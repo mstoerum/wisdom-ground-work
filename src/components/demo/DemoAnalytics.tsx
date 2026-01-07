@@ -16,7 +16,7 @@ import { ExportAuditLog } from "@/components/hr/analytics/ExportAuditLog";
 // Demo components
 import { DemoStoryBanner } from "./DemoStoryBanner";
 
-// Showcase data - curated ACME Inc dataset
+// Showcase data - curated UX Course Evaluation dataset
 import {
   showcaseParticipation,
   showcaseSentiment,
@@ -30,7 +30,8 @@ import {
   showcaseQuickWins,
   showcaseImpactPredictions,
   showcaseNarrativeReport,
-} from "@/utils/showcaseData";
+  showcaseCourse,
+} from "@/utils/uxCourseShowcaseData";
 
 interface DemoAnalyticsProps {
   onBackToMenu: () => void;
@@ -97,8 +98,8 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
                   isReportLoading={false}
                   isGenerating={isGenerating}
                   onGenerateReport={handleGenerateReport}
-                  surveyId="demo-survey"
-                  surveyTitle="Q1 2025 Employee Pulse Survey"
+                  surveyId="demo-ux-survey"
+                  surveyTitle={showcaseCourse.surveyName}
                   isLoading={false}
                 />
               </TabsContent>
