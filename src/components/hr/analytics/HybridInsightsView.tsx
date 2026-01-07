@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, RefreshCw, Sparkles, Download, ChevronDown, ChevronUp } from "lucide-react";
 import { PulseSummary } from "./PulseSummary";
 import { ThemeTerrain } from "./ThemeTerrain";
+import { QuickInsightBadges } from "./QuickInsightBadges";
 import { NarrativeReportViewer } from "./NarrativeReportViewer";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { exportStoryReport } from "@/lib/exportStoryReport";
@@ -92,7 +93,10 @@ export function HybridInsightsView({
         isLoading={isLoading}
       />
 
-      {/* Section 2: Theme Terrain - Visual health landscape */}
+      {/* Section 2: Quick Insight Badges - Top strength & friction at a glance */}
+      <QuickInsightBadges themes={themes} isLoading={isLoading} />
+
+      {/* Section 3: Theme Terrain - Visual health landscape */}
       <ThemeTerrain themes={themes} isLoading={isLoading} />
 
       {/* Section 3: Story Report - Collapsible narrative deep-dive */}
@@ -101,8 +105,8 @@ export function HybridInsightsView({
           <Collapsible open={storyExpanded} onOpenChange={setStoryExpanded}>
             <div className="flex items-center justify-between">
               <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-70 transition-opacity">
-                <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  Story Report
+                <h3 className="text-xs font-medium text-muted-foreground tracking-wide">
+                  Story report
                 </h3>
                 {storyExpanded ? (
                   <ChevronUp className="h-4 w-4 text-muted-foreground" />

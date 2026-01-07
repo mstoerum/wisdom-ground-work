@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { InlineSparkline } from "./InlineSparkline";
 import type { ParticipationMetrics, SentimentMetrics, ThemeInsight } from "@/hooks/useAnalytics";
 
 interface PulseSummaryProps {
@@ -9,24 +8,10 @@ interface PulseSummaryProps {
   isLoading?: boolean;
 }
 
-// Generate mock 7-day trend data for sparklines
-function generateTrendData(currentValue: number, variance: number = 5): number[] {
-  const points = 7;
-  const data: number[] = [];
-  let value = currentValue - variance * 2;
-  
-  for (let i = 0; i < points; i++) {
-    value = Math.max(0, Math.min(100, value + (Math.random() - 0.3) * variance));
-    data.push(value);
-  }
-  // Ensure last point is close to current value
-  data[points - 1] = currentValue;
-  return data;
-}
-
 /**
- * Pulse Summary: Apple-minimal metric cards with Tufte sparklines
+ * Pulse Summary: Apple-minimal metric cards
  * Shows the 4 key numbers HR professionals need at a glance
+ * Removed sparklines for data integrity (one-off surveys have no trends)
  */
 export function PulseSummary({
   participation,
@@ -43,21 +28,18 @@ export function PulseSummary({
     {
       label: "Voices",
       value: participation?.completed || 0,
-      sparklineData: generateTrendData(participation?.completed || 0, 3),
       color: "hsl(var(--chart-lime))",
       description: "completed",
     },
     {
       label: "Engaged",
       value: `${participation?.completionRate || 0}%`,
-      sparklineData: generateTrendData(participation?.completionRate || 0),
       color: "hsl(var(--primary))",
       description: "participation",
     },
     {
       label: "Health",
       value: healthScore,
-      sparklineData: generateTrendData(healthScore),
       color: healthScore >= 70 
         ? "hsl(var(--chart-lime))" 
         : healthScore >= 50 
@@ -68,7 +50,6 @@ export function PulseSummary({
     {
       label: "Themes",
       value: themes.length,
-      sparklineData: null, // No trend for static count
       color: "hsl(var(--muted-foreground))",
       description: "explored",
     },
@@ -107,20 +88,11 @@ export function PulseSummary({
               {metric.value}
             </div>
             
-            {/* Label + sparkline row */}
+            {/* Label row */}
             <div className="flex items-center gap-2">
               <span className="text-xs md:text-sm text-muted-foreground font-medium">
                 {metric.label}
               </span>
-              
-              {metric.sparklineData && (
-                <InlineSparkline
-                  data={metric.sparklineData}
-                  color={metric.color}
-                  width={40}
-                  height={14}
-                />
-              )}
             </div>
             
             {/* Subtle description */}
