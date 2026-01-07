@@ -1,34 +1,19 @@
 import { useState } from "react";
 import { HRLayout } from "@/components/hr/HRLayout";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, AlertTriangle, MessageSquare, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { ArrowLeft } from "lucide-react";
 
 // Analytics components
 import { HybridInsightsView } from "@/components/hr/analytics/HybridInsightsView";
-import { ActionableIntelligenceCenter } from "@/components/hr/analytics/ActionableIntelligenceCenter";
-import { EmployeeVoiceGallery } from "@/components/hr/analytics/EmployeeVoiceGallery";
-import { EnhancedThemeAnalysis } from "@/components/hr/analytics/EnhancedThemeAnalysis";
-import { ConversationQualityDashboard } from "@/components/hr/analytics/ConversationQualityDashboard";
-import { ExportAuditLog } from "@/components/hr/analytics/ExportAuditLog";
-
-// Demo components
-import { DemoStoryBanner } from "./DemoStoryBanner";
 
 // Showcase data - curated UX Course Evaluation dataset
 import {
   showcaseParticipation,
   showcaseSentiment,
   showcaseThemes,
-  showcaseQualityMetrics,
-  showcaseQualityInsights,
-  showcaseEnhancedThemes,
-  showcaseQuotes,
-  showcaseRootCauses,
-  showcaseInterventions,
-  showcaseQuickWins,
-  showcaseImpactPredictions,
   showcaseNarrativeReport,
   showcaseCourse,
 } from "@/utils/uxCourseShowcaseData";
@@ -38,11 +23,7 @@ interface DemoAnalyticsProps {
 }
 
 export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
-  const [activeTab, setActiveTab] = useState("insights");
   const [isGenerating, setIsGenerating] = useState(false);
-
-  // Count unresolved urgent flags from themes
-  const unresolvedUrgentCount = showcaseThemes.reduce((sum, t) => sum + t.urgencyCount, 0);
 
   const handleGenerateReport = () => {
     setIsGenerating(true);
@@ -54,105 +35,53 @@ export const DemoAnalytics = ({ onBackToMenu }: DemoAnalyticsProps) => {
 
   return (
     <HRLayout>
-      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 overflow-x-hidden">
-        {/* Demo Story Banner */}
-        <div className="mb-6">
-          <DemoStoryBanner onBackToMenu={onBackToMenu} />
-        </div>
-
-        <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-6 max-w-7xl">
+      <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
           <div className="space-y-6">
-            {/* Main Tabs - Aligned with real Analytics page */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
-                <TabsTrigger value="insights" className="flex items-center gap-2">
-                  <BarChart3 className="h-4 w-4" />
-                  Insights
-                </TabsTrigger>
-                <TabsTrigger value="actions" className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4" />
-                  Actions
-                  {unresolvedUrgentCount > 0 && (
-                    <Badge variant="destructive" className="ml-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
-                      {unresolvedUrgentCount}
-                    </Badge>
-                  )}
-                </TabsTrigger>
-                <TabsTrigger value="explore" className="flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  Explore
-                </TabsTrigger>
-                <TabsTrigger value="export" className="flex items-center gap-2">
-                  <FileText className="h-4 w-4" />
-                  Export
-                </TabsTrigger>
-              </TabsList>
+            {/* Header - Matches Analytics page */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-3xl font-bold">Course Evaluation Analytics</h1>
+                  <Badge variant="secondary">Demo</Badge>
+                </div>
+                <p className="text-muted-foreground mt-1">
+                  Comprehensive insights from {showcaseParticipation.completed} completed evaluations
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={onBackToMenu}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Demo Menu
+              </Button>
+            </div>
 
-              {/* Insights Tab - Primary view with metrics + narrative */}
-              <TabsContent value="insights" className="space-y-6">
-                <HybridInsightsView
-                  participation={showcaseParticipation}
-                  sentiment={showcaseSentiment}
-                  themes={showcaseThemes}
-                  latestReport={showcaseNarrativeReport as any}
-                  isReportLoading={false}
-                  isGenerating={isGenerating}
-                  onGenerateReport={handleGenerateReport}
-                  surveyId="demo-ux-survey"
-                  surveyTitle={showcaseCourse.surveyName}
-                  isLoading={false}
-                />
-              </TabsContent>
+            {/* Survey Selector - Matches Analytics page */}
+            <div className="flex flex-wrap gap-4">
+              <Select value="demo-ux-survey" disabled>
+                <SelectTrigger className="w-[280px]">
+                  <SelectValue>{showcaseCourse.surveyName}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="demo-ux-survey">
+                    {showcaseCourse.surveyName}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-              {/* Actions Tab - Urgent issues + recommendations */}
-              <TabsContent value="actions" className="space-y-6">
-                <ActionableIntelligenceCenter
-                  rootCauses={showcaseRootCauses}
-                  interventions={showcaseInterventions}
-                  quickWins={showcaseQuickWins}
-                  impactPredictions={showcaseImpactPredictions}
-                  isLoading={false}
-                />
-              </TabsContent>
-
-              {/* Explore Tab - Deep dive into data */}
-              <TabsContent value="explore" className="space-y-6">
-                <Tabs defaultValue="themes" className="space-y-4">
-                  <TabsList>
-                    <TabsTrigger value="themes">Themes</TabsTrigger>
-                    <TabsTrigger value="voices">Employee Voices</TabsTrigger>
-                    <TabsTrigger value="quality">Data Quality</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="themes">
-                    <EnhancedThemeAnalysis 
-                      themes={showcaseEnhancedThemes} 
-                      isLoading={false} 
-                    />
-                  </TabsContent>
-                  
-                  <TabsContent value="voices">
-                    <EmployeeVoiceGallery 
-                      quotes={showcaseQuotes} 
-                      isLoading={false} 
-                    />
-                  </TabsContent>
-                  
-                  <TabsContent value="quality">
-                    <ConversationQualityDashboard 
-                      qualityMetrics={showcaseQualityMetrics} 
-                      qualityInsights={showcaseQualityInsights} 
-                      isLoading={false} 
-                    />
-                  </TabsContent>
-                </Tabs>
-              </TabsContent>
-
-              {/* Export Tab - Reports and downloads */}
-              <TabsContent value="export" className="space-y-6">
-                <ExportAuditLog />
-              </TabsContent>
-            </Tabs>
+            {/* HybridInsightsView - Same as Analytics page */}
+            <HybridInsightsView
+              participation={showcaseParticipation}
+              sentiment={showcaseSentiment}
+              themes={showcaseThemes}
+              latestReport={showcaseNarrativeReport as any}
+              isReportLoading={false}
+              isGenerating={isGenerating}
+              onGenerateReport={handleGenerateReport}
+              surveyId="demo-ux-survey"
+              surveyTitle={showcaseCourse.surveyName}
+              isLoading={false}
+            />
           </div>
         </div>
       </div>
