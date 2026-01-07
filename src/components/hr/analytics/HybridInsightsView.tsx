@@ -2,7 +2,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, RefreshCw, Sparkles, Download } from "lucide-react";
-import { PulseHeader } from "./PulseHeader";
 import { ThemeHealthList } from "./ThemeHealthList";
 import { NarrativeReportViewer } from "./NarrativeReportViewer";
 import { exportStoryReport } from "@/lib/exportStoryReport";
@@ -14,8 +13,6 @@ interface HybridInsightsViewProps {
   // Metrics data
   participation: ParticipationMetrics | null;
   sentiment: SentimentMetrics | null;
-  urgentCount: number;
-  confidenceScore?: number;
   themes: ThemeInsight[];
   
   // Narrative report
@@ -27,7 +24,6 @@ interface HybridInsightsViewProps {
   // Survey info
   surveyId: string | null;
   surveyTitle?: string;
-  urgentFlags?: any[];
   
   isLoading?: boolean;
 }
@@ -35,8 +31,6 @@ interface HybridInsightsViewProps {
 export function HybridInsightsView({
   participation,
   sentiment,
-  urgentCount,
-  confidenceScore,
   themes,
   latestReport,
   isReportLoading,
@@ -44,7 +38,6 @@ export function HybridInsightsView({
   onGenerateReport,
   surveyId,
   surveyTitle,
-  urgentFlags,
   isLoading,
 }: HybridInsightsViewProps) {
   
@@ -63,7 +56,7 @@ export function HybridInsightsView({
         sentiment,
         themes,
         narrativeReport: latestReport,
-        urgentCount: (urgentFlags || []).filter((u: any) => !u.resolved_at).length,
+        urgentCount: 0,
       });
       toast.success("PDF exported successfully!");
     } catch (error) {
@@ -75,41 +68,19 @@ export function HybridInsightsView({
   // Show empty state when no survey selected
   if (!surveyId) {
     return (
-      <div className="space-y-6">
-        <PulseHeader
-          participation={participation}
-          sentiment={sentiment}
-          urgentCount={urgentCount}
-          confidenceScore={confidenceScore}
-          isLoading={isLoading}
-        />
-        
-        <Card className="p-12 text-center">
-          <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Select a Survey</h3>
-          <p className="text-muted-foreground max-w-md mx-auto">
-            Choose a survey from the dropdown above to view detailed insights and generate AI-powered story reports.
-          </p>
-        </Card>
-      </div>
+      <Card className="p-12 text-center">
+        <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+        <h3 className="text-lg font-semibold mb-2">Select a Survey</h3>
+        <p className="text-muted-foreground max-w-md mx-auto">
+          Choose a survey from the dropdown above to view detailed insights and generate AI-powered story reports.
+        </p>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Pulse Header - Key Metrics */}
-      <PulseHeader
-        participation={participation}
-        sentiment={sentiment}
-        urgentCount={urgentCount}
-        confidenceScore={confidenceScore}
-        isLoading={isLoading}
-      />
-
-      {/* Theme Health List - Expandable with Key Signals */}
-      <ThemeHealthList themes={themes} isLoading={isLoading} />
-
-      {/* Story Report Section */}
+    <div className="space-y-8">
+      {/* Story Report Section - Now First */}
       {latestReport ? (
         <div className="space-y-3">
           <div className="flex justify-end">
@@ -170,6 +141,9 @@ export function HybridInsightsView({
           </CardContent>
         </Card>
       )}
+
+      {/* Theme Health List - Now Second */}
+      <ThemeHealthList themes={themes} isLoading={isLoading} />
     </div>
   );
 }
