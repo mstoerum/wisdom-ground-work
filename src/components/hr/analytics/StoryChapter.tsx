@@ -1,36 +1,39 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { InsightCard } from "./InsightCard";
 import { NarrativeChapter } from "@/hooks/useNarrativeReports";
-import { CHAPTER_STRUCTURE, EMOTION_SPECTRUM } from "@/lib/reportDesignSystem";
+import { CHAPTER_STRUCTURE, EMOTION_SPECTRUM, CHAPTER_LABELS } from "@/lib/reportDesignSystem";
+import { motion } from "framer-motion";
 import { 
   MessageCircle, 
   Mountain, 
   TrendingUp, 
   Lightbulb, 
-  ArrowRight, 
+  Target,
   Handshake,
   BarChart3,
   Sparkles,
   AlertTriangle,
   Search,
-  Target
 } from "lucide-react";
 
 interface StoryChapterProps {
   chapter: NarrativeChapter;
   chapterNumber: number;
+  totalChapters?: number;
 }
 
-// Map old chapter keys to new design system
+// Map chapter keys to icons
 const chapterIcons = {
   pulse: BarChart3,
   voices: MessageCircle,
   working: Sparkles,
   landscape: Mountain,
   warnings: AlertTriangle,
+  frictions: AlertTriangle,
   journey: TrendingUp,
   why: Lightbulb,
+  root_causes: Search,
   forward: Target,
   commitment: Handshake,
 };
@@ -48,10 +51,16 @@ const getChapterStyle = (key: string) => {
   // Fallbacks for old chapter keys
   const fallbackMap: Record<string, keyof typeof EMOTION_SPECTRUM> = {
     pulse: 'growing',
+    voices: 'growing',
     working: 'thriving',
+    landscape: 'emerging',
     warnings: 'challenged',
+    frictions: 'challenged',
+    journey: 'growing',
     why: 'emerging',
+    root_causes: 'emerging',
     forward: 'thriving',
+    commitment: 'thriving',
   };
   
   const colorKey = fallbackMap[key] || 'growing';
@@ -61,68 +70,89 @@ const getChapterStyle = (key: string) => {
   };
 };
 
-export function StoryChapter({ chapter, chapterNumber }: StoryChapterProps) {
+export function StoryChapter({ chapter, chapterNumber, totalChapters }: StoryChapterProps) {
   const Icon = chapterIcons[chapter.key as keyof typeof chapterIcons] || MessageCircle;
   const style = getChapterStyle(chapter.key);
+  const displayTitle = CHAPTER_LABELS[chapter.key] || chapter.title;
 
   return (
-    <Card 
-      className="border-l-4 transition-all"
-      style={{ borderLeftColor: style.accentColor.primary }}
-    >
-      <CardHeader>
-        <div className="flex items-start justify-between">
+    <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
+      {/* Subtle accent bar at top */}
+      <div 
+        className="h-1"
+        style={{ backgroundColor: style.accentColor.primary }}
+      />
+      
+      <CardHeader className="pb-4 pt-8 px-8">
+        <div className="space-y-4">
+          {/* Chapter indicator & icon */}
+          <div className="flex items-center gap-4">
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.3 }}
+              className="p-3 rounded-xl"
+              style={{ backgroundColor: style.accentColor.background }}
+            >
+              <Icon 
+                className="h-5 w-5" 
+                style={{ color: style.accentColor.primary }}
+              />
+            </motion.div>
+            <Badge 
+              variant="secondary" 
+              className="text-xs font-medium tracking-wide uppercase px-3 py-1"
+            >
+              Chapter {chapterNumber}{totalChapters ? ` of ${totalChapters}` : ''}
+            </Badge>
+          </div>
+          
+          {/* Title & subtitle */}
           <div className="space-y-2">
-            <div className="flex items-center gap-3">
-              <div 
-                className="p-2 rounded-lg"
-                style={{ backgroundColor: style.accentColor.background }}
-              >
-                <Icon 
-                  className="h-5 w-5" 
-                  style={{ color: style.accentColor.primary }}
-                />
-              </div>
-              <Badge 
-                variant="secondary" 
-                className="text-xs"
-                style={{ 
-                  backgroundColor: style.accentColor.background,
-                  color: style.accentColor.text
-                }}
-              >
-                Chapter {chapterNumber}
-              </Badge>
-            </div>
-            <CardTitle className="text-2xl">{chapter.title}</CardTitle>
+            <h2 className="text-2xl font-medium tracking-tight">
+              {displayTitle}
+            </h2>
             {style.subtitle && (
-              <p className="text-sm text-muted-foreground">{style.subtitle}</p>
+              <p className="text-sm text-muted-foreground/80">
+                {style.subtitle}
+              </p>
             )}
           </div>
         </div>
       </CardHeader>
       
-      <CardContent className="space-y-6">
-        {/* Main Narrative */}
-        <div className="prose prose-sm dark:prose-invert max-w-none">
-          <p className="text-base leading-relaxed whitespace-pre-wrap">
+      <CardContent className="px-8 pb-8 space-y-8">
+        {/* Main Narrative - Apple-style typography */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.1, duration: 0.4 }}
+          className="prose prose-neutral dark:prose-invert max-w-none"
+        >
+          <p className="text-[17px] leading-[1.65] font-light text-foreground/90 whitespace-pre-wrap">
             {chapter.narrative}
           </p>
-        </div>
+        </motion.div>
 
-        {/* Insights */}
+        {/* Insights - staggered reveal */}
         {chapter.insights.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          <div className="space-y-5">
+            <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
               Key Insights
             </h3>
-            <div className="space-y-3">
+            <div className="space-y-4">
               {chapter.insights.map((insight, index) => (
-                <InsightCard 
+                <motion.div
                   key={index}
-                  insight={insight}
-                  colorClass=""
-                />
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.15 + index * 0.05, duration: 0.3 }}
+                >
+                  <InsightCard 
+                    insight={insight}
+                    accentColor={style.accentColor.primary}
+                  />
+                </motion.div>
               ))}
             </div>
           </div>

@@ -129,11 +129,11 @@ Create a compelling 5-chapter narrative report that tells the story of what's ha
 5. Include sample size - the number of responses that support this insight
 
 The 5 chapters are:
-1. "The Pulse" - Overall organizational health and mood
-2. "What's Working" - Strengths and positive patterns
-3. "Warning Signs" - Areas of concern that need attention
-4. "The Why" - Root causes and deeper patterns
-5. "The Path Forward" - Actionable recommendations
+1. "The Voices" (key: voices) - Who spoke, and what they shared. Open with the human context.
+2. "The Landscape" (key: landscape) - The organizational terrain. Show peaks and valleys of experience.
+3. "Frictions" (key: frictions) - Points of tension and concern. Areas where employees are experiencing challenges.
+4. "Root Causes" (key: root_causes) - Understanding what drives the patterns. Deep analysis of underlying issues.
+5. "The Path Forward" (key: forward) - Actions that matter. Concrete, actionable recommendations.
 
 ${audience === 'executive' ? 'Keep it concise and high-level. Executives want the big picture.' : 'Provide detailed analysis with nuance. Managers need actionable specifics.'}`;
 
@@ -164,7 +164,7 @@ ${audience === 'executive' ? 'Keep it concise and high-level. Executives want th
                       type: 'object',
                       properties: {
                         title: { type: 'string' },
-                        key: { type: 'string', enum: ['pulse', 'working', 'warnings', 'why', 'forward'] },
+                        key: { type: 'string', enum: ['voices', 'landscape', 'frictions', 'root_causes', 'forward'] },
                         narrative: { type: 'string', description: 'The main story prose' },
                         insights: {
                           type: 'array',
