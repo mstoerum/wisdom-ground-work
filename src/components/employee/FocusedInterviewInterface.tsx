@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { QuestionCard } from "./QuestionCard";
+import { AIResponseDisplay } from "./AIResponseDisplay";
 import { AnswerInput } from "./AnswerInput";
 import { ThemeJourneyPath } from "./ThemeJourneyPath";
 import { useToast } from "@/hooks/use-toast";
@@ -41,6 +41,7 @@ export const FocusedInterviewInterface = ({
   const { isPreviewMode, previewSurveyData } = usePreviewMode();
   
   const [currentQuestion, setCurrentQuestion] = useState("");
+  const [currentEmpathy, setCurrentEmpathy] = useState<string | null>(null);
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [questionNumber, setQuestionNumber] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -105,12 +106,14 @@ export const FocusedInterviewInterface = ({
         }
         
         setCurrentQuestion(introMessage);
+        setCurrentEmpathy(data.empathy || null);
         setConversationHistory([{ role: "assistant", content: introMessage }]);
       } catch (error) {
         console.error("Error initializing interview:", error);
         // Fallback question
         const fallback = "How have things been feeling at work lately?";
         setCurrentQuestion(fallback);
+        setCurrentEmpathy(null);
         setConversationHistory([{ role: "assistant", content: fallback }]);
         
         if (!isPreviewMode) {
@@ -173,6 +176,7 @@ export const FocusedInterviewInterface = ({
       // Handle completion
       if (data.shouldComplete || data.isCompletionPrompt) {
         setCurrentQuestion(data.message);
+        setCurrentEmpathy(data.empathy || null);
         setConversationHistory([...updatedHistory, { role: "assistant", content: data.message }]);
         
         if (data.shouldComplete && data.showSummary) {
@@ -181,9 +185,10 @@ export const FocusedInterviewInterface = ({
         return;
       }
 
-      // Normal flow - show next question
+      // Normal flow - show next question with empathy
       const nextQuestion = data.message;
       setCurrentQuestion(nextQuestion);
+      setCurrentEmpathy(data.empathy || null);
       setConversationHistory([...updatedHistory, { role: "assistant", content: nextQuestion }]);
       setQuestionNumber(prev => prev + 1);
     } catch (error) {
@@ -335,9 +340,9 @@ export const FocusedInterviewInterface = ({
 
         {/* Main content */}
         <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-8">
-          <QuestionCard
+          <AIResponseDisplay
+            empathy={currentEmpathy || undefined}
             question={currentQuestion}
-            questionNumber={questionNumber}
             isLoading={isLoading && !currentQuestion}
           />
 
