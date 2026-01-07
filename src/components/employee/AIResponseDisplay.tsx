@@ -34,31 +34,20 @@ export const AIResponseDisplay = ({ empathy, question, isLoading }: AIResponseDi
 
   return (
     <motion.div
-      className="flex flex-col items-center justify-center text-center px-4 gap-2 max-w-2xl"
+      className="flex items-center justify-center text-center px-4 max-w-2xl"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
+      transition={{ duration: 0.4 }}
     >
-      {/* Empathy - simple muted text, flows naturally into question */}
-      {empathy && (
-        <motion.p
-          className="text-sm md:text-base text-muted-foreground italic leading-relaxed"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-        >
-          {empathy}
-        </motion.p>
-      )}
-
-      {/* Question - prominent, immediately following */}
-      <motion.p
-        className="text-2xl md:text-3xl font-medium text-foreground leading-relaxed"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: empathy ? 0.15 : 0 }}
-      >
-        {question}
-      </motion.p>
+      <p className="text-xl md:text-2xl font-medium leading-relaxed">
+        {empathy && (
+          <>
+            <span className="text-muted-foreground">{empathy}</span>
+            <span className="text-muted-foreground/50"> — </span>
+          </>
+        )}
+        <span className="text-foreground">{question}</span>
+      </p>
     </motion.div>
   );
 };
