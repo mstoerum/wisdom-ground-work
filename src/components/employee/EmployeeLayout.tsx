@@ -37,7 +37,10 @@ export const EmployeeLayout = ({ children }: EmployeeLayoutProps) => {
     queryKey: ['employee-profile'],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return null;
+      if (!user) {
+        // Demo mode: return mock profile
+        return { full_name: 'Demo User', department: 'Demo', email: 'demo@example.com' };
+      }
       
       const { data, error } = await supabase
         .from('profiles')
@@ -45,7 +48,10 @@ export const EmployeeLayout = ({ children }: EmployeeLayoutProps) => {
         .eq('id', user.id)
         .single();
       
-      if (error) throw error;
+      if (error) {
+        // Return demo profile on error
+        return { full_name: 'Demo User', department: 'Demo', email: 'demo@example.com' };
+      }
       return data;
     },
   });
