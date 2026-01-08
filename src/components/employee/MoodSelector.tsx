@@ -30,10 +30,10 @@ export const MoodSelector = ({
 
   const handleSelect = (mood: number) => {
     setSelectedMood(mood);
-    // Small delay for visual feedback before transitioning
+    // Reduced delay for snappier feel
     setTimeout(() => {
       onMoodSelect(mood);
-    }, 300);
+    }, 150);
   };
 
   return (
