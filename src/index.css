@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -18,7 +19,7 @@ All colors MUST be HSL.
 @layer base {
   :root {
     /* Warm Empathy Design Language - Primary Palette */
-    --background: 30 15% 97%;
+    --background: 0 0% 100%;
     --foreground: 25 20% 18%;
 
     --card: 0 0% 100%;
@@ -28,9 +29,9 @@ All colors MUST be HSL.
     --popover-foreground: 25 20% 18%;
 
     /* Primary - Terracotta (softened) */
-    --primary: 12 45% 55%;
+    --primary: 14 91% 63%;
     --primary-foreground: 0 0% 100%;
-    
+
     /* Secondary - Butter Yellow (muted) */
     --secondary: 42 55% 78%;
     --secondary-foreground: 30 30% 20%;
