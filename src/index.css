@@ -17,74 +17,74 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Warm Empathy Design Language - Primary Palette */
-    --background: 30 15% 97%;
-    --foreground: 25 20% 18%;
+    /* Refined Palette - Cream, Charcoal, Terracotta, Teal, Tan */
+    --background: 30 30% 97%;           /* Cream #FAF7F5 */
+    --foreground: 0 0% 18%;              /* Charcoal #2D2D2D */
 
     --card: 0 0% 100%;
-    --card-foreground: 25 20% 18%;
+    --card-foreground: 0 0% 18%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 25 20% 18%;
+    --popover-foreground: 0 0% 18%;
 
-    /* Primary - Terracotta (softened) */
-    --primary: 12 45% 55%;
+    /* Primary - Terracotta/Rust */
+    --primary: 10 45% 51%;               /* #B85C4C */
     --primary-foreground: 0 0% 100%;
     
-    /* Secondary - Butter Yellow (muted) */
-    --secondary: 42 55% 78%;
-    --secondary-foreground: 30 30% 20%;
+    /* Secondary - Tan/Camel */
+    --secondary: 28 35% 64%;             /* #C4A484 */
+    --secondary-foreground: 0 0% 18%;
 
-    /* Muted - Warm Greige */
-    --muted: 30 10% 94%;
-    --muted-foreground: 25 12% 50%;
+    /* Muted - Light Blush */
+    --muted: 20 20% 91%;                 /* #EDE5E0 */
+    --muted-foreground: 0 0% 40%;
 
-    /* Accent - Sage Green (softer than lime) */
-    --accent: 145 35% 72%;
-    --accent-foreground: 145 30% 18%;
+    /* Accent - Teal */
+    --accent: 180 33% 36%;               /* #3D7A7A */
+    --accent-foreground: 0 0% 100%;
 
     /* Destructive - Soft Red */
     --destructive: 0 55% 55%;
     --destructive-foreground: 0 0% 100%;
 
     /* Borders & Inputs */
-    --border: 30 10% 90%;
-    --input: 30 10% 90%;
-    --ring: 12 45% 55%;
+    --border: 20 15% 88%;
+    --input: 20 15% 88%;
+    --ring: 10 45% 51%;
 
     /* Semantic Colors */
-    --success: 152 50% 45%;
+    --success: 180 33% 36%;              /* Use teal for success */
     --success-foreground: 0 0% 100%;
     --warning: 38 70% 55%;
-    --warning-foreground: 30 30% 20%;
+    --warning-foreground: 0 0% 18%;
 
-    /* Warm Empathy Custom Tokens (refined) */
-    --terracotta-primary: 12 45% 55%;
-    --terracotta-deep: 12 50% 45%;
-    --terracotta-light: 12 50% 82%;
-    --terracotta-pale: 12 40% 96%;
+    /* Custom Tokens */
+    --terracotta-primary: 10 45% 51%;
+    --terracotta-deep: 10 50% 42%;
+    --terracotta-light: 10 40% 75%;
+    --terracotta-pale: 10 30% 95%;
 
-    --butter-yellow: 42 55% 78%;
-    --butter-yellow-light: 42 50% 90%;
-    --butter-yellow-pale: 42 45% 96%;
+    --teal-accent: 180 33% 36%;
+    --teal-light: 180 25% 55%;
+    --teal-pale: 180 20% 92%;
 
-    --lime-green: 152 50% 45%;
-    --lime-pale: 152 40% 92%;
-    --coral-pink: 10 65% 92%;
-    --coral-accent: 10 55% 58%;
-    --coral-primary: 10 55% 58%;
-    --coral-pale: 10 50% 96%;
+    --tan-primary: 28 35% 64%;
+    --tan-light: 28 30% 80%;
+    --tan-pale: 28 25% 92%;
 
-    --divider: 30 8% 92%;
+    --cream-bg: 30 30% 97%;
+    --blush-muted: 20 20% 91%;
 
-    /* Chart Colors */
-    --chart-terracotta: 12 45% 55%;
-    --chart-coral: 10 55% 58%;
-    --chart-yellow: 42 55% 78%;
-    --chart-lime: 152 50% 45%;
+    --divider: 20 12% 90%;
+
+    /* Chart Colors - Updated */
+    --chart-terracotta: 10 45% 51%;
+    --chart-teal: 180 33% 36%;
+    --chart-tan: 28 35% 64%;
+    --chart-cream: 30 30% 85%;
     --chart-pink: 350 60% 75%;
-    --chart-gray: 30 8% 65%;
-    --chart-hatch: 30 8% 55%;
+    --chart-gray: 0 0% 55%;
+    --chart-hatch: 0 0% 45%;
 
     /* Spacing & Layout */
     --radius: 0.75rem;
@@ -93,85 +93,85 @@ All colors MUST be HSL.
     --radius-full: 9999px;
 
     /* Sidebar */
-    --sidebar-background: 30 12% 97%;
-    --sidebar-foreground: 25 20% 18%;
-    --sidebar-primary: 12 45% 55%;
+    --sidebar-background: 30 25% 96%;
+    --sidebar-foreground: 0 0% 18%;
+    --sidebar-primary: 10 45% 51%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 30 10% 94%;
-    --sidebar-accent-foreground: 25 20% 18%;
-    --sidebar-border: 30 10% 90%;
-    --sidebar-ring: 12 45% 55%;
+    --sidebar-accent: 20 20% 91%;
+    --sidebar-accent-foreground: 0 0% 18%;
+    --sidebar-border: 20 15% 88%;
+    --sidebar-ring: 10 45% 51%;
   }
 
   .dark {
-    --background: 25 18% 8%;
-    --foreground: 30 8% 95%;
+    --background: 0 0% 10%;
+    --foreground: 30 20% 95%;
 
-    --card: 25 15% 11%;
-    --card-foreground: 30 8% 95%;
+    --card: 0 0% 13%;
+    --card-foreground: 30 20% 95%;
 
-    --popover: 25 15% 11%;
-    --popover-foreground: 30 8% 95%;
+    --popover: 0 0% 13%;
+    --popover-foreground: 30 20% 95%;
 
-    --primary: 12 45% 55%;
+    --primary: 10 45% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 42 55% 78%;
-    --secondary-foreground: 25 18% 8%;
+    --secondary: 28 35% 64%;
+    --secondary-foreground: 0 0% 10%;
 
-    --muted: 25 15% 18%;
-    --muted-foreground: 30 8% 60%;
+    --muted: 0 0% 18%;
+    --muted-foreground: 0 0% 60%;
 
-    --accent: 152 35% 50%;
-    --accent-foreground: 25 18% 8%;
+    --accent: 180 33% 45%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 55% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 25 15% 20%;
-    --input: 25 15% 20%;
-    --ring: 12 45% 55%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 10 45% 55%;
 
-    --success: 152 50% 45%;
+    --success: 180 33% 45%;
     --success-foreground: 0 0% 100%;
     --warning: 38 70% 55%;
-    --warning-foreground: 25 18% 8%;
+    --warning-foreground: 0 0% 10%;
 
     /* Dark mode custom tokens */
-    --terracotta-primary: 12 45% 55%;
-    --terracotta-deep: 12 50% 45%;
-    --terracotta-light: 12 50% 28%;
-    --terracotta-pale: 12 40% 14%;
+    --terracotta-primary: 10 45% 55%;
+    --terracotta-deep: 10 50% 45%;
+    --terracotta-light: 10 40% 30%;
+    --terracotta-pale: 10 30% 15%;
 
-    --butter-yellow: 42 55% 78%;
-    --butter-yellow-light: 42 50% 28%;
-    --butter-yellow-pale: 42 45% 14%;
+    --teal-accent: 180 33% 45%;
+    --teal-light: 180 25% 35%;
+    --teal-pale: 180 20% 18%;
 
-    --lime-green: 152 50% 45%;
-    --lime-pale: 152 40% 18%;
-    --coral-pink: 10 65% 28%;
-    --coral-accent: 10 55% 58%;
-    --coral-primary: 10 55% 58%;
-    --coral-pale: 10 50% 14%;
+    --tan-primary: 28 35% 64%;
+    --tan-light: 28 30% 40%;
+    --tan-pale: 28 25% 18%;
 
-    --divider: 25 15% 16%;
+    --cream-bg: 0 0% 10%;
+    --blush-muted: 0 0% 18%;
 
-    --chart-terracotta: 12 45% 55%;
-    --chart-coral: 10 55% 58%;
-    --chart-yellow: 42 55% 78%;
-    --chart-lime: 152 50% 45%;
-    --chart-pink: 350 60% 38%;
-    --chart-gray: 30 8% 45%;
-    --chart-hatch: 30 8% 40%;
+    --divider: 0 0% 18%;
 
-    --sidebar-background: 25 18% 9%;
-    --sidebar-foreground: 30 8% 95%;
-    --sidebar-primary: 12 45% 55%;
+    --chart-terracotta: 10 45% 55%;
+    --chart-teal: 180 33% 45%;
+    --chart-tan: 28 35% 64%;
+    --chart-cream: 0 0% 25%;
+    --chart-pink: 350 60% 40%;
+    --chart-gray: 0 0% 50%;
+    --chart-hatch: 0 0% 40%;
+
+    --sidebar-background: 0 0% 9%;
+    --sidebar-foreground: 30 20% 95%;
+    --sidebar-primary: 10 45% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 25 15% 18%;
-    --sidebar-accent-foreground: 30 8% 95%;
-    --sidebar-border: 25 15% 20%;
-    --sidebar-ring: 12 45% 55%;
+    --sidebar-accent: 0 0% 18%;
+    --sidebar-accent-foreground: 30 20% 95%;
+    --sidebar-border: 0 0% 20%;
+    --sidebar-ring: 10 45% 55%;
   }
 }
 
