@@ -15,7 +15,7 @@ export default {
     extend: {
       fontFamily: {
         sans: ["Inter", "system-ui", "sans-serif"],
-        display: ["Fraunces", "Georgia", "serif"],
+        display: ["Source Serif 4", "Georgia", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",

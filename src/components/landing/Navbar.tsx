@@ -62,7 +62,7 @@ export const Navbar = () => {
         <div className="flex items-center justify-between h-16 lg:h-18">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-[hsl(var(--coral-accent))] opacity-90 group-hover:opacity-100 transition-opacity" />
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-[hsl(var(--teal-accent))] opacity-90 group-hover:opacity-100 transition-opacity" />
             <span className="text-xl font-display font-semibold text-foreground">Spradley</span>
           </Link>
 
