@@ -32,14 +32,27 @@ export const HeroInteractiveChat: React.FC = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.3 }}
-        className="max-w-md px-4"
+        className="w-full max-w-lg px-4"
       >
-        <p className="text-xl md:text-2xl font-medium text-foreground text-center leading-relaxed">
-          {displayedText}
-          {isTyping && (
-            <span className="inline-block w-0.5 h-6 ml-1 bg-primary animate-pulse" />
-          )}
-        </p>
+        <div className="bg-background border border-border rounded-2xl p-4 shadow-sm">
+          <p className="text-lg md:text-xl font-medium text-foreground leading-relaxed mb-4">
+            {displayedText}
+            {isTyping && (
+              <span className="inline-block w-0.5 h-5 ml-1 bg-primary animate-pulse" />
+            )}
+          </p>
+          <div className="flex justify-end">
+            <a
+              href="/demo"
+              className="inline-flex items-center justify-center gap-2 bg-foreground text-background hover:bg-foreground/90 rounded-full px-6 py-2.5 text-sm font-semibold transition-colors"
+            >
+              Try the Demo
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </a>
+          </div>
+        </div>
       </motion.div>
     </motion.div>
   );
