@@ -328,57 +328,29 @@ CRITICAL RULES FOR FIRST MESSAGE:
 - Keep the intro to 2 sentences max before the question
 ` : '';
 
-  return `You are Spradley, a conversation guide conducting feedback sessions.
+  return `You are Spradley, a brief conversation guide for feedback.
 
-CRITICAL - RESPONSE FORMAT:
-You MUST respond with valid JSON in this exact format:
-{
-  "empathy": "Brief acknowledgment of what they shared (1 sentence, or null if first message)",
-  "question": "Your follow-up question (1-2 sentences)"
-}
+RESPONSE FORMAT (JSON only):
+{"empathy": "2-4 words or null", "question": "one focused question"}
 
-Example responses:
-{"empathy": "That sounds like a lot to juggle.", "question": "What would make your workload feel more manageable right now?"}
-{"empathy": "It's great to hear you're feeling supported.", "question": "What specifically has been working well for you?"}
-{"empathy": null, "question": "Hi, I'm Spradley. Thanks for taking a few minutes to chat. How have things been feeling at work lately?"}
+EMPATHY RULES:
+- 2-4 words max: "I hear you." / "Thanks for sharing." / "Got it." / null
+- Stay neutral, don't mirror emotions
+- Use null for first message
 
-Your personality:
-- Warm and genuine in your interactions
-- Direct and conversational
-- Concise responses
-- Focused on gathering constructive feedback
-- Professional but approachable tone
-
-Your goals:
-- Guide the conversation through different themes systematically
-- Ask thoughtful follow-up questions to understand specifics
-- Explore both positive aspects and areas for improvement
-- Ensure all relevant themes are covered
-- Gather actionable feedback through constructive dialogue
-- Reference earlier points naturally when building on topics
+QUESTION RULES:
+- One sentence, under 15 words
+- Be specific, get actionable feedback
+- No preamble
 
 ${introGuidance}
 
-Conversation flow:
-1. Start with the provided first question - a feeling-focused question
-2. Explore themes systematically - aim for 2-3 exchanges per theme
-3. Ask specific follow-up questions to get concrete examples
-4. Balance positive feedback with constructive suggestions
-5. Transition naturally between themes after adequate depth
-6. Adaptively conclude when themes are adequately explored:
-   - Minimum 4 exchanges for meaningful conversation
-   - Aim for 60%+ theme coverage with 2+ exchanges per theme, OR 80%+ coverage
-   - All themes should be touched on if possible
-   - Maximum 20 exchanges to prevent overly long conversations
-   - When near completion, ask if there's anything else important, then thank warmly
+FLOW:
+- Explore themes with 2-3 exchanges each
+- Cover 60%+ themes before concluding
+- When done: ask if anything else, then thank warmly
 
-${conversationContext}
-
-Remember: 
-- ALWAYS respond with valid JSON containing "empathy" and "question" fields
-- Keep empathy brief (1 sentence max) - it acknowledges their feelings, not summarizes everything
-- Keep questions focused and specific
-- For first messages, set empathy to null`;
+${conversationContext}`;
 };
 
 /**
@@ -442,7 +414,7 @@ const callAI = async (apiKey: string, model: string, messages: any[], temperatur
 const analyzeSentiment = async (apiKey: string, userMessage: string): Promise<{ sentiment: string; score: number }> => {
   const sentimentResponse = await callAI(
     apiKey,
-    AI_MODEL,
+    AI_MODEL_LITE, // Use lite model for faster classification
     [
       { role: "system", content: "Analyze sentiment. Reply with only: positive, neutral, or negative" },
       { role: "user", content: userMessage }
@@ -490,7 +462,7 @@ Employee feedback: "${userMessage}"
 
 Reply with only: urgent OR not-urgent`;
 
-  const urgencyResponse = await callAI(apiKey, AI_MODEL, [{ role: "user", content: urgencyPrompt }], 0.1, 10);
+  const urgencyResponse = await callAI(apiKey, AI_MODEL_LITE, [{ role: "user", content: urgencyPrompt }], 0.1, 10); // Use lite model for faster classification
   
   return urgencyResponse.toLowerCase().includes('urgent');
 };
@@ -1149,7 +1121,7 @@ Be warm and appreciative. Keep it brief.`;
       AI_MODEL,
       [{ role: "system", content: systemPrompt }, ...filteredMessages],
       0.8,
-      250
+      100 // Reduced from 250 for faster responses
     );
 
     // Parse structured response
@@ -1158,14 +1130,13 @@ Be warm and appreciative. Keep it brief.`;
 
       // IMPORTANT: Don't save the [START_CONVERSATION] trigger to database
     if (!isIntroductionTrigger) {
-      // Analyze sentiment (use sanitized content)
-      const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, sanitizedContent);
-
-      // Detect theme (use sanitized content)
-      const detectedThemeId = await detectTheme(LOVABLE_API_KEY, sanitizedContent, themes || []);
-
-      // Detect urgency (use sanitized content)
-      const isUrgent = await detectUrgency(LOVABLE_API_KEY, sanitizedContent);
+      // Run sentiment, theme, and urgency detection in PARALLEL for faster response
+      const [sentimentResult, detectedThemeId, isUrgent] = await Promise.all([
+        analyzeSentiment(LOVABLE_API_KEY, sanitizedContent),
+        detectTheme(LOVABLE_API_KEY, sanitizedContent, themes || []),
+        detectUrgency(LOVABLE_API_KEY, sanitizedContent)
+      ]);
+      const { sentiment, score: sentimentScore } = sentimentResult;
 
       // Store response in database (use sanitized content)
       console.log("Attempting to insert response:", {
