@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BreathingCircle } from './BreathingCircle';
 
-const QUESTION_TEXT = "Let's talk about your workload. How well can you handle the workload?";
+const QUESTION_TEXT = "Let's talk about your work? How are you feeling about your workdays?";
 
 export const HeroInteractiveChat: React.FC = () => {
   const [displayedText, setDisplayedText] = useState('');
