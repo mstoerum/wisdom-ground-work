@@ -96,7 +96,7 @@ All colors MUST be HSL.
     --chart-hatch: 30 8% 55%;
 
     /* Spacing & Layout */
-    --radius: 0.75rem;
+    --radius: 0.625rem;
     --radius-lg: 1rem;
     --radius-xl: 1.25rem;
     --radius-full: 9999px;
@@ -113,6 +113,10 @@ All colors MUST be HSL.
     --font-sans: Manrope, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
     --font-serif: "Source Serif Pro", ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
     --font-mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+    --shadow-sm: 0px 1px 1.5px 0px hsla(0, 0%, 0%, 0.21);
+    --shadow: 0px 1px 3px 0px hsla(0, 0%, 0%, 0.21);
+    --shadow-md: 0px 1px 4.5px 0px hsla(0, 0%, 0%, 0.21);
+    --shadow-lg: 0px 1px 7.5px 0px hsla(0, 0%, 0%, 0.21);
   }
 
   .dark {
@@ -187,6 +191,11 @@ All colors MUST be HSL.
     --font-sans: Manrope, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
     --font-serif: "Source Serif Pro", ui-serif, Georgia, Cambria, Times New Roman, Times, serif;
     --font-mono: "Source Code Pro", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, Courier New, monospace;
+    --radius: 0.625rem;
+    --shadow-sm: 0px 1px 1.5px 0px hsla(0, 0%, 0%, 0.21);
+    --shadow: 0px 1px 3px 0px hsla(0, 0%, 0%, 0.21);
+    --shadow-md: 0px 1px 4.5px 0px hsla(0, 0%, 0%, 0.21);
+    --shadow-lg: 0px 1px 7.5px 0px hsla(0, 0%, 0%, 0.21);
   }
 }
 
