@@ -17,30 +17,30 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Refined Palette - Cream, Charcoal, Terracotta, Teal, Tan */
-    --background: 30 30% 97%;           /* Cream #FAF7F5 */
-    --foreground: 0 0% 18%;              /* Charcoal #2D2D2D */
+    /* Refined Palette - Based on user's color scheme */
+    --background: 40 33% 97%;           /* Off-white #FAF7F3 */
+    --foreground: 0 0% 16%;              /* Charcoal #2A2A2A */
 
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 18%;
+    --card: 30 30% 97%;                  /* Cream #F1E8DF */
+    --card-foreground: 0 0% 16%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 18%;
+    --popover: 30 30% 97%;
+    --popover-foreground: 0 0% 16%;
 
-    /* Primary - Terracotta/Rust */
-    --primary: 10 45% 51%;               /* #B85C4C */
+    /* Primary - Teal */
+    --primary: 175 58% 29%;              /* #1F6D73 */
     --primary-foreground: 0 0% 100%;
     
     /* Secondary - Tan/Camel */
-    --secondary: 28 35% 64%;             /* #C4A484 */
-    --secondary-foreground: 0 0% 18%;
+    --secondary: 25 35% 68%;             /* #CFA48C */
+    --secondary-foreground: 0 0% 16%;
 
-    /* Muted - Light Blush */
-    --muted: 20 20% 91%;                 /* #EDE5E0 */
+    /* Muted - Light Cream */
+    --muted: 30 30% 93%;                 /* #F1E8DF */
     --muted-foreground: 0 0% 40%;
 
-    /* Accent - Teal */
-    --accent: 180 33% 36%;               /* #3D7A7A */
+    /* Accent - Teal (same as primary for consistency) */
+    --accent: 175 58% 29%;               /* #1F6D73 */
     --accent-foreground: 0 0% 100%;
 
     /* Destructive - Soft Red */
@@ -48,39 +48,41 @@ All colors MUST be HSL.
     --destructive-foreground: 0 0% 100%;
 
     /* Borders & Inputs */
-    --border: 20 15% 88%;
-    --input: 20 15% 88%;
-    --ring: 10 45% 51%;
+    --border: 30 20% 88%;
+    --input: 30 20% 88%;
+    --ring: 175 58% 29%;
 
     /* Semantic Colors */
-    --success: 180 33% 36%;              /* Use teal for success */
+    --success: 175 58% 29%;              /* Use teal for success */
     --success-foreground: 0 0% 100%;
     --warning: 38 70% 55%;
-    --warning-foreground: 0 0% 18%;
+    --warning-foreground: 0 0% 16%;
 
     /* Custom Tokens */
-    --terracotta-primary: 10 45% 51%;
-    --terracotta-deep: 10 50% 42%;
-    --terracotta-light: 10 40% 75%;
-    --terracotta-pale: 10 30% 95%;
+    --teal-primary: 175 58% 29%;         /* #1F6D73 */
+    --teal-light: 175 45% 45%;
+    --teal-pale: 175 30% 90%;
 
-    --teal-accent: 180 33% 36%;
-    --teal-light: 180 25% 55%;
-    --teal-pale: 180 20% 92%;
+    --tan-primary: 25 35% 68%;           /* #CFA48C */
+    --tan-light: 25 30% 80%;
+    --tan-pale: 30 30% 93%;
 
-    --tan-primary: 28 35% 64%;
-    --tan-light: 28 30% 80%;
-    --tan-pale: 28 25% 92%;
+    --cream-bg: 40 33% 97%;              /* #FAF7F3 */
+    --cream-muted: 30 30% 93%;           /* #F1E8DF */
 
-    --cream-bg: 30 30% 97%;
-    --blush-muted: 20 20% 91%;
+    --charcoal: 0 0% 16%;                /* #2A2A2A */
 
-    --divider: 20 12% 90%;
+    /* Hero gradient colors */
+    --hero-teal: 175 58% 29%;            /* #1F6D73 */
+    --hero-tan: 25 35% 68%;              /* #CFA48C */
+    --hero-pink: 350 60% 75%;            /* Pink accent for gradient */
+    --hero-blue: 200 40% 70%;            /* Muted blue for background */
+
+    --divider: 30 20% 90%;
 
     /* Chart Colors - Updated */
-    --chart-terracotta: 10 45% 51%;
-    --chart-teal: 180 33% 36%;
-    --chart-tan: 28 35% 64%;
+    --chart-teal: 175 58% 29%;
+    --chart-tan: 25 35% 68%;
     --chart-cream: 30 30% 85%;
     --chart-pink: 350 60% 75%;
     --chart-gray: 0 0% 55%;
@@ -94,35 +96,35 @@ All colors MUST be HSL.
 
     /* Sidebar */
     --sidebar-background: 30 25% 96%;
-    --sidebar-foreground: 0 0% 18%;
-    --sidebar-primary: 10 45% 51%;
+    --sidebar-foreground: 0 0% 16%;
+    --sidebar-primary: 175 58% 29%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 20 20% 91%;
-    --sidebar-accent-foreground: 0 0% 18%;
-    --sidebar-border: 20 15% 88%;
-    --sidebar-ring: 10 45% 51%;
+    --sidebar-accent: 30 30% 93%;
+    --sidebar-accent-foreground: 0 0% 16%;
+    --sidebar-border: 30 20% 88%;
+    --sidebar-ring: 175 58% 29%;
   }
 
   .dark {
     --background: 0 0% 10%;
-    --foreground: 30 20% 95%;
+    --foreground: 40 20% 95%;
 
     --card: 0 0% 13%;
-    --card-foreground: 30 20% 95%;
+    --card-foreground: 40 20% 95%;
 
     --popover: 0 0% 13%;
-    --popover-foreground: 30 20% 95%;
+    --popover-foreground: 40 20% 95%;
 
-    --primary: 10 45% 55%;
+    --primary: 175 50% 40%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 28 35% 64%;
+    --secondary: 25 35% 55%;
     --secondary-foreground: 0 0% 10%;
 
     --muted: 0 0% 18%;
     --muted-foreground: 0 0% 60%;
 
-    --accent: 180 33% 45%;
+    --accent: 175 50% 40%;
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 55% 55%;
@@ -130,48 +132,49 @@ All colors MUST be HSL.
 
     --border: 0 0% 20%;
     --input: 0 0% 20%;
-    --ring: 10 45% 55%;
+    --ring: 175 50% 40%;
 
-    --success: 180 33% 45%;
+    --success: 175 50% 40%;
     --success-foreground: 0 0% 100%;
     --warning: 38 70% 55%;
     --warning-foreground: 0 0% 10%;
 
     /* Dark mode custom tokens */
-    --terracotta-primary: 10 45% 55%;
-    --terracotta-deep: 10 50% 45%;
-    --terracotta-light: 10 40% 30%;
-    --terracotta-pale: 10 30% 15%;
+    --teal-primary: 175 50% 40%;
+    --teal-light: 175 40% 35%;
+    --teal-pale: 175 30% 18%;
 
-    --teal-accent: 180 33% 45%;
-    --teal-light: 180 25% 35%;
-    --teal-pale: 180 20% 18%;
-
-    --tan-primary: 28 35% 64%;
-    --tan-light: 28 30% 40%;
-    --tan-pale: 28 25% 18%;
+    --tan-primary: 25 35% 55%;
+    --tan-light: 25 30% 40%;
+    --tan-pale: 25 25% 18%;
 
     --cream-bg: 0 0% 10%;
-    --blush-muted: 0 0% 18%;
+    --cream-muted: 0 0% 18%;
+
+    --charcoal: 0 0% 90%;
+
+    --hero-teal: 175 50% 40%;
+    --hero-tan: 25 35% 55%;
+    --hero-pink: 350 50% 45%;
+    --hero-blue: 200 30% 30%;
 
     --divider: 0 0% 18%;
 
-    --chart-terracotta: 10 45% 55%;
-    --chart-teal: 180 33% 45%;
-    --chart-tan: 28 35% 64%;
+    --chart-teal: 175 50% 40%;
+    --chart-tan: 25 35% 55%;
     --chart-cream: 0 0% 25%;
-    --chart-pink: 350 60% 40%;
+    --chart-pink: 350 50% 45%;
     --chart-gray: 0 0% 50%;
     --chart-hatch: 0 0% 40%;
 
     --sidebar-background: 0 0% 9%;
-    --sidebar-foreground: 30 20% 95%;
-    --sidebar-primary: 10 45% 55%;
+    --sidebar-foreground: 40 20% 95%;
+    --sidebar-primary: 175 50% 40%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 0 0% 18%;
-    --sidebar-accent-foreground: 30 20% 95%;
+    --sidebar-accent-foreground: 40 20% 95%;
     --sidebar-border: 0 0% 20%;
-    --sidebar-ring: 10 45% 55%;
+    --sidebar-ring: 175 50% 40%;
   }
 }
 
