@@ -231,6 +231,25 @@ All colors MUST be HSL.
   }
 }
 
+/* Wave background animations */
+@keyframes wave-float {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  25% { transform: translateY(-6px) translateX(3px); }
+  50% { transform: translateY(-10px) translateX(-3px); }
+  75% { transform: translateY(-4px) translateX(5px); }
+}
+
+@keyframes node-pulse {
+  0%, 100% { 
+    transform: scale(1); 
+    opacity: 0.3; 
+  }
+  50% { 
+    transform: scale(1.4); 
+    opacity: 0.6; 
+  }
+}
+
 @layer utilities {
   /* Standard easing for all animations */
   .animate-fade-in {
