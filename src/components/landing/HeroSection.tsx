@@ -30,9 +30,9 @@ export const HeroSection = () => {
       y: radialGlowY
     }} />
       
-      <motion.div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28" style={{
+      <motion.div style={{
       y: contentY
-    }}>
+    }} className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28 bg-primary-foreground">
         <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
           {/* Left column - Copy */}
           <div className="space-y-8">
@@ -45,7 +45,7 @@ export const HeroSection = () => {
               </span>
             </h1>
             
-            <p className="text-lg text-muted-foreground max-w-xl leading-relaxed">Spradley moves you beyond checkbox surveys to AI‑driven employee interviews that reveal what really works, what holds people back, and why. Uncover everyday frictions and hidden successes on the ground.</p>
+            <p className="text-lg max-w-xl leading-relaxed text-sidebar-foreground">Spradley moves you beyond checkbox surveys to AI‑driven employee interviews that reveal what really works, what holds people back, and why. Uncover everyday frictions and hidden successes on the ground.</p>
 
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
