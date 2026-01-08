@@ -2,7 +2,7 @@ import React from 'react';
 
 interface BreathingCircleProps {
   isLoading?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
 export const BreathingCircle: React.FC<BreathingCircleProps> = ({ 
@@ -12,7 +12,8 @@ export const BreathingCircle: React.FC<BreathingCircleProps> = ({
   const sizeClasses = {
     sm: 'w-12 h-12',
     md: 'w-20 h-20',
-    lg: 'w-28 h-28'
+    lg: 'w-28 h-28',
+    xl: 'w-40 h-40'
   };
 
   const duration = isLoading ? '1.5s' : '4s';
