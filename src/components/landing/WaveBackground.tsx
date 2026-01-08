@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 
 /**
  * Animated flowing wave pattern with gradient lines
- * Creates organic, data-visualization inspired curves
+ * Creates organic, data-visualization inspired curves with continuous motion
  */
 export const WaveBackground = () => {
   // Generate flowing wave paths with different characteristics
@@ -43,11 +43,11 @@ export const WaveBackground = () => {
 
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {/* Background gradient - muted blue-gray */}
+      {/* Background gradient - muted blue-gray transitioning to off-white */}
       <div 
         className="absolute inset-0"
         style={{
-          background: 'linear-gradient(135deg, hsl(200 30% 75% / 0.4) 0%, hsl(200 25% 85% / 0.3) 50%, hsl(30 30% 93%) 100%)'
+          background: 'linear-gradient(135deg, hsl(200 30% 75% / 0.4) 0%, hsl(200 25% 85% / 0.3) 50%, hsl(var(--cream-bg)) 100%)'
         }}
       />
       
@@ -58,32 +58,43 @@ export const WaveBackground = () => {
         aria-hidden="true"
       >
         <defs>
-          {/* Primary gradient - Teal to Pink */}
+          {/* Primary gradient - Teal to Blue to Pink */}
           <linearGradient id="waveGradientPrimary" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsl(175 58% 29%)" stopOpacity="0.8" />
+            <stop offset="0%" stopColor="hsl(var(--teal-primary))" stopOpacity="0.8" />
             <stop offset="40%" stopColor="hsl(200 40% 60%)" stopOpacity="0.6" />
             <stop offset="70%" stopColor="hsl(320 50% 70%)" stopOpacity="0.5" />
-            <stop offset="100%" stopColor="hsl(350 60% 80%)" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="hsl(var(--hero-pink))" stopOpacity="0.3" />
           </linearGradient>
           
           {/* Secondary gradient - Tan to Teal */}
           <linearGradient id="waveGradientSecondary" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsl(25 35% 68%)" stopOpacity="0.6" />
-            <stop offset="50%" stopColor="hsl(175 45% 45%)" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="hsl(175 58% 29%)" stopOpacity="0.2" />
+            <stop offset="0%" stopColor="hsl(var(--tan-primary))" stopOpacity="0.6" />
+            <stop offset="50%" stopColor="hsl(var(--teal-light))" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="hsl(var(--teal-primary))" stopOpacity="0.2" />
           </linearGradient>
           
-          {/* Tertiary gradient - Light blue to pink */}
+          {/* Tertiary gradient - Light blue to lavender to pink */}
           <linearGradient id="waveGradientTertiary" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="hsl(200 50% 70%)" stopOpacity="0.4" />
+            <stop offset="0%" stopColor="hsl(var(--hero-blue))" stopOpacity="0.4" />
             <stop offset="50%" stopColor="hsl(280 40% 70%)" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="hsl(350 50% 75%)" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="hsl(var(--hero-pink))" stopOpacity="0.2" />
           </linearGradient>
         </defs>
         
-        {/* Animated wave groups */}
+        {/* Animated wave groups with continuous floating motion */}
         {waveGroups.map((group, groupIndex) => (
-          <g key={groupIndex}>
+          <motion.g 
+            key={groupIndex}
+            animate={{ 
+              y: [0, -8, 0, 8, 0],
+            }}
+            transition={{
+              duration: 12 + groupIndex * 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: groupIndex * 0.5,
+            }}
+          >
             {Array.from({ length: group.count }).map((_, i) => (
               <motion.path
                 key={`${group.variant}-${i}`}
@@ -112,24 +123,28 @@ export const WaveBackground = () => {
                 }}
               />
             ))}
-          </g>
+          </motion.g>
         ))}
         
-        {/* Additional decorative dots/nodes at intersections */}
+        {/* Pulsing decorative nodes at wave intersections */}
         {Array.from({ length: 12 }).map((_, i) => (
           <motion.circle
             key={`node-${i}`}
             cx={200 + (i * 100) + Math.sin(i) * 50}
             cy={300 + Math.cos(i * 0.8) * 150}
             r={2 + (i % 3)}
-            fill="hsl(175 58% 29%)"
+            fill="hsl(var(--teal-primary))"
             fillOpacity={0.3}
             initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 0.4 }}
+            animate={{ 
+              scale: [1, 1.4, 1],
+              opacity: [0.3, 0.6, 0.3],
+            }}
             transition={{ 
-              duration: 0.5, 
+              duration: 3 + (i % 3),
               delay: 2 + (i * 0.1),
-              ease: "easeOut"
+              repeat: Infinity,
+              ease: "easeInOut"
             }}
           />
         ))}
@@ -139,7 +154,7 @@ export const WaveBackground = () => {
       <div 
         className="absolute bottom-0 left-0 right-0 h-40"
         style={{
-          background: 'linear-gradient(to top, hsl(40 33% 97%), transparent)'
+          background: 'linear-gradient(to top, hsl(var(--cream-bg)), transparent)'
         }}
       />
     </div>
