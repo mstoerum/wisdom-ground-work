@@ -153,6 +153,66 @@ export function selectFirstQuestion(
 }
 
 /**
+ * Get a mood-adaptive follow-up response based on the user's initial mood selection
+ * Returns an empathy phrase and a contextual follow-up question
+ */
+export function getMoodAdaptiveResponse(
+  mood: number, 
+  themes: { name: string; description?: string }[] = [],
+  surveyType: "employee_satisfaction" | "course_evaluation" = "employee_satisfaction"
+): { empathy: string | null; question: string } {
+  const isCourse = surveyType === "course_evaluation";
+  
+  // Get theme context for more relevant questions
+  const primaryTheme = themes[0]?.name?.toLowerCase() || "";
+  
+  switch(mood) {
+    case 1: // Tough
+      return {
+        empathy: null, // First message after mood, no empathy needed
+        question: isCourse 
+          ? "I hear that. What's been the hardest part of this course?"
+          : "I hear that. What's been the biggest challenge this week?"
+      };
+    case 2: // Not great
+      return {
+        empathy: null,
+        question: isCourse
+          ? "Thanks for being honest. What's been weighing on you about the course?"
+          : "Thanks for being honest. What's been weighing on you?"
+      };
+    case 3: // Okay
+      return {
+        empathy: null,
+        question: isCourse
+          ? "Got it. Is there anything about the course that could be better?"
+          : "Got it. Is there anything that could make things better right now?"
+      };
+    case 4: // Good
+      return {
+        empathy: null,
+        question: isCourse
+          ? "Nice! What's been working well for you in this course?"
+          : "Nice! What's been going well for you lately?"
+      };
+    case 5: // Great!
+      return {
+        empathy: null,
+        question: isCourse
+          ? "Love to hear it! What's making this course work so well for you?"
+          : "Love to hear it! What's making things feel good right now?"
+      };
+    default:
+      return {
+        empathy: null,
+        question: isCourse
+          ? "How has your learning experience been in this course?"
+          : "How have things been feeling at work lately?"
+      };
+  }
+}
+
+/**
  * Build the warm, brief introduction with the first question
  */
 export function buildWarmIntroduction(
