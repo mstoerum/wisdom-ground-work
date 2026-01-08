@@ -102,6 +102,7 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 25 20% 18%;
     --sidebar-border: 30 10% 90%;
     --sidebar-ring: 12 45% 55%;
+    --font-sans: Lato, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
   }
 
   .dark {
@@ -173,6 +174,7 @@ All colors MUST be HSL.
     --sidebar-accent-foreground: 30 8% 95%;
     --sidebar-border: 25 15% 20%;
     --sidebar-ring: 12 45% 55%;
+    --font-sans: Lato, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji, Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
   }
 }
 
