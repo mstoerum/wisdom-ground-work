@@ -28,6 +28,7 @@ export const HeroInteractiveChat: React.FC = () => {
     >
       <BreathingCircle size="xl" />
       
+      {/* Question bubble */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -35,23 +36,33 @@ export const HeroInteractiveChat: React.FC = () => {
         className="w-full max-w-lg px-4"
       >
         <div className="bg-background border border-border rounded-2xl p-4 shadow-sm">
-          <p className="text-lg md:text-xl font-medium text-foreground leading-relaxed mb-4">
+          <p className="text-lg md:text-xl font-medium text-foreground leading-relaxed">
             {displayedText}
             {isTyping && (
               <span className="inline-block w-0.5 h-5 ml-1 bg-primary animate-pulse" />
             )}
           </p>
-          <div className="flex justify-end">
-            <a
-              href="/demo"
-              className="inline-flex items-center justify-center gap-2 bg-foreground text-background hover:bg-foreground/90 rounded-full px-6 py-2.5 text-sm font-semibold transition-colors"
-            >
-              Try the Demo
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </a>
-          </div>
+        </div>
+      </motion.div>
+
+      {/* Answer bubble */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.8 }}
+        className="w-full max-w-lg px-4"
+      >
+        <div className="bg-background border border-border rounded-2xl p-4 shadow-sm flex items-center justify-between gap-4">
+          <p className="text-lg text-muted-foreground/50 italic flex-1">Answer here...</p>
+          <a
+            href="/demo"
+            className="inline-flex items-center justify-center gap-1.5 bg-foreground text-background hover:bg-foreground/90 rounded-full px-4 py-2 text-sm font-semibold transition-colors whitespace-nowrap"
+          >
+            Try Demo
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </a>
         </div>
       </motion.div>
     </motion.div>
