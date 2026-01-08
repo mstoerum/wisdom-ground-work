@@ -47,13 +47,13 @@ export const HeroSection = () => {
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
               <Link to="/demo/employee">
-                <Button size="lg" className="w-full sm:w-auto gap-2 font-medium shadow-sm">
+                <Button size="lg" className="w-full sm:w-auto gap-2 font-medium shadow-sm rounded-md">
                   Try the Experience
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </Link>
               <Link to="/demo/hr">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto font-medium">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto font-medium rounded-md">
                   View HR Dashboard
                 </Button>
               </Link>
