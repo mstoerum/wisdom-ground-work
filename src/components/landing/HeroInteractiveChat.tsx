@@ -1,8 +1,24 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BreathingCircle } from './BreathingCircle';
 
+const QUESTION_TEXT = "Did you feel energized this morning at work?";
+
 export const HeroInteractiveChat: React.FC = () => {
+  const [displayedText, setDisplayedText] = useState('');
+  const [isTyping, setIsTyping] = useState(true);
+
+  useEffect(() => {
+    if (displayedText.length < QUESTION_TEXT.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(QUESTION_TEXT.slice(0, displayedText.length + 1));
+      }, 50);
+      return () => clearTimeout(timeout);
+    } else {
+      setIsTyping(false);
+    }
+  }, [displayedText]);
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -13,13 +29,16 @@ export const HeroInteractiveChat: React.FC = () => {
       <BreathingCircle size="xl" />
       
       <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         transition={{ duration: 0.5, delay: 0.3 }}
-        className="bg-card/80 backdrop-blur-sm rounded-xl border border-border/50 shadow-lg px-6 py-4 max-w-sm"
+        className="max-w-md px-4"
       >
-        <p className="text-lg md:text-xl font-medium text-foreground text-center leading-relaxed">
-          Did you feel energized this morning at work?
+        <p className="text-xl md:text-2xl font-medium text-foreground text-center leading-relaxed">
+          {displayedText}
+          {isTyping && (
+            <span className="inline-block w-0.5 h-6 ml-1 bg-primary animate-pulse" />
+          )}
         </p>
       </motion.div>
     </motion.div>
