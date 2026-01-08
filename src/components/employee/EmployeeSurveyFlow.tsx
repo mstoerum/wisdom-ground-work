@@ -2,8 +2,7 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { FocusedInterviewInterface } from "@/components/employee/FocusedInterviewInterface";
 import { AnonymizationBanner } from "@/components/employee/AnonymizationBanner";
-import { AnonymizationRitual } from "@/components/employee/AnonymizationRitual";
-import { ConsentModal } from "@/components/employee/ConsentModal";
+import { WelcomeScreen } from "@/components/employee/WelcomeScreen";
 import { ClosingRitual } from "@/components/employee/ClosingRitual";
 import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
 import { SpradleyEvaluation } from "@/components/employee/SpradleyEvaluation";
@@ -15,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { PlayCircle } from "lucide-react";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 
-type ConversationStep = "consent" | "anonymization" | "chat" | "closing" | "evaluation" | "complete";
+type ConversationStep = "welcome" | "chat" | "closing" | "evaluation" | "complete";
 
 interface EmployeeSurveyFlowProps {
   surveyId: string;
@@ -24,7 +23,7 @@ interface EmployeeSurveyFlowProps {
   onExit?: () => void;
   quickPreview?: boolean;
   publicLinkId?: string;
-  skipIntro?: boolean; // Skip consent and anonymization screens for demo
+  skipIntro?: boolean; // Skip welcome screen for demo
 }
 
 /**
@@ -42,7 +41,7 @@ export const EmployeeSurveyFlow = ({
 }: EmployeeSurveyFlowProps) => {
   const { isPreviewMode } = usePreviewMode();
   // Skip directly to chat for demo mode (skipIntro)
-  const [step, setStep] = useState<ConversationStep>(skipIntro ? "chat" : "consent");
+  const [step, setStep] = useState<ConversationStep>(skipIntro ? "chat" : "welcome");
   const [autoStarted, setAutoStarted] = useState(false);
   const { conversationId, startConversation, endConversation } = useConversation(publicLinkId);
   const { toast } = useToast();
@@ -71,12 +70,11 @@ export const EmployeeSurveyFlow = ({
     autoStartConversation();
   }
 
-  const handleConsent = async () => {
+  const handleWelcomeComplete = async (mood: number) => {
+    // Log consent
     if (!isPreviewMode && surveyId && surveyDetails) {
-      // Log consent to consent_history table (skip in preview mode and for anonymous public links)
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        // Only log consent for authenticated users
         await supabase.from("consent_history").insert({
           user_id: user.id,
           survey_id: surveyId,
@@ -84,14 +82,14 @@ export const EmployeeSurveyFlow = ({
           data_retention_days: surveyDetails?.consent_config?.data_retention_days || 60,
         });
       }
-      // For anonymous public link users, consent is recorded in the conversation session
     }
 
-    setStep("anonymization");
-  };
+    // Store initial mood for context
+    localStorage.setItem(`spradley_initial_mood_${surveyId}`, String(mood));
+    // Mark user as having visited Spradley
+    localStorage.setItem("spradley-visited", "true");
 
-  const handleAnonymizationComplete = async () => {
-    // Auto-start text mode conversation - voice mode disabled
+    // Start conversation with mood
     if (!surveyId) {
       toast({
         title: "Error",
@@ -102,7 +100,7 @@ export const EmployeeSurveyFlow = ({
     }
 
     try {
-      const sessionId = await startConversation(surveyId, null, publicLinkId);
+      const sessionId = await startConversation(surveyId, mood, publicLinkId);
       if (sessionId) {
         setStep("chat");
       } else {
@@ -236,22 +234,13 @@ export const EmployeeSurveyFlow = ({
         )}
 
         <div className="mt-8">
-          {step === "consent" && (
-            <ConsentModal
-              open={true}
-              consentMessage={surveyDetails?.consent_config?.consent_message}
-              anonymizationLevel={surveyDetails?.consent_config?.anonymization_level}
-              dataRetentionDays={surveyDetails?.consent_config?.data_retention_days}
-              onConsent={handleConsent}
+          {step === "welcome" && (
+            <WelcomeScreen
+              surveyId={surveyId}
+              surveyDetails={surveyDetails}
+              onComplete={handleWelcomeComplete}
               onDecline={handleDecline}
-            />
-          )}
-
-          {step === "anonymization" && (
-            <AnonymizationRitual
-              sessionId={surveyId || "PREVIEW-SESSION"}
-              onComplete={handleAnonymizationComplete}
-              minimal={quickPreview}
+              anonymizationLevel={surveyDetails?.consent_config?.anonymization_level}
             />
           )}
 
