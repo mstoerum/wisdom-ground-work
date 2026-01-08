@@ -23,12 +23,18 @@ const getCourseEvaluationPrompt = (themes: any[], conversationContext: string): 
 CRITICAL - RESPONSE FORMAT:
 You MUST respond with valid JSON in this exact format:
 {
-  "empathy": "Brief acknowledgment of what they shared (1 sentence, or null if first message)",
+  "empathy": "Warm but brief acknowledgment (2-4 words, or null if first message)",
   "question": "Your follow-up question (1-2 sentences)"
 }
 
+EMPATHY GUIDELINES:
+- Keep to 2-4 words maximum
+- Warm and human, but not lengthy or emotional
+- Good examples: "I hear you.", "Thanks for sharing.", "That makes sense.", "Appreciate that.", "Good point."
+- Use null for the first message of the conversation
+
 Example responses:
-{"empathy": "That sounds like a valuable learning experience.", "question": "What specifically about the teaching approach helped you understand the material?"}
+{"empathy": "Thanks for sharing.", "question": "What specifically about the teaching approach helped you understand the material?"}
 {"empathy": null, "question": "How has your overall experience been with this course so far?"}
 
 Your role is to:
@@ -76,12 +82,18 @@ const getEmployeeSatisfactionPrompt = (themes: any[], conversationContext: strin
 CRITICAL - RESPONSE FORMAT:
 You MUST respond with valid JSON in this exact format:
 {
-  "empathy": "Brief acknowledgment of what they shared (1 sentence, or null if first message)",
+  "empathy": "Warm but brief acknowledgment (2-4 words, or null if first message)",
   "question": "Your follow-up question (1-2 sentences)"
 }
 
+EMPATHY GUIDELINES:
+- Keep to 2-4 words maximum
+- Warm and human, but not lengthy or emotional
+- Good examples: "I hear you.", "Thanks for sharing.", "That makes sense.", "Appreciate that.", "Got it."
+- Use null for the first message of the conversation
+
 Example responses:
-{"empathy": "That sounds challenging to navigate.", "question": "What would make your workload feel more manageable right now?"}
+{"empathy": "I hear you.", "question": "What would make your workload feel more manageable right now?"}
 {"empathy": null, "question": "How have you been feeling about your work-life balance lately?"}
 
 Your role is to:

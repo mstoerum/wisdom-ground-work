@@ -358,8 +358,15 @@ ${conversationContext}`;
  */
 const parseStructuredResponse = (aiMessage: string): { empathy: string | null; question: string; raw: string } => {
   try {
-    // Try to parse as JSON first
-    const parsed = JSON.parse(aiMessage.trim());
+    // Clean the response - remove markdown code blocks if present
+    let cleaned = aiMessage.trim();
+    if (cleaned.startsWith('```json')) {
+      cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    
+    const parsed = JSON.parse(cleaned);
     if (parsed.question) {
       return {
         empathy: parsed.empathy || null,
@@ -368,8 +375,20 @@ const parseStructuredResponse = (aiMessage: string): { empathy: string | null; q
       };
     }
   } catch (e) {
-    // JSON parsing failed, try to extract from text
-    console.log("Failed to parse structured response, using fallback");
+    console.log("Failed to parse structured response, attempting regex extraction...");
+    
+    // Try to extract JSON from the message using regex
+    const jsonMatch = aiMessage.match(/\{[\s\S]*"question"[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.question) {
+          return { empathy: parsed.empathy || null, question: parsed.question, raw: aiMessage };
+        }
+      } catch (e2) {
+        console.log("JSON extraction also failed");
+      }
+    }
   }
   
   // Fallback: treat entire message as question
