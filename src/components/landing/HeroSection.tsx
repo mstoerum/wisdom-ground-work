@@ -40,9 +40,7 @@ export const HeroSection = () => {
             
             <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-display font-semibold text-foreground leading-[1.1]">
               Beyond engagement scores:{" "}
-              <span className="text-primary">
-                real insight into your people.
-              </span>
+              
             </h1>
             
             <p className="text-lg max-w-xl leading-relaxed text-sidebar-foreground">Spradley moves you beyond checkbox surveys to AI‑driven employee interviews that reveal what really works, what holds people back, and why. Uncover everyday frictions and hidden successes on the ground.</p>
