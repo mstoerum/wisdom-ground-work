@@ -15,7 +15,7 @@ export default {
   	extend: {
   		fontFamily: {
   			sans: [
-  				'Nunito',
+  				'DM Sans',
   				'ui-sans-serif',
   				'system-ui',
   				'sans-serif',
