@@ -20,14 +20,11 @@ export const HeroSection = () => {
   const decorativeY2 = useTransform(scrollYProgress, [0, 1], ["0%", "40%"]);
 
   return (
-    <section ref={sectionRef} className="relative overflow-hidden bg-background">
-      {/* Wave pattern background - hero only */}
+    <section ref={sectionRef} className="relative overflow-hidden min-h-[90vh]">
+      {/* Animated wave pattern background */}
       <motion.div style={{ y: waveY }} className="absolute inset-0">
         <WaveBackground />
       </motion.div>
-      
-      {/* Subtle gradient overlay for depth */}
-      <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-background/80" />
       
       <motion.div 
         className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28" 
@@ -81,13 +78,13 @@ export const HeroSection = () => {
 
           {/* Right column - Interactive Chat */}
           <div className="relative">
-            {/* Decorative elements - using new palette */}
+            {/* Decorative glow elements */}
             <motion.div 
-              className="absolute -top-12 -right-12 w-40 h-40 bg-[hsl(var(--tan-primary))] rounded-full opacity-20 blur-3xl" 
+              className="absolute -top-12 -right-12 w-40 h-40 bg-[hsl(var(--tan-primary))] rounded-full opacity-30 blur-3xl" 
               style={{ y: decorativeY1 }} 
             />
             <motion.div 
-              className="absolute -bottom-12 -left-12 w-48 h-48 bg-[hsl(var(--teal-accent))] rounded-full opacity-15 blur-3xl" 
+              className="absolute -bottom-12 -left-12 w-48 h-48 bg-[hsl(var(--teal-primary))] rounded-full opacity-20 blur-3xl" 
               style={{ y: decorativeY2 }} 
             />
             
