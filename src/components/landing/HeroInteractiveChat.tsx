@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ArrowRight, Lock, Shield } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -13,33 +13,12 @@ const OPENING_MESSAGE = "Hi! I'm Spradley. How's work been going for you latelyâ
 
 export const HeroInteractiveChat: React.FC = () => {
   const [currentQuestion, setCurrentQuestion] = useState(OPENING_MESSAGE);
-  const [displayedText, setDisplayedText] = useState('');
-  const [isTyping, setIsTyping] = useState(true);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [exchangeCount, setExchangeCount] = useState(0);
   const [conversationHistory, setConversationHistory] = useState<Array<{ role: string; content: string }>>([
     { role: 'assistant', content: OPENING_MESSAGE }
   ]);
-
-  // Typewriter effect
-  useEffect(() => {
-    setDisplayedText('');
-    setIsTyping(true);
-    
-    let index = 0;
-    const interval = setInterval(() => {
-      if (index < currentQuestion.length) {
-        setDisplayedText(currentQuestion.slice(0, index + 1));
-        index++;
-      } else {
-        setIsTyping(false);
-        clearInterval(interval);
-      }
-    }, 25);
-
-    return () => clearInterval(interval);
-  }, [currentQuestion]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -100,32 +79,37 @@ export const HeroInteractiveChat: React.FC = () => {
       className="w-full max-w-2xl mx-auto"
     >
       <div className="bg-card/80 backdrop-blur-sm rounded-2xl border border-border/50 shadow-xl overflow-hidden">
-        {/* Main content area - more compact */}
-        <div className="p-6 md:p-8 flex flex-col items-center text-center space-y-4">
-          {/* Breathing Circle - smaller */}
+        {/* Main content area */}
+        <div className="p-8 md:p-10 flex flex-col items-center text-center space-y-6">
+          {/* Breathing Circle */}
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <BreathingCircle isLoading={isLoading} size="sm" />
+            <BreathingCircle isLoading={isLoading} size="md" />
           </motion.div>
 
-          {/* Question Display with typewriter */}
-          <div className="min-h-[60px] flex items-center justify-center">
+          {/* Question Display */}
+          <motion.div
+            key={currentQuestion}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="space-y-2"
+          >
             {isLoading ? (
-              <div className="flex items-center justify-center gap-1 py-2">
+              <div className="flex items-center justify-center gap-1 py-4">
                 <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                 <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                 <span className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             ) : (
-              <p className="text-lg md:text-xl font-medium leading-relaxed text-foreground">
-                {displayedText}
-                {isTyping && <span className="inline-block w-0.5 h-5 bg-primary ml-0.5 animate-pulse" />}
+              <p className="text-xl md:text-2xl font-medium leading-relaxed text-foreground">
+                {currentQuestion}
               </p>
             )}
-          </div>
+          </motion.div>
 
           {/* Input Area or CTA */}
           {!showCTA ? (
@@ -133,15 +117,15 @@ export const HeroInteractiveChat: React.FC = () => {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.3 }}
-              className="w-full space-y-3"
+              className="w-full space-y-4"
             >
               <Textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyPress}
                 placeholder="Share what's on your mind..."
-                className="min-h-[80px] text-base rounded-xl resize-none border-border/50 focus:border-primary/50 bg-background/50"
-                disabled={isLoading || isTyping}
+                className="min-h-[100px] text-base rounded-xl resize-none border-border/50 focus:border-primary/50 bg-background/50"
+                disabled={isLoading}
               />
               <Button
                 onClick={handleSend}
