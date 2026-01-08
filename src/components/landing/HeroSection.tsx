@@ -38,9 +38,8 @@ export const HeroSection = () => {
           <div className="space-y-8">
             <p className="text-sm font-medium text-primary tracking-wide uppercase">AI-POWERED WORKPLACE INSIGHTS</p>
             
-            <h1 className="text-5xl sm:text-6xl lg:text-[4rem] font-display font-semibold text-foreground leading-[1.25]">
-              Go beyond engagement scores
-            </h1>
+            <h1 className="text-5xl sm:text-6xl lg:text-[4rem] font-display font-semibold text-foreground leading-[1.25]">Bring us beyond
+benchmarking</h1>
             
             <p className="text-lg max-w-xl leading-relaxed text-sidebar-foreground">Spradley moves you beyond checkbox surveys to AI‑driven employee interviews that reveal what really works, what holds people back, and why. Uncover everyday frictions and hidden successes on the ground.</p>
 
