@@ -41,8 +41,8 @@ export const FocusedInterviewInterface = ({
   const { toast } = useToast();
   const { isPreviewMode, previewSurveyData } = usePreviewMode();
   
-  // Mood selection phase
-  const [showMoodSelector, setShowMoodSelector] = useState(true);
+  // Mood was already selected in WelcomeScreen, so skip mood selector unless minimalUI (demo mode)
+  const [showMoodSelector, setShowMoodSelector] = useState(minimalUI);
   const [initialMood, setInitialMood] = useState<number | null>(null);
   
   const [currentQuestion, setCurrentQuestion] = useState("");
@@ -140,6 +140,16 @@ export const FocusedInterviewInterface = ({
       setIsLoading(false);
     }
   }, [conversationId, isPreviewMode, previewSurveyData, getSession, toast]);
+
+  // Auto-initialize conversation when coming from WelcomeScreen (mood already selected)
+  useEffect(() => {
+    if (!showMoodSelector && !isInitialized && conversationId) {
+      // Retrieve mood from WelcomeScreen's localStorage
+      const storedMood = localStorage.getItem('spradley_initial_mood');
+      const mood = storedMood ? parseInt(storedMood, 10) : 3; // Default to "okay"
+      handleMoodSelect(mood);
+    }
+  }, [showMoodSelector, isInitialized, conversationId, handleMoodSelect]);
 
   // Submit answer and get next question
   const handleSubmit = useCallback(async () => {
