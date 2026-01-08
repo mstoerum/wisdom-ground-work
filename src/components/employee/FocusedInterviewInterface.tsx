@@ -54,6 +54,7 @@ export const FocusedInterviewInterface = ({
   const [isInitialized, setIsInitialized] = useState(false);
   const [showFinishDialog, setShowFinishDialog] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [themeProgress, setThemeProgress] = useState<ThemeProgress | null>(null);
 
   // Get session for authenticated requests
@@ -147,9 +148,17 @@ export const FocusedInterviewInterface = ({
     const userMessage: Message = { role: "user", content: currentAnswer.trim() };
     const updatedHistory = [...conversationHistory, userMessage];
     
+    // Immediately start transitioning out the current question
+    setIsTransitioning(true);
     setConversationHistory(updatedHistory);
     setCurrentAnswer("");
     setIsLoading(true);
+    
+    // Quick fade-out, then show loading dots
+    setTimeout(() => {
+      setCurrentQuestion("");
+      setCurrentEmpathy(null);
+    }, 150);
 
     try {
       const session = await getSession();
@@ -211,6 +220,7 @@ export const FocusedInterviewInterface = ({
       setCurrentAnswer(userMessage.content);
     } finally {
       setIsLoading(false);
+      setIsTransitioning(false);
     }
   }, [currentAnswer, isLoading, conversationHistory, conversationId, isPreviewMode, previewSurveyData, getSession, onComplete, toast]);
 
@@ -362,6 +372,7 @@ export const FocusedInterviewInterface = ({
             empathy={currentEmpathy || undefined}
             question={currentQuestion}
             isLoading={isLoading && !currentQuestion}
+            isTransitioning={isTransitioning}
           />
 
           <AnswerInput
