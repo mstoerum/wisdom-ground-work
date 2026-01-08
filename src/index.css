@@ -31,10 +31,10 @@ All colors MUST be HSL.
     --foreground: 25 20% 18%;
 
     --card: 0 0% 100%;
-    --card-foreground: 25 20% 18%;
+    --card-foreground: 229 84% 4.902%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 25 20% 18%;
+    --popover-foreground: 229 84% 4.902%;
 
     /* Primary - Terracotta (softened) */
     --primary: 14 91% 63%;
@@ -42,7 +42,7 @@ All colors MUST be HSL.
 
     /* Secondary - Butter Yellow (muted) */
     --secondary: 42 55% 78%;
-    --secondary-foreground: 224 71.4286% 4.1176%;
+    --secondary-foreground: 229 84% 4.902%;
 
     /* Muted - Warm Greige */
     --muted: 30 10% 94%;
@@ -50,7 +50,7 @@ All colors MUST be HSL.
 
     /* Accent - Sage Green (softer than lime) */
     --accent: 145 35% 72%;
-    --accent-foreground: 145 30% 18%;
+    --accent-foreground: 229 84% 4.902%;
 
     /* Destructive - Soft Red */
     --destructive: 0 55% 55%;
