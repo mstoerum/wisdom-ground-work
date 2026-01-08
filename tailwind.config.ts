@@ -30,7 +30,7 @@ export default {
   				'serif'
   			],
   			serif: [
-  				'Source Serif Pro',
+  				'Merriweather',
   				'ui-serif',
   				'Georgia',
   				'Cambria',
