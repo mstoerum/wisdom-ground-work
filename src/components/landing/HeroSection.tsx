@@ -40,7 +40,7 @@ export const HeroSection = () => {
             
             <h1 className="text-5xl sm:text-6xl text-foreground leading-[1.25] lg:text-8xl font-serif font-normal my-0 py-0">Go beyond benchmarks</h1>
             
-            <p className="text-[19px] max-w-xl leading-relaxed text-foreground">Spradley moves you beyond checkbox surveys to AI‑driven employee interviews that reveal what really works, what holds people back, and why. Uncover everyday frictions and hidden successes on the ground.</p>
+            <p className="text-[19px] max-w-xl leading-snug text-foreground">Spradley moves you beyond checkbox surveys to AI‑driven employee interviews that reveal what really works, what holds people back, and why. Uncover everyday frictions and hidden successes on the ground.</p>
 
             {/* CTAs */}
             <div className="flex flex-col sm:flex-row gap-4 pt-2">
