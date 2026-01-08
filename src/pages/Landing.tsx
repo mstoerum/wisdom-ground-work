@@ -1,6 +1,7 @@
 import { Navbar } from "@/components/landing/Navbar";
 import { HeroSection } from "@/components/landing/HeroSection";
 import { AIAnalysisDemo } from "@/components/landing/AIAnalysisDemo";
+import { ArticlesSection } from "@/components/landing/ArticlesSection";
 import { ComparisonSection } from "@/components/landing/ComparisonSection";
 import { PersonasSection } from "@/components/landing/PersonasSection";
 import { SecuritySection } from "@/components/landing/SecuritySection";
@@ -13,6 +14,7 @@ const Landing = () => {
       <main>
         <HeroSection />
         <AIAnalysisDemo />
+        <ArticlesSection />
         <ComparisonSection />
         <PersonasSection />
         <SecuritySection />

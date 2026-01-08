@@ -1,95 +1,110 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { ArrowRight, Play } from "lucide-react";
-import { FloatingBubbles } from "./FloatingBubbles";
-import { motion } from "framer-motion";
+import { HeroInteractiveChat } from "./HeroInteractiveChat";
+import { WaveBackground } from "./WaveBackground";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { useRef } from "react";
 
 export const HeroSection = () => {
-  return (
-    <section className="relative overflow-hidden min-h-screen bg-background">
-      {/* Subtle gradient background */}
-      <div 
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(ellipse at 50% 0%, hsl(var(--teal-pale) / 0.3) 0%, transparent 60%), radial-gradient(ellipse at 80% 80%, hsl(var(--tan-pale) / 0.2) 0%, transparent 50%)'
-        }}
-      />
-      
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Top section - Headlines */}
-        <div className="pt-20 lg:pt-28 pb-8 text-center">
-          <motion.h1 
-            className="text-5xl sm:text-6xl lg:text-7xl font-display font-semibold text-foreground leading-[1.05] tracking-tight"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: "easeOut" }}
-          >
-            Beyond engagement
-          </motion.h1>
-          
-          <motion.p 
-            className="mt-6 text-xl sm:text-2xl text-muted-foreground max-w-2xl mx-auto"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.15, ease: "easeOut" }}
-          >
-            Watch insights emerge in real-time
-          </motion.p>
+  const sectionRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end start"]
+  });
 
-          {/* CTAs */}
+  // Parallax transforms - subtle movement
+  const waveY = useTransform(scrollYProgress, [0, 1], ["0%", "15%"]);
+  const contentY = useTransform(scrollYProgress, [0, 1], ["0%", "8%"]);
+  const decorativeY1 = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
+  const decorativeY2 = useTransform(scrollYProgress, [0, 1], ["0%", "40%"]);
+
+  return (
+    <section ref={sectionRef} className="relative overflow-hidden min-h-[90vh]">
+      {/* Animated wave pattern background */}
+      <motion.div style={{ y: waveY }} className="absolute inset-0">
+        <WaveBackground />
+      </motion.div>
+      
+      <motion.div 
+        className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28" 
+        style={{ y: contentY }}
+      >
+        <div className="grid lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+          {/* Left column - Copy with staggered entrance */}
+          <div className="space-y-8">
+            <motion.p 
+              className="text-sm font-medium text-primary tracking-wide uppercase"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.6, ease: "easeOut" }}
+            >
+              AI-POWERED WORKPLACE INSIGHTS
+            </motion.p>
+            
+            <motion.h1 
+              className="text-4xl sm:text-5xl lg:text-[3.5rem] font-display font-semibold text-foreground leading-[1.1]"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.6, ease: "easeOut" }}
+            >
+              Beyond engagement scores:{" "}
+              <span className="text-primary">
+                real insight into your people.
+              </span>
+            </motion.h1>
+            
+            <motion.p 
+              className="text-lg text-muted-foreground max-w-xl leading-relaxed"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.6, ease: "easeOut" }}
+            >
+              Spradley moves you beyond checkbox surveys to AI‑driven employee interviews that reveal what really works, what holds people back, and why. Uncover everyday frictions and hidden successes on the ground.
+            </motion.p>
+
+            {/* CTAs */}
+            <motion.div 
+              className="flex flex-col sm:flex-row gap-4 pt-2"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.6, ease: "easeOut" }}
+            >
+              <Link to="/demo/employee">
+                <Button size="lg" className="w-full sm:w-auto gap-2 font-medium shadow-sm">
+                  Try the Experience
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              </Link>
+              <Link to="/demo/hr">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto font-medium border-foreground/20 text-foreground hover:bg-foreground/5">
+                  View HR Dashboard
+                </Button>
+              </Link>
+            </motion.div>
+          </div>
+
+          {/* Right column - Interactive Chat */}
           <motion.div 
-            className="flex flex-col sm:flex-row gap-4 justify-center mt-10"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3, ease: "easeOut" }}
+            className="relative"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.3, duration: 0.7, ease: "easeOut" }}
           >
-            <Link to="/demo/employee">
-              <Button size="lg" className="w-full sm:w-auto gap-2 font-medium shadow-md px-8">
-                Try the Experience
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-            <Link to="/demo/hr">
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="w-full sm:w-auto font-medium border-border text-foreground hover:bg-muted/50 gap-2"
-              >
-                <Play className="w-4 h-4" />
-                Watch Demo
-              </Button>
-            </Link>
+            {/* Decorative glow elements - Teal and Tan */}
+            <motion.div 
+              className="absolute -top-12 -right-12 w-40 h-40 bg-[hsl(var(--tan-primary))] rounded-full opacity-25 blur-3xl" 
+              style={{ y: decorativeY1 }} 
+            />
+            <motion.div 
+              className="absolute -bottom-12 -left-12 w-48 h-48 bg-[hsl(var(--teal-primary))] rounded-full opacity-15 blur-3xl" 
+              style={{ y: decorativeY2 }} 
+            />
+            
+            <HeroInteractiveChat />
           </motion.div>
         </div>
-
-        {/* Floating bubbles visualization */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 1, delay: 0.5 }}
-        >
-          <FloatingBubbles />
-        </motion.div>
-
-        {/* Bottom section - Value proposition */}
-        <motion.div 
-          className="pb-20 lg:pb-28 text-center"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.8, ease: "easeOut" }}
-        >
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-display font-medium text-foreground leading-snug max-w-3xl mx-auto">
-            Why we think{" "}
-            <span className="text-primary">workplace intelligence</span>{" "}
-            is the next step for companies
-          </h2>
-          
-          <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-            AI-driven conversations replace checkbox surveys to reveal what really works, 
-            what holds people back, and why—giving you the full picture of your organization.
-          </p>
-        </motion.div>
-      </div>
+      </motion.div>
     </section>
   );
 };
