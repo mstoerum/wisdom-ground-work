@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getSystemPromptForSurveyType, buildConversationContextForType, type SurveyType } from "./context-prompts.ts";
-import { selectFirstQuestion } from "./first-questions.ts";
+import { selectFirstQuestion, getMoodAdaptiveResponse } from "./first-questions.ts";
 
 // Declare EdgeRuntime for background task support
 declare const EdgeRuntime: {
@@ -497,7 +497,7 @@ serve(async (req) => {
   }
 
   try {
-    const { conversationId, messages, testMode, themes: requestThemeIds, finishEarly, themeCoverage, isFinalResponse, isCompletionConfirmation, firstMessage: requestFirstMessage } = await req.json();
+    const { conversationId, messages, testMode, themes: requestThemeIds, finishEarly, themeCoverage, isFinalResponse, isCompletionConfirmation, firstMessage: requestFirstMessage, initialMood } = await req.json();
     
     // Validate required fields
     if (!conversationId || typeof conversationId !== "string") {
@@ -662,7 +662,20 @@ Be warm and appreciative. Keep it brief.`;
         // Build initial theme progress for preview mode
         const initialThemeProgress = buildThemeProgress([], themes, null);
         
-        if (requestFirstMessage) {
+        // Check if we have an initial mood from the mood selector
+        if (typeof initialMood === 'number' && initialMood >= 1 && initialMood <= 5) {
+          // Use mood-adaptive response
+          const moodResponse = getMoodAdaptiveResponse(initialMood, themes, surveyType);
+          return new Response(
+            JSON.stringify({ 
+              message: moodResponse.question,
+              empathy: moodResponse.empathy,
+              shouldComplete: false,
+              themeProgress: initialThemeProgress
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        } else if (requestFirstMessage) {
           // Use the provided first message directly
           return new Response(
             JSON.stringify({ 
@@ -1094,6 +1107,24 @@ Be warm and appreciative. Keep it brief.`;
 
     // If this is an introduction trigger, handle first message
     if (isIntroductionTrigger) {
+      // Build initial theme progress
+      const initialThemeProgress = buildThemeProgress([], themes || [], null);
+      
+      // Check if we have an initial mood from the mood selector
+      if (typeof initialMood === 'number' && initialMood >= 1 && initialMood <= 5) {
+        // Use mood-adaptive response
+        const moodResponse = getMoodAdaptiveResponse(initialMood, themes || [], surveyType);
+        return new Response(
+          JSON.stringify({ 
+            message: moodResponse.question,
+            empathy: moodResponse.empathy,
+            shouldComplete: false,
+            themeProgress: initialThemeProgress
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       const surveyFirstMessageText = survey?.first_message;
       
       if (surveyFirstMessageText) {
@@ -1101,7 +1132,8 @@ Be warm and appreciative. Keep it brief.`;
         return new Response(
           JSON.stringify({ 
             message: surveyFirstMessageText,
-            shouldComplete: false
+            shouldComplete: false,
+            themeProgress: initialThemeProgress
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -1114,7 +1146,8 @@ Be warm and appreciative. Keep it brief.`;
         return new Response(
           JSON.stringify({ 
             message: warmFirstMessage,
-            shouldComplete: false
+            shouldComplete: false,
+            themeProgress: initialThemeProgress
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );

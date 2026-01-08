@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { AIResponseDisplay } from "./AIResponseDisplay";
 import { AnswerInput } from "./AnswerInput";
 import { ThemeJourneyPath } from "./ThemeJourneyPath";
+import { MoodSelector } from "./MoodSelector";
 import { useToast } from "@/hooks/use-toast";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,6 +41,10 @@ export const FocusedInterviewInterface = ({
   const { toast } = useToast();
   const { isPreviewMode, previewSurveyData } = usePreviewMode();
   
+  // Mood selection phase
+  const [showMoodSelector, setShowMoodSelector] = useState(true);
+  const [initialMood, setInitialMood] = useState<number | null>(null);
+  
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [currentEmpathy, setCurrentEmpathy] = useState<string | null>(null);
   const [currentAnswer, setCurrentAnswer] = useState("");
@@ -59,77 +64,81 @@ export const FocusedInterviewInterface = ({
     return session;
   }, [isPreviewMode, publicLinkId]);
 
-  // Initialize with first question from AI
-  useEffect(() => {
-    if (isInitialized || !conversationId) return;
+  // Handle mood selection - initialize conversation with mood context
+  const handleMoodSelect = useCallback(async (mood: number) => {
+    setInitialMood(mood);
+    setShowMoodSelector(false);
+    setIsLoading(true);
+    setIsInitialized(true);
     
-    const initializeInterview = async () => {
-      setIsLoading(true);
-      setIsInitialized(true);
+    try {
+      const session = await getSession();
       
-      try {
-        const session = await getSession();
-        
-        const requestBody: any = {
-          conversationId,
-          messages: [{ role: "user", content: "[START_CONVERSATION]" }],
-          testMode: isPreviewMode,
-        };
+      const requestBody: any = {
+        conversationId,
+        messages: [{ role: "user", content: "[START_CONVERSATION]" }],
+        testMode: isPreviewMode,
+        initialMood: mood, // Pass mood to backend
+      };
 
-        if (isPreviewMode && previewSurveyData) {
-          requestBody.themes = previewSurveyData.themes;
-          requestBody.firstMessage = previewSurveyData.first_message;
-        }
-
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
-            },
-            body: JSON.stringify(requestBody),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to initialize interview");
-        }
-
-        const data = await response.json();
-        const introMessage = data.message || "How have things been feeling at work lately?";
-        
-        // Set theme progress if available
-        if (data.themeProgress) {
-          setThemeProgress(data.themeProgress);
-        }
-        
-        setCurrentQuestion(introMessage);
-        setCurrentEmpathy(data.empathy || null);
-        setConversationHistory([{ role: "assistant", content: introMessage }]);
-      } catch (error) {
-        console.error("Error initializing interview:", error);
-        // Fallback question
-        const fallback = "How have things been feeling at work lately?";
-        setCurrentQuestion(fallback);
-        setCurrentEmpathy(null);
-        setConversationHistory([{ role: "assistant", content: fallback }]);
-        
-        if (!isPreviewMode) {
-          toast({
-            title: "Connection issue",
-            description: "Using default question. Your responses will still be saved.",
-            variant: "default",
-          });
-        }
-      } finally {
-        setIsLoading(false);
+      if (isPreviewMode && previewSurveyData) {
+        requestBody.themes = previewSurveyData.themes;
       }
-    };
 
-    initializeInterview();
-  }, [conversationId, isInitialized, isPreviewMode, previewSurveyData, getSession, toast]);
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
+          body: JSON.stringify(requestBody),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to initialize interview");
+      }
+
+      const data = await response.json();
+      const introMessage = data.message || "How have things been feeling at work lately?";
+      
+      // Set theme progress if available
+      if (data.themeProgress) {
+        setThemeProgress(data.themeProgress);
+      }
+      
+      setCurrentQuestion(introMessage);
+      setCurrentEmpathy(data.empathy || null);
+      setConversationHistory([{ role: "assistant", content: introMessage }]);
+    } catch (error) {
+      console.error("Error initializing interview:", error);
+      // Fallback question based on mood
+      const moodLabels = ["", "tough", "not great", "okay", "good", "great"];
+      const fallbackQuestions: Record<number, string> = {
+        1: "I hear that. What's been the biggest challenge this week?",
+        2: "Thanks for being honest. What's been weighing on you?",
+        3: "Got it. Is there anything that could make things better right now?",
+        4: "Nice! What's been going well for you lately?",
+        5: "Love to hear it! What's making things feel good right now?"
+      };
+      const fallback = fallbackQuestions[mood] || "How have things been feeling at work lately?";
+      setCurrentQuestion(fallback);
+      setCurrentEmpathy(null);
+      setConversationHistory([{ role: "assistant", content: fallback }]);
+      
+      if (!isPreviewMode) {
+        toast({
+          title: "Connection issue",
+          description: "Using default question. Your responses will still be saved.",
+          variant: "default",
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [conversationId, isPreviewMode, previewSurveyData, getSession, toast]);
 
   // Submit answer and get next question
   const handleSubmit = useCallback(async () => {
@@ -291,6 +300,15 @@ export const FocusedInterviewInterface = ({
       setIsLoading(false);
     }
   }, [conversationId, conversationHistory, isPreviewMode, getSession, onComplete]);
+
+  // Show mood selector first
+  if (showMoodSelector) {
+    return (
+      <div className="min-h-[70vh] flex flex-col">
+        <MoodSelector onMoodSelect={handleMoodSelect} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[70vh] flex flex-col">
