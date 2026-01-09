@@ -363,7 +363,7 @@ ${conversationContext}`;
  */
 const parseStructuredResponse = (aiMessage: string): { empathy: string | null; question: string; raw: string } => {
   try {
-    // Clean the response - remove markdown code blocks if present
+    // Clean markdown code blocks if present
     let cleaned = aiMessage.trim();
     if (cleaned.startsWith('```json')) {
       cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
@@ -380,9 +380,9 @@ const parseStructuredResponse = (aiMessage: string): { empathy: string | null; q
       };
     }
   } catch (e) {
-    console.log("Failed to parse structured response, attempting regex extraction...");
+    console.log("Failed to parse structured response, attempting extraction...");
     
-    // Try to extract JSON from the message using regex
+    // Attempt 1: Extract complete JSON object
     const jsonMatch = aiMessage.match(/\{[\s\S]*"question"[\s\S]*\}/);
     if (jsonMatch) {
       try {
@@ -391,15 +391,55 @@ const parseStructuredResponse = (aiMessage: string): { empathy: string | null; q
           return { empathy: parsed.empathy || null, question: parsed.question, raw: aiMessage };
         }
       } catch (e2) {
-        console.log("JSON extraction also failed");
+        console.log("JSON extraction failed, trying regex");
+      }
+    }
+    
+    // Attempt 2: Extract from truncated JSON using regex
+    const questionMatch = aiMessage.match(/"question"\s*:\s*"([^"]+)/);
+    if (questionMatch && questionMatch[1]) {
+      const empathyMatch = aiMessage.match(/"empathy"\s*:\s*"([^"]+)"/);
+      const question = questionMatch[1].replace(/["\}]+$/, '').trim();
+      if (question.length > 5) {
+        console.log("Extracted question from truncated JSON:", question);
+        return {
+          empathy: empathyMatch ? empathyMatch[1] : null,
+          question: question,
+          raw: aiMessage
+        };
+      }
+    }
+    
+    // Attempt 3: Strip all JSON artifacts and use remaining text
+    if (aiMessage.includes('"question"') || aiMessage.includes('"empathy"')) {
+      const textContent = aiMessage
+        .replace(/^\s*\{?\s*/g, '')
+        .replace(/"empathy"\s*:\s*("[^"]*"|null)\s*,?\s*/g, '')
+        .replace(/"question"\s*:\s*"/g, '')
+        .replace(/"\s*\}?\s*$/g, '')
+        .trim();
+      
+      if (textContent && textContent.length > 10 && !textContent.startsWith('{')) {
+        console.log("Stripped JSON wrapper, using:", textContent);
+        return { empathy: null, question: textContent, raw: aiMessage };
       }
     }
   }
   
-  // Fallback: treat entire message as question
+  // Final fallback: Use generic continuation if everything fails
+  if (aiMessage.includes('{') || aiMessage.includes('"question"')) {
+    console.error("All parsing attempts failed, using generic fallback");
+    return {
+      empathy: null,
+      question: "Thank you for sharing. Could you tell me a bit more about that?",
+      raw: aiMessage
+    };
+  }
+  
+  // Plain text response
   return {
     empathy: null,
-    question: aiMessage,
+    question: aiMessage.trim(),
     raw: aiMessage
   };
 };
@@ -1178,7 +1218,7 @@ Be warm and appreciative. Keep it brief.`;
       AI_MODEL,
       [{ role: "system", content: systemPrompt }, ...filteredMessages],
       0.8,
-      100 // Reduced from 250 for faster responses
+      180 // Safe buffer for JSON responses without impacting speed
     );
 
     // Parse structured response
