@@ -1,10 +1,11 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { AIResponseDisplay } from "./AIResponseDisplay";
 import { AnswerInput } from "./AnswerInput";
 import { ThemeJourneyPath } from "./ThemeJourneyPath";
 import { MoodSelector } from "./MoodSelector";
+import { MoodTransition } from "./MoodTransition";
 import { useToast } from "@/hooks/use-toast";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +44,9 @@ export const FocusedInterviewInterface = ({
   
   // Mood was already selected in WelcomeScreen, so skip mood selector unless minimalUI (demo mode)
   const [showMoodSelector, setShowMoodSelector] = useState(minimalUI);
+  const [showMoodTransition, setShowMoodTransition] = useState(false);
+  const [transitionMood, setTransitionMood] = useState<number>(3);
+  const [isApiReady, setIsApiReady] = useState(false);
   const [initialMood, setInitialMood] = useState<number | null>(null);
   
   const [currentQuestion, setCurrentQuestion] = useState("");
@@ -56,6 +60,9 @@ export const FocusedInterviewInterface = ({
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [themeProgress, setThemeProgress] = useState<ThemeProgress | null>(null);
+  
+  // Track if API call has completed during transition
+  const pendingQuestionRef = useRef<{ question: string; empathy: string | null; history: Message[]; themeProgress: ThemeProgress | null } | null>(null);
 
   // Get session for authenticated requests
   const getSession = useCallback(async () => {
@@ -65,13 +72,8 @@ export const FocusedInterviewInterface = ({
     return session;
   }, [isPreviewMode, publicLinkId]);
 
-  // Handle mood selection - initialize conversation with mood context
-  const handleMoodSelect = useCallback(async (mood: number) => {
-    setInitialMood(mood);
-    setShowMoodSelector(false);
-    setIsLoading(true);
-    setIsInitialized(true);
-    
+  // Initialize conversation API call (runs in background during transition)
+  const initializeConversation = useCallback(async (mood: number) => {
     try {
       const session = await getSession();
       
@@ -79,7 +81,7 @@ export const FocusedInterviewInterface = ({
         conversationId,
         messages: [{ role: "user", content: "[START_CONVERSATION]" }],
         testMode: isPreviewMode,
-        initialMood: mood, // Pass mood to backend
+        initialMood: mood,
       };
 
       if (isPreviewMode && previewSurveyData) {
@@ -113,18 +115,17 @@ export const FocusedInterviewInterface = ({
         }
       }
       
-      // Set theme progress if available
-      if (data.themeProgress) {
-        setThemeProgress(data.themeProgress);
-      }
-      
-      setCurrentQuestion(introMessage);
-      setCurrentEmpathy(data.empathy || null);
-      setConversationHistory([{ role: "assistant", content: introMessage }]);
+      // Store the result for when transition completes
+      pendingQuestionRef.current = {
+        question: introMessage,
+        empathy: data.empathy || null,
+        history: [{ role: "assistant", content: introMessage }],
+        themeProgress: data.themeProgress || null
+      };
+      setIsApiReady(true);
     } catch (error) {
       console.error("Error initializing interview:", error);
       // Fallback question based on mood
-      const moodLabels = ["", "tough", "not great", "okay", "good", "great"];
       const fallbackQuestions: Record<number, string> = {
         1: "I hear that. What's been the biggest challenge this week?",
         2: "Thanks for being honest. What's been weighing on you?",
@@ -133,9 +134,14 @@ export const FocusedInterviewInterface = ({
         5: "Love to hear it! What's making things feel good right now?"
       };
       const fallback = fallbackQuestions[mood] || "How have things been feeling at work lately?";
-      setCurrentQuestion(fallback);
-      setCurrentEmpathy(null);
-      setConversationHistory([{ role: "assistant", content: fallback }]);
+      
+      pendingQuestionRef.current = {
+        question: fallback,
+        empathy: null,
+        history: [{ role: "assistant", content: fallback }],
+        themeProgress: null
+      };
+      setIsApiReady(true);
       
       if (!isPreviewMode) {
         toast({
@@ -144,20 +150,48 @@ export const FocusedInterviewInterface = ({
           variant: "default",
         });
       }
-    } finally {
-      setIsLoading(false);
     }
   }, [conversationId, isPreviewMode, previewSurveyData, getSession, toast]);
 
+  // Handle mood selection - show transition and start API call in parallel
+  const handleMoodSelect = useCallback(async (mood: number) => {
+    setInitialMood(mood);
+    setTransitionMood(mood);
+    setShowMoodSelector(false);
+    setShowMoodTransition(true);
+    setIsInitialized(true);
+    
+    // Start API call in background while showing transition
+    initializeConversation(mood);
+  }, [initializeConversation]);
+
+  // Handle transition completion - apply the pending question
+  const handleTransitionComplete = useCallback(() => {
+    setShowMoodTransition(false);
+    
+    if (pendingQuestionRef.current) {
+      setCurrentQuestion(pendingQuestionRef.current.question);
+      setCurrentEmpathy(pendingQuestionRef.current.empathy);
+      setConversationHistory(pendingQuestionRef.current.history);
+      if (pendingQuestionRef.current.themeProgress) {
+        setThemeProgress(pendingQuestionRef.current.themeProgress);
+      }
+      pendingQuestionRef.current = null;
+    }
+  }, []);
+
   // Auto-initialize conversation when coming from WelcomeScreen (mood already selected)
   useEffect(() => {
-    if (!showMoodSelector && !isInitialized && conversationId) {
+    if (!showMoodSelector && !showMoodTransition && !isInitialized && conversationId) {
       // Retrieve mood from WelcomeScreen's localStorage
       const storedMood = localStorage.getItem('spradley_initial_mood');
       const mood = storedMood ? parseInt(storedMood, 10) : 3; // Default to "okay"
-      handleMoodSelect(mood);
+      setTransitionMood(mood);
+      setShowMoodTransition(true);
+      setIsInitialized(true);
+      initializeConversation(mood);
     }
-  }, [showMoodSelector, isInitialized, conversationId, handleMoodSelect]);
+  }, [showMoodSelector, showMoodTransition, isInitialized, conversationId, initializeConversation]);
 
   // Submit answer and get next question
   const handleSubmit = useCallback(async () => {
@@ -343,12 +377,23 @@ export const FocusedInterviewInterface = ({
     }
   }, [conversationId, conversationHistory, isPreviewMode, getSession, onComplete]);
 
-  // Show mood selector first
+  // Show mood selector first (only in minimalUI/demo mode)
   if (showMoodSelector) {
     return (
       <div className="min-h-[70vh] flex flex-col">
         <MoodSelector onMoodSelect={handleMoodSelect} />
       </div>
+    );
+  }
+
+  // Show mood transition (acknowledgment screen)
+  if (showMoodTransition) {
+    return (
+      <MoodTransition
+        mood={transitionMood}
+        onComplete={handleTransitionComplete}
+        isApiReady={isApiReady}
+      />
     );
   }
 
