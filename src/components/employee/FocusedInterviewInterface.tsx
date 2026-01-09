@@ -103,7 +103,15 @@ export const FocusedInterviewInterface = ({
       }
 
       const data = await response.json();
-      const introMessage = data.message || "How have things been feeling at work lately?";
+      
+      // Safety check: clean any JSON artifacts from the message
+      let introMessage = data.message || "How have things been feeling at work lately?";
+      if (introMessage.includes('{"') || introMessage.includes('"question"')) {
+        const questionMatch = introMessage.match(/"question"\s*:\s*"([^"]+)/);
+        if (questionMatch && questionMatch[1]) {
+          introMessage = questionMatch[1].replace(/["\}]+$/, '').trim();
+        }
+      }
       
       // Set theme progress if available
       if (data.themeProgress) {
@@ -196,6 +204,21 @@ export const FocusedInterviewInterface = ({
 
       const data = await response.json();
 
+      // Safety check: clean any JSON artifacts from the message
+      let messageText = data.message || "";
+      if (messageText.includes('{"') || messageText.includes('"question"') || messageText.includes('"empathy"')) {
+        console.warn("Received JSON artifacts in message, cleaning...");
+        const questionMatch = messageText.match(/"question"\s*:\s*"([^"]+)/);
+        if (questionMatch && questionMatch[1]) {
+          messageText = questionMatch[1].replace(/["\}]+$/, '').trim();
+        } else {
+          messageText = messageText.replace(/\{[^}]*\}/g, '').replace(/"[^"]+"\s*:\s*/g, '').trim();
+        }
+        if (!messageText || messageText.length < 10 || messageText.includes('{')) {
+          messageText = "Thank you for sharing. Could you tell me more about that?";
+        }
+      }
+
       // Update theme progress if available
       if (data.themeProgress) {
         setThemeProgress(data.themeProgress);
@@ -203,9 +226,9 @@ export const FocusedInterviewInterface = ({
 
       // Handle completion
       if (data.shouldComplete || data.isCompletionPrompt) {
-        setCurrentQuestion(data.message);
+        setCurrentQuestion(messageText);
         setCurrentEmpathy(data.empathy || null);
-        setConversationHistory([...updatedHistory, { role: "assistant", content: data.message }]);
+        setConversationHistory([...updatedHistory, { role: "assistant", content: messageText }]);
         
         if (data.shouldComplete && data.showSummary) {
           setTimeout(onComplete, 2500);
@@ -214,10 +237,9 @@ export const FocusedInterviewInterface = ({
       }
 
       // Normal flow - show next question with empathy
-      const nextQuestion = data.message;
-      setCurrentQuestion(nextQuestion);
+      setCurrentQuestion(messageText);
       setCurrentEmpathy(data.empathy || null);
-      setConversationHistory([...updatedHistory, { role: "assistant", content: nextQuestion }]);
+      setConversationHistory([...updatedHistory, { role: "assistant", content: messageText }]);
       setQuestionNumber(prev => prev + 1);
     } catch (error) {
       console.error("Error sending message:", error);
