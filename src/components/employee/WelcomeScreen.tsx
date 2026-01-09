@@ -83,9 +83,12 @@ export const WelcomeScreen = ({
     if (!consentChecked) return;
     
     setSelectedMood(mood);
+    // Store mood for the transition screen
+    localStorage.setItem('spradley_initial_mood', mood.toString());
+    // Slightly longer delay for smoother handoff
     setTimeout(() => {
       onComplete(mood);
-    }, 150);
+    }, 400);
   };
 
   const isReturningUser = localStorage.getItem("spradley-visited") === "true";
