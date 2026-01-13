@@ -475,11 +475,28 @@ export const useChatAPI = (options: UseChatAPIOptions) => {
       const data = await response.json();
       const aiResponse = data?.message || "Thank you for your response.";
       
+      console.log("[useChatAPI] handleFinalResponse received:", {
+        hasStructuredSummary: !!data.structuredSummary,
+        isCompletionPrompt: data.isCompletionPrompt,
+        shouldComplete: data.shouldComplete,
+        keyPointsCount: data.structuredSummary?.keyPoints?.length
+      });
+      
       addMessages([
         { role: "user", content: finalInput, timestamp: new Date() },
         { role: "assistant", content: aiResponse, timestamp: new Date() },
       ]);
 
+      // If backend returns structured summary and completion prompt, enter completion phase
+      if (data.isCompletionPrompt && data.structuredSummary) {
+        console.log("[useChatAPI] Entering completion phase with structured summary");
+        setStructuredSummary(data.structuredSummary);
+        setIsInCompletionPhase(true);
+        // DO NOT auto-complete - let user review and click Submit
+        return;
+      }
+
+      // Fallback: auto-complete after delay if no structured summary
       setTimeout(() => {
         onComplete();
       }, 2000);
@@ -496,7 +513,7 @@ export const useChatAPI = (options: UseChatAPIOptions) => {
     } finally {
       setIsLoading(false);
     }
-  }, [conversationId, messages, isPreviewMode, previewSurveyData, toast, onComplete, isLoading, setIsLoading, addMessages]);
+  }, [conversationId, messages, isPreviewMode, previewSurveyData, toast, onComplete, isLoading, setIsLoading, addMessages, setStructuredSummary, setIsInCompletionPhase]);
 
   // Handle finish early confirmation
   const handleConfirmFinishEarly = useCallback(async () => {
