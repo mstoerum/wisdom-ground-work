@@ -19,6 +19,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FinishEarlyConfirmationDialog } from "./FinishEarlyConfirmationDialog";
 import { CompletionConfirmationButtons } from "./CompletionConfirmationButtons";
+import { SummaryReceipt } from "./SummaryReceipt";
 import { Message, useChatMessages } from "@/hooks/useChatMessages";
 import { useChatAPI } from "@/hooks/useChatAPI";
 
@@ -124,6 +125,9 @@ export const ChatInterface = ({
     setIsLoading,
     isInCompletionPhase,
     setIsInCompletionPhase,
+    structuredSummary,
+    setStructuredSummary,
+    conversationStartTime,
     addMessage,
     removeLastMessage,
     userMessageCount,
@@ -155,6 +159,7 @@ export const ChatInterface = ({
     clearInput,
     setInput,
     setIsInCompletionPhase,
+    setStructuredSummary,
     onComplete,
   });
 
@@ -358,13 +363,14 @@ export const ChatInterface = ({
   }, [handleFinalResponse, toast]);
 
   const handleAddMoreFromButtons = useCallback(() => {
-    // Clear the completion phase and allow user to type more
+    // Clear the completion phase, structured summary, and allow user to type more
     setIsInCompletionPhase(false);
+    setStructuredSummary(null);
     toast({
       title: "Continue sharing",
       description: "You can add more feedback below",
     });
-  }, [toast]);
+  }, [toast, setStructuredSummary]);
 
   // Calculate conversation progress
   const progressPercent = Math.min((userMessageCount / ESTIMATED_TOTAL_QUESTIONS) * 100, PROGRESS_COMPLETE_THRESHOLD);
@@ -492,8 +498,18 @@ export const ChatInterface = ({
       
       <ScrollArea className="flex-1 p-4 overflow-y-auto">
         <div className="space-y-3">
-          {/* Completion phase indicator - hide in minimal UI */}
-          {!minimalUI && isInCompletionPhase && (
+          {/* Summary Receipt - shown when in completion phase with structured summary */}
+          {isInCompletionPhase && structuredSummary && (
+            <SummaryReceipt
+              conversationId={conversationId}
+              structuredSummary={structuredSummary}
+              responseCount={userMessageCount}
+              startTime={conversationStartTime}
+            />
+          )}
+          
+          {/* Fallback completion phase indicator - shown only when no structured summary */}
+          {!minimalUI && isInCompletionPhase && !structuredSummary && (
             <Alert className="mx-4 mb-2 border-[hsl(var(--lime-green))] bg-[hsl(var(--lime-green))]/10">
               <CheckCircle2 className="h-4 w-4 text-[hsl(var(--lime-green))]" />
               <AlertDescription>

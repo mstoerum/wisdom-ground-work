@@ -1070,24 +1070,61 @@ Be warm and appreciative. Keep it brief.`;
     
     // Natural completion flow: AI detected completion + user confirms
     if (shouldComplete && !isFinalResponse && !isIntroductionTrigger) {
-      // Generate conversation summary
+      // Generate structured summary with key points
       const conversationContext = previousResponses?.map(r => r.content).join("\n") || "";
-      const summaryPrompt = `Based on this conversation about ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'}, create a brief summary (2-3 sentences) of the key points the participant discussed: ${conversationContext}`;
+      const structuredSummaryPrompt = `Based on this conversation about ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'}, extract:
+
+1. KEY_POINTS: 2-4 bullet points summarizing what the participant shared (each under 15 words, focus on specific feedback given)
+2. SENTIMENT: overall tone of the conversation (positive, mixed, or negative)
+
+Conversation content:
+${conversationContext}
+
+Return ONLY valid JSON in this exact format:
+{"keyPoints": ["point 1", "point 2", "point 3"], "sentiment": "mixed"}`;
       
-      const summary = await callAI(
+      const summaryResponse = await callAI(
         LOVABLE_API_KEY,
         AI_MODEL_LITE,
         [
-          { role: "system", content: "You summarize conversations concisely and accurately." },
-          { role: "user", content: summaryPrompt }
+          { role: "system", content: "You extract structured insights from conversations. Always return valid JSON only, no markdown." },
+          { role: "user", content: structuredSummaryPrompt }
         ],
-        0.5,
-        150
+        0.3,
+        250
       );
+      
+      // Parse the structured summary
+      let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
+      try {
+        let cleaned = summaryResponse.trim();
+        if (cleaned.startsWith('```json')) {
+          cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleaned.startsWith('```')) {
+          cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+        const parsed = JSON.parse(cleaned);
+        if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
+          structuredSummary = {
+            keyPoints: parsed.keyPoints.slice(0, 4), // Max 4 points
+            sentiment: parsed.sentiment || "mixed"
+          };
+        }
+      } catch (e) {
+        console.error("Failed to parse structured summary:", e, summaryResponse);
+        // Fallback: create basic summary from conversation
+        structuredSummary = {
+          keyPoints: previousResponses?.slice(-3).map(r => 
+            r.content.length > 60 ? r.content.substring(0, 60) + "..." : r.content
+          ) || ["Thank you for sharing your feedback"],
+          sentiment: "mixed"
+        };
+      }
       
       return new Response(
         JSON.stringify({
-          message: `Thank you for sharing your thoughts. Let me summarize what we discussed:\n\n${summary}\n\nIs there anything you'd like to add or clarify before we finish?`,
+          message: "Thank you for sharing your thoughts.",
+          structuredSummary,
           shouldComplete: false,
           isCompletionPrompt: true
         }),
