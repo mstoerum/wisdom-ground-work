@@ -1572,11 +1572,78 @@ Return ONLY valid JSON in this exact format:
       currentThemeId
     );
 
+    // If shouldComplete is true, ALWAYS generate structured summary and proper completion flags
+    if (shouldComplete && !isIntroductionTrigger) {
+      console.log("[chat] Final return with shouldComplete=true - generating structured summary");
+      
+      // Build conversation context from responses
+      const conversationContext = (updatedResponses || previousResponses || [])
+        .map((r: any) => r.content)
+        .filter(Boolean)
+        .join("\n");
+      
+      // Generate structured summary
+      const structuredSummaryPrompt = `Based on this conversation about ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'}, extract:
+
+1. KEY_POINTS: 2-4 bullet points summarizing what the participant shared (each under 15 words)
+2. SENTIMENT: overall tone (positive, mixed, or negative)
+
+Conversation content:
+${conversationContext || "User shared their thoughts and feedback."}
+
+Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}`;
+
+      let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
+      
+      try {
+        const summaryResponse = await callAI(
+          LOVABLE_API_KEY,
+          AI_MODEL_LITE,
+          [
+            { role: "system", content: "Extract structured insights. Return valid JSON only." },
+            { role: "user", content: structuredSummaryPrompt }
+          ],
+          0.3,
+          250
+        );
+        
+        let cleaned = summaryResponse.trim();
+        if (cleaned.startsWith('```json')) {
+          cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleaned.startsWith('```')) {
+          cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+        const parsed = JSON.parse(cleaned);
+        if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
+          structuredSummary = {
+            keyPoints: parsed.keyPoints.slice(0, 4),
+            sentiment: parsed.sentiment || "mixed"
+          };
+        }
+        console.log("[chat] Generated structured summary:", structuredSummary);
+      } catch (e) {
+        console.error("[chat] Failed to parse structured summary in final return:", e);
+      }
+
+      return new Response(
+        JSON.stringify({
+          message: aiMessage,
+          empathy,
+          structuredSummary,
+          shouldComplete: false,  // Set to false so user can review before submitting
+          isCompletionPrompt: true,  // This triggers the receipt UI
+          themeProgress
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Normal response (no completion)
     return new Response(
       JSON.stringify({ 
         message: aiMessage,
         empathy: empathy,
-        shouldComplete: shouldComplete,
+        shouldComplete: false,
         themeProgress
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

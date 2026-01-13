@@ -269,6 +269,15 @@ export const useChatAPI = (options: UseChatAPIOptions) => {
 
       const data = await response.json();
       
+      // Debug logging for completion flow
+      console.log("[useChatAPI] Backend response:", {
+        messagePreview: data.message?.substring(0, 50),
+        shouldComplete: data.shouldComplete,
+        isCompletionPrompt: data.isCompletionPrompt,
+        hasStructuredSummary: !!data.structuredSummary,
+        keyPointsCount: data.structuredSummary?.keyPoints?.length
+      });
+      
       if (data.error) {
         throw new Error(data.error);
       }
