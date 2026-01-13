@@ -169,8 +169,11 @@ const shouldCompleteBasedOnThemes = (
   const hasHighCoverage = coveragePercent >= 80;
   const allThemesTouched = discussedCount >= totalThemes && turnCount >= totalThemes;
 
-  // Also check if we have sufficient depth (at least 6 exchanges and good coverage)
-  const hasSufficientDepth = turnCount >= 6 && (hasGoodCoverage || hasHighCoverage);
+  // Also check if we have sufficient depth (at least 4 exchanges and decent coverage)
+  // Lowered from 6 to 4 exchanges to trigger summary earlier
+  const hasSufficientDepth = turnCount >= 4 && (hasGoodCoverage || hasHighCoverage || coveragePercent >= 50);
+
+  console.log(`[shouldCompleteBasedOnThemes] turnCount=${turnCount}, coverage=${coveragePercent.toFixed(0)}%, discussed=${discussedCount}/${totalThemes}, hasSufficientDepth=${hasSufficientDepth}, allThemesTouched=${allThemesTouched}`);
 
   return hasSufficientDepth || allThemesTouched;
 };
