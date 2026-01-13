@@ -884,53 +884,6 @@ Be warm and appreciative. Keep it brief.`;
 
     const turnCount = messages.filter((m: any) => m.role === "user").length;
     
-    // Handle user responding to completion confirmation
-    if (isCompletionConfirmation) {
-      const userResponse = sanitizedContent.toLowerCase();
-      const wantsToAddMore = userResponse.match(/\b(yes|yeah|sure|actually|wait)\b/);
-      
-      if (wantsToAddMore) {
-        // User wants to add more - continue conversation
-        const continuePrompt = "Of course! What would you like to add?";
-        return new Response(
-          JSON.stringify({
-            message: continuePrompt,
-            shouldComplete: false,
-            isCompletionPrompt: false
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      } else {
-        // User says no/nothing OR clicked "Complete Survey" button (empty content)
-        // Save their final response only if it has meaningful content
-        if (sanitizedContent.length > 3 && !isIntroductionTrigger) {
-          const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, sanitizedContent);
-          const detectedThemeId = await detectTheme(LOVABLE_API_KEY, sanitizedContent, themes || []);
-
-          await supabase.from("responses").insert({
-            conversation_session_id: conversationId,
-            survey_id: session?.survey_id,
-            content: sanitizedContent,
-            ai_response: "Thank you for your time and insights.",
-            sentiment,
-            sentiment_score: sentimentScore,
-            theme_id: detectedThemeId,
-            created_at: new Date().toISOString(),
-          });
-        }
-
-        // Return final thank you message
-        return new Response(
-          JSON.stringify({
-            message: "Thank you for your time and valuable insights. Your feedback will help create meaningful change.",
-            shouldComplete: true,
-            showSummary: true
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    }
-    
     // Handle finish early request
     if (finishEarly) {
       const coveragePercent = themeCoverage || 0;
@@ -1232,11 +1185,63 @@ Return ONLY valid JSON in this exact format:
         });
       }
 
+      // Generate structured summary for the receipt
+      const conversationContext = previousResponses?.map(r => r.content).join("\n") || "";
+      const structuredSummaryPrompt = `Based on this conversation about ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'}, extract:
+
+1. KEY_POINTS: 2-4 bullet points summarizing what the participant shared (each under 15 words, focus on specific feedback given)
+2. SENTIMENT: overall tone of the conversation (positive, mixed, or negative)
+
+Conversation content:
+${conversationContext}
+
+Return ONLY valid JSON in this exact format:
+{"keyPoints": ["point 1", "point 2", "point 3"], "sentiment": "mixed"}`;
+      
+      let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
+      try {
+        const summaryResponse = await callAI(
+          LOVABLE_API_KEY,
+          AI_MODEL_LITE,
+          [
+            { role: "system", content: "You extract structured insights from conversations. Always return valid JSON only, no markdown." },
+            { role: "user", content: structuredSummaryPrompt }
+          ],
+          0.3,
+          250
+        );
+        
+        let cleaned = summaryResponse.trim();
+        if (cleaned.startsWith('```json')) {
+          cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleaned.startsWith('```')) {
+          cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+        const parsed = JSON.parse(cleaned);
+        if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
+          structuredSummary = {
+            keyPoints: parsed.keyPoints.slice(0, 4),
+            sentiment: parsed.sentiment || "mixed"
+          };
+        }
+      } catch (e) {
+        console.error("Failed to parse structured summary:", e);
+        structuredSummary = {
+          keyPoints: previousResponses?.slice(-3).map(r => 
+            r.content.length > 60 ? r.content.substring(0, 60) + "..." : r.content
+          ) || ["Thank you for sharing your feedback"],
+          sentiment: "mixed"
+        };
+      }
+
+      console.log(`[${conversationId}] ✅ Returning completion with structuredSummary:`, structuredSummary);
+
       return new Response(
         JSON.stringify({
           message: "Thank you for your time and valuable insights. Your feedback will help create meaningful change.",
+          structuredSummary,
           shouldComplete: true,
-          showSummary: true
+          isCompletionPrompt: true
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
