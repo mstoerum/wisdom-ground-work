@@ -7,6 +7,11 @@ export interface Message {
   timestamp: Date;
 }
 
+export interface StructuredSummary {
+  keyPoints: string[];
+  sentiment: "positive" | "mixed" | "negative";
+}
+
 interface UseChatMessagesOptions {
   conversationId: string;
   onAutoScroll?: () => void;
@@ -21,6 +26,8 @@ export const useChatMessages = ({ conversationId, onAutoScroll }: UseChatMessage
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isInCompletionPhase, setIsInCompletionPhase] = useState(false);
+  const [structuredSummary, setStructuredSummary] = useState<StructuredSummary | null>(null);
+  const [conversationStartTime] = useState<Date>(new Date());
 
   // Load conversation history on mount
   const loadConversation = useCallback(async () => {
@@ -80,6 +87,9 @@ export const useChatMessages = ({ conversationId, onAutoScroll }: UseChatMessage
     setIsLoading,
     isInCompletionPhase,
     setIsInCompletionPhase,
+    structuredSummary,
+    setStructuredSummary,
+    conversationStartTime,
     addMessage,
     addMessages,
     removeLastMessage,

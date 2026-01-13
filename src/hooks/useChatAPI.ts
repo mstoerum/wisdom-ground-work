@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { soundEffects } from "@/utils/soundEffects";
-import { Message } from "./useChatMessages";
+import { Message, StructuredSummary } from "./useChatMessages";
 
 interface UseChatAPIOptions {
   conversationId: string;
@@ -20,6 +20,7 @@ interface UseChatAPIOptions {
   clearInput: () => void;
   setInput: (input: string) => void;
   setIsInCompletionPhase: (phase: boolean) => void;
+  setStructuredSummary?: (summary: StructuredSummary | null) => void;
   onComplete: () => void;
 }
 
@@ -90,6 +91,7 @@ export const useChatAPI = (options: UseChatAPIOptions) => {
     clearInput,
     setInput,
     setIsInCompletionPhase,
+    setStructuredSummary,
     onComplete,
   } = options;
 
@@ -275,13 +277,20 @@ export const useChatAPI = (options: UseChatAPIOptions) => {
         throw new Error("Invalid response from server - no message content");
       }
       
-      // Handle completion prompt
+      // Handle completion prompt with structured summary
       if (data.isCompletionPrompt) {
-        addMessage({
-          role: "assistant",
-          content: data.message,
-          timestamp: new Date()
-        });
+        // If we have a structured summary, use it (new format)
+        if (data.structuredSummary && setStructuredSummary) {
+          setStructuredSummary(data.structuredSummary);
+          // Don't add the message to chat bubbles - receipt will be shown instead
+        } else {
+          // Fallback to old format (plain text in message)
+          addMessage({
+            role: "assistant",
+            content: data.message,
+            timestamp: new Date()
+          });
+        }
         setIsInCompletionPhase(true);
         setIsLoading(false);
         return;
