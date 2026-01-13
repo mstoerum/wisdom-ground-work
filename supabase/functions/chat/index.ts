@@ -639,8 +639,10 @@ Be warm and appreciative. Keep it brief.`;
         );
       }
 
-      // Handle final response
+      // Handle final response - MUST return structured summary for receipt UI
       if (isFinalResponse) {
+        console.log("[chat] Preview mode isFinalResponse - generating structured summary");
+        
         const finalResponsePrompt = `The participant has finished sharing. Acknowledge their final response warmly and thank them for their time. Keep it brief (1-2 sentences).`;
 
         const finalMessage = await callAI(
@@ -654,10 +656,57 @@ Be warm and appreciative. Keep it brief.`;
           100
         );
 
+        // Generate structured summary for receipt
+        const conversationContext = messages
+          .filter((m: any) => m.role === "user")
+          .map((m: any) => m.content)
+          .join("\n");
+
+        let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" as const };
+        
+        try {
+          const summaryResponse = await callAI(
+            LOVABLE_API_KEY,
+            AI_MODEL_LITE,
+            [
+              { role: "system", content: "Extract structured insights. Return valid JSON only." },
+              { role: "user", content: `Based on this feedback conversation, extract:
+1. KEY_POINTS: 2-4 bullet points summarizing what the participant shared (each under 15 words)
+2. SENTIMENT: overall tone (positive, mixed, or negative)
+
+Conversation content:
+${conversationContext || "User shared their thoughts and feedback."}
+
+Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
+            ],
+            0.3,
+            250
+          );
+          
+          let cleaned = summaryResponse.trim();
+          if (cleaned.startsWith('```json')) {
+            cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+          } else if (cleaned.startsWith('```')) {
+            cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+          }
+          const parsed = JSON.parse(cleaned);
+          if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
+            structuredSummary = {
+              keyPoints: parsed.keyPoints.slice(0, 4),
+              sentiment: parsed.sentiment || "mixed"
+            };
+          }
+          console.log("[chat] Preview mode generated structured summary:", structuredSummary);
+        } catch (e) {
+          console.error("[chat] Failed to parse structured summary in preview final response:", e);
+        }
+
         return new Response(
           JSON.stringify({ 
             message: finalMessage,
-            shouldComplete: true
+            structuredSummary,
+            shouldComplete: false,  // Let user review before completing
+            isCompletionPrompt: true  // Triggers receipt UI
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -1021,8 +1070,10 @@ Return ONLY valid JSON in this exact format:
       }
     }
 
-    // Handle final response
+    // Handle final response - MUST return structured summary for receipt UI
     if (isFinalResponse) {
+      console.log(`[${conversationId}] isFinalResponse triggered - generating structured summary`);
+      
       const finalResponsePrompt = `The participant has finished sharing. Acknowledge their final response warmly and thank them for their time. Keep it brief (1-2 sentences).`;
 
       const finalMessage = await callAI(
@@ -1041,8 +1092,8 @@ Return ONLY valid JSON in this exact format:
         const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, sanitizedContent);
         const detectedThemeId = await detectTheme(LOVABLE_API_KEY, sanitizedContent, themes || []);
 
-        console.log(`[${conversationId}] Saving preview final response...`);
-        const { error: previewInsertError } = await supabase.from("responses").insert({
+        console.log(`[${conversationId}] Saving final response...`);
+        const { error: insertError } = await supabase.from("responses").insert({
           conversation_session_id: conversationId,
           survey_id: session?.survey_id,
           content: sanitizedContent,
@@ -1053,15 +1104,72 @@ Return ONLY valid JSON in this exact format:
           created_at: new Date().toISOString(),
         });
 
-        if (previewInsertError) {
-          console.error(`[${conversationId}] Warning: Failed to save preview final response:`, previewInsertError);
+        if (insertError) {
+          console.error(`[${conversationId}] Warning: Failed to save final response:`, insertError);
+        }
+      }
+
+      // Generate structured summary for receipt UI
+      const conversationContext = (previousResponses || [])
+        .map((r: any) => r.content)
+        .filter(Boolean)
+        .join("\n");
+
+      let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" as const };
+      
+      try {
+        const summaryResponse = await callAI(
+          LOVABLE_API_KEY,
+          AI_MODEL_LITE,
+          [
+            { role: "system", content: "Extract structured insights. Return valid JSON only." },
+            { role: "user", content: `Based on this ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'} conversation, extract:
+1. KEY_POINTS: 2-4 bullet points summarizing what the participant shared (each under 15 words)
+2. SENTIMENT: overall tone (positive, mixed, or negative)
+
+Conversation content:
+${conversationContext || "User shared their thoughts and feedback."}
+
+Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
+          ],
+          0.3,
+          250
+        );
+        
+        let cleaned = summaryResponse.trim();
+        if (cleaned.startsWith('```json')) {
+          cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleaned.startsWith('```')) {
+          cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+        const parsed = JSON.parse(cleaned);
+        if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
+          structuredSummary = {
+            keyPoints: parsed.keyPoints.slice(0, 4),
+            sentiment: parsed.sentiment || "mixed"
+          };
+        }
+        console.log(`[${conversationId}] Generated structured summary:`, structuredSummary);
+      } catch (e) {
+        console.error(`[${conversationId}] Failed to parse structured summary in final response:`, e);
+        // Fallback to recent responses as key points
+        structuredSummary = {
+          keyPoints: (previousResponses || []).slice(-3).map((r: any) => 
+            r.content.length > 60 ? r.content.substring(0, 60) + "..." : r.content
+          ).filter(Boolean),
+          sentiment: "mixed"
+        };
+        if (structuredSummary.keyPoints.length === 0) {
+          structuredSummary.keyPoints = ["Thank you for sharing your feedback"];
         }
       }
 
       return new Response(
         JSON.stringify({ 
           message: finalMessage,
-          shouldComplete: true
+          structuredSummary,
+          shouldComplete: false,  // Let user review before completing
+          isCompletionPrompt: true  // Triggers receipt UI
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
