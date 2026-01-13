@@ -296,8 +296,18 @@ export const useChatAPI = (options: UseChatAPIOptions) => {
         return;
       }
 
-      // Handle final completion
-      if (data.shouldComplete && data.showSummary) {
+      // Handle final completion with structured summary
+      if (data.shouldComplete && (data.showSummary || data.isCompletionPrompt)) {
+        // If we have a structured summary, show the receipt
+        if (data.structuredSummary && setStructuredSummary) {
+          console.log("[useChatAPI] Completion with structured summary:", data.structuredSummary);
+          setStructuredSummary(data.structuredSummary);
+          setIsInCompletionPhase(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Fallback: just show message (shouldn't happen now)
         addMessage({
           role: "assistant",
           content: data.message,

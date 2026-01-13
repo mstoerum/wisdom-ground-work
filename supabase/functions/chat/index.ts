@@ -169,9 +169,8 @@ const shouldCompleteBasedOnThemes = (
   const hasHighCoverage = coveragePercent >= 80;
   const allThemesTouched = discussedCount >= totalThemes && turnCount >= totalThemes;
 
-  // Also check if we have sufficient depth (at least 4 exchanges and decent coverage)
-  // Lowered from 6 to 4 exchanges to trigger summary earlier
-  const hasSufficientDepth = turnCount >= 4 && (hasGoodCoverage || hasHighCoverage || coveragePercent >= 50);
+  // Also check if we have sufficient depth (at least 6 exchanges and good coverage)
+  const hasSufficientDepth = turnCount >= 6 && (hasGoodCoverage || hasHighCoverage);
 
   console.log(`[shouldCompleteBasedOnThemes] turnCount=${turnCount}, coverage=${coveragePercent.toFixed(0)}%, discussed=${discussedCount}/${totalThemes}, hasSufficientDepth=${hasSufficientDepth}, allThemesTouched=${allThemesTouched}`);
 
@@ -1007,12 +1006,62 @@ Be warm and appreciative. Keep it brief.`;
           });
         }
 
-        // Return final thank you message
+        // Generate structured summary for the receipt
+        const conversationContext = previousResponses?.map(r => r.content).join("\n") || "";
+        const structuredSummaryPrompt = `Based on this conversation about ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'}, extract:
+
+1. KEY_POINTS: 2-4 bullet points summarizing what the participant shared (each under 15 words, focus on specific feedback given)
+2. SENTIMENT: overall tone of the conversation (positive, mixed, or negative)
+
+Conversation content:
+${conversationContext}
+
+Return ONLY valid JSON in this exact format:
+{"keyPoints": ["point 1", "point 2", "point 3"], "sentiment": "mixed"}`;
+        
+        let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
+        try {
+          const summaryResponse = await callAI(
+            LOVABLE_API_KEY,
+            AI_MODEL_LITE,
+            [
+              { role: "system", content: "You extract structured insights from conversations. Always return valid JSON only, no markdown." },
+              { role: "user", content: structuredSummaryPrompt }
+            ],
+            0.3,
+            250
+          );
+          
+          let cleaned = summaryResponse.trim();
+          if (cleaned.startsWith('```json')) {
+            cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+          } else if (cleaned.startsWith('```')) {
+            cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+          }
+          const parsed = JSON.parse(cleaned);
+          if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
+            structuredSummary = {
+              keyPoints: parsed.keyPoints.slice(0, 4),
+              sentiment: parsed.sentiment || "mixed"
+            };
+          }
+        } catch (e) {
+          console.error("Failed to parse structured summary:", e);
+          structuredSummary = {
+            keyPoints: previousResponses?.slice(-3).map(r => 
+              r.content.length > 60 ? r.content.substring(0, 60) + "..." : r.content
+            ) || ["Thank you for sharing your feedback"],
+            sentiment: "mixed"
+          };
+        }
+
+        // Return with structured summary for receipt display
         return new Response(
           JSON.stringify({
             message: "Thank you for your time and valuable insights. Your feedback will help create meaningful change.",
+            structuredSummary,
             shouldComplete: true,
-            showSummary: true
+            isCompletionPrompt: true
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
