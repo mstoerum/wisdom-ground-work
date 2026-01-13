@@ -344,10 +344,22 @@ export const useChatAPI = (options: UseChatAPIOptions) => {
 
   // Handle final response in finish early flow
   const handleFinalResponse = useCallback(async (finalInput: string) => {
+    // When called with empty input (from Submit Feedback button),
+    // the SummaryReceipt is already visible - just complete immediately
     if (!finalInput.trim()) {
-      setTimeout(() => {
-        onComplete();
-      }, 1000);
+      // Mark conversation as complete in database if needed
+      if (!isPreviewMode && conversationId) {
+        try {
+          const { supabase } = await import("@/integrations/supabase/client");
+          await supabase
+            .from("conversation_sessions")
+            .update({ status: "completed", ended_at: new Date().toISOString() })
+            .eq("id", conversationId);
+        } catch (error) {
+          console.error("Error marking conversation complete:", error);
+        }
+      }
+      onComplete();
       return;
     }
 
