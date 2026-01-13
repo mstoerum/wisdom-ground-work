@@ -307,7 +307,24 @@ export const useChatAPI = (options: UseChatAPIOptions) => {
           return;
         }
         
-        // Fallback: just show message (shouldn't happen now)
+        // Fallback: Generate summary from messages if backend didn't provide one
+        console.warn("[useChatAPI] Completion without structuredSummary - generating fallback");
+        const userMessages = messages.filter(m => m.role === "user").slice(-3);
+        const fallbackSummary = {
+          keyPoints: userMessages.length > 0 
+            ? userMessages.map(m => m.content.length > 60 ? m.content.substring(0, 60) + "..." : m.content)
+            : ["Thank you for sharing your feedback"],
+          sentiment: "mixed" as const
+        };
+        
+        if (setStructuredSummary) {
+          setStructuredSummary(fallbackSummary);
+          setIsInCompletionPhase(true);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Last resort fallback - show message and complete
         addMessage({
           role: "assistant",
           content: data.message,
@@ -328,9 +345,25 @@ export const useChatAPI = (options: UseChatAPIOptions) => {
         timestamp: new Date()
       });
 
-      // Auto-complete conversation after sufficient exchanges
+      // Handle shouldComplete without showSummary (edge case) - show receipt, don't auto-complete
       if (data.shouldComplete) {
-        setTimeout(onComplete, 2000);
+        console.log("[useChatAPI] shouldComplete detected - entering completion phase");
+        // Generate fallback summary
+        const userMessages = messages.filter(m => m.role === "user").slice(-3);
+        const fallbackSummary = {
+          keyPoints: userMessages.length > 0 
+            ? userMessages.map(m => m.content.length > 60 ? m.content.substring(0, 60) + "..." : m.content)
+            : ["Thank you for sharing your feedback"],
+          sentiment: "mixed" as const
+        };
+        
+        if (setStructuredSummary) {
+          setStructuredSummary(fallbackSummary);
+          setIsInCompletionPhase(true);
+        } else {
+          // Only auto-complete if we can't show the receipt
+          setTimeout(onComplete, 2000);
+        }
       }
     } catch (error: any) {
       console.error("Chat error:", error);
