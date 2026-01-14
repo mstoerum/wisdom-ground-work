@@ -21,8 +21,100 @@ const PREVIEW_RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
 const MAX_MESSAGE_LENGTH = 2000;
 const MIN_EXCHANGES = 4; // Minimum exchanges for meaningful conversation
 const MAX_EXCHANGES = 20; // Maximum exchanges to prevent overly long conversations
+const SOFT_WRAP_TURNS = 6; // Start checking for completion at this point
+const HARD_WRAP_TURNS = 10; // Force receipt regardless of theme coverage
+const TARGET_COVERAGE_PERCENT = 80; // Target theme coverage before soft completion
 const AI_MODEL = "google/gemini-2.5-flash";
 const AI_MODEL_LITE = "google/gemini-2.5-flash-lite";
+
+/**
+ * Detect if AI message looks like a closing statement without a question
+ */
+const detectsAccidentalClosing = (message: string): boolean => {
+  const closingPatterns = /\b(thank(s| you)|appreciate|that'?s all|valuable insights|wonderful sharing|great insights)\b/i;
+  const hasQuestionMark = message.includes("?");
+  return closingPatterns.test(message) && !hasQuestionMark;
+};
+
+/**
+ * Generate a structured summary from conversation responses
+ */
+const generateStructuredSummary = async (
+  apiKey: string,
+  responses: any[],
+  surveyType: string
+): Promise<{ keyPoints: string[]; sentiment: string }> => {
+  const conversationContext = responses
+    .map((r: any) => r.content)
+    .filter(Boolean)
+    .join("\n");
+
+  const summaryPrompt = `Based on this ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'} conversation, extract:
+
+1. KEY_POINTS: 2-4 bullet points summarizing what the participant shared (each under 15 words)
+2. SENTIMENT: overall tone (positive, mixed, or negative)
+
+Conversation content:
+${conversationContext || "User shared their thoughts and feedback."}
+
+Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}`;
+
+  try {
+    const summaryResponse = await callAI(
+      apiKey,
+      AI_MODEL_LITE,
+      [
+        { role: "system", content: "Extract structured insights. Return valid JSON only." },
+        { role: "user", content: summaryPrompt }
+      ],
+      0.3,
+      250
+    );
+    
+    let cleaned = summaryResponse.trim();
+    if (cleaned.startsWith('```json')) {
+      cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+    } else if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+    }
+    const parsed = JSON.parse(cleaned);
+    if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
+      return {
+        keyPoints: parsed.keyPoints.slice(0, 4),
+        sentiment: parsed.sentiment || "mixed"
+      };
+    }
+  } catch (e) {
+    console.error("Failed to parse structured summary:", e);
+  }
+  
+  // Fallback
+  return {
+    keyPoints: responses.slice(-3).map((r: any) => 
+      r.content && r.content.length > 60 ? r.content.substring(0, 60) + "..." : (r.content || "")
+    ).filter(Boolean) || ["Thank you for sharing your feedback"],
+    sentiment: "mixed"
+  };
+};
+
+/**
+ * Build receipt response with structured summary
+ */
+const buildReceiptResponse = (
+  aiMessage: string,
+  structuredSummary: { keyPoints: string[]; sentiment: string },
+  themeProgress: any,
+  empathy?: string | null
+) => {
+  return {
+    message: aiMessage,
+    empathy: empathy || null,
+    structuredSummary,
+    shouldComplete: false,  // Let user review before completing
+    isCompletionPrompt: true,  // Triggers receipt UI
+    themeProgress
+  };
+};
 
 // Rate limiting map (simple in-memory, production should use Redis)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -1707,10 +1799,10 @@ Return ONLY valid JSON in this exact format:
       
       currentThemeId = latestResponse?.theme_id || null;
       
-      // Re-fetch all responses to get accurate progress
+      // Re-fetch all responses to get accurate progress (include content for summary)
       const { data: allResponses } = await supabase
         .from("responses")
-        .select("theme_id")
+        .select("theme_id, content")
         .eq("conversation_session_id", conversationId);
       
       updatedResponses = allResponses || [];
@@ -1722,68 +1814,106 @@ Return ONLY valid JSON in this exact format:
       currentThemeId
     );
 
-    // If shouldComplete is true, ALWAYS generate structured summary and proper completion flags
-    if (shouldComplete && !isIntroductionTrigger) {
-      console.log("[chat] Final return with shouldComplete=true - generating structured summary");
+    // Calculate current coverage for completion decisions
+    const currentCoveragePercent = themeProgress.coveragePercent;
+    const actualTurnCount = turnCount + 1; // +1 because we just processed this message
+
+    console.log(`[${conversationId}] Completion check: turnCount=${actualTurnCount}, coverage=${currentCoveragePercent.toFixed(0)}%, themes=${themeProgress.discussedCount}/${themeProgress.totalCount}`);
+
+    // HARD CAP: Force receipt at HARD_WRAP_TURNS regardless of coverage
+    if (actualTurnCount >= HARD_WRAP_TURNS && !isIntroductionTrigger) {
+      console.log(`[${conversationId}] HARD_WRAP_TURNS (${HARD_WRAP_TURNS}) reached - forcing receipt`);
       
-      // Build conversation context from responses
-      const conversationContext = (updatedResponses || previousResponses || [])
-        .map((r: any) => r.content)
-        .filter(Boolean)
-        .join("\n");
-      
-      // Generate structured summary
-      const structuredSummaryPrompt = `Based on this conversation about ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'}, extract:
-
-1. KEY_POINTS: 2-4 bullet points summarizing what the participant shared (each under 15 words)
-2. SENTIMENT: overall tone (positive, mixed, or negative)
-
-Conversation content:
-${conversationContext || "User shared their thoughts and feedback."}
-
-Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}`;
-
-      let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
-      
-      try {
-        const summaryResponse = await callAI(
-          LOVABLE_API_KEY,
-          AI_MODEL_LITE,
-          [
-            { role: "system", content: "Extract structured insights. Return valid JSON only." },
-            { role: "user", content: structuredSummaryPrompt }
-          ],
-          0.3,
-          250
-        );
-        
-        let cleaned = summaryResponse.trim();
-        if (cleaned.startsWith('```json')) {
-          cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleaned.startsWith('```')) {
-          cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
-        }
-        const parsed = JSON.parse(cleaned);
-        if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
-          structuredSummary = {
-            keyPoints: parsed.keyPoints.slice(0, 4),
-            sentiment: parsed.sentiment || "mixed"
-          };
-        }
-        console.log("[chat] Generated structured summary:", structuredSummary);
-      } catch (e) {
-        console.error("[chat] Failed to parse structured summary in final return:", e);
-      }
+      const structuredSummary = await generateStructuredSummary(
+        LOVABLE_API_KEY,
+        updatedResponses,
+        surveyType
+      );
 
       return new Response(
-        JSON.stringify({
-          message: aiMessage,
-          empathy,
+        JSON.stringify(buildReceiptResponse(
+          "Thank you for sharing your thoughts with me today.",
           structuredSummary,
-          shouldComplete: false,  // Set to false so user can review before submitting
-          isCompletionPrompt: true,  // This triggers the receipt UI
-          themeProgress
-        }),
+          themeProgress,
+          empathy
+        )),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // SOFT COMPLETION: Show receipt if coverage is good and we're past soft threshold
+    if (shouldComplete && !isIntroductionTrigger) {
+      console.log(`[${conversationId}] shouldComplete=true at turn ${actualTurnCount} - generating receipt`);
+      
+      const structuredSummary = await generateStructuredSummary(
+        LOVABLE_API_KEY,
+        updatedResponses,
+        surveyType
+      );
+
+      return new Response(
+        JSON.stringify(buildReceiptResponse(
+          aiMessage,
+          structuredSummary,
+          themeProgress,
+          empathy
+        )),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // CLOSING-TEXT SAFETY NET: Detect accidental closing statements
+    if (actualTurnCount >= SOFT_WRAP_TURNS && !isIntroductionTrigger && detectsAccidentalClosing(aiMessage)) {
+      console.log(`[${conversationId}] Detected accidental closing at turn ${actualTurnCount}`);
+      
+      // If coverage is insufficient and we haven't hit hard cap, ask about uncovered theme
+      if (currentCoveragePercent < TARGET_COVERAGE_PERCENT && actualTurnCount < HARD_WRAP_TURNS) {
+        const uncoveredThemes = (themes || []).filter((t: any) => 
+          !updatedResponses.some((r: any) => r.theme_id === t.id)
+        );
+        
+        if (uncoveredThemes.length > 0) {
+          const nextTheme = uncoveredThemes[0];
+          console.log(`[${conversationId}] Redirecting to uncovered theme: ${nextTheme.name}`);
+          
+          // Generate a question about the uncovered theme
+          const redirectPrompt = `Generate ONE short question (under 15 words) to explore the theme "${nextTheme.name}" (${nextTheme.description || 'general feedback'}). Be warm but direct.`;
+          
+          const redirectQuestion = await callAI(
+            LOVABLE_API_KEY,
+            AI_MODEL_LITE,
+            [{ role: "user", content: redirectPrompt }],
+            0.7,
+            50
+          );
+          
+          return new Response(
+            JSON.stringify({ 
+              message: `Got it. ${redirectQuestion.replace(/^["']|["']$/g, '')}`,
+              empathy: "Got it.",
+              shouldComplete: false,
+              themeProgress
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+      
+      // Otherwise, show receipt immediately
+      console.log(`[${conversationId}] Coverage sufficient or at limit - showing receipt`);
+      const structuredSummary = await generateStructuredSummary(
+        LOVABLE_API_KEY,
+        updatedResponses,
+        surveyType
+      );
+
+      return new Response(
+        JSON.stringify(buildReceiptResponse(
+          aiMessage,
+          structuredSummary,
+          themeProgress,
+          empathy
+        )),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
