@@ -29,10 +29,10 @@ export const CompletionConfirmationButtons = ({
           variant="outline"
           size="lg"
           disabled={isLoading}
-          className="min-w-[160px] border-border/50 hover:bg-muted/50"
+          className="min-w-[140px] border-border/50 hover:bg-muted/50"
         >
           <MessageCirclePlus className="h-4 w-4 mr-2" />
-          Add something else
+          Add more
         </Button>
         <Button
           onClick={onComplete}
@@ -42,7 +42,7 @@ export const CompletionConfirmationButtons = ({
           className="min-w-[160px] shadow-md hover:shadow-lg transition-shadow"
         >
           <CheckCircle2 className="h-4 w-4 mr-2" />
-          Submit Feedback
+          End conversation
         </Button>
       </div>
       <p className="text-xs text-muted-foreground text-center mt-3">
