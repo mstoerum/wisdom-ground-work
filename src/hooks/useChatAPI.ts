@@ -577,27 +577,25 @@ export const useChatAPI = (options: UseChatAPIOptions) => {
       }
       
       const summaryMessage = responseData.message || "Thank you for your responses so far.";
-      const finalQuestion = responseData.finalQuestion;
       
+      // Add the summary message to chat
       addMessage({
         role: "assistant",
         content: summaryMessage,
         timestamp: new Date(),
       });
 
-      if (finalQuestion) {
+      // If we have a structured summary and isCompletionPrompt, enter completion phase
+      if (responseData.isCompletionPrompt && responseData.structuredSummary) {
+        console.log("[useChatAPI] Finish early - entering completion phase with structured summary");
+        setStructuredSummary(responseData.structuredSummary);
+        setIsInCompletionPhase(true);
+      } else if (responseData.finalQuestion) {
+        // Legacy flow: show final question if no structured summary
         setTimeout(() => {
           addMessage({
             role: "assistant",
-            content: finalQuestion,
-            timestamp: new Date(),
-          });
-        }, 1500);
-      } else {
-        setTimeout(() => {
-          addMessage({
-            role: "assistant",
-            content: "Is there anything else you'd like to add before we finish?",
+            content: responseData.finalQuestion,
             timestamp: new Date(),
           });
         }, 1500);
@@ -610,7 +608,7 @@ export const useChatAPI = (options: UseChatAPIOptions) => {
         variant: "destructive",
       });
     }
-  }, [conversationId, messages, themeCoverage, isPreviewMode, previewSurveyData, toast, isLoading, addMessage]);
+  }, [conversationId, messages, themeCoverage, isPreviewMode, previewSurveyData, toast, isLoading, addMessage, setIsInCompletionPhase, setStructuredSummary]);
 
   // Transcribe audio
   const transcribeAudio = useCallback(async (audioBlob: Blob) => {

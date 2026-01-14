@@ -963,11 +963,53 @@ Be warm and appreciative. Keep it brief.`;
       });
       const finalQuestion = questionSentence ? questionSentence.trim() : null;
 
+      // Generate structured summary for the receipt
+      const conversationContext = messages.map((m: any) => m.role === "user" ? m.content : "").filter(Boolean).join("\n");
+      let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
+      
+      try {
+        const summaryResponse = await callAI(
+          LOVABLE_API_KEY,
+          AI_MODEL_LITE,
+          [
+            { role: "system", content: "Extract structured insights. Return valid JSON only." },
+            { role: "user", content: `Based on this conversation, extract:
+1. KEY_POINTS: 2-4 bullet points summarizing what was shared (each under 15 words)
+2. SENTIMENT: overall tone (positive, mixed, or negative)
+
+Conversation content:
+${conversationContext || "User shared their thoughts and feedback."}
+
+Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
+          ],
+          0.3,
+          250
+        );
+        
+        let cleaned = summaryResponse.trim();
+        if (cleaned.startsWith('```json')) {
+          cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleaned.startsWith('```')) {
+          cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+        const parsed = JSON.parse(cleaned);
+        if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
+          structuredSummary = {
+            keyPoints: parsed.keyPoints.slice(0, 4),
+            sentiment: parsed.sentiment || "mixed"
+          };
+        }
+      } catch (e) {
+        console.error("Failed to parse structured summary in finishEarly:", e);
+      }
+
       return new Response(
         JSON.stringify({ 
           message: summaryMessage,
           finalQuestion: finalQuestion || null,
-          shouldComplete: false
+          structuredSummary,
+          shouldComplete: false,
+          isCompletionPrompt: true  // Triggers receipt UI with buttons
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
