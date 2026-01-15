@@ -459,7 +459,8 @@ ${introGuidance}
 FLOW:
 - Explore themes with 2-3 exchanges each
 - Cover 60%+ themes before concluding
-- When done: ask if anything else, then thank briefly
+- NEVER output closing statements like "Thank you" or "I appreciate your feedback"
+- ALWAYS keep asking follow-up questions - the system will end the conversation automatically
 
 ${conversationContext}`;
 };
@@ -1862,11 +1863,68 @@ Return ONLY valid JSON in this exact format:
       );
     }
 
-    // CLOSING-TEXT SAFETY NET: Detect accidental closing statements
-    if (actualTurnCount >= SOFT_WRAP_TURNS && !isIntroductionTrigger && detectsAccidentalClosing(aiMessage)) {
+    // CLOSING-TEXT SAFETY NET: Detect accidental closing statements at ANY turn
+    // This ensures the receipt always appears when the AI tries to close the conversation
+    if (!isIntroductionTrigger && detectsAccidentalClosing(aiMessage)) {
       console.log(`[${conversationId}] Detected accidental closing at turn ${actualTurnCount}`);
       
-      // If coverage is insufficient and we haven't hit hard cap, ask about uncovered theme
+      // CASE 1: Before SOFT_WRAP_TURNS - force continuation with uncovered theme
+      if (actualTurnCount < SOFT_WRAP_TURNS) {
+        const uncoveredThemes = (themes || []).filter((t: any) => 
+          !updatedResponses.some((r: any) => r.theme_id === t.id)
+        );
+        
+        if (uncoveredThemes.length > 0) {
+          const nextTheme = uncoveredThemes[0];
+          console.log(`[${conversationId}] Too early to close (turn ${actualTurnCount}/${SOFT_WRAP_TURNS}) - redirecting to theme: ${nextTheme.name}`);
+          
+          // Generate a question about the uncovered theme
+          const redirectPrompt = `Generate ONE short question (under 15 words) to explore the theme "${nextTheme.name}" (${nextTheme.description || 'general feedback'}). Be warm but direct.`;
+          
+          const redirectQuestion = await callAI(
+            LOVABLE_API_KEY,
+            AI_MODEL_LITE,
+            [{ role: "user", content: redirectPrompt }],
+            0.7,
+            50
+          );
+          
+          return new Response(
+            JSON.stringify({ 
+              message: `Got it. ${redirectQuestion.replace(/^["']|["']$/g, '')}`,
+              empathy: "Got it.",
+              shouldComplete: false,
+              themeProgress
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        } else {
+          // All themes covered but early - generate generic follow-up
+          console.log(`[${conversationId}] All themes covered but early (turn ${actualTurnCount}) - asking generic follow-up`);
+          
+          const genericPrompt = `Generate ONE short follow-up question (under 15 words) to dig deeper into employee experience. Be warm but direct.`;
+          
+          const genericQuestion = await callAI(
+            LOVABLE_API_KEY,
+            AI_MODEL_LITE,
+            [{ role: "user", content: genericPrompt }],
+            0.7,
+            50
+          );
+          
+          return new Response(
+            JSON.stringify({ 
+              message: `I see. ${genericQuestion.replace(/^["']|["']$/g, '')}`,
+              empathy: "I see.",
+              shouldComplete: false,
+              themeProgress
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+      
+      // CASE 2: At or after SOFT_WRAP_TURNS but coverage insufficient - redirect to uncovered theme
       if (currentCoveragePercent < TARGET_COVERAGE_PERCENT && actualTurnCount < HARD_WRAP_TURNS) {
         const uncoveredThemes = (themes || []).filter((t: any) => 
           !updatedResponses.some((r: any) => r.theme_id === t.id)
@@ -1874,7 +1932,7 @@ Return ONLY valid JSON in this exact format:
         
         if (uncoveredThemes.length > 0) {
           const nextTheme = uncoveredThemes[0];
-          console.log(`[${conversationId}] Redirecting to uncovered theme: ${nextTheme.name}`);
+          console.log(`[${conversationId}] Coverage insufficient (${currentCoveragePercent.toFixed(0)}%) - redirecting to theme: ${nextTheme.name}`);
           
           // Generate a question about the uncovered theme
           const redirectPrompt = `Generate ONE short question (under 15 words) to explore the theme "${nextTheme.name}" (${nextTheme.description || 'general feedback'}). Be warm but direct.`;
@@ -1899,8 +1957,8 @@ Return ONLY valid JSON in this exact format:
         }
       }
       
-      // Otherwise, show receipt immediately
-      console.log(`[${conversationId}] Coverage sufficient or at limit - showing receipt`);
+      // CASE 3: Coverage sufficient or at limit - show receipt immediately
+      console.log(`[${conversationId}] Coverage sufficient (${currentCoveragePercent.toFixed(0)}%) or at limit - showing receipt`);
       const structuredSummary = await generateStructuredSummary(
         LOVABLE_API_KEY,
         updatedResponses,
