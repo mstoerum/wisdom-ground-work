@@ -538,7 +538,7 @@ const parseStructuredResponse = (aiMessage: string): { empathy: string | null; q
     console.error("All parsing attempts failed, using generic fallback");
     return {
       empathy: null,
-      question: "Thank you for sharing. Could you tell me a bit more about that?",
+      question: "Could you tell me a bit more about that?",
       raw: aiMessage
     };
   }
@@ -1863,10 +1863,16 @@ Return ONLY valid JSON in this exact format:
       );
     }
 
-    // CLOSING-TEXT SAFETY NET: Detect accidental closing statements at ANY turn
-    // This ensures the receipt always appears when the AI tries to close the conversation
-    if (!isIntroductionTrigger && detectsAccidentalClosing(aiMessage)) {
-      console.log(`[${conversationId}] Detected accidental closing at turn ${actualTurnCount}`);
+    // QUESTION VALIDITY GATE: Ensure every assistant message is a question (contains ?)
+    // If not a question, either force continuation or show receipt - NO non-question messages allowed
+    const hasQuestionMark = aiMessage.includes("?");
+    const looksLikeClosing = detectsAccidentalClosing(aiMessage);
+    
+    console.log(`[${conversationId}] DECISION GATE: turn=${actualTurnCount}, hasQuestion=${hasQuestionMark}, looksLikeClosing=${looksLikeClosing}, coverage=${currentCoveragePercent.toFixed(0)}%`);
+    
+    // If the message doesn't have a question mark OR looks like a closing statement
+    if (!isIntroductionTrigger && (!hasQuestionMark || looksLikeClosing)) {
+      console.log(`[${conversationId}] Non-question or closing detected: "${aiMessage.substring(0, 60)}..."`);
       
       // CASE 1: Before SOFT_WRAP_TURNS - force continuation with uncovered theme
       if (actualTurnCount < SOFT_WRAP_TURNS) {
@@ -1876,7 +1882,7 @@ Return ONLY valid JSON in this exact format:
         
         if (uncoveredThemes.length > 0) {
           const nextTheme = uncoveredThemes[0];
-          console.log(`[${conversationId}] Too early to close (turn ${actualTurnCount}/${SOFT_WRAP_TURNS}) - redirecting to theme: ${nextTheme.name}`);
+          console.log(`[${conversationId}] DECISION: forced_redirect_early - turn ${actualTurnCount}/${SOFT_WRAP_TURNS}, redirecting to theme: ${nextTheme.name}`);
           
           // Generate a question about the uncovered theme
           const redirectPrompt = `Generate ONE short question (under 15 words) to explore the theme "${nextTheme.name}" (${nextTheme.description || 'general feedback'}). Be warm but direct.`;
@@ -1900,7 +1906,7 @@ Return ONLY valid JSON in this exact format:
           );
         } else {
           // All themes covered but early - generate generic follow-up
-          console.log(`[${conversationId}] All themes covered but early (turn ${actualTurnCount}) - asking generic follow-up`);
+          console.log(`[${conversationId}] DECISION: forced_generic_early - all themes covered but early (turn ${actualTurnCount})`);
           
           const genericPrompt = `Generate ONE short follow-up question (under 15 words) to dig deeper into employee experience. Be warm but direct.`;
           
@@ -1932,7 +1938,7 @@ Return ONLY valid JSON in this exact format:
         
         if (uncoveredThemes.length > 0) {
           const nextTheme = uncoveredThemes[0];
-          console.log(`[${conversationId}] Coverage insufficient (${currentCoveragePercent.toFixed(0)}%) - redirecting to theme: ${nextTheme.name}`);
+          console.log(`[${conversationId}] DECISION: forced_redirect_coverage - coverage ${currentCoveragePercent.toFixed(0)}% < ${TARGET_COVERAGE_PERCENT}%, redirecting to theme: ${nextTheme.name}`);
           
           // Generate a question about the uncovered theme
           const redirectPrompt = `Generate ONE short question (under 15 words) to explore the theme "${nextTheme.name}" (${nextTheme.description || 'general feedback'}). Be warm but direct.`;
@@ -1958,7 +1964,7 @@ Return ONLY valid JSON in this exact format:
       }
       
       // CASE 3: Coverage sufficient or at limit - show receipt immediately
-      console.log(`[${conversationId}] Coverage sufficient (${currentCoveragePercent.toFixed(0)}%) or at limit - showing receipt`);
+      console.log(`[${conversationId}] DECISION: receipt_non_question - coverage ${currentCoveragePercent.toFixed(0)}%, turn ${actualTurnCount}`);
       const structuredSummary = await generateStructuredSummary(
         LOVABLE_API_KEY,
         updatedResponses,
@@ -1976,7 +1982,8 @@ Return ONLY valid JSON in this exact format:
       );
     }
 
-    // Normal response (no completion)
+    // Normal response - message has a question mark, continue conversation
+    console.log(`[${conversationId}] DECISION: normal_continue - returning question to user`);
     return new Response(
       JSON.stringify({ 
         message: aiMessage,
