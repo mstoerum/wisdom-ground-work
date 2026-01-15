@@ -1369,6 +1369,22 @@ Return ONLY valid JSON in this exact format:
         };
       }
       
+      // CRITICAL: Validate structuredSummary before returning - ensure receipt always shows
+      if (!structuredSummary || !structuredSummary.keyPoints || structuredSummary.keyPoints.length === 0) {
+        console.warn(`[${conversationId}] COMPLETION: structuredSummary invalid, using fallback`);
+        structuredSummary = {
+          keyPoints: previousResponses?.slice(-3).map(r => 
+            r.content && r.content.length > 60 ? r.content.substring(0, 60) + "..." : r.content
+          ).filter(Boolean) || ["Your feedback has been recorded"],
+          sentiment: "mixed"
+        };
+      }
+      
+      console.log(`[${conversationId}] COMPLETION: Returning receipt`, {
+        keyPointsCount: structuredSummary.keyPoints.length,
+        sentiment: structuredSummary.sentiment
+      });
+      
       return new Response(
         JSON.stringify({
           message: "Thank you for sharing your thoughts.",

@@ -286,20 +286,28 @@ export const useChatAPI = (options: UseChatAPIOptions) => {
         throw new Error("Invalid response from server - no message content");
       }
       
-      // Handle completion prompt with structured summary
+      // Handle completion prompt - ALWAYS show receipt, never chat bubble
       if (data.isCompletionPrompt) {
-        // If we have a structured summary, use it (new format)
-        if (data.structuredSummary && setStructuredSummary) {
-          setStructuredSummary(data.structuredSummary);
-          // Don't add the message to chat bubbles - receipt will be shown instead
-        } else {
-          // Fallback to old format (plain text in message)
-          addMessage({
-            role: "assistant",
-            content: data.message,
-            timestamp: new Date()
-          });
+        console.log("[useChatAPI] Completion prompt received - ensuring receipt shows");
+        
+        // Ensure we always have a valid structured summary
+        let summary = data.structuredSummary;
+        
+        if (!summary || !summary.keyPoints || summary.keyPoints.length === 0) {
+          console.warn("[useChatAPI] Missing/invalid structuredSummary - generating fallback");
+          const userMessages = messages.filter(m => m.role === "user").slice(-3);
+          summary = {
+            keyPoints: userMessages.length > 0 
+              ? userMessages.map(m => m.content.length > 60 ? m.content.substring(0, 60) + "..." : m.content)
+              : ["Your feedback has been recorded"],
+            sentiment: "mixed"
+          };
         }
+        
+        if (setStructuredSummary) {
+          setStructuredSummary(summary);
+        }
+        // CRITICAL: Never add message as chat bubble - receipt will always show
         setIsInCompletionPhase(true);
         setIsLoading(false);
         return;
