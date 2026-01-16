@@ -6,6 +6,8 @@ import { AnswerInput } from "./AnswerInput";
 import { ThemeJourneyPath } from "./ThemeJourneyPath";
 import { MoodSelector } from "./MoodSelector";
 import { MoodTransition } from "./MoodTransition";
+import { SummaryReceipt } from "./SummaryReceipt";
+import { CompletionConfirmationButtons } from "./CompletionConfirmationButtons";
 import { useToast } from "@/hooks/use-toast";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,6 +62,14 @@ export const FocusedInterviewInterface = ({
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [themeProgress, setThemeProgress] = useState<ThemeProgress | null>(null);
+  
+  // Completion phase states
+  const [isInCompletionPhase, setIsInCompletionPhase] = useState(false);
+  const [structuredSummary, setStructuredSummary] = useState<{
+    keyPoints: string[];
+    sentiment: "positive" | "mixed" | "negative";
+  } | null>(null);
+  const [conversationStartTime] = useState(() => new Date());
   
   // Track if API call has completed during transition
   const pendingQuestionRef = useRef<{ question: string; empathy: string | null; history: Message[]; themeProgress: ThemeProgress | null } | null>(null);
@@ -258,15 +268,28 @@ export const FocusedInterviewInterface = ({
         setThemeProgress(data.themeProgress);
       }
 
-      // Handle completion
+      // Handle completion - show receipt + buttons instead of auto-completing
       if (data.shouldComplete || data.isCompletionPrompt) {
         setCurrentQuestion(messageText);
         setCurrentEmpathy(data.empathy || null);
         setConversationHistory([...updatedHistory, { role: "assistant", content: messageText }]);
         
-        if (data.shouldComplete && data.showSummary) {
-          setTimeout(onComplete, 2500);
+        // Set structured summary from backend or generate fallback
+        if (data.structuredSummary) {
+          setStructuredSummary(data.structuredSummary);
+        } else {
+          // Fallback: generate summary from user messages
+          const userMsgs = updatedHistory.filter(m => m.role === "user");
+          setStructuredSummary({
+            keyPoints: userMsgs.slice(-3).map(m => 
+              m.content.length > 80 ? m.content.substring(0, 77) + "..." : m.content
+            ),
+            sentiment: "mixed"
+          });
         }
+        
+        // Enter completion phase - show receipt + buttons (NO auto-complete)
+        setIsInCompletionPhase(true);
         return;
       }
 
@@ -368,7 +391,21 @@ export const FocusedInterviewInterface = ({
       const data = await response.json();
       setCurrentQuestion(data.message || "Thank you for sharing your thoughts today.");
       
-      setTimeout(onComplete, 2500);
+      // Set structured summary from backend or generate fallback
+      if (data.structuredSummary) {
+        setStructuredSummary(data.structuredSummary);
+      } else {
+        const userMsgs = conversationHistory.filter(m => m.role === "user");
+        setStructuredSummary({
+          keyPoints: userMsgs.slice(-3).map(m => 
+            m.content.length > 80 ? m.content.substring(0, 77) + "..." : m.content
+          ),
+          sentiment: "mixed"
+        });
+      }
+      
+      // Enter completion phase - show receipt + buttons (NO auto-complete)
+      setIsInCompletionPhase(true);
     } catch (error) {
       console.error("Error finishing early:", error);
       onComplete();
@@ -376,6 +413,17 @@ export const FocusedInterviewInterface = ({
       setIsLoading(false);
     }
   }, [conversationId, conversationHistory, isPreviewMode, getSession, onComplete]);
+
+  // Button handlers for completion phase
+  const handleCompleteFromButtons = useCallback(() => {
+    onComplete();
+  }, [onComplete]);
+
+  const handleAddMoreFromButtons = useCallback(() => {
+    setIsInCompletionPhase(false);
+    setStructuredSummary(null);
+    // User can continue typing
+  }, []);
 
   // Show mood selector first (only in minimalUI/demo mode)
   if (showMoodSelector) {
@@ -426,8 +474,8 @@ export const FocusedInterviewInterface = ({
 
       {/* Main content area with side panel */}
       <div className="flex-1 flex">
-        {/* Side panel with journey path - hidden on mobile */}
-        {themeProgress && themeProgress.themes.length > 0 && (
+        {/* Side panel with journey path - hidden on mobile and during completion */}
+        {!isInCompletionPhase && themeProgress && themeProgress.themes.length > 0 && (
           <motion.aside
             className="hidden md:flex flex-col w-[240px] border-r border-border/30 p-4 bg-muted/20"
             initial={{ opacity: 0, x: -20 }}
@@ -443,33 +491,59 @@ export const FocusedInterviewInterface = ({
           </motion.aside>
         )}
 
-        {/* Main content */}
-        <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-8">
-          <AIResponseDisplay
-            empathy={currentEmpathy || undefined}
-            question={currentQuestion}
-            isLoading={isLoading && !currentQuestion}
-            isTransitioning={isTransitioning}
-          />
+        {/* Completion Phase - Show Receipt and Buttons */}
+        {isInCompletionPhase && structuredSummary && (
+          <motion.div 
+            className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-6"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+          >
+            <SummaryReceipt
+              conversationId={conversationId}
+              structuredSummary={structuredSummary}
+              responseCount={questionNumber}
+              startTime={conversationStartTime}
+            />
+            <CompletionConfirmationButtons
+              onComplete={handleCompleteFromButtons}
+              onAddMore={handleAddMoreFromButtons}
+              isLoading={isLoading}
+            />
+          </motion.div>
+        )}
 
-          <AnswerInput
-            value={currentAnswer}
-            onChange={setCurrentAnswer}
-            onSubmit={handleSubmit}
-            onTranscribe={handleTranscribe}
-            isLoading={isLoading || isTranscribing}
-            placeholder="Share your thoughts..."
-            disabled={isLoading}
-          />
+        {/* Main content - hidden during completion phase */}
+        {!isInCompletionPhase && (
+          <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-8">
+            <AIResponseDisplay
+              empathy={currentEmpathy || undefined}
+              question={currentQuestion}
+              isLoading={isLoading && !currentQuestion}
+              isTransitioning={isTransitioning}
+            />
+
+            <AnswerInput
+              value={currentAnswer}
+              onChange={setCurrentAnswer}
+              onSubmit={handleSubmit}
+              onTranscribe={handleTranscribe}
+              isLoading={isLoading || isTranscribing}
+              placeholder="Share your thoughts..."
+              disabled={isLoading}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Footer hint - hidden during completion phase */}
+      {!isInCompletionPhase && (
+        <div className="text-center pb-6">
+          <p className="text-xs text-muted-foreground">
+            Press Enter to continue • Your responses are anonymous
+          </p>
         </div>
-      </div>
-
-      {/* Footer hint */}
-      <div className="text-center pb-6">
-        <p className="text-xs text-muted-foreground">
-          Press Enter to continue • Your responses are anonymous
-        </p>
-      </div>
+      )}
 
       {/* Finish Early Dialog */}
       <FinishEarlyConfirmationDialog
