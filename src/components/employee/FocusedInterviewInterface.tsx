@@ -66,8 +66,9 @@ export const FocusedInterviewInterface = ({
   // Completion phase states
   const [isInCompletionPhase, setIsInCompletionPhase] = useState(false);
   const [structuredSummary, setStructuredSummary] = useState<{
+    opening?: string;
     keyPoints: string[];
-    sentiment: "positive" | "mixed" | "negative";
+    sentiment: "positive" | "mixed" | "negative" | "constructive";
   } | null>(null);
   const [conversationStartTime] = useState(() => new Date());
   
@@ -278,11 +279,12 @@ export const FocusedInterviewInterface = ({
         if (data.structuredSummary) {
           setStructuredSummary(data.structuredSummary);
         } else {
-          // Fallback: generate summary from user messages
+          // Fallback: generate summary from user messages with warm opening
           const userMsgs = updatedHistory.filter(m => m.role === "user");
           setStructuredSummary({
+            opening: "Thank you for taking the time to share your thoughts today.",
             keyPoints: userMsgs.slice(-3).map(m => 
-              m.content.length > 80 ? m.content.substring(0, 77) + "..." : m.content
+              m.content.length > 100 ? m.content.substring(0, 97) + "..." : m.content
             ),
             sentiment: "mixed"
           });
@@ -397,8 +399,9 @@ export const FocusedInterviewInterface = ({
       } else {
         const userMsgs = conversationHistory.filter(m => m.role === "user");
         setStructuredSummary({
+          opening: "Thank you for taking the time to share your thoughts today.",
           keyPoints: userMsgs.slice(-3).map(m => 
-            m.content.length > 80 ? m.content.substring(0, 77) + "..." : m.content
+            m.content.length > 100 ? m.content.substring(0, 97) + "..." : m.content
           ),
           sentiment: "mixed"
         });

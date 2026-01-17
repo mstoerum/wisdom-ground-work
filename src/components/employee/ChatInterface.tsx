@@ -345,8 +345,9 @@ export const ChatInterface = ({
       console.log("[ChatInterface] Fallback: Generating structured summary from messages");
       const userMessages = messages.filter(m => m.role === "user");
       const fallbackSummary = {
+        opening: "Thank you for taking the time to share your thoughts today.",
         keyPoints: userMessages.slice(-3).map(m => 
-          m.content.length > 60 ? m.content.substring(0, 57) + "..." : m.content
+          m.content.length > 100 ? m.content.substring(0, 97) + "..." : m.content
         ),
         sentiment: "mixed" as const
       };
