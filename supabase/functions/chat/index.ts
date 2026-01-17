@@ -662,25 +662,29 @@ Be warm and appreciative. Keep it brief.`;
           .map((m: any) => m.content)
           .join("\n");
 
-        let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" as const };
+        let structuredSummary = { opening: "Thank you for sharing your thoughts today.", keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" as const };
         
         try {
           const summaryResponse = await callAI(
             LOVABLE_API_KEY,
             AI_MODEL_LITE,
             [
-              { role: "system", content: "Extract structured insights. Return valid JSON only." },
-              { role: "user", content: `Based on this feedback conversation, extract:
-1. KEY_POINTS: 2-4 bullet points summarizing what the participant shared (each under 15 words)
-2. SENTIMENT: overall tone (positive, mixed, or negative)
+              { role: "system", content: "Extract structured insights from feedback conversations. Return valid JSON only." },
+              { role: "user", content: `Based on this feedback conversation, create a rich summary:
+
+1. OPENING: A warm, personalized 1-sentence acknowledgment of what was shared (e.g., "Thank you for sharing openly about your experience with...")
+
+2. KEY_POINTS: 2-4 meaningful bullet points summarizing specific feedback (25-35 words each, capture the essence with context and nuance)
+
+3. SENTIMENT: overall emotional tone (positive, mixed, or constructive)
 
 Conversation content:
 ${conversationContext || "User shared their thoughts and feedback."}
 
-Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
+Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sentiment": "..."}` }
             ],
-            0.3,
-            250
+            0.4,
+            350
           );
           
           let cleaned = summaryResponse.trim();
@@ -692,6 +696,7 @@ Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
           const parsed = JSON.parse(cleaned);
           if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
             structuredSummary = {
+              opening: parsed.opening || "Thank you for sharing your thoughts today.",
               keyPoints: parsed.keyPoints.slice(0, 4),
               sentiment: parsed.sentiment || "mixed"
             };
@@ -965,25 +970,29 @@ Be warm and appreciative. Keep it brief.`;
 
       // Generate structured summary for the receipt
       const conversationContext = messages.map((m: any) => m.role === "user" ? m.content : "").filter(Boolean).join("\n");
-      let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
+      let structuredSummary = { opening: "Thank you for sharing your thoughts today.", keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
       
       try {
         const summaryResponse = await callAI(
           LOVABLE_API_KEY,
           AI_MODEL_LITE,
           [
-            { role: "system", content: "Extract structured insights. Return valid JSON only." },
-            { role: "user", content: `Based on this conversation, extract:
-1. KEY_POINTS: 2-4 bullet points summarizing what was shared (each under 15 words)
-2. SENTIMENT: overall tone (positive, mixed, or negative)
+            { role: "system", content: "Extract structured insights from feedback conversations. Return valid JSON only." },
+            { role: "user", content: `Based on this conversation, create a rich summary:
+
+1. OPENING: A warm, personalized 1-sentence acknowledgment of what was shared (e.g., "Thank you for sharing openly about your experience with...")
+
+2. KEY_POINTS: 2-4 meaningful bullet points summarizing specific feedback (25-35 words each, capture the essence with context and nuance)
+
+3. SENTIMENT: overall emotional tone (positive, mixed, or constructive)
 
 Conversation content:
 ${conversationContext || "User shared their thoughts and feedback."}
 
-Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
+Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sentiment": "..."}` }
           ],
-          0.3,
-          250
+          0.4,
+          350
         );
         
         let cleaned = summaryResponse.trim();
@@ -995,6 +1004,7 @@ Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
         const parsed = JSON.parse(cleaned);
         if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
           structuredSummary = {
+            opening: parsed.opening || "Thank you for sharing your thoughts today.",
             keyPoints: parsed.keyPoints.slice(0, 4),
             sentiment: parsed.sentiment || "mixed"
           };
@@ -1052,18 +1062,20 @@ Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
 
         // Generate structured summary for the receipt
         const conversationContext = previousResponses?.map(r => r.content).join("\n") || "";
-        const structuredSummaryPrompt = `Based on this conversation about ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'}, extract:
+        const structuredSummaryPrompt = `Based on this conversation about ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'}, create a rich summary:
 
-1. KEY_POINTS: 2-4 bullet points summarizing what the participant shared (each under 15 words, focus on specific feedback given)
-2. SENTIMENT: overall tone of the conversation (positive, mixed, or negative)
+1. OPENING: A warm, personalized 1-sentence acknowledgment of what was shared (e.g., "Thank you for sharing openly about your experience with...")
+
+2. KEY_POINTS: 2-4 meaningful bullet points summarizing specific feedback (25-35 words each, capture the essence with context and nuance)
+
+3. SENTIMENT: overall emotional tone (positive, mixed, or constructive)
 
 Conversation content:
 ${conversationContext}
 
-Return ONLY valid JSON in this exact format:
-{"keyPoints": ["point 1", "point 2", "point 3"], "sentiment": "mixed"}`;
+Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sentiment": "..."}`;
         
-        let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
+        let structuredSummary = { opening: "Thank you for sharing your thoughts today.", keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
         try {
           const summaryResponse = await callAI(
             LOVABLE_API_KEY,
@@ -1085,6 +1097,7 @@ Return ONLY valid JSON in this exact format:
           const parsed = JSON.parse(cleaned);
           if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
             structuredSummary = {
+              opening: parsed.opening || "Thank you for sharing your thoughts today.",
               keyPoints: parsed.keyPoints.slice(0, 4),
               sentiment: parsed.sentiment || "mixed"
             };
@@ -1092,8 +1105,9 @@ Return ONLY valid JSON in this exact format:
         } catch (e) {
           console.error("Failed to parse structured summary:", e);
           structuredSummary = {
+            opening: "Thank you for sharing your thoughts today.",
             keyPoints: previousResponses?.slice(-3).map(r => 
-              r.content.length > 60 ? r.content.substring(0, 60) + "..." : r.content
+              r.content.length > 100 ? r.content.substring(0, 97) + "..." : r.content
             ) || ["Thank you for sharing your feedback"],
             sentiment: "mixed"
           };
