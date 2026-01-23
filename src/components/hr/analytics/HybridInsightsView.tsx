@@ -7,30 +7,29 @@ import { PulseSummary } from "./PulseSummary";
 import { ThemeTerrain } from "./ThemeTerrain";
 import { QuickInsightBadges } from "./QuickInsightBadges";
 import { NarrativeReportViewer } from "./NarrativeReportViewer";
+import { DataConfidenceBanner } from "./DataConfidenceBanner";
+import { ActionSummaryCard } from "./ActionSummaryCard";
+import { AnalyticsEmptyState, getEmptyStateType } from "./AnalyticsEmptyState";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { exportStoryReport } from "@/lib/exportStoryReport";
 import { toast } from "sonner";
 import { useThemeAnalytics } from "@/hooks/useThemeAnalytics";
+import { useConversationAnalytics } from "@/hooks/useConversationAnalytics";
 import type { NarrativeReport } from "@/hooks/useNarrativeReports";
 import type { ParticipationMetrics, SentimentMetrics, ThemeInsight } from "@/hooks/useAnalytics";
 
 interface HybridInsightsViewProps {
-  // Metrics data
   participation: ParticipationMetrics | null;
   sentiment: SentimentMetrics | null;
   themes: ThemeInsight[];
-  
-  // Narrative report
   latestReport: NarrativeReport | null;
   isReportLoading: boolean;
   isGenerating: boolean;
   onGenerateReport: (audience?: 'executive' | 'manager') => void;
-  
-  // Survey info
   surveyId: string | null;
   surveyTitle?: string;
-  
   isLoading?: boolean;
+  onShareLink?: () => void;
 }
 
 export function HybridInsightsView({
@@ -44,16 +43,29 @@ export function HybridInsightsView({
   surveyId,
   surveyTitle,
   isLoading,
+  onShareLink,
 }: HybridInsightsViewProps) {
   const [storyExpanded, setStoryExpanded] = useState(true);
   
-  // Theme analytics hook
+  const responseCount = participation?.completed || 0;
+  
+  // Theme analytics hook with auto-trigger
   const { 
     data: enrichedThemes, 
     isAnalyzing, 
     hasAnalysis, 
     analyzeThemes 
-  } = useThemeAnalytics(surveyId);
+  } = useThemeAnalytics(surveyId, { 
+    responseCount,
+    autoAnalyze: true 
+  });
+  
+  // Actionable intelligence from conversation analytics
+  const {
+    quickWins,
+    interventions,
+    isLoading: isActionableLoading,
+  } = useConversationAnalytics({ surveyId: surveyId || undefined });
   
   const handleExportPDF = async () => {
     if (!participation || !sentiment || !latestReport) {
@@ -79,21 +91,30 @@ export function HybridInsightsView({
     }
   };
   
-  // Show empty state when no survey selected
-  if (!surveyId) {
+  // Check for empty state
+  const emptyStateType = getEmptyStateType(surveyId, responseCount);
+  
+  // Show empty state for no survey or no/few responses
+  if (emptyStateType === 'no-survey' || emptyStateType === 'no-responses' || emptyStateType === 'few-responses') {
     return (
-      <Card className="p-12 text-center">
-        <Sparkles className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">Select a Survey</h3>
-        <p className="text-muted-foreground max-w-md mx-auto">
-          Choose a survey from the dropdown above to view detailed insights and generate AI-powered story reports.
-        </p>
-      </Card>
+      <AnalyticsEmptyState
+        type={emptyStateType}
+        responseCount={responseCount}
+        surveyTitle={surveyTitle}
+        onShareLink={onShareLink}
+      />
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
+      {/* Data Confidence Banner */}
+      <DataConfidenceBanner
+        responseCount={responseCount}
+        surveyId={surveyId}
+        onShareLink={onShareLink}
+      />
+
       {/* Section 1: Pulse Summary - Key metrics at a glance */}
       <PulseSummary
         participation={participation}
@@ -105,7 +126,14 @@ export function HybridInsightsView({
       {/* Section 2: Quick Insight Badges - Top strength & friction at a glance */}
       <QuickInsightBadges themes={themes} isLoading={isLoading} />
 
-      {/* Section 3: Theme Terrain - Visual health landscape */}
+      {/* Section 3: Actionable Intelligence Summary */}
+      <ActionSummaryCard
+        quickWins={quickWins}
+        criticalIssues={interventions}
+        isLoading={isActionableLoading}
+      />
+
+      {/* Section 4: Theme Terrain - Visual health landscape */}
       <div className="space-y-2">
         <ThemeTerrain 
           themes={themes} 
@@ -113,8 +141,8 @@ export function HybridInsightsView({
           isLoading={isLoading || isAnalyzing} 
         />
         
-        {/* Generate Theme Insights button */}
-        {!hasAnalysis && themes.length > 0 && (
+        {/* Manual Generate Theme Insights button - only show when auto-trigger hasn't run */}
+        {!hasAnalysis && themes.length > 0 && responseCount >= 5 && (
           <Button
             variant="outline"
             size="sm"
@@ -137,7 +165,7 @@ export function HybridInsightsView({
         )}
       </div>
 
-      {/* Section 3: Story Report - Collapsible narrative deep-dive */}
+      {/* Section 5: Story Report - Collapsible narrative deep-dive */}
       <div className="space-y-3">
         {latestReport ? (
           <Collapsible open={storyExpanded} onOpenChange={setStoryExpanded}>

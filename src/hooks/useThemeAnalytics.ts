@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -73,8 +74,15 @@ interface ThemeAnalyticsRow {
   };
 }
 
-export function useThemeAnalytics(surveyId: string | null) {
+interface UseThemeAnalyticsOptions {
+  responseCount?: number;
+  autoAnalyze?: boolean;
+}
+
+export function useThemeAnalytics(surveyId: string | null, options: UseThemeAnalyticsOptions = {}) {
+  const { responseCount = 0, autoAnalyze = true } = options;
   const queryClient = useQueryClient();
+  const autoAnalyzedRef = useRef(false);
 
   // Fetch theme analytics data
   const query = useQuery({
@@ -148,12 +156,38 @@ export function useThemeAnalytics(surveyId: string | null) {
     return oldestAnalysis < twentyFourHoursAgo;
   };
 
+  const hasAnalysis = (query.data?.length || 0) > 0;
+
+  // Auto-trigger analysis when conditions are met
+  useEffect(() => {
+    if (!autoAnalyze) return;
+    if (!surveyId) return;
+    if (query.isLoading) return;
+    if (hasAnalysis) return;
+    if (autoAnalyzedRef.current) return;
+    if (analyzeMutation.isPending) return;
+    if (responseCount < 5) return;
+
+    // Debounce: wait 3 seconds before auto-triggering
+    const timer = setTimeout(() => {
+      autoAnalyzedRef.current = true;
+      analyzeMutation.mutate({ surveyId });
+    }, 3000);
+
+    return () => clearTimeout(timer);
+  }, [surveyId, hasAnalysis, responseCount, query.isLoading, analyzeMutation.isPending, autoAnalyze]);
+
+  // Reset auto-analyzed flag when survey changes
+  useEffect(() => {
+    autoAnalyzedRef.current = false;
+  }, [surveyId]);
+
   return {
     data: query.data || [],
     isLoading: query.isLoading,
     isAnalyzing: analyzeMutation.isPending,
     error: query.error,
-    hasAnalysis: (query.data?.length || 0) > 0,
+    hasAnalysis,
     isStale: isStale(),
     analyzeThemes: (themeId?: string) => {
       if (!surveyId) {

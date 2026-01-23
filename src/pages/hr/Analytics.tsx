@@ -9,11 +9,15 @@ import type { Database } from "@/integrations/supabase/types";
 
 // Components
 import { HybridInsightsView } from "@/components/hr/analytics/HybridInsightsView";
+import { SurveyComparison } from "@/components/hr/analytics/SurveyComparison";
 import { useNarrativeReports } from "@/hooks/useNarrativeReports";
 import { toast } from "sonner";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BarChart3, Sparkles } from "lucide-react";
 
 const Analytics = () => {
   const [filters, setFilters] = useState<AnalyticsFilters>({});
+  const [activeTab, setActiveTab] = useState<string>("insights");
   
   const { participation, sentiment, themes, isLoading } = useAnalytics(filters);
 
@@ -50,6 +54,17 @@ const Analytics = () => {
     generateReport({ surveyId: filters.surveyId, audience });
   };
 
+  const handleShareLink = () => {
+    // TODO: Implement share link modal/functionality
+    toast.info("Share link feature coming soon");
+  };
+
+  // Format surveys for comparison component
+  const surveysForComparison = surveys?.map(s => ({
+    id: s.id,
+    title: s.title,
+  })) || [];
+
   return (
     <HRLayout>
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
@@ -85,19 +100,42 @@ const Analytics = () => {
               )}
             </div>
 
-            {/* Simplified View - Story Report + Theme Health */}
-            <HybridInsightsView
-              participation={participation}
-              sentiment={sentiment}
-              themes={themes}
-              latestReport={latestReport}
-              isReportLoading={isReportLoading}
-              isGenerating={isGenerating}
-              onGenerateReport={handleGenerateReport}
-              surveyId={filters.surveyId || null}
-              surveyTitle={selectedSurvey?.title}
-              isLoading={isLoading}
-            />
+            {/* Tabs for Insights vs Comparison */}
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+              <TabsList>
+                <TabsTrigger value="insights" className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Insights
+                </TabsTrigger>
+                <TabsTrigger value="comparison" className="gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Compare Surveys
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="insights" className="mt-6">
+                <HybridInsightsView
+                  participation={participation}
+                  sentiment={sentiment}
+                  themes={themes}
+                  latestReport={latestReport}
+                  isReportLoading={isReportLoading}
+                  isGenerating={isGenerating}
+                  onGenerateReport={handleGenerateReport}
+                  surveyId={filters.surveyId || null}
+                  surveyTitle={selectedSurvey?.title}
+                  isLoading={isLoading}
+                  onShareLink={handleShareLink}
+                />
+              </TabsContent>
+
+              <TabsContent value="comparison" className="mt-6">
+                <SurveyComparison
+                  surveys={surveysForComparison}
+                  currentSurveyId={filters.surveyId}
+                />
+              </TabsContent>
+            </Tabs>
           </div>
         </div>
       </div>
