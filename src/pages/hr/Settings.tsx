@@ -3,7 +3,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserManagement } from "@/components/hr/settings/UserManagement";
 import { SurveyDefaults } from "@/components/hr/settings/SurveyDefaults";
 import { AuditLogs } from "@/components/hr/settings/AuditLogs";
-import { DataRetention } from "@/components/hr/settings/DataRetention";
 import { SecuritySettings } from "@/components/hr/settings/SecuritySettings";
 import { ComplianceGuide } from "@/components/hr/ComplianceGuide";
 import { EmployeeInvitations } from "@/components/hr/settings/EmployeeInvitations";
@@ -18,13 +17,12 @@ const Settings = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-4">
-          <TabsList className="grid grid-cols-3 lg:grid-cols-7 w-full">
+          <TabsList className="grid grid-cols-3 lg:grid-cols-6 w-full">
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="invitations">Invitations</TabsTrigger>
             <TabsTrigger value="defaults">Defaults</TabsTrigger>
             <TabsTrigger value="security">Security</TabsTrigger>
             <TabsTrigger value="audit">Audit Logs</TabsTrigger>
-            <TabsTrigger value="retention">Data Retention</TabsTrigger>
             <TabsTrigger value="compliance">Compliance</TabsTrigger>
           </TabsList>
 
@@ -46,10 +44,6 @@ const Settings = () => {
 
           <TabsContent value="audit">
             <AuditLogs />
-          </TabsContent>
-
-          <TabsContent value="retention">
-            <DataRetention />
           </TabsContent>
 
           <TabsContent value="compliance">

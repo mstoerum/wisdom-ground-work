@@ -71,6 +71,11 @@ const getChapterStyle = (key: string) => {
 };
 
 export function StoryChapter({ chapter, chapterNumber, totalChapters }: StoryChapterProps) {
+  // Defensive guard for undefined chapter
+  if (!chapter) {
+    return null;
+  }
+  
   const Icon = chapterIcons[chapter.key as keyof typeof chapterIcons] || MessageCircle;
   const style = getChapterStyle(chapter.key);
   const displayTitle = CHAPTER_LABELS[chapter.key] || chapter.title;

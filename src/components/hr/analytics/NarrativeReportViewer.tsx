@@ -31,6 +31,32 @@ export function NarrativeReportViewer({
   );
   const [visitedChapters, setVisitedChapters] = useState<number[]>([0]);
 
+  // Handle empty chapters case - prevents crash when report has no data
+  if (!report.chapters || report.chapters.length === 0) {
+    return (
+      <Card className="border-0 shadow-sm bg-card/50 backdrop-blur-sm p-8">
+        <div className="text-center space-y-4">
+          <BookOpen className="h-12 w-12 mx-auto text-muted-foreground/50" />
+          <div>
+            <h3 className="text-lg font-medium">No Report Data Available</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              This report has no chapters. This may happen when response data was unavailable during generation.
+            </p>
+          </div>
+          {onRegenerateWithAudience && (
+            <Button 
+              variant="outline" 
+              onClick={() => onRegenerateWithAudience(audience)}
+              disabled={isGenerating}
+            >
+              {isGenerating ? 'Regenerating...' : 'Try Regenerating Report'}
+            </Button>
+          )}
+        </div>
+      </Card>
+    );
+  }
+
   const handleAudienceChange = (newAudience: 'executive' | 'manager') => {
     setAudience(newAudience);
     if (onRegenerateWithAudience && newAudience !== report.audience_config.audience) {
