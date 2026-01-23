@@ -1,48 +1,34 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { supabase } from "@/integrations/supabase/client";
 import { AIResponseDisplay } from "./AIResponseDisplay";
 import { AnswerInput } from "./AnswerInput";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Loader2, MessageSquareHeart, SkipForward } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  InterviewContext,
+  EVALUATION_DIMENSIONS,
+  getContextualQuestion,
+  buildEvaluationResponses,
+  calculateEvaluationSentiment,
+  createDefaultContext,
+} from "@/utils/evaluationQuestions";
 
 interface FocusedEvaluationProps {
   surveyId: string;
   conversationSessionId: string;
+  interviewContext?: InterviewContext;
   onComplete: () => void;
   onSkip?: () => void;
 }
-
-const EVALUATION_QUESTIONS = [
-  {
-    id: "overall",
-    question: "Overall, how did you find this conversation compared to traditional surveys?",
-    placeholder: "Share your impression...",
-  },
-  {
-    id: "ease",
-    question: "Was it easier to express yourself in conversation versus filling out a form?",
-    placeholder: "What felt different...",
-  },
-  {
-    id: "understanding",
-    question: "Did I understand your responses well, or did you need to rephrase things?",
-    placeholder: "How was our back-and-forth...",
-  },
-  {
-    id: "value",
-    question: "What would make you want to use Spradley again?",
-    placeholder: "Any suggestions...",
-  },
-];
 
 type EvaluationPhase = "intro" | "rating" | "questions" | "saving" | "complete";
 
 export const FocusedEvaluation = ({
   surveyId,
   conversationSessionId,
+  interviewContext,
   onComplete,
   onSkip,
 }: FocusedEvaluationProps) => {
@@ -51,8 +37,13 @@ export const FocusedEvaluation = ({
   const [quickRating, setQuickRating] = useState<number | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [responses, setResponses] = useState<Record<string, string>>({});
+  const [questionsAsked, setQuestionsAsked] = useState<Record<string, string>>({});
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [startTime] = useState<number>(Date.now());
+
+  // Use provided context or create default
+  const context = useMemo(() => interviewContext || createDefaultContext(), [interviewContext]);
 
   // Auto-advance from intro after a brief pause
   useEffect(() => {
@@ -61,6 +52,16 @@ export const FocusedEvaluation = ({
       return () => clearTimeout(timer);
     }
   }, [phase]);
+
+  // Get current question dynamically based on context
+  const currentQuestion = useMemo(() => {
+    return getContextualQuestion(
+      currentQuestionIndex,
+      context,
+      responses,
+      quickRating
+    );
+  }, [currentQuestionIndex, context, responses, quickRating]);
 
   const handleRatingSelect = (rating: number) => {
     setQuickRating(rating);
@@ -79,60 +80,36 @@ export const FocusedEvaluation = ({
     }, 300);
   };
 
-  const saveEvaluation = useCallback(async (allResponses: Record<string, string>, rating: number | null) => {
+  const saveEvaluation = useCallback(async (allResponses: Record<string, string>, allQuestionsAsked: Record<string, string>, rating: number | null) => {
     setPhase("saving");
     
     try {
       // Get session if authenticated
       const { data: { session } } = await supabase.auth.getSession();
       
-      // Calculate simple sentiment from responses
-      const allText = Object.values(allResponses).join(" ").toLowerCase();
-      const positiveWords = ["good", "great", "easy", "natural", "helpful", "better", "love", "excellent", "comfortable"];
-      const negativeWords = ["hard", "difficult", "confusing", "bad", "worse", "awkward", "frustrating"];
+      // Calculate sentiment using utility function
+      const { sentiment, sentimentScore } = calculateEvaluationSentiment(allResponses, rating);
       
-      const positiveCount = positiveWords.filter(w => allText.includes(w)).length;
-      const negativeCount = negativeWords.filter(w => allText.includes(w)).length;
-      
-      let sentiment = "neutral";
-      let sentimentScore = 0.5;
-      
-      if (positiveCount > negativeCount) {
-        sentiment = "positive";
-        sentimentScore = 0.7 + (positiveCount * 0.05);
-      } else if (negativeCount > positiveCount) {
-        sentiment = "negative";
-        sentimentScore = 0.3 - (negativeCount * 0.05);
-      }
-      
-      // Adjust sentiment based on quick rating if provided
-      if (rating !== null) {
-        if (rating >= 4) {
-          sentiment = "positive";
-          sentimentScore = Math.max(sentimentScore, 0.7);
-        } else if (rating <= 2) {
-          sentiment = "negative";
-          sentimentScore = Math.min(sentimentScore, 0.3);
-        }
-      }
+      // Calculate duration
+      const durationSeconds = Math.floor((Date.now() - startTime) / 1000);
 
-      // Save to database - match actual schema columns
+      // Build structured evaluation responses
+      const evaluationResponses = buildEvaluationResponses(allResponses, allQuestionsAsked);
+
+      // Save to database
       const { error } = await supabase.from("spradley_evaluations").insert({
         survey_id: surveyId,
         conversation_session_id: conversationSessionId,
         employee_id: session?.user?.id || null,
-        evaluation_responses: Object.entries(allResponses).map(([questionId, answer]) => ({
-          question_id: questionId,
-          question: EVALUATION_QUESTIONS.find(q => q.id === questionId)?.question || "",
-          answer,
-        })),
+        evaluation_responses: JSON.parse(JSON.stringify(evaluationResponses)),
         overall_sentiment: sentiment,
         sentiment_score: sentimentScore,
-        key_insights: {
+        key_insights: JSON.parse(JSON.stringify({
           response_count: Object.keys(allResponses).length,
           quick_rating: rating,
-        },
-        duration_seconds: 0,
+          interview_context: context,
+        })),
+        duration_seconds: durationSeconds,
         completed_at: new Date().toISOString(),
       });
 
@@ -152,42 +129,44 @@ export const FocusedEvaluation = ({
       setPhase("complete");
       setTimeout(onComplete, 800);
     }
-  }, [surveyId, conversationSessionId, onComplete, toast]);
+  }, [surveyId, conversationSessionId, context, startTime, onComplete, toast]);
 
   const handleSubmit = useCallback(async () => {
     if (!currentAnswer.trim()) return;
 
-    const questionId = EVALUATION_QUESTIONS[currentQuestionIndex].id;
-    const newResponses = { ...responses, [questionId]: currentAnswer };
+    const dimensionId = currentQuestion.dimensionId;
+    const newResponses = { ...responses, [dimensionId]: currentAnswer };
+    const newQuestionsAsked = { ...questionsAsked, [dimensionId]: currentQuestion.question };
+    
     setResponses(newResponses);
+    setQuestionsAsked(newQuestionsAsked);
 
     setIsTransitioning(true);
 
     // Short transition delay
     await new Promise(resolve => setTimeout(resolve, 250));
 
-    if (currentQuestionIndex < EVALUATION_QUESTIONS.length - 1) {
+    if (currentQuestionIndex < EVALUATION_DIMENSIONS.length - 1) {
       // Move to next question
       setCurrentQuestionIndex(prev => prev + 1);
       setCurrentAnswer("");
       setIsTransitioning(false);
     } else {
       // All questions answered - save and complete
-      await saveEvaluation(newResponses, quickRating);
+      await saveEvaluation(newResponses, newQuestionsAsked, quickRating);
     }
-  }, [currentAnswer, currentQuestionIndex, responses, quickRating, saveEvaluation]);
+  }, [currentAnswer, currentQuestionIndex, currentQuestion, responses, questionsAsked, quickRating, saveEvaluation]);
 
   const handleSkip = useCallback(() => {
     // Save whatever we have and complete
     if (Object.keys(responses).length > 0) {
-      saveEvaluation(responses, quickRating);
+      saveEvaluation(responses, questionsAsked, quickRating);
     } else {
       onSkip?.();
     }
-  }, [responses, quickRating, saveEvaluation, onSkip]);
+  }, [responses, questionsAsked, quickRating, saveEvaluation, onSkip]);
 
-  const currentQuestion = EVALUATION_QUESTIONS[currentQuestionIndex];
-  const progressPercentage = ((currentQuestionIndex + 1) / EVALUATION_QUESTIONS.length) * 100;
+  const progressPercentage = ((currentQuestionIndex + 1) / EVALUATION_DIMENSIONS.length) * 100;
 
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center p-6">
@@ -295,11 +274,11 @@ export const FocusedEvaluation = ({
             {/* Header with progress */}
             <div className="text-center space-y-2">
               <p className="text-sm text-muted-foreground">
-                Question {currentQuestionIndex + 1} of {EVALUATION_QUESTIONS.length}
+                Question {currentQuestionIndex + 1} of {EVALUATION_DIMENSIONS.length}
               </p>
               {/* Progress dots */}
               <div className="flex items-center justify-center gap-2">
-                {EVALUATION_QUESTIONS.map((_, idx) => (
+                {EVALUATION_DIMENSIONS.map((_, idx) => (
                   <div
                     key={idx}
                     className={`w-2 h-2 rounded-full transition-colors ${
@@ -311,6 +290,21 @@ export const FocusedEvaluation = ({
                 ))}
               </div>
             </div>
+
+            {/* Empathy acknowledgment from previous answer */}
+            <AnimatePresence mode="wait">
+              {currentQuestion.empathy && (
+                <motion.p
+                  key={`empathy-${currentQuestionIndex}`}
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="text-sm text-muted-foreground italic"
+                >
+                  {currentQuestion.empathy}
+                </motion.p>
+              )}
+            </AnimatePresence>
 
             {/* Question display */}
             <AnimatePresence mode="wait">
