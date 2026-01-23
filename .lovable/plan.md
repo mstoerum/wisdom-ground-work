@@ -1,132 +1,231 @@
 
-## Fix: Stale Closure Bug Preventing Spradley Evaluation
 
-### Problem Identified
+## Analytics Enhancement Plan
 
-The Spradley evaluation is not appearing after completing the DD test survey due to a **stale closure bug** in the React code.
+### Overview
+
+This plan addresses the 5 key improvements identified in the analytics review, transforming the dashboard from a feature-complete but underutilized system into a proactive, confidence-aware platform that guides HR decisions.
 
 ---
 
-### Technical Analysis
+### Changes Summary
 
-**Location**: `src/components/employee/EmployeeSurveyFlow.tsx`
+| Priority | Improvement | Files Affected |
+|----------|-------------|----------------|
+| P1 | Data Confidence Banner | `HybridInsightsView.tsx`, new `DataConfidenceBanner.tsx` |
+| P1 | Auto-Trigger Theme Analysis | `useThemeAnalytics.ts`, `HybridInsightsView.tsx` |
+| P2 | Surface ActionableIntelligenceCenter | `HybridInsightsView.tsx`, `Analytics.tsx`, `useConversationAnalytics.ts` |
+| P2 | Improved Empty States | New `AnalyticsEmptyState.tsx`, `HybridInsightsView.tsx` |
+| P3 | Survey Comparison Feature | New `SurveyComparison.tsx`, `Analytics.tsx`, new `useSurveyComparison.ts` |
 
-**The Bug**:
+---
+
+### Detailed Implementation
+
+#### 1. Data Confidence Banner (P1)
+
+**Purpose:** Show HR professionals how reliable the analytics are before they make decisions.
+
+**New Component:** `src/components/hr/analytics/DataConfidenceBanner.tsx`
+
+```text
++-------------------------------------------------------------------+
+|  [Shield Icon] Data Confidence: Good (23 responses)               |
+|  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━░░░░░░░  (23/50 for high)     |
+|  "27 more responses needed for high-confidence insights"          |
++-------------------------------------------------------------------+
+```
+
+**Logic:**
+- Low: 0-9 responses → Red banner, "Limited data - interpret with caution"
+- Medium: 10-49 responses → Amber banner, shows progress toward 50
+- High: 50+ responses → Green banner, "High confidence for decision-making"
+
+**Integration:** Added to top of `HybridInsightsView.tsx` above `PulseSummary`
+
+---
+
+#### 2. Auto-Trigger Theme Analysis (P1)
+
+**Purpose:** Remove manual "Generate Theme Insights" button when data is sufficient.
+
+**Changes to `useThemeAnalytics.ts`:**
+- Add `useEffect` that watches response count
+- When `participation.completed >= 5` AND `!hasAnalysis`, auto-trigger `analyzeThemes()`
+- Add debounce (5 second delay) to prevent rapid re-triggers
+
+**Changes to `HybridInsightsView.tsx`:**
+- Pass `responseCount` to hook
+- Remove manual button when auto-analysis is active
+- Show "Analyzing..." state during auto-analysis
+
+---
+
+#### 3. Surface Actionable Intelligence (P2)
+
+**Purpose:** Show Quick Wins and Critical Issues prominently at the top.
+
+**Changes to `HybridInsightsView.tsx`:**
+- Import `useConversationAnalytics` hook
+- Add new section between `QuickInsightBadges` and `ThemeTerrain`:
+
+```text
+[Quick Wins Section - Shows top 3 if available]
+┌─────────────────────────────────────────┐
+│ ⚡ Quick Wins                           │
+│ • Shorten team meetings to 30 min       │
+│ • Add async standup option              │
+│ • Create project documentation template │
+└─────────────────────────────────────────┘
+
+[Critical Issues Section - Shows if any critical]
+┌─────────────────────────────────────────┐
+│ ⚠️ Critical Issue: Career Growth        │
+│ "3+ employees mentioned lack of..."     │
+│ [View Details] [Take Action]            │
+└─────────────────────────────────────────┘
+```
+
+**New Component:** `src/components/hr/analytics/ActionSummaryCard.tsx`
+- Compact view of actionable items
+- Links to full ActionableIntelligenceCenter
+
+---
+
+#### 4. Improved Empty States (P2)
+
+**New Component:** `src/components/hr/analytics/AnalyticsEmptyState.tsx`
+
+**Smart empty states based on survey status:**
+
+| Condition | Message | Action |
+|-----------|---------|--------|
+| No survey selected | "Select a survey to view insights" | Survey dropdown |
+| Survey selected, 0 responses | "Waiting for responses" | "Share survey link" button |
+| 1-4 responses | "Need 5 responses for basic insights" | Progress bar + share link |
+| 5-9 responses | "Limited data available" | Progress bar + confidence warning |
+| 10-49 responses | "Good data, 50+ unlocks full confidence" | Progress bar |
+
+**Integration:**
+- Replace generic empty state in `HybridInsightsView`
+- Pass survey link generation function as action
+
+---
+
+#### 5. Survey Comparison Feature (P3)
+
+**New Hook:** `src/hooks/useSurveyComparison.ts`
+- Accepts array of survey IDs
+- Returns comparative metrics for each survey
+- Calculates deltas and trend indicators
+
+**New Component:** `src/components/hr/analytics/SurveyComparison.tsx`
+- Multi-select for surveys to compare
+- Side-by-side metrics visualization:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ Survey Comparison                                            │
+├─────────────────────────────────────────────────────────────┤
+│              │ Q1 2025      │ Q4 2024      │ Change         │
+├──────────────┼──────────────┼──────────────┼────────────────┤
+│ Participation│ 78%          │ 65%          │ +13% ↑         │
+│ Sentiment    │ 72           │ 68           │ +4 ↑           │
+│ Work-Life    │ 65           │ 58           │ +7 ↑           │
+│ Career Growth│ 54           │ 61           │ -7 ↓           │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Integration:** Add as new tab/section in Analytics page
+
+---
+
+### Technical Details
+
+#### DataConfidenceBanner Component
+
 ```typescript
-// Line 150-169: handleChatComplete has empty dependency array
-const handleChatComplete = useCallback((chatData?: {...}) => {
-  // ...
-  handleSurveyComplete(); // ← Calls a function not wrapped in useCallback
-}, []); // ← Empty deps = stale closure!
+interface DataConfidenceBannerProps {
+  responseCount: number;
+  surveyId: string;
+  onShareLink?: () => void;
+}
 
-// Line 171-196: handleSurveyComplete is a regular function
-const handleSurveyComplete = async () => {
-  const enableEvaluation = surveyDetails?.consent_config?.enable_spradley_evaluation;
-  // ↑ Uses surveyDetails which may change after initial render
-  
-  if (enableEvaluation && !isPreviewMode && conversationId) {
-    setStep("evaluation"); // Should show evaluation
-  } else {
-    setStep("complete"); // Skips evaluation
-  }
+// Thresholds
+const THRESHOLDS = {
+  LOW: { max: 9, color: 'red', label: 'Limited Data' },
+  MEDIUM: { max: 49, color: 'amber', label: 'Good Confidence' },
+  HIGH: { min: 50, color: 'green', label: 'High Confidence' },
 };
 ```
 
-**What happens**:
-1. Component mounts, `handleChatComplete` captures the initial `handleSurveyComplete` reference
-2. Survey data loads asynchronously via React Query in `PublicSurvey.tsx`
-3. `surveyDetails` updates with correct `consent_config`
-4. But `handleChatComplete` still holds the OLD `handleSurveyComplete` where `surveyDetails` was incomplete
-5. When user completes survey, the stale function runs with `undefined` consent_config
-6. `enableEvaluation` evaluates to `undefined`/`false` → evaluation skipped
-
----
-
-### Solution
-
-Convert `handleSurveyComplete` to `useCallback` and fix the dependency chain:
+#### Auto-Analysis Effect in useThemeAnalytics
 
 ```typescript
-// 1. Wrap handleSurveyComplete in useCallback with proper dependencies
-const handleSurveyComplete = useCallback(async () => {
-  const enableEvaluation = surveyDetails?.consent_config?.enable_spradley_evaluation;
-  
-  if (enableEvaluation && !isPreviewMode && conversationId) {
-    setStep("evaluation");
-  } else {
-    if (!isPreviewMode) {
-      await endConversation(null);
-    }
-    setStep("complete");
+// New state to track if auto-analysis has been attempted
+const [autoAnalyzed, setAutoAnalyzed] = useState(false);
+
+useEffect(() => {
+  const shouldAutoAnalyze = 
+    responseCount >= 5 && 
+    !hasAnalysis && 
+    !autoAnalyzed && 
+    !isAnalyzing &&
+    surveyId;
+
+  if (shouldAutoAnalyze) {
+    const timer = setTimeout(() => {
+      setAutoAnalyzed(true);
+      analyzeThemes();
+    }, 3000); // 3 second delay
     
-    toast({
-      title: isPreviewMode ? "Preview Complete!" : "Thank you!",
-      description: isPreviewMode
-        ? "You've experienced the complete employee survey journey."
-        : "Your feedback has been recorded.",
-    });
-
-    setTimeout(() => {
-      onComplete?.();
-    }, isPreviewMode ? 1000 : 2000);
+    return () => clearTimeout(timer);
   }
-}, [surveyDetails, isPreviewMode, conversationId, endConversation, toast, onComplete]);
+}, [responseCount, hasAnalysis, autoAnalyzed, isAnalyzing, surveyId]);
+```
 
-// 2. Update handleChatComplete to include handleSurveyComplete in deps
-const handleChatComplete = useCallback((chatData?: {...}) => {
-  if (chatData) {
-    const duration = Math.floor((Date.now() - conversationStartTime.current) / 1000);
-    setInterviewContext(prev => ({
-      ...prev,
-      themesDiscussed: chatData.themesDiscussed || [],
-      exchangeCount: chatData.exchangeCount || 0,
-      overallSentiment: chatData.sentiment || 'neutral',
-      duration,
-    }));
-  }
-  
-  handleSurveyComplete();
-}, [handleSurveyComplete]); // ← Now properly depends on handleSurveyComplete
+#### ActionSummaryCard Component
+
+```typescript
+interface ActionSummaryCardProps {
+  quickWins: QuickWin[];
+  criticalIssues: InterventionRecommendation[];
+  onViewAll: () => void;
+}
 ```
 
 ---
 
-### Files to Modify
+### File Changes Summary
 
-| File | Change |
-|------|--------|
-| `src/components/employee/EmployeeSurveyFlow.tsx` | Wrap `handleSurveyComplete` in `useCallback`, update dependency arrays for all callbacks |
-
----
-
-### Implementation Steps
-
-1. **Convert `handleSurveyComplete` to `useCallback`**
-   - Add dependencies: `surveyDetails`, `isPreviewMode`, `conversationId`, `endConversation`, `toast`, `onComplete`
-
-2. **Update `handleChatComplete` dependencies**
-   - Add `handleSurveyComplete` to the dependency array
-
-3. **Also fix `handleEvaluationComplete` and `handleEvaluationSkip`**
-   - These similarly need to be wrapped with proper dependencies
+| File | Action | Description |
+|------|--------|-------------|
+| `src/components/hr/analytics/DataConfidenceBanner.tsx` | Create | Confidence indicator banner |
+| `src/components/hr/analytics/ActionSummaryCard.tsx` | Create | Compact quick wins/issues display |
+| `src/components/hr/analytics/AnalyticsEmptyState.tsx` | Create | Smart contextual empty states |
+| `src/components/hr/analytics/SurveyComparison.tsx` | Create | Survey comparison table |
+| `src/hooks/useSurveyComparison.ts` | Create | Comparative analytics hook |
+| `src/hooks/useThemeAnalytics.ts` | Modify | Add auto-trigger logic |
+| `src/components/hr/analytics/HybridInsightsView.tsx` | Modify | Integrate all new components |
+| `src/pages/hr/Analytics.tsx` | Modify | Add comparison section |
 
 ---
 
-### Additional Observation
+### Implementation Order
 
-The conversation session shows `status: active` and `ended_at: null`. This suggests one of two things:
-1. The stale closure bug caused `handleComplete` to never run properly
-2. OR the user closed the browser before clicking "Complete Session"
-
-Either way, fixing the stale closure issue will ensure the evaluation appears when the survey is properly completed.
+1. **DataConfidenceBanner** - Immediate visual feedback on data quality
+2. **AnalyticsEmptyState** - Better guidance when data is sparse
+3. **Auto-trigger theme analysis** - Reduce manual steps
+4. **ActionSummaryCard** - Surface actionable insights
+5. **SurveyComparison** - Enable trend tracking
 
 ---
 
-### Testing Plan
+### Testing Checklist
 
-1. Complete the DD test survey via `/survey/896a760522aa414b`
-2. Answer all questions and wait for the Summary Receipt
-3. Click "Complete Session" button
-4. **Expected**: FocusedEvaluation component should appear
-5. Complete the evaluation questions
-6. Verify `spradley_evaluations` table has a new record
+- [ ] Verify confidence banner shows correct level based on response count
+- [ ] Confirm auto-analysis triggers after 3 seconds when threshold met
+- [ ] Test empty state variations for different survey states
+- [ ] Validate quick wins/critical issues display correctly
+- [ ] Test survey comparison with 2+ surveys
+
