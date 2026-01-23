@@ -1,16 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { Message, StructuredSummary } from "@/types/interview";
 
-export interface Message {
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-}
-
-export interface StructuredSummary {
-  keyPoints: string[];
-  sentiment: "positive" | "mixed" | "negative";
-}
+// Re-export types for backwards compatibility
+export type { Message, StructuredSummary };
 
 interface UseChatMessagesOptions {
   conversationId: string;

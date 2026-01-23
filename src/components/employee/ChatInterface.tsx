@@ -20,8 +20,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { FinishEarlyConfirmationDialog } from "./FinishEarlyConfirmationDialog";
 import { CompletionConfirmationButtons } from "./CompletionConfirmationButtons";
 import { SummaryReceipt } from "./SummaryReceipt";
-import { Message, useChatMessages } from "@/hooks/useChatMessages";
+import { useChatMessages } from "@/hooks/useChatMessages";
 import { useChatAPI } from "@/hooks/useChatAPI";
+import type { ThemeProgress, ThemeCoverage } from "@/types/interview";
 
 interface ChatInterfaceProps {
   conversationId: string;
@@ -38,7 +39,9 @@ const ESTIMATED_TOTAL_QUESTIONS = 8;
 const PROGRESS_COMPLETE_THRESHOLD = 100;
 
 type TrustFlowStep = "introduction" | "anonymization" | "chat" | "complete";
-type FinishEarlyStep = "none" | "confirming" | "summarizing" | "final-question" | "completing";
+
+// Simplified completion phase: active, reviewing, or complete
+type CompletionPhase = "active" | "reviewing" | "complete";
 
 // Helper function to check if a conversation session is a public link session
 const checkIsPublicLinkSession = async (conversationId: string): Promise<boolean> => {
@@ -107,8 +110,19 @@ export const ChatInterface = ({
   const [culturalContext, setCulturalContext] = useState<CulturalContext | null>(null);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(false);
-  const [finishEarlyStep, setFinishEarlyStep] = useState<FinishEarlyStep>("none");
-  const [themeCoverage, setThemeCoverage] = useState({ discussed: 0, total: 0, percentage: 0 });
+  
+  // Simplified state machine: use boolean for dialog + phase from isInCompletionPhase
+  const [isFinishDialogOpen, setFinishDialogOpen] = useState(false);
+  
+  // Theme progress from backend (single source of truth)
+  const [themeProgress, setThemeProgress] = useState<ThemeProgress | null>(null);
+  
+  // Derive theme coverage from themeProgress
+  const themeCoverage: ThemeCoverage = {
+    discussed: themeProgress?.discussedCount ?? 0,
+    total: themeProgress?.totalCount ?? 0,
+    percentage: themeProgress?.coveragePercent ?? 0,
+  };
   
   // Voice recording state
   const [isRecording, setIsRecording] = useState(false);
@@ -150,7 +164,7 @@ export const ChatInterface = ({
     messages,
     input,
     isLoading,
-    finishEarlyStep,
+    finishEarlyStep: isFinishDialogOpen ? "confirming" : "none", // Map to legacy format
     themeCoverage,
     setIsLoading,
     addMessage,
@@ -160,6 +174,7 @@ export const ChatInterface = ({
     setInput,
     setIsInCompletionPhase,
     setStructuredSummary,
+    onThemeProgressUpdate: setThemeProgress,
     onComplete,
   });
 
@@ -273,70 +288,30 @@ export const ChatInterface = ({
     }
   };
 
-  // Calculate theme coverage
-  const calculateThemeCoverage = useCallback(async () => {
-    if (isPreviewMode) {
-      // In preview mode, estimate based on messages
-      const totalThemes = previewSurveyData?.themes?.length || 0;
-      if (totalThemes === 0) {
-        setThemeCoverage({ discussed: 0, total: 0, percentage: 0 });
-        return;
-      }
-      // Estimate: assume some themes are discussed based on exchange count
-      const discussed = Math.min(Math.ceil(messages.filter(m => m.role === "user").length / 2), totalThemes);
-      setThemeCoverage({
-        discussed,
-        total: totalThemes,
-        percentage: (discussed / totalThemes) * 100,
-      });
-      return;
-    }
-
-    try {
-      // Fetch responses with theme_id
-      const { data: responses } = await supabase
-        .from("responses")
-        .select("theme_id")
-        .eq("conversation_session_id", conversationId);
-
-      if (!responses) return;
-
-      // Get survey themes
-      const { data: session } = await supabase
-        .from("conversation_sessions")
-        .select("survey_id, surveys(themes)")
-        .eq("id", conversationId)
-        .single();
-
-      if (!session?.surveys) return;
-
-      const themeIds = (session.surveys as any)?.themes || [];
-      const totalThemes = themeIds.length;
-      
-      if (totalThemes === 0) {
-        setThemeCoverage({ discussed: 0, total: 0, percentage: 0 });
-        return;
-      }
-
-      // Count unique themes discussed
-      const discussedThemeIds = new Set(
-        responses.filter(r => r.theme_id).map(r => r.theme_id)
-      );
-      const discussed = discussedThemeIds.size;
-      const percentage = (discussed / totalThemes) * 100;
-
-      setThemeCoverage({ discussed, total: totalThemes, percentage });
-    } catch (error) {
-      console.error("Error calculating theme coverage:", error);
-    }
-  }, [conversationId, messages, isPreviewMode, previewSurveyData]);
-
-  // Update theme coverage when messages change
+  // Theme progress is now updated from backend via onThemeProgressUpdate callback
+  // No need for frontend calculation - backend is single source of truth
+  
+  // For preview mode fallback: estimate theme progress from messages
   useEffect(() => {
-    if (messages.length > 0 && trustFlowStep === "chat") {
-      calculateThemeCoverage();
+    if (isPreviewMode && messages.length > 0 && trustFlowStep === "chat" && !themeProgress) {
+      const totalThemes = previewSurveyData?.themes?.length || 0;
+      if (totalThemes > 0) {
+        const discussed = Math.min(Math.ceil(messages.filter(m => m.role === "user").length / 2), totalThemes);
+        setThemeProgress({
+          themes: (previewSurveyData?.themes || []).map((t: any, i: number) => ({
+            id: t.id || `theme-${i}`,
+            name: t.name || `Theme ${i + 1}`,
+            discussed: i < discussed,
+            current: i === discussed,
+            depth: i < discussed ? 50 : 0
+          })),
+          coveragePercent: (discussed / totalThemes) * 100,
+          discussedCount: discussed,
+          totalCount: totalThemes
+        });
+      }
     }
-  }, [messages, trustFlowStep, calculateThemeCoverage]);
+  }, [messages, trustFlowStep, isPreviewMode, previewSurveyData, themeProgress]);
 
   // Fallback: Generate a basic structured summary from messages if we enter completion
   // phase but don't have a structured summary from the backend
@@ -356,9 +331,9 @@ export const ChatInterface = ({
   }, [isInCompletionPhase, structuredSummary, messages, setStructuredSummary]);
 
 
-  // Handle finish early - trigger confirmation dialog
+  // Handle finish early - trigger confirmation dialog (simplified state)
   const handleFinishEarlyClick = useCallback(() => {
-    setFinishEarlyStep("confirming");
+    setFinishDialogOpen(true);
   }, []);
 
   // Handle completion confirmation via buttons
@@ -501,7 +476,7 @@ export const ChatInterface = ({
                   variant="ghost"
                   size="sm"
                   className="h-7"
-                  disabled={finishEarlyStep !== "none" || isLoading}
+                  disabled={isFinishDialogOpen || isLoading}
                 >
                   <CheckCircle className="h-3 w-3 mr-1" />
                   Finish Early
@@ -685,9 +660,9 @@ export const ChatInterface = ({
 
       {/* Finish Early Confirmation Dialog */}
       <FinishEarlyConfirmationDialog
-        open={finishEarlyStep === "confirming"}
+        open={isFinishDialogOpen}
         onConfirm={handleConfirmFinishEarly}
-        onCancel={() => setFinishEarlyStep("none")}
+        onCancel={() => setFinishDialogOpen(false)}
         themeCoverage={themeCoverage}
         exchangeCount={userMessageCount}
         minExchanges={4}

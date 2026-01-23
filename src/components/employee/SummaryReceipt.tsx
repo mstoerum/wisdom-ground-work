@@ -1,12 +1,10 @@
 import { CheckCircle2, Clock, MessageSquare, Shield, Heart } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { motion } from "framer-motion";
+import type { StructuredSummary } from "@/types/interview";
 
-export interface StructuredSummary {
-  opening?: string;  // Personalized acknowledgment
-  keyPoints: string[];
-  sentiment: "positive" | "mixed" | "negative" | "constructive";
-}
+// Re-export for backwards compatibility
+export type { StructuredSummary };
 
 interface SummaryReceiptProps {
   conversationId: string;
