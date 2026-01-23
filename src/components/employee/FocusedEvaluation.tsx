@@ -4,8 +4,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { AIResponseDisplay } from "./AIResponseDisplay";
 import { AnswerInput } from "./AnswerInput";
 import { Button } from "@/components/ui/button";
-import { Loader2, MessageSquareHeart, SkipForward } from "lucide-react";
+import { Loader2, MessageSquareHeart, SkipForward, ArrowRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useEvaluationLLM } from "@/hooks/useEvaluationLLM";
 import {
   InterviewContext,
   EVALUATION_DIMENSIONS,
@@ -23,7 +24,7 @@ interface FocusedEvaluationProps {
   onSkip?: () => void;
 }
 
-type EvaluationPhase = "intro" | "rating" | "questions" | "saving" | "complete";
+type EvaluationPhase = "intro" | "rating" | "questions" | "probe" | "saving" | "complete";
 
 export const FocusedEvaluation = ({
   surveyId,
@@ -41,9 +42,28 @@ export const FocusedEvaluation = ({
   const [currentAnswer, setCurrentAnswer] = useState("");
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [startTime] = useState<number>(Date.now());
+  
+  // LLM-generated content
+  const [llmEmpathy, setLlmEmpathy] = useState<string | null>(null);
+  const [probeQuestion, setProbeQuestion] = useState<string | null>(null);
+  const [probeAnswer, setProbeAnswer] = useState("");
+  const [currentDimensionForProbe, setCurrentDimensionForProbe] = useState<string | null>(null);
 
   // Use provided context or create default
   const context = useMemo(() => interviewContext || createDefaultContext(), [interviewContext]);
+
+  // LLM hook for generating follow-ups
+  const {
+    generateFollowUp,
+    recordProbeAnswer,
+    getCollectedInsights,
+    isGenerating,
+  } = useEvaluationLLM({
+    surveyId,
+    conversationSessionId,
+    interviewContext: context,
+    quickRating,
+  });
 
   // Auto-advance from intro after a brief pause
   useEffect(() => {
@@ -80,23 +100,22 @@ export const FocusedEvaluation = ({
     }, 300);
   };
 
-  const saveEvaluation = useCallback(async (allResponses: Record<string, string>, allQuestionsAsked: Record<string, string>, rating: number | null) => {
+  const saveEvaluation = useCallback(async (
+    allResponses: Record<string, string>, 
+    allQuestionsAsked: Record<string, string>, 
+    rating: number | null
+  ) => {
     setPhase("saving");
     
     try {
-      // Get session if authenticated
       const { data: { session } } = await supabase.auth.getSession();
-      
-      // Calculate sentiment using utility function
       const { sentiment, sentimentScore } = calculateEvaluationSentiment(allResponses, rating);
-      
-      // Calculate duration
       const durationSeconds = Math.floor((Date.now() - startTime) / 1000);
-
-      // Build structured evaluation responses
       const evaluationResponses = buildEvaluationResponses(allResponses, allQuestionsAsked);
+      
+      // Include LLM-collected insights
+      const llmInsights = getCollectedInsights();
 
-      // Save to database
       const { error } = await supabase.from("spradley_evaluations").insert({
         survey_id: surveyId,
         conversation_session_id: conversationSessionId,
@@ -108,6 +127,7 @@ export const FocusedEvaluation = ({
           response_count: Object.keys(allResponses).length,
           quick_rating: rating,
           interview_context: context,
+          llm_insights: llmInsights,
         })),
         duration_seconds: durationSeconds,
         completed_at: new Date().toISOString(),
@@ -129,7 +149,25 @@ export const FocusedEvaluation = ({
       setPhase("complete");
       setTimeout(onComplete, 800);
     }
-  }, [surveyId, conversationSessionId, context, startTime, onComplete, toast]);
+  }, [surveyId, conversationSessionId, context, startTime, onComplete, toast, getCollectedInsights]);
+
+  const moveToNextQuestion = useCallback(async (
+    newResponses: Record<string, string>,
+    newQuestionsAsked: Record<string, string>
+  ) => {
+    if (currentQuestionIndex < EVALUATION_DIMENSIONS.length - 1) {
+      // Move to next question
+      setCurrentQuestionIndex(prev => prev + 1);
+      setCurrentAnswer("");
+      setLlmEmpathy(null);
+      setProbeQuestion(null);
+      setIsTransitioning(false);
+      setPhase("questions");
+    } else {
+      // All questions answered - save and complete
+      await saveEvaluation(newResponses, newQuestionsAsked, quickRating);
+    }
+  }, [currentQuestionIndex, quickRating, saveEvaluation]);
 
   const handleSubmit = useCallback(async () => {
     if (!currentAnswer.trim()) return;
@@ -140,33 +178,71 @@ export const FocusedEvaluation = ({
     
     setResponses(newResponses);
     setQuestionsAsked(newQuestionsAsked);
-
     setIsTransitioning(true);
 
-    // Short transition delay
-    await new Promise(resolve => setTimeout(resolve, 250));
+    // Generate LLM follow-up
+    const followUp = await generateFollowUp(
+      dimensionId,
+      currentQuestion.dimensionName,
+      currentAnswer,
+      responses
+    );
 
-    if (currentQuestionIndex < EVALUATION_DIMENSIONS.length - 1) {
-      // Move to next question
-      setCurrentQuestionIndex(prev => prev + 1);
-      setCurrentAnswer("");
+    setLlmEmpathy(followUp.empathy);
+
+    // Check if we should probe deeper
+    if (followUp.shouldProbeDeeper && followUp.probeQuestion) {
+      setProbeQuestion(followUp.probeQuestion);
+      setCurrentDimensionForProbe(dimensionId);
       setIsTransitioning(false);
+      setPhase("probe");
     } else {
-      // All questions answered - save and complete
-      await saveEvaluation(newResponses, newQuestionsAsked, quickRating);
+      // Short pause to show empathy, then move on
+      await new Promise(resolve => setTimeout(resolve, 800));
+      await moveToNextQuestion(newResponses, newQuestionsAsked);
     }
-  }, [currentAnswer, currentQuestionIndex, currentQuestion, responses, questionsAsked, quickRating, saveEvaluation]);
+  }, [currentAnswer, currentQuestion, responses, questionsAsked, generateFollowUp, moveToNextQuestion]);
+
+  const handleProbeSubmit = useCallback(async () => {
+    if (!probeAnswer.trim()) return;
+
+    setIsTransitioning(true);
+    
+    // Record the probe answer
+    recordProbeAnswer(probeAnswer);
+    
+    // Add probe answer to the dimension's response
+    if (currentDimensionForProbe) {
+      const enhancedResponse = `${responses[currentDimensionForProbe]}\n\n[Follow-up: ${probeQuestion}]\n${probeAnswer}`;
+      setResponses(prev => ({
+        ...prev,
+        [currentDimensionForProbe]: enhancedResponse,
+      }));
+    }
+
+    setProbeAnswer("");
+    setProbeQuestion(null);
+    setCurrentDimensionForProbe(null);
+
+    // Small pause then continue
+    await new Promise(resolve => setTimeout(resolve, 300));
+    await moveToNextQuestion(responses, questionsAsked);
+  }, [probeAnswer, probeQuestion, currentDimensionForProbe, responses, questionsAsked, recordProbeAnswer, moveToNextQuestion]);
+
+  const handleSkipProbe = useCallback(async () => {
+    setProbeQuestion(null);
+    setCurrentDimensionForProbe(null);
+    setProbeAnswer("");
+    await moveToNextQuestion(responses, questionsAsked);
+  }, [responses, questionsAsked, moveToNextQuestion]);
 
   const handleSkip = useCallback(() => {
-    // Save whatever we have and complete
     if (Object.keys(responses).length > 0) {
       saveEvaluation(responses, questionsAsked, quickRating);
     } else {
       onSkip?.();
     }
   }, [responses, questionsAsked, quickRating, saveEvaluation, onSkip]);
-
-  const progressPercentage = ((currentQuestionIndex + 1) / EVALUATION_DIMENSIONS.length) * 100;
 
   return (
     <div className="min-h-[60vh] flex flex-col items-center justify-center p-6">
@@ -186,7 +262,7 @@ export const FocusedEvaluation = ({
       )}
 
       <AnimatePresence mode="wait">
-        {/* Intro Phase - Brief transition */}
+        {/* Intro Phase */}
         {phase === "intro" && (
           <motion.div
             key="intro"
@@ -276,7 +352,6 @@ export const FocusedEvaluation = ({
               <p className="text-sm text-muted-foreground">
                 Question {currentQuestionIndex + 1} of {EVALUATION_DIMENSIONS.length}
               </p>
-              {/* Progress dots */}
               <div className="flex items-center justify-center gap-2">
                 {EVALUATION_DIMENSIONS.map((_, idx) => (
                   <div
@@ -291,17 +366,17 @@ export const FocusedEvaluation = ({
               </div>
             </div>
 
-            {/* Empathy acknowledgment from previous answer */}
+            {/* LLM Empathy from previous answer */}
             <AnimatePresence mode="wait">
-              {currentQuestion.empathy && (
+              {llmEmpathy && (
                 <motion.p
-                  key={`empathy-${currentQuestionIndex}`}
+                  key="llm-empathy"
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
                   className="text-sm text-muted-foreground italic"
                 >
-                  {currentQuestion.empathy}
+                  {llmEmpathy}
                 </motion.p>
               )}
             </AnimatePresence>
@@ -317,7 +392,7 @@ export const FocusedEvaluation = ({
               >
                 <AIResponseDisplay
                   question={currentQuestion.question}
-                  isTransitioning={isTransitioning}
+                  isTransitioning={isTransitioning || isGenerating}
                 />
               </motion.div>
             </AnimatePresence>
@@ -327,15 +402,74 @@ export const FocusedEvaluation = ({
               value={currentAnswer}
               onChange={setCurrentAnswer}
               onSubmit={handleSubmit}
-              isLoading={isTransitioning}
+              isLoading={isTransitioning || isGenerating}
               placeholder={currentQuestion.placeholder}
-              disabled={isTransitioning}
+              disabled={isTransitioning || isGenerating}
             />
 
-            {/* Helper text */}
+            {isGenerating && (
+              <p className="text-xs text-muted-foreground animate-pulse">
+                Thinking...
+              </p>
+            )}
+
             <p className="text-xs text-muted-foreground text-center">
               Your feedback helps improve the experience for everyone
             </p>
+          </motion.div>
+        )}
+
+        {/* Probe Phase - LLM-generated follow-up question */}
+        {phase === "probe" && probeQuestion && (
+          <motion.div
+            key="probe"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="w-full max-w-2xl flex flex-col items-center gap-6"
+          >
+            {/* Empathy acknowledgment */}
+            {llmEmpathy && (
+              <motion.p
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-base text-foreground/80"
+              >
+                {llmEmpathy}
+              </motion.p>
+            )}
+
+            {/* Probe question */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <AIResponseDisplay
+                question={probeQuestion}
+                isTransitioning={isTransitioning}
+              />
+            </motion.div>
+
+            {/* Probe answer input */}
+            <AnswerInput
+              value={probeAnswer}
+              onChange={setProbeAnswer}
+              onSubmit={handleProbeSubmit}
+              isLoading={isTransitioning}
+              placeholder="Tell me more..."
+              disabled={isTransitioning}
+            />
+
+            {/* Skip probe option */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSkipProbe}
+              className="text-muted-foreground gap-1"
+            >
+              Continue <ArrowRight className="h-3 w-3" />
+            </Button>
           </motion.div>
         )}
 
