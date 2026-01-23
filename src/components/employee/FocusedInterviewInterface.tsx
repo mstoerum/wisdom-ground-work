@@ -13,18 +13,8 @@ import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { supabase } from "@/integrations/supabase/client";
 import { CheckCircle } from "lucide-react";
 import { FinishEarlyConfirmationDialog } from "./FinishEarlyConfirmationDialog";
-
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
-
-interface ThemeProgress {
-  themes: Array<{ id: string; name: string; discussed: boolean; current: boolean; depth?: number }>;
-  coveragePercent: number;
-  discussedCount: number;
-  totalCount: number;
-}
+import { useInterviewCompletion } from "@/hooks/useInterviewCompletion";
+import type { Message, ThemeProgress } from "@/types/interview";
 
 interface FocusedInterviewInterfaceProps {
   conversationId: string;
@@ -44,6 +34,29 @@ export const FocusedInterviewInterface = ({
   const { toast } = useToast();
   const { isPreviewMode, previewSurveyData } = usePreviewMode();
   
+  // Use the shared completion hook
+  const {
+    isActive,
+    isReviewing,
+    structuredSummary,
+    themeProgress: hookThemeProgress,
+    isFinishDialogOpen,
+    isProcessing,
+    handleFinishEarlyClick,
+    handleCancelFinishEarly,
+    handleConfirmFinishEarly,
+    handleAddMore,
+    handleComplete,
+    enterReviewingPhase,
+    updateThemeProgress,
+  } = useInterviewCompletion({
+    conversationId,
+    isPreviewMode,
+    previewSurveyData,
+    publicLinkId,
+    onComplete,
+  });
+  
   // Mood was already selected in WelcomeScreen, so skip mood selector unless minimalUI (demo mode)
   const [showMoodSelector, setShowMoodSelector] = useState(minimalUI);
   const [showMoodTransition, setShowMoodTransition] = useState(false);
@@ -58,19 +71,15 @@ export const FocusedInterviewInterface = ({
   const [isLoading, setIsLoading] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<Message[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [showFinishDialog, setShowFinishDialog] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [themeProgress, setThemeProgress] = useState<ThemeProgress | null>(null);
   
-  // Completion phase states
-  const [isInCompletionPhase, setIsInCompletionPhase] = useState(false);
-  const [structuredSummary, setStructuredSummary] = useState<{
-    opening?: string;
-    keyPoints: string[];
-    sentiment: "positive" | "mixed" | "negative" | "constructive";
-  } | null>(null);
+  // Local theme progress for initial transitions - sync with hook
+  const [localThemeProgress, setLocalThemeProgress] = useState<ThemeProgress | null>(null);
   const [conversationStartTime] = useState(() => new Date());
+  
+  // Use hook's themeProgress if available, otherwise local
+  const themeProgress = hookThemeProgress || localThemeProgress;
   
   // Track if API call has completed during transition
   const pendingQuestionRef = useRef<{ question: string; empathy: string | null; history: Message[]; themeProgress: ThemeProgress | null } | null>(null);
@@ -185,11 +194,12 @@ export const FocusedInterviewInterface = ({
       setCurrentEmpathy(pendingQuestionRef.current.empathy);
       setConversationHistory(pendingQuestionRef.current.history);
       if (pendingQuestionRef.current.themeProgress) {
-        setThemeProgress(pendingQuestionRef.current.themeProgress);
+        setLocalThemeProgress(pendingQuestionRef.current.themeProgress);
+        updateThemeProgress(pendingQuestionRef.current.themeProgress);
       }
       pendingQuestionRef.current = null;
     }
-  }, []);
+  }, [updateThemeProgress]);
 
   // Auto-initialize conversation when coming from WelcomeScreen (mood already selected)
   useEffect(() => {
@@ -266,32 +276,18 @@ export const FocusedInterviewInterface = ({
 
       // Update theme progress if available
       if (data.themeProgress) {
-        setThemeProgress(data.themeProgress);
+        setLocalThemeProgress(data.themeProgress);
+        updateThemeProgress(data.themeProgress);
       }
 
-      // Handle completion - show receipt + buttons instead of auto-completing
+      // Handle completion - use hook's enterReviewingPhase
       if (data.shouldComplete || data.isCompletionPrompt) {
         setCurrentQuestion(messageText);
         setCurrentEmpathy(data.empathy || null);
         setConversationHistory([...updatedHistory, { role: "assistant", content: messageText }]);
         
-        // Set structured summary from backend or generate fallback
-        if (data.structuredSummary) {
-          setStructuredSummary(data.structuredSummary);
-        } else {
-          // Fallback: generate summary from user messages with warm opening
-          const userMsgs = updatedHistory.filter(m => m.role === "user");
-          setStructuredSummary({
-            opening: "Thank you for taking the time to share your thoughts today.",
-            keyPoints: userMsgs.slice(-3).map(m => 
-              m.content.length > 100 ? m.content.substring(0, 97) + "..." : m.content
-            ),
-            sentiment: "mixed"
-          });
-        }
-        
-        // Enter completion phase - show receipt + buttons (NO auto-complete)
-        setIsInCompletionPhase(true);
+        // Enter reviewing phase via hook
+        enterReviewingPhase(data.structuredSummary || null, [...updatedHistory, { role: "assistant", content: messageText }]);
         return;
       }
 
@@ -313,7 +309,7 @@ export const FocusedInterviewInterface = ({
       setIsLoading(false);
       setIsTransitioning(false);
     }
-  }, [currentAnswer, isLoading, conversationHistory, conversationId, isPreviewMode, previewSurveyData, getSession, onComplete, toast]);
+  }, [currentAnswer, isLoading, conversationHistory, conversationId, isPreviewMode, previewSurveyData, getSession, toast, updateThemeProgress, enterReviewingPhase]);
 
   // Handle audio transcription
   const handleTranscribe = useCallback(async (audioBlob: Blob) => {
@@ -361,73 +357,6 @@ export const FocusedInterviewInterface = ({
     }
   }, [getSession, toast]);
 
-  // Handle finish early
-  const handleFinishEarly = useCallback(async () => {
-    setShowFinishDialog(false);
-    setIsLoading(true);
-    
-    try {
-      const session = await getSession();
-      
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
-          },
-          body: JSON.stringify({
-            conversationId,
-            messages: conversationHistory.map(m => ({ role: m.role, content: m.content })),
-            finishEarly: true,
-            testMode: isPreviewMode,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to finish");
-      }
-
-      const data = await response.json();
-      setCurrentQuestion(data.message || "Thank you for sharing your thoughts today.");
-      
-      // Set structured summary from backend or generate fallback
-      if (data.structuredSummary) {
-        setStructuredSummary(data.structuredSummary);
-      } else {
-        const userMsgs = conversationHistory.filter(m => m.role === "user");
-        setStructuredSummary({
-          opening: "Thank you for taking the time to share your thoughts today.",
-          keyPoints: userMsgs.slice(-3).map(m => 
-            m.content.length > 100 ? m.content.substring(0, 97) + "..." : m.content
-          ),
-          sentiment: "mixed"
-        });
-      }
-      
-      // Enter completion phase - show receipt + buttons (NO auto-complete)
-      setIsInCompletionPhase(true);
-    } catch (error) {
-      console.error("Error finishing early:", error);
-      onComplete();
-    } finally {
-      setIsLoading(false);
-    }
-  }, [conversationId, conversationHistory, isPreviewMode, getSession, onComplete]);
-
-  // Button handlers for completion phase
-  const handleCompleteFromButtons = useCallback(() => {
-    onComplete();
-  }, [onComplete]);
-
-  const handleAddMoreFromButtons = useCallback(() => {
-    setIsInCompletionPhase(false);
-    setStructuredSummary(null);
-    // User can continue typing
-  }, []);
-
   // Show mood selector first (only in minimalUI/demo mode)
   if (showMoodSelector) {
     return (
@@ -459,12 +388,12 @@ export const FocusedInterviewInterface = ({
           )}
         </div>
         
-        {!minimalUI && (
+        {!minimalUI && isActive && (
           <div className="flex items-center gap-2 ml-auto">
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setShowFinishDialog(true)}
+              onClick={handleFinishEarlyClick}
               disabled={isLoading || questionNumber < 1}
               className="text-muted-foreground hover:text-foreground"
             >
@@ -478,7 +407,7 @@ export const FocusedInterviewInterface = ({
       {/* Main content area with side panel */}
       <div className="flex-1 flex">
         {/* Side panel with journey path - hidden on mobile and during completion */}
-        {!isInCompletionPhase && themeProgress && themeProgress.themes.length > 0 && (
+        {isActive && themeProgress && themeProgress.themes.length > 0 && (
           <motion.aside
             className="hidden md:flex flex-col w-[240px] border-r border-border/30 p-4 bg-muted/20"
             initial={{ opacity: 0, x: -20 }}
@@ -495,7 +424,7 @@ export const FocusedInterviewInterface = ({
         )}
 
         {/* Completion Phase - Show Receipt and Buttons */}
-        {isInCompletionPhase && structuredSummary && (
+        {isReviewing && structuredSummary && (
           <motion.div 
             className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-6"
             initial={{ opacity: 0, y: 20 }}
@@ -509,15 +438,15 @@ export const FocusedInterviewInterface = ({
               startTime={conversationStartTime}
             />
             <CompletionConfirmationButtons
-              onComplete={handleCompleteFromButtons}
-              onAddMore={handleAddMoreFromButtons}
-              isLoading={isLoading}
+              onComplete={handleComplete}
+              onAddMore={handleAddMore}
+              isLoading={isLoading || isProcessing}
             />
           </motion.div>
         )}
 
         {/* Main content - hidden during completion phase */}
-        {!isInCompletionPhase && (
+        {isActive && (
           <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-8">
             <AIResponseDisplay
               empathy={currentEmpathy || undefined}
@@ -540,7 +469,7 @@ export const FocusedInterviewInterface = ({
       </div>
 
       {/* Footer hint - hidden during completion phase */}
-      {!isInCompletionPhase && (
+      {isActive && (
         <div className="text-center pb-6">
           <p className="text-xs text-muted-foreground">
             Press Enter to continue • Your responses are anonymous
@@ -548,9 +477,9 @@ export const FocusedInterviewInterface = ({
         </div>
       )}
 
-      {/* Finish Early Dialog */}
+      {/* Finish Early Dialog - uses hook's state and handlers */}
       <FinishEarlyConfirmationDialog
-        open={showFinishDialog}
+        open={isFinishDialogOpen}
         themeCoverage={{ 
           discussed: themeProgress?.discussedCount || questionNumber, 
           total: themeProgress?.totalCount || 6, 
@@ -558,8 +487,8 @@ export const FocusedInterviewInterface = ({
         }}
         exchangeCount={questionNumber}
         minExchanges={3}
-        onConfirm={handleFinishEarly}
-        onCancel={() => setShowFinishDialog(false)}
+        onConfirm={() => handleConfirmFinishEarly(conversationHistory)}
+        onCancel={handleCancelFinishEarly}
       />
     </div>
   );
