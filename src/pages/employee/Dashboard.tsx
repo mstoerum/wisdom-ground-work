@@ -5,7 +5,6 @@ import { ChatInterface } from "@/components/employee/ChatInterface";
 import { AnonymizationBanner } from "@/components/employee/AnonymizationBanner";
 import { AnonymizationRitual } from "@/components/employee/AnonymizationRitual";
 import { ConsentModal } from "@/components/employee/ConsentModal";
-import { ClosingRitual } from "@/components/employee/ClosingRitual";
 import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
 import { VisibleCommitments } from "@/components/employee/VisibleCommitments";
 import { SurveyHistory } from "@/components/employee/SurveyHistory";
@@ -20,7 +19,8 @@ import { MessageSquare, PlayCircle } from "lucide-react";
 import { EmployeeLayout } from "@/components/employee/EmployeeLayout";
 import { useNavigate } from "react-router-dom";
 
-type ConversationStep = "consent" | "anonymization" | "mood" | "chat" | "closing" | "complete";
+// Removed "closing" step - now handled in SummaryReceipt
+type ConversationStep = "consent" | "anonymization" | "mood" | "chat" | "complete";
 
 const EmployeeDashboard = () => {
   const [step, setStep] = useState<ConversationStep>("consent");
@@ -118,8 +118,9 @@ const EmployeeDashboard = () => {
     }
   };
 
-  const handleChatComplete = () => {
-    setStep("closing");
+  const handleChatComplete = async () => {
+    // Skip closing ritual - now handled in SummaryReceipt
+    await handleComplete(mood);
   };
 
   const handleComplete = async (finalMood: number) => {
@@ -273,12 +274,7 @@ const EmployeeDashboard = () => {
             </ChatErrorBoundary>
           )}
 
-          {step === "closing" && conversationId && (
-            <ClosingRitual 
-              conversationId={conversationId}
-              onComplete={async () => await handleComplete(mood)} 
-            />
-          )}
+          {/* Closing ritual removed - now handled in SummaryReceipt */}
 
           {step === "complete" && (
             <div className="text-center py-12 space-y-4">
