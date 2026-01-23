@@ -146,29 +146,8 @@ export const EmployeeSurveyFlow = ({
     }
   };
 
-  // Callback to receive interview data from chat interface
-  const handleChatComplete = useCallback((chatData?: {
-    themesDiscussed?: string[];
-    exchangeCount?: number;
-    sentiment?: 'positive' | 'neutral' | 'negative';
-  }) => {
-    // Update context with interview data
-    if (chatData) {
-      const duration = Math.floor((Date.now() - conversationStartTime.current) / 1000);
-      setInterviewContext(prev => ({
-        ...prev,
-        themesDiscussed: chatData.themesDiscussed || [],
-        exchangeCount: chatData.exchangeCount || 0,
-        overallSentiment: chatData.sentiment || 'neutral',
-        duration,
-      }));
-    }
-    
-    // Skip closing ritual - now integrated into SummaryReceipt
-    handleSurveyComplete();
-  }, []);
-
-  const handleSurveyComplete = async () => {
+  // Handle survey completion - wrapped in useCallback to fix stale closure
+  const handleSurveyComplete = useCallback(async () => {
     // Check if evaluation is enabled FIRST
     const enableEvaluation = surveyDetails?.consent_config?.enable_spradley_evaluation;
     
@@ -193,9 +172,31 @@ export const EmployeeSurveyFlow = ({
         onComplete?.();
       }, isPreviewMode ? 1000 : 2000);
     }
-  };
+  }, [surveyDetails, isPreviewMode, conversationId, endConversation, toast, onComplete]);
 
-  const handleEvaluationComplete = async () => {
+  // Callback to receive interview data from chat interface
+  const handleChatComplete = useCallback((chatData?: {
+    themesDiscussed?: string[];
+    exchangeCount?: number;
+    sentiment?: 'positive' | 'neutral' | 'negative';
+  }) => {
+    // Update context with interview data
+    if (chatData) {
+      const duration = Math.floor((Date.now() - conversationStartTime.current) / 1000);
+      setInterviewContext(prev => ({
+        ...prev,
+        themesDiscussed: chatData.themesDiscussed || [],
+        exchangeCount: chatData.exchangeCount || 0,
+        overallSentiment: chatData.sentiment || 'neutral',
+        duration,
+      }));
+    }
+    
+    // Skip closing ritual - now integrated into SummaryReceipt
+    handleSurveyComplete();
+  }, [handleSurveyComplete]);
+
+  const handleEvaluationComplete = useCallback(async () => {
     // End conversation after evaluation is complete
     if (!isPreviewMode) {
       await endConversation(null);
@@ -211,9 +212,9 @@ export const EmployeeSurveyFlow = ({
     setTimeout(() => {
       onComplete?.();
     }, 2000);
-  };
+  }, [isPreviewMode, endConversation, toast, onComplete]);
 
-  const handleEvaluationSkip = async () => {
+  const handleEvaluationSkip = useCallback(async () => {
     // End conversation even if evaluation was skipped
     if (!isPreviewMode) {
       await endConversation(null);
@@ -229,7 +230,7 @@ export const EmployeeSurveyFlow = ({
     setTimeout(() => {
       onComplete?.();
     }, 2000);
-  };
+  }, [isPreviewMode, endConversation, toast, onComplete]);
 
   const handleSaveAndExit = () => {
     if (isPreviewMode) {
