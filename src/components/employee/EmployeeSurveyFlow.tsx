@@ -4,7 +4,7 @@ import { FocusedInterviewInterface } from "@/components/employee/FocusedIntervie
 import { AnonymizationBanner } from "@/components/employee/AnonymizationBanner";
 import { WelcomeScreen } from "@/components/employee/WelcomeScreen";
 import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
-import { SpradleyEvaluation } from "@/components/employee/SpradleyEvaluation";
+import { FocusedEvaluation } from "@/components/employee/FocusedEvaluation";
 import { useConversation } from "@/hooks/useConversation";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -261,7 +261,7 @@ export const EmployeeSurveyFlow = ({
           {/* Closing ritual removed - now integrated into SummaryReceipt */}
 
           {step === "evaluation" && conversationId && (
-            <SpradleyEvaluation
+            <FocusedEvaluation
               surveyId={surveyId}
               conversationSessionId={conversationId}
               onComplete={handleEvaluationComplete}
