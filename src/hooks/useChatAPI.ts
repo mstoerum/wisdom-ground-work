@@ -1,7 +1,10 @@
 import { useCallback } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { soundEffects } from "@/utils/soundEffects";
-import { Message, StructuredSummary } from "./useChatMessages";
+import type { Message, StructuredSummary, ThemeProgress } from "@/types/interview";
+
+// Re-export types for backwards compatibility
+export type { Message, StructuredSummary };
 
 interface UseChatAPIOptions {
   conversationId: string;
@@ -21,6 +24,7 @@ interface UseChatAPIOptions {
   setInput: (input: string) => void;
   setIsInCompletionPhase: (phase: boolean) => void;
   setStructuredSummary?: (summary: StructuredSummary | null) => void;
+  onThemeProgressUpdate?: (themeProgress: ThemeProgress) => void;
   onComplete: () => void;
 }
 
@@ -92,6 +96,7 @@ export const useChatAPI = (options: UseChatAPIOptions) => {
     setInput,
     setIsInCompletionPhase,
     setStructuredSummary,
+    onThemeProgressUpdate,
     onComplete,
   } = options;
 
@@ -284,6 +289,11 @@ export const useChatAPI = (options: UseChatAPIOptions) => {
       
       if (!data || !data.message) {
         throw new Error("Invalid response from server - no message content");
+      }
+      
+      // Update theme progress from backend (single source of truth)
+      if (data.themeProgress && onThemeProgressUpdate) {
+        onThemeProgressUpdate(data.themeProgress);
       }
       
       // Handle completion prompt with structured summary
