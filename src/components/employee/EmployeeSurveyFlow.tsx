@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { FocusedInterviewInterface } from "@/components/employee/FocusedInterviewInterface";
 import { AnonymizationBanner } from "@/components/employee/AnonymizationBanner";
@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PlayCircle } from "lucide-react";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
+import { InterviewContext, createDefaultContext } from "@/utils/evaluationQuestions";
 
 // Removed "closing" step - now handled in SummaryReceipt
 type ConversationStep = "welcome" | "chat" | "evaluation" | "complete";
@@ -45,6 +46,10 @@ export const EmployeeSurveyFlow = ({
   const [autoStarted, setAutoStarted] = useState(false);
   const { conversationId, startConversation, endConversation } = useConversation(publicLinkId);
   const { toast } = useToast();
+  
+  // Track interview context for evaluation personalization
+  const [interviewContext, setInterviewContext] = useState<InterviewContext>(createDefaultContext());
+  const conversationStartTime = useRef<number>(Date.now());
 
   // Auto-start conversation for skipIntro mode
   const autoStartConversation = async () => {
@@ -85,9 +90,17 @@ export const EmployeeSurveyFlow = ({
     }
 
     // Store initial mood for context
-    localStorage.setItem(`spradley_initial_mood_${surveyId}`, String(mood));
+    const moodValue = mood;
+    localStorage.setItem(`spradley_initial_mood_${surveyId}`, String(moodValue));
     // Mark user as having visited Spradley
     localStorage.setItem("spradley-visited", "true");
+    
+    // Update interview context with initial mood
+    setInterviewContext(prev => ({
+      ...prev,
+      initialMood: moodValue,
+    }));
+    conversationStartTime.current = Date.now();
 
     // Start conversation with mood
     if (!surveyId) {
@@ -133,10 +146,27 @@ export const EmployeeSurveyFlow = ({
     }
   };
 
-  const handleChatComplete = () => {
+  // Callback to receive interview data from chat interface
+  const handleChatComplete = useCallback((chatData?: {
+    themesDiscussed?: string[];
+    exchangeCount?: number;
+    sentiment?: 'positive' | 'neutral' | 'negative';
+  }) => {
+    // Update context with interview data
+    if (chatData) {
+      const duration = Math.floor((Date.now() - conversationStartTime.current) / 1000);
+      setInterviewContext(prev => ({
+        ...prev,
+        themesDiscussed: chatData.themesDiscussed || [],
+        exchangeCount: chatData.exchangeCount || 0,
+        overallSentiment: chatData.sentiment || 'neutral',
+        duration,
+      }));
+    }
+    
     // Skip closing ritual - now integrated into SummaryReceipt
     handleSurveyComplete();
-  };
+  }, []);
 
   const handleSurveyComplete = async () => {
     // Check if evaluation is enabled FIRST
@@ -264,6 +294,7 @@ export const EmployeeSurveyFlow = ({
             <FocusedEvaluation
               surveyId={surveyId}
               conversationSessionId={conversationId}
+              interviewContext={interviewContext}
               onComplete={handleEvaluationComplete}
               onSkip={handleEvaluationSkip}
             />
