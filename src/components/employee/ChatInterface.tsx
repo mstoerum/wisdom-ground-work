@@ -2,8 +2,9 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ConversationBubble } from "./ConversationBubble";
-import { VoiceInterface } from "./VoiceInterface";
-import { Send, Loader2, Mic, CheckCircle, CheckCircle2 } from "lucide-react";
+// VoiceInterface disabled - kept for future re-enablement
+// import { VoiceInterface } from "./VoiceInterface";
+import { Send, Loader2, CheckCircle, CheckCircle2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
@@ -108,8 +109,9 @@ export const ChatInterface = ({
   });
   const [sessionId, setSessionId] = useState<string>("");
   const [culturalContext, setCulturalContext] = useState<CulturalContext | null>(null);
-  const [isVoiceMode, setIsVoiceMode] = useState(false);
-  const [voiceSupported, setVoiceSupported] = useState(false);
+  // Voice mode disabled - kept for future re-enablement
+  // const [isVoiceMode, setIsVoiceMode] = useState(false);
+  // const [voiceSupported, setVoiceSupported] = useState(false);
   
   // Simplified state machine: use boolean for dialog + phase from isInCompletionPhase
   const [isFinishDialogOpen, setFinishDialogOpen] = useState(false);
@@ -178,13 +180,13 @@ export const ChatInterface = ({
     onComplete,
   });
 
-  // Check if browser supports voice
-  useEffect(() => {
-    const supported = 
-      'speechSynthesis' in window &&
-      ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
-    setVoiceSupported(supported);
-  }, []);
+  // Voice support check disabled - kept for future re-enablement
+  // useEffect(() => {
+  //   const supported = 
+  //     'speechSynthesis' in window &&
+  //     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+  //   setVoiceSupported(supported);
+  // }, []);
 
   // Initialize cultural context
   useEffect(() => {
@@ -387,16 +389,16 @@ export const ChatInterface = ({
     }
   }
 
-  // If in voice mode, show voice interface
-  if (isVoiceMode && trustFlowStep === "chat") {
-    return (
-      <VoiceInterface
-        conversationId={conversationId}
-        onSwitchToText={() => setIsVoiceMode(false)}
-        onComplete={onComplete}
-      />
-    );
-  }
+  // Voice interface disabled - kept for future re-enablement
+  // if (isVoiceMode && trustFlowStep === "chat") {
+  //   return (
+  //     <VoiceInterface
+  //       conversationId={conversationId}
+  //       onSwitchToText={() => setIsVoiceMode(false)}
+  //       onComplete={onComplete}
+  //     />
+  //   );
+  // }
 
   return (
     <div className={`flex flex-col bg-card rounded-lg border border-border/50 ${minimalUI ? 'min-h-[400px] max-h-[70vh]' : 'min-h-[500px] max-h-[80vh]'}`}>
@@ -417,26 +419,7 @@ export const ChatInterface = ({
         <TrustIndicators sessionId={sessionId} />
       )}
 
-      {/* Voice Mode Promotion Banner - Only show for real employees, not in preview/demo/minimal */}
-      {!minimalUI && !skipTrustFlow && !isPreviewMode && voiceSupported && !isVoiceMode && trustFlowStep === "chat" && (
-        <Alert className="mx-4 mt-4 border-[hsl(var(--lime-green))] bg-[hsl(var(--lime-green))]/10">
-          <Mic className="h-4 w-4 text-[hsl(var(--lime-green))]" />
-          <AlertDescription className="flex items-center justify-between">
-            <span className="text-sm">
-              Try our new <strong>Voice Mode</strong> for a more natural conversation experience
-            </span>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setIsVoiceMode(true)}
-              className="ml-4"
-            >
-              <Mic className="w-3 h-3 mr-2" />
-              Switch to Voice
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Voice Mode Promotion Banner - Disabled for now */}
       
       {/* Progress Indicator - Simplified for minimal UI */}
       <div className={`border-b border-border/50 ${minimalUI ? 'px-4 py-2' : 'p-3'}`}>
@@ -458,18 +441,7 @@ export const ChatInterface = ({
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                {/* Voice Mode Toggle - Always visible */}
-                {voiceSupported && (
-                  <Button
-                    onClick={() => setIsVoiceMode(true)}
-                    variant="outline"
-                    size="sm"
-                    className="h-7 border-[hsl(var(--lime-green))]/50 hover:bg-[hsl(var(--lime-green))]/10"
-                  >
-                    <Mic className="h-3 w-3 mr-1 text-[hsl(var(--lime-green))]" />
-                    Voice Mode
-                  </Button>
-                )}
+                {/* Voice Mode Toggle - Disabled for now */}
                 <span className="text-sm font-medium">{Math.round(progressPercent)}%</span>
                 <Button
                   onClick={handleFinishEarlyClick}
@@ -614,29 +586,7 @@ export const ChatInterface = ({
             </p>
           </div>
           
-          {/* Voice Recording Button */}
-          <div className="relative">
-            <Button
-              onClick={isRecording ? stopRecording : startRecording}
-              disabled={isLoading}
-              variant={isRecording ? "destructive" : "outline"}
-              className={`
-                w-14 h-14 flex-shrink-0 transition-all
-                ${isRecording ? 'animate-pulse scale-110 shadow-lg shadow-red-500/50' : ''}
-                ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
-              `}
-              type="button"
-              aria-label={isRecording ? 'Stop recording. Click to send your recorded message.' : 'Start recording. Click to record a voice message.'}
-              aria-pressed={isRecording}
-            >
-              <Mic className={`w-5 h-5 ${isRecording ? 'text-white' : ''}`} />
-            </Button>
-            {isRecording && (
-              <div className="absolute -top-2 -right-2 bg-red-500 rounded-full p-1 shadow-lg">
-                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
-              </div>
-            )}
-          </div>
+          {/* Voice Recording Button - Disabled for now */}
           
           {/* Send Button */}
           <Button
