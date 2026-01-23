@@ -72,7 +72,8 @@ export const FocusedInterviewInterface = ({
   const [isLoading, setIsLoading] = useState(false);
   const [conversationHistory, setConversationHistory] = useState<Message[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [isTranscribing, setIsTranscribing] = useState(false);
+  // Voice transcription disabled - kept for future re-enablement
+  // const [isTranscribing, setIsTranscribing] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   
   // Local theme progress for initial transitions - sync with hook
@@ -312,51 +313,8 @@ export const FocusedInterviewInterface = ({
     }
   }, [currentAnswer, isLoading, conversationHistory, conversationId, isPreviewMode, previewSurveyData, getSession, toast, updateThemeProgress, enterReviewingPhase]);
 
-  // Handle audio transcription
-  const handleTranscribe = useCallback(async (audioBlob: Blob) => {
-    setIsTranscribing(true);
-    
-    try {
-      const session = await getSession();
-      
-      const reader = new FileReader();
-      reader.readAsDataURL(audioBlob);
-      
-      reader.onloadend = async () => {
-        const base64Audio = (reader.result as string).split(',')[1];
-        
-        const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/transcribe-audio`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
-            },
-            body: JSON.stringify({ audio: base64Audio }),
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Transcription failed");
-        }
-
-        const data = await response.json();
-        if (data.text) {
-          setCurrentAnswer(prev => prev + (prev ? " " : "") + data.text);
-        }
-        setIsTranscribing(false);
-      };
-    } catch (error) {
-      console.error("Transcription error:", error);
-      toast({
-        title: "Transcription failed",
-        description: "Please try again or type your response",
-        variant: "destructive",
-      });
-      setIsTranscribing(false);
-    }
-  }, [getSession, toast]);
+  // Voice transcription disabled - kept for future re-enablement
+  // const handleTranscribe = useCallback(async (audioBlob: Blob) => { ... }, [getSession, toast]);
 
   // Show mood selector first (only in minimalUI/demo mode)
   if (showMoodSelector) {
@@ -460,8 +418,7 @@ export const FocusedInterviewInterface = ({
               value={currentAnswer}
               onChange={setCurrentAnswer}
               onSubmit={handleSubmit}
-              onTranscribe={handleTranscribe}
-              isLoading={isLoading || isTranscribing}
+              isLoading={isLoading}
               placeholder="Share your thoughts..."
               disabled={isLoading}
             />
