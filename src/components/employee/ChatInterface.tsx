@@ -497,6 +497,10 @@ export const ChatInterface = ({
               structuredSummary={structuredSummary}
               responseCount={userMessageCount}
               startTime={conversationStartTime}
+              showCompletionFlow={true}
+              onComplete={handleCompleteFromButtons}
+              onAddMore={handleAddMoreFromButtons}
+              isLoading={isLoading}
             />
           )}
           
@@ -552,14 +556,7 @@ export const ChatInterface = ({
         </div>
       </ScrollArea>
 
-      {/* Completion Confirmation Buttons */}
-      {isInCompletionPhase && messages.length > 0 && (
-        <CompletionConfirmationButtons
-          onComplete={handleCompleteFromButtons}
-          onAddMore={handleAddMoreFromButtons}
-          isLoading={isLoading}
-        />
-      )}
+      {/* Completion Confirmation Buttons - now integrated into SummaryReceipt */}
 
       <div className="p-4 border-t border-border/50 bg-background/95 backdrop-blur-md">
         {/* Suggested Prompts - Show only when input is empty and no messages yet */}

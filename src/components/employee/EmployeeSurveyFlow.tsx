@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { FocusedInterviewInterface } from "@/components/employee/FocusedInterviewInterface";
 import { AnonymizationBanner } from "@/components/employee/AnonymizationBanner";
 import { WelcomeScreen } from "@/components/employee/WelcomeScreen";
-import { ClosingRitual } from "@/components/employee/ClosingRitual";
 import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
 import { SpradleyEvaluation } from "@/components/employee/SpradleyEvaluation";
 import { useConversation } from "@/hooks/useConversation";
@@ -14,7 +13,8 @@ import { Button } from "@/components/ui/button";
 import { PlayCircle } from "lucide-react";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 
-type ConversationStep = "welcome" | "chat" | "closing" | "evaluation" | "complete";
+// Removed "closing" step - now handled in SummaryReceipt
+type ConversationStep = "welcome" | "chat" | "evaluation" | "complete";
 
 interface EmployeeSurveyFlowProps {
   surveyId: string;
@@ -134,7 +134,8 @@ export const EmployeeSurveyFlow = ({
   };
 
   const handleChatComplete = () => {
-    setStep("closing");
+    // Skip closing ritual - now integrated into SummaryReceipt
+    handleSurveyComplete();
   };
 
   const handleSurveyComplete = async () => {
@@ -252,17 +253,12 @@ export const EmployeeSurveyFlow = ({
                 onSaveAndExit={handleSaveAndExit}
                 publicLinkId={publicLinkId}
                 minimalUI={skipIntro}
+                surveyType={surveyDetails?.survey_type}
               />
             </ChatErrorBoundary>
           )}
 
-          {step === "closing" && conversationId && (
-            <ClosingRitual
-              conversationId={conversationId}
-              onComplete={handleSurveyComplete}
-              surveyType={surveyDetails?.survey_type}
-            />
-          )}
+          {/* Closing ritual removed - now integrated into SummaryReceipt */}
 
           {step === "evaluation" && conversationId && (
             <SpradleyEvaluation

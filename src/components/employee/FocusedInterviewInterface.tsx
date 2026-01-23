@@ -7,7 +7,6 @@ import { ThemeJourneyPath } from "./ThemeJourneyPath";
 import { MoodSelector } from "./MoodSelector";
 import { MoodTransition } from "./MoodTransition";
 import { SummaryReceipt } from "./SummaryReceipt";
-import { CompletionConfirmationButtons } from "./CompletionConfirmationButtons";
 import { useToast } from "@/hooks/use-toast";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,6 +21,7 @@ interface FocusedInterviewInterfaceProps {
   onSaveAndExit: () => void;
   publicLinkId?: string;
   minimalUI?: boolean;
+  surveyType?: 'employee_satisfaction' | 'course_evaluation';
 }
 
 export const FocusedInterviewInterface = ({
@@ -30,6 +30,7 @@ export const FocusedInterviewInterface = ({
   onSaveAndExit,
   publicLinkId,
   minimalUI = false,
+  surveyType = 'employee_satisfaction',
 }: FocusedInterviewInterfaceProps) => {
   const { toast } = useToast();
   const { isPreviewMode, previewSurveyData } = usePreviewMode();
@@ -423,10 +424,10 @@ export const FocusedInterviewInterface = ({
           </motion.aside>
         )}
 
-        {/* Completion Phase - Show Receipt and Buttons */}
+        {/* Completion Phase - Show Enhanced Receipt with inline buttons */}
         {isReviewing && structuredSummary && (
           <motion.div 
-            className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-6"
+            className="flex-1 flex flex-col items-center justify-center px-6 py-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
@@ -436,8 +437,8 @@ export const FocusedInterviewInterface = ({
               structuredSummary={structuredSummary}
               responseCount={questionNumber}
               startTime={conversationStartTime}
-            />
-            <CompletionConfirmationButtons
+              showCompletionFlow={true}
+              surveyType={surveyType}
               onComplete={handleComplete}
               onAddMore={handleAddMore}
               isLoading={isLoading || isProcessing}

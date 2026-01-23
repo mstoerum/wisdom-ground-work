@@ -1,5 +1,6 @@
-import { CheckCircle2, Clock, MessageSquare, Shield, Heart } from "lucide-react";
+import { CheckCircle2, Clock, MessageSquare, Shield, Heart, ArrowRight, Plus, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
 import type { StructuredSummary } from "@/types/interview";
 
@@ -11,6 +12,12 @@ interface SummaryReceiptProps {
   structuredSummary: StructuredSummary;
   responseCount: number;
   startTime?: Date;
+  // Enhanced completion flow props
+  showCompletionFlow?: boolean;
+  surveyType?: 'employee_satisfaction' | 'course_evaluation';
+  onComplete?: () => void;
+  onAddMore?: () => void;
+  isLoading?: boolean;
 }
 
 export const SummaryReceipt = ({
@@ -18,11 +25,18 @@ export const SummaryReceipt = ({
   structuredSummary,
   responseCount,
   startTime,
+  showCompletionFlow = false,
+  surveyType = 'employee_satisfaction',
+  onComplete,
+  onAddMore,
+  isLoading = false,
 }: SummaryReceiptProps) => {
   // Calculate duration
   const duration = startTime
     ? Math.round((Date.now() - startTime.getTime()) / 60000)
     : null;
+
+  const isCourseEvaluation = surveyType === 'course_evaluation';
 
   return (
     <motion.div
@@ -124,6 +138,79 @@ export const SummaryReceipt = ({
               )}
             </div>
           </motion.div>
+
+          {/* What happens next - only shown when showCompletionFlow is true */}
+          {showCompletionFlow && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7 }}
+              className="bg-muted/50 rounded-lg p-4"
+            >
+              <div className="flex items-start gap-3">
+                <Heart className="h-5 w-5 text-[hsl(var(--coral-accent))] mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium mb-2 text-foreground">What happens next?</p>
+                  {isCourseEvaluation ? (
+                    <ul className="text-sm text-muted-foreground space-y-1.5">
+                      <li>• Your feedback is analyzed with other responses</li>
+                      <li>• Instructors review insights to improve the course</li>
+                      <li>• Common themes shape future improvements</li>
+                    </ul>
+                  ) : (
+                    <ul className="text-sm text-muted-foreground space-y-1.5">
+                      <li>• Your feedback is analyzed with others to find trends</li>
+                      <li>• Leadership reviews aggregated insights</li>
+                      <li>• Action plans are developed based on common themes</li>
+                    </ul>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Action buttons - only shown when showCompletionFlow is true */}
+          {showCompletionFlow && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+              className="pt-2 space-y-3"
+            >
+              <p className="text-sm text-center text-muted-foreground">
+                Does this capture everything?
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={onAddMore}
+                  disabled={isLoading}
+                  className="flex-1 gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add more
+                </Button>
+                <Button
+                  variant="coral"
+                  onClick={onComplete}
+                  disabled={isLoading}
+                  className="flex-1 gap-2"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Completing...
+                    </>
+                  ) : (
+                    <>
+                      Complete Session
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </motion.div>
+          )}
         </CardContent>
       </Card>
     </motion.div>
