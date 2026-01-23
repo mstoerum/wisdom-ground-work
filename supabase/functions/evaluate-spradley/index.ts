@@ -75,7 +75,7 @@ serve(async (req) => {
       answer: answer,
     })) : [];
 
-    // Save evaluation to database
+    // Save evaluation to database - using correct column names
     const { data: evaluation, error: insertError } = await supabase
       .from("spradley_evaluations")
       .insert({
@@ -83,17 +83,15 @@ serve(async (req) => {
         conversation_session_id: conversationSessionId,
         employee_id: userId,
         evaluation_responses: formattedResponses,
-        quick_rating: quickRating || null,
-        sentiment_analysis: {
-          overall: sentiment || "neutral",
-          score: sentimentScore || 0.5,
-        },
-        insights: {
+        overall_sentiment: sentiment || "neutral",
+        sentiment_score: sentimentScore || 0.5,
+        key_insights: {
           response_count: formattedResponses.length,
           quick_rating: quickRating || null,
           saved_via: "batch_endpoint",
-          saved_at: new Date().toISOString(),
         },
+        duration_seconds: 0,
+        completed_at: new Date().toISOString(),
       })
       .select()
       .single();

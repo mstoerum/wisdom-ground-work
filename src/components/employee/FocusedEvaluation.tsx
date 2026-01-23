@@ -116,7 +116,7 @@ export const FocusedEvaluation = ({
         }
       }
 
-      // Save to database
+      // Save to database - match actual schema columns
       const { error } = await supabase.from("spradley_evaluations").insert({
         survey_id: surveyId,
         conversation_session_id: conversationSessionId,
@@ -126,17 +126,14 @@ export const FocusedEvaluation = ({
           question: EVALUATION_QUESTIONS.find(q => q.id === questionId)?.question || "",
           answer,
         })),
-        quick_rating: rating,
-        sentiment_analysis: {
-          overall: sentiment,
-          score: sentimentScore,
-        },
-        insights: {
+        overall_sentiment: sentiment,
+        sentiment_score: sentimentScore,
+        key_insights: {
           response_count: Object.keys(allResponses).length,
           quick_rating: rating,
-          completed_at: new Date().toISOString(),
         },
-        duration_seconds: 0, // Could track if needed
+        duration_seconds: 0,
+        completed_at: new Date().toISOString(),
       });
 
       if (error) {
