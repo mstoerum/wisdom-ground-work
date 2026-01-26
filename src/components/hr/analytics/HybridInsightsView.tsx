@@ -47,7 +47,10 @@ export function HybridInsightsView({
 }: HybridInsightsViewProps) {
   const [storyExpanded, setStoryExpanded] = useState(true);
   
-  const responseCount = participation?.completed || 0;
+  // NEW: Use responseCount from participation (actual answers), not just completed sessions
+  const responseCount = participation?.responseCount || participation?.completed || 0;
+  const sessionCount = participation?.sessionCount || participation?.totalAssigned || 0;
+  const activeSessionCount = participation?.activeSessionCount || participation?.pending || 0;
   
   // Theme analytics hook with auto-trigger
   const { 
@@ -91,15 +94,32 @@ export function HybridInsightsView({
     }
   };
   
-  // Check for empty state
-  const emptyStateType = getEmptyStateType(surveyId, responseCount);
+  // Check for empty state - now response-aware
+  const emptyStateType = getEmptyStateType(surveyId, responseCount, sessionCount, activeSessionCount);
   
-  // Show empty state for no survey or no/few responses
-  if (emptyStateType === 'no-survey' || emptyStateType === 'no-responses' || emptyStateType === 'few-responses') {
+  // Show empty state only for truly empty cases
+  // If we have responses (even without completed sessions), show the data!
+  if (emptyStateType === 'no-survey' || emptyStateType === 'no-responses') {
     return (
       <AnalyticsEmptyState
         type={emptyStateType}
         responseCount={responseCount}
+        sessionCount={sessionCount}
+        activeSessionCount={activeSessionCount}
+        surveyTitle={surveyTitle}
+        onShareLink={onShareLink}
+      />
+    );
+  }
+  
+  // For few-responses state, show if we really have no data to show
+  if (emptyStateType === 'few-responses' && themes.length === 0) {
+    return (
+      <AnalyticsEmptyState
+        type={emptyStateType}
+        responseCount={responseCount}
+        sessionCount={sessionCount}
+        activeSessionCount={activeSessionCount}
         surveyTitle={surveyTitle}
         onShareLink={onShareLink}
       />

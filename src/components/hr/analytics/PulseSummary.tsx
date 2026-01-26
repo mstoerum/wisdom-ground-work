@@ -24,16 +24,29 @@ export function PulseSummary({
     ? Math.round(themes.reduce((sum, t) => sum + t.avgSentiment, 0) / themes.length)
     : sentiment?.avgScore || 0;
 
+  // NEW: Use responseCount for public surveys where sessions may not be completed
+  const responseCount = participation?.responseCount || 0;
+  const sessionCount = participation?.sessionCount || participation?.totalAssigned || 0;
+  const activeSessionCount = participation?.activeSessionCount || 0;
+  
+  // Show responses as primary metric if we have them, otherwise completed sessions
+  const voicesValue = responseCount > 0 ? responseCount : (participation?.completed || 0);
+  const voicesDescription = responseCount > 0 ? "responses" : "completed";
+
   const metrics = [
     {
       label: "Voices",
-      value: participation?.completed || 0,
+      value: voicesValue,
       color: "hsl(var(--chart-lime))",
-      description: "completed",
+      description: voicesDescription,
+      // Show session info if different from response count
+      subtext: sessionCount > 0 && sessionCount !== voicesValue 
+        ? `${sessionCount} session${sessionCount !== 1 ? 's' : ''}${activeSessionCount > 0 ? ` (${activeSessionCount} active)` : ''}`
+        : undefined,
     },
     {
       label: "Engaged",
-      value: `${participation?.completionRate || 0}%`,
+      value: `${Math.round(participation?.completionRate || 0)}%`,
       color: "hsl(var(--primary))",
       description: "participation",
     },
@@ -94,6 +107,13 @@ export function PulseSummary({
                 {metric.label}
               </span>
             </div>
+            
+            {/* NEW: Subtext for session info */}
+            {'subtext' in metric && metric.subtext && (
+              <div className="text-[9px] text-muted-foreground/50 mt-0.5">
+                {metric.subtext}
+              </div>
+            )}
             
             {/* Subtle description */}
             <div className="text-[10px] text-muted-foreground/60 mt-0.5">

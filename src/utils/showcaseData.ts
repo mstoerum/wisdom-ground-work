@@ -31,6 +31,9 @@ export const showcaseParticipation: ParticipationMetrics = {
   pending: 46,
   completionRate: 81.4,
   avgDuration: 12.3,
+  responseCount: 201,
+  sessionCount: 201,
+  activeSessionCount: 0,
 };
 
 // Sentiment with mood improvement story

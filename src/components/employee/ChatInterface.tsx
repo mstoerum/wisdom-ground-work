@@ -211,6 +211,50 @@ export const ChatInterface = ({
     }
   }, [sessionId, culturalContext]);
 
+  // P1: Auto-complete session when user leaves page with sufficient responses
+  // This ensures sessions get marked as completed even if user closes browser
+  useEffect(() => {
+    // Use visibility change to detect when user leaves - more reliable for async operations
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'hidden' && userMessageCount >= 3 && !isPreviewMode && conversationId) {
+        try {
+          await supabase
+            .from('conversation_sessions')
+            .update({ 
+              status: 'completed', 
+              ended_at: new Date().toISOString() 
+            })
+            .eq('id', conversationId);
+          console.log('[ChatInterface] Session auto-completed on visibility change');
+        } catch (error) {
+          console.error('[ChatInterface] Failed to auto-complete session:', error);
+        }
+      }
+    };
+
+    // Also handle beforeunload as a backup (though async may not complete)
+    const handleBeforeUnload = () => {
+      if (userMessageCount >= 3 && !isPreviewMode && conversationId) {
+        // Fire and forget - may not complete but try anyway
+        supabase
+          .from('conversation_sessions')
+          .update({ 
+            status: 'completed', 
+            ended_at: new Date().toISOString() 
+          })
+          .eq('id', conversationId);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [userMessageCount, conversationId, isPreviewMode]);
+
   // Trust flow handlers
   const handleRitualIntroductionComplete = () => {
     trackTrustMetrics('ritual_introduction_completed', {

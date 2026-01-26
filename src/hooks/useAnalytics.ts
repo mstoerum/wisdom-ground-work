@@ -23,6 +23,10 @@ export interface ParticipationMetrics {
   pending: number;
   completionRate: number;
   avgDuration: number;
+  // NEW: Response-based metrics for public surveys
+  responseCount: number;
+  sessionCount: number;
+  activeSessionCount: number;
 }
 
 export interface SentimentMetrics {
@@ -76,6 +80,9 @@ const calculateParticipationMetrics = (assignments: any[]): ParticipationMetrics
     pending,
     completionRate,
     avgDuration: 0, // Could be calculated from session data
+    responseCount: 0, // Will be filled by hybrid query
+    sessionCount: 0,
+    activeSessionCount: 0,
   };
 };
 
@@ -228,23 +235,79 @@ export const useAnalytics = (filters: AnalyticsFilters = {}) => {
     };
   }, [queryClient, toast]);
 
-  // Fetch and calculate participation metrics
+  // Fetch and calculate participation metrics - HYBRID: from both assignments AND sessions
   const participationQuery = useQuery({
     queryKey: ['analytics-participation', filters],
     queryFn: async () => {
-      let query = supabase
+      // 1. Count from survey_assignments (for assigned surveys)
+      let assignmentsQuery = supabase
         .from('survey_assignments')
         .select('id, survey_id, status, assigned_at, completed_at');
 
       if (filters.surveyId) {
-        query = query.eq('survey_id', filters.surveyId);
+        assignmentsQuery = assignmentsQuery.eq('survey_id', filters.surveyId);
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
+      // 2. Count from conversation_sessions (for all including public links)
+      let sessionsQuery = supabase
+        .from('conversation_sessions')
+        .select('id, status, survey_id, started_at, ended_at');
 
-      const filtered = filterByDateRange(data || [], filters);
-      return calculateParticipationMetrics(filtered);
+      if (filters.surveyId) {
+        sessionsQuery = sessionsQuery.eq('survey_id', filters.surveyId);
+      }
+
+      // 3. Count actual responses (for response-based analytics)
+      let responsesQuery = supabase
+        .from('responses')
+        .select('id, survey_id', { count: 'exact', head: true });
+
+      if (filters.surveyId) {
+        responsesQuery = responsesQuery.eq('survey_id', filters.surveyId);
+      }
+
+      const [assignmentsResult, sessionsResult, responsesResult] = await Promise.all([
+        assignmentsQuery,
+        sessionsQuery,
+        responsesQuery,
+      ]);
+
+      if (assignmentsResult.error) throw assignmentsResult.error;
+      if (sessionsResult.error) throw sessionsResult.error;
+      if (responsesResult.error) throw responsesResult.error;
+
+      const assignments = assignmentsResult.data || [];
+      const sessions = sessionsResult.data || [];
+      const responseCount = responsesResult.count || 0;
+
+      // Prioritize sessions (actual attempts) for participation counting
+      // Sessions represent actual survey attempts, including public links
+      const sessionCount = sessions.length;
+      const completedSessions = sessions.filter(s => s.status === 'completed').length;
+      const activeSessions = sessions.filter(s => s.status === 'active').length;
+
+      // Fallback to assignments if no sessions exist
+      const assignmentMetrics = calculateParticipationMetrics(
+        filterByDateRange(assignments, filters)
+      );
+
+      // Use sessions as primary source, assignments as fallback
+      const totalParticipants = sessionCount > 0 ? sessionCount : assignmentMetrics.totalAssigned;
+      const completedParticipants = sessionCount > 0 ? completedSessions : assignmentMetrics.completed;
+
+      return {
+        totalAssigned: totalParticipants,
+        completed: completedParticipants,
+        pending: totalParticipants - completedParticipants,
+        completionRate: totalParticipants > 0 
+          ? (completedParticipants / totalParticipants) * 100 
+          : 0,
+        avgDuration: 0, // Could be calculated from session data
+        // NEW: Additional metrics for response-aware analytics
+        responseCount,
+        sessionCount,
+        activeSessionCount: activeSessions,
+      };
     },
   });
 

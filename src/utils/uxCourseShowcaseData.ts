@@ -33,6 +33,9 @@ export const showcaseParticipation: ParticipationMetrics = {
   pending: 10,
   completionRate: 80.8,
   avgDuration: 8.5,
+  responseCount: 42,
+  sessionCount: 42,
+  activeSessionCount: 0,
 };
 
 // Sentiment with learning outcomes
