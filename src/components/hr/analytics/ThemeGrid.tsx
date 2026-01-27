@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { ThemeCard } from "./ThemeCard";
@@ -12,14 +11,12 @@ interface ThemeGridProps {
 }
 
 /**
- * ThemeGrid: Responsive grid of expandable theme cards
+ * ThemeGrid: Responsive grid of flip-style theme cards
  * - 2-column layout on desktop, 1-column on mobile
- * - Accordion behavior: only one card expanded at a time
- * - Full-width expansion for expanded card
+ * - Cards flip in place (no accordion/expansion)
+ * - Sorted by health (lowest first to surface issues)
  */
 export function ThemeGrid({ themes, enrichedThemes, isLoading }: ThemeGridProps) {
-  const [expandedThemeId, setExpandedThemeId] = useState<string | null>(null);
-
   // Merge themes with enriched data
   const mergedThemes = themes.map(theme => {
     const enriched = enrichedThemes?.find(e => e.themeId === theme.id);
@@ -33,10 +30,6 @@ export function ThemeGrid({ themes, enrichedThemes, isLoading }: ThemeGridProps)
   // Sort by health (lowest first to surface issues)
   const sortedThemes = [...mergedThemes].sort((a, b) => a.displayHealth - b.displayHealth);
 
-  const handleToggle = (themeId: string) => {
-    setExpandedThemeId(prev => prev === themeId ? null : themeId);
-  };
-
   const hasAIAnalysis = enrichedThemes && enrichedThemes.length > 0;
 
   // Loading state
@@ -48,7 +41,7 @@ export function ThemeGrid({ themes, enrichedThemes, isLoading }: ThemeGridProps)
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-32 bg-muted rounded-2xl animate-pulse" />
+            <div key={i} className="h-56 bg-muted rounded-2xl animate-pulse" />
           ))}
         </div>
       </div>
@@ -79,7 +72,7 @@ export function ThemeGrid({ themes, enrichedThemes, isLoading }: ThemeGridProps)
         )}
       </div>
 
-      {/* Grid Container */}
+      {/* Grid Container - cards flip in place */}
       <motion.div
         layout
         className="grid grid-cols-1 md:grid-cols-2 gap-4"
@@ -89,8 +82,6 @@ export function ThemeGrid({ themes, enrichedThemes, isLoading }: ThemeGridProps)
             key={theme.id}
             theme={theme}
             enrichedData={theme.enriched}
-            isExpanded={expandedThemeId === theme.id}
-            onToggle={() => handleToggle(theme.id)}
             index={index}
           />
         ))}
