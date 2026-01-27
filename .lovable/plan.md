@@ -1,284 +1,224 @@
 
-# ThemeCard Implementation: Full-Width Expansion (Option A)
 
-## Design Team Final Consensus
+# ThemeCard Redesign: Minimal Front + Flip Animation
 
-**Darrell Estabrook**: "Full-width is the pragmatic choice. It gives content room without CSS Grid complexity. The key is making the expansion feel luxurious, not utilitarian."
+## Design Team Analysis
 
-**Can Yelok**: "We need to nail the visual differentiation between collapsed and expanded states. Collapsed = scannable data card. Expanded = immersive insight panel."
+**Darrell Estabrook** (Enterprise Dashboard):
+> "The current card has 7 distinct information elements - that's cognitive overload for a quick scan. A flip card metaphor is perfect: front = at-a-glance summary, back = detailed insights. Users mentally model this instantly."
 
-**Volodymyr Deviatkin**: "The animation choreography is everything. Height transition, shadow elevation, content stagger - these micro-moments build trust."
+**Can Yelok** (Data Visualization):
+> "For the front face, we need just THREE things: the theme name, a visual health indicator, and status. That's it. Everything else lives on the back. The flip creates a delightful reveal moment."
+
+**Volodymyr Deviatkin** (Interaction Designer):
+> "The flip animation using `rotateY` with proper 3D perspective creates that 'turning a playing card' feel. It's playful, memorable, and signals 'there's more here' without adding visual noise."
 
 ---
 
-## Component Architecture
+## The New Design: Two-Face Flip Card
 
-### Files to Create
+### Front Face (Ultra-Minimal)
 
-| File | Purpose |
-|------|---------|
-| `src/components/hr/analytics/ThemeCard.tsx` | Individual theme tile with collapsed/expanded states |
-| `src/components/hr/analytics/ThemeGrid.tsx` | Grid container with accordion behavior |
+```text
+┌────────────────────────────────────┐
+│                                    │
+│   Work-Life Balance                │
+│                                    │
+│        ┌───────────┐               │
+│        │           │               │
+│        │    78     │  ← Large THI  │
+│        │           │               │
+│        └───────────┘               │
+│                                    │
+│        Thriving ●                  │
+│                                    │
+└────────────────────────────────────┘
+```
 
-### Files to Modify
+**Only 3 elements:**
+1. Theme name (top)
+2. Large health score (center, dominant)
+3. Status label with colored dot (bottom)
+
+No progress bar, no voice count, no quote, no chevron. Just the essentials.
+
+---
+
+### Back Face (Detail View)
+
+```text
+┌────────────────────────────────────┐
+│   Work-Life Balance       × Close  │
+├────────────────────────────────────┤
+│   78 · Thriving · 12 voices        │
+├────────────────────────────────────┤
+│                                    │
+│   ✓ Strengths                      │
+│   "Flexible scheduling..."         │
+│                                    │
+│   ⚠ Frictions                      │
+│   "After-hours messages..."        │
+│                                    │
+│   → Root Cause                     │
+│   Unclear boundaries...            │
+│                                    │
+└────────────────────────────────────┘
+```
+
+The back reveals:
+- Full header with close button
+- Metric row (score, status, voice count)
+- Strengths section (top insight only)
+- Frictions section (top insight only)
+- Root cause (if available)
+
+---
+
+## Flip Animation Specification
+
+### 3D Transform Setup
+
+```text
+Container (perspective: 1000px)
+└── Card Inner (transform-style: preserve-3d)
+    ├── Front Face (backface-visibility: hidden)
+    └── Back Face (backface-visibility: hidden, rotateY: 180deg)
+```
+
+### Animation Timeline
+
+| State | Front Face | Back Face | Duration |
+|-------|------------|-----------|----------|
+| Default | `rotateY(0deg)` visible | `rotateY(180deg)` hidden | - |
+| Flipping | `rotateY(-180deg)` fading | `rotateY(0deg)` appearing | 500ms |
+| Flipped | `rotateY(-180deg)` hidden | `rotateY(0deg)` visible | - |
+
+### Framer Motion Config
+
+```text
+transition: {
+  type: "spring",
+  stiffness: 260,
+  damping: 20
+}
+```
+
+### Subtle Enhancements
+- Add slight Z-axis lift during flip (`translateZ(50px)` at midpoint)
+- Gentle shadow increase during flip for depth
+- Optional: very subtle rotation on hover to hint at interactivity
+
+---
+
+## Visual Simplification Comparison
+
+### Before (Current - 7 Elements)
+```text
+┌───────────────────────────────────────────────────┐
+│ ● Work-Life Balance                          ▼   │ ← orb, name, chevron
+│                                                   │
+│ 78  ━━━━━━━━━━━━━●━━━━  👤12  Thriving           │ ← score, bar, count, label
+│                                                   │
+│ "Flexible scheduling appreciated..."              │ ← quote
+└───────────────────────────────────────────────────┘
+```
+
+### After (New - 3 Elements)
+```text
+┌────────────────────────────────────┐
+│                                    │
+│   Work-Life Balance                │  ← name only
+│                                    │
+│            78                      │  ← large score
+│                                    │
+│       Thriving ●                   │  ← status + dot
+│                                    │
+└────────────────────────────────────┘
+```
+
+**Reduction: 7 elements → 3 elements (57% less visual noise)**
+
+---
+
+## Grid Behavior Change
+
+With the flip animation, cards stay in their grid position:
+- No full-width expansion needed
+- No layout shift when flipping
+- Cards maintain their 2-column grid placement
+- Flipped card stays same size (or slightly larger via scale)
+
+This creates a more stable, predictable interaction.
+
+---
+
+## Color & Styling
+
+### Front Face
+- Solid background gradient (based on health status)
+- Large centered score with status-colored text
+- Rounded corners (`rounded-2xl`)
+- Subtle shadow
+- On hover: slight tilt (1-2deg rotateY) to hint at flippability
+
+### Back Face
+- Slightly different gradient (inverted or lighter)
+- Content sections with minimal separators
+- Close button in header
+- Same rounded corners and shadow
+
+---
+
+## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/hr/analytics/HybridInsightsView.tsx` | Replace ThemeTerrain with ThemeGrid |
-
-### Files to Remove (after verification)
-
-| File | Reason |
-|------|--------|
-| `src/components/hr/analytics/ThemeTerrain.tsx` | Replaced by ThemeCard/ThemeGrid |
-| `src/components/hr/analytics/QuickInsightBadges.tsx` | Redundant - inline quote in cards serves this purpose |
+| `src/components/hr/analytics/ThemeCard.tsx` | Complete rewrite for flip animation with front/back faces |
+| `src/components/hr/analytics/ThemeGrid.tsx` | Remove `col-span-full` logic, cards stay in place |
 
 ---
 
-## ThemeCard Component Design
+## Implementation Steps
 
-### Collapsed State Layout
+### Step 1: Create Flip Card Structure
+1. Add perspective container wrapper
+2. Create front face component (minimal: name, score, status)
+3. Create back face component (details: insights, root cause)
+4. Apply `transform-style: preserve-3d` and `backface-visibility: hidden`
 
-```text
-┌────────────────────────────────────────────────────────────────┐
-│                                                                │
-│  ●  Work-Life Balance                                    ▼     │
-│                                                                │
-│  ┌────────────────────────────────────────────────────────┐   │
-│  │ THI                                                    │   │
-│  │  78   ━━━━━━━━━━━━━━━━━━●━━━━━━   12 voices  Thriving │   │
-│  └────────────────────────────────────────────────────────┘   │
-│                                                                │
-│  "Flexible scheduling appreciated by most team members"        │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-```
+### Step 2: Implement Flip Animation
+1. Use framer-motion `rotateY` variants
+2. Add spring-based transition for natural feel
+3. Implement click handler to toggle flip state
+4. Add close button on back face
 
-**Visual Elements:**
-- **Status Orb**: 12px colored circle (emerald/teal/amber/orange/rose)
-- **Theme Name**: 16px font-semibold, prominent
-- **Chevron**: Rotates 180° on expand
-- **Health Bar**: Horizontal progress with animated fill
-- **THI Score**: Bold number with status label
-- **Voice Count**: Badge-style count
-- **Representative Quote**: First positive quote for healthy themes, first concern for friction themes
+### Step 3: Add Polish
+1. Hover tilt effect on front face (subtle 3D hint)
+2. Shadow elevation during flip
+3. Optional: scale up slightly when flipped (1.02x)
 
-### Expanded State Layout
-
-```text
-┌────────────────────────────────────────────────────────────────┐
-│                                                                │
-│  ●  Work-Life Balance                                    ▲     │
-│                                                                │
-│  ┌────────────────────────────────────────────────────────┐   │
-│  │ THI                                                    │   │
-│  │  78   ━━━━━━━━━━━━━━━━━━●━━━━━━   12 voices  Thriving │   │
-│  └────────────────────────────────────────────────────────┘   │
-│                                                                │
-├────────────────────────────────────────────────────────────────┤
-│                                                                │
-│  STRENGTHS                                                     │
-│  ┌──────────────────────────────────────────────────────────┐ │
-│  │ "Flexible scheduling appreciated by most team members"   │ │
-│  │ 8 voices  •  High confidence                             │ │
-│  └──────────────────────────────────────────────────────────┘ │
-│  ┌──────────────────────────────────────────────────────────┐ │
-│  │ "Remote work options valued highly"                      │ │
-│  │ 6 voices  •  Moderate                                    │ │
-│  └──────────────────────────────────────────────────────────┘ │
-│                                                                │
-│  FRICTIONS                                                     │
-│  ┌──────────────────────────────────────────────────────────┐ │
-│  │ "After-hours messages create pressure"                   │ │
-│  │ 4 voices  •  High confidence                             │ │
-│  └──────────────────────────────────────────────────────────┘ │
-│                                                                │
-│  ROOT CAUSE                                                    │
-│  ┌──────────────────────────────────────────────────────────┐ │
-│  │ ⚠ Unclear boundaries around async communication          │ │
-│  │   HIGH IMPACT  •  Affects 4 respondents                  │ │
-│  │                                                          │ │
-│  │   → Recommendation: Establish team communication norms   │ │
-│  └──────────────────────────────────────────────────────────┘ │
-│                                                                │
-└────────────────────────────────────────────────────────────────┘
-```
+### Step 4: Grid Cleanup
+1. Remove accordion logic from ThemeGrid
+2. Keep simple 2-column responsive grid
+3. Allow multiple cards to be flipped simultaneously (or single-flip mode)
 
 ---
 
-## Visual Design Specifications
+## Accessibility Considerations
 
-### Color System by Health Status
-
-| Health | Status | Card Gradient | Border Accent | Orb Color |
-|--------|--------|---------------|---------------|-----------|
-| 80-100 | Thriving | `from-emerald-50/60 to-white` | `border-l-emerald-400` | `bg-emerald-500` |
-| 60-79 | Growing | `from-teal-50/60 to-white` | `border-l-teal-400` | `bg-teal-500` |
-| 45-59 | Emerging | `from-amber-50/60 to-white` | `border-l-amber-400` | `bg-amber-500` |
-| 30-44 | Challenged | `from-orange-50/60 to-white` | `border-l-orange-400` | `bg-orange-500` |
-| 0-29 | Critical | `from-rose-50/60 to-white` | `border-l-rose-400` | `bg-rose-500` + pulse |
-
-### Card Styling
-
-```text
-Collapsed:
-- rounded-2xl (16px border radius)
-- border-l-4 (status color accent)
-- shadow-sm → hover:shadow-md
-- bg-gradient-to-br (status gradient)
-- p-5 padding
-
-Expanded:
-- Same base styling
-- shadow-lg (elevated)
-- Divider line before content sections
-```
-
----
-
-## Animation Specifications
-
-### Interaction Timeline
-
-| Phase | Animation | Duration | Easing |
-|-------|-----------|----------|--------|
-| Grid entrance | Cards stagger fade-in | 400ms each, 50ms delay | ease-out |
-| Card hover | Scale 1.01, shadow increase | 150ms | ease-out |
-| Chevron rotation | Rotate 180° | 200ms | ease-in-out |
-| Card expand | Height grows smoothly | 300ms | spring (stiffness: 300, damping: 30) |
-| Card collapse | Height shrinks | 250ms | ease-in-out |
-| Content stagger | Strengths → Frictions → Root Cause | 100ms delay between sections | ease-out |
-| Health bar fill | Width animates 0 to value | 600ms | ease-out, 200ms delay |
-| Critical orb pulse | Scale 1.15 pulse | 2s infinite | ease-in-out |
-
-### Framer Motion Configuration
-
-```text
-Card Expand Spring:
-- type: "spring"
-- stiffness: 300
-- damping: 30
-
-Content Stagger:
-- staggerChildren: 0.1
-- initial: { opacity: 0, y: 8 }
-- animate: { opacity: 1, y: 0 }
-```
-
----
-
-## ThemeGrid Layout
-
-### Desktop (≥768px)
-- 2-column grid with `gap-4`
-- When card expands, it takes full width
-- Other cards shift down naturally
-
-### Mobile (<768px)
-- Single column, full width
-- Same expand behavior
-- Touch-friendly tap targets
-
-### Accordion Behavior
-- Only one card expanded at a time
-- Clicking a new card auto-closes the previous
-- Click on expanded card header to collapse
-
----
-
-## Data Flow
-
-### Props Interface
-
-```text
-ThemeCardProps {
-  theme: ThemeInsight
-  enrichedData?: ThemeAnalyticsData
-  isExpanded: boolean
-  onToggle: () => void
-  index: number  // For stagger animation
-}
-
-ThemeGridProps {
-  themes: ThemeInsight[]
-  enrichedThemes?: ThemeAnalyticsData[]
-  isLoading?: boolean
-}
-```
-
-### Data Mapping
-
-**Collapsed State:**
-- Theme name: `theme.name`
-- Health score: `enrichedData?.healthIndex ?? theme.avgSentiment`
-- Status: Derived from health score
-- Voice count: `theme.responseCount`
-- Representative quote: First from `enrichedData?.insights.strengths[0]` or `theme.keySignals.positives[0]` (or concerns if friction)
-
-**Expanded State:**
-- Strengths: `enrichedData?.insights.strengths` or `theme.keySignals.positives`
-- Frictions: `enrichedData?.insights.frictions` or `theme.keySignals.concerns`
-- Root Causes: `enrichedData?.rootCauses`
-
----
-
-## Implementation Phases
-
-### Phase 1: ThemeCard Collapsed State
-1. Create ThemeCard.tsx component
-2. Implement gradient backgrounds based on health
-3. Add status orb with pulse animation for critical
-4. Build health bar with animated fill
-5. Add representative quote logic
-6. Implement hover effects (scale, shadow)
-
-### Phase 2: ThemeCard Expanded State
-1. Add expand/collapse animation with framer-motion
-2. Implement rotating chevron
-3. Build Strengths section (reuse ThemeInsightCard)
-4. Build Frictions section
-5. Build Root Cause section (reuse RootCauseCard)
-6. Add staggered content entrance animation
-
-### Phase 3: ThemeGrid Container
-1. Create ThemeGrid.tsx with responsive grid
-2. Implement accordion state management
-3. Add entrance stagger animation
-4. Handle sorting by health (lowest first)
-5. Test full-width expansion layout shift
-
-### Phase 4: Integration
-1. Update HybridInsightsView to use ThemeGrid
-2. Remove ThemeTerrain import and usage
-3. Remove QuickInsightBadges import and usage
-4. Test with real survey data
-5. Verify AI-enriched data displays correctly
-
-### Phase 5: Polish & Accessibility
-1. Add keyboard navigation (Tab, Enter, Escape)
-2. Add ARIA labels for screen readers
-3. Implement `prefers-reduced-motion` check
-4. Test dark mode gradients
-5. Mobile touch testing
-
----
-
-## Reusing Existing Components
-
-The expanded state will reuse:
-- `ThemeInsightCard` for Strengths and Frictions sections
-- `RootCauseCard` for Root Cause display
-
-This ensures visual consistency and reduces code duplication.
+- **Keyboard**: Space/Enter to flip, Escape to flip back
+- **Screen reader**: Announce "Showing front/back of [theme] card"
+- **Reduced motion**: Fall back to fade crossfade instead of 3D flip
 
 ---
 
 ## Expected Outcome
 
-A theme overview that HR professionals can:
-1. **Scan in 3 seconds** - Color-coded gradients and orbs show health at a glance
-2. **Read representative quotes** - Inline quotes provide human context without clicks
-3. **Explore deeply** - Smooth expansion reveals AI insights, evidence, and recommendations
-4. **Feel delighted** - Spring animations and subtle shadows create a polished, trustworthy experience
+HR professionals see a calm, scannable grid of theme cards where:
+1. **Instant scan** - Large health numbers and status colors give immediate understanding
+2. **Curiosity invited** - Minimal front + hover tilt suggests "there's more"
+3. **Playful reveal** - Flip animation feels like discovering insights
+4. **Stable layout** - No jarring grid shifts, cards stay in place
 
-The full-width expansion gives content maximum breathing room while maintaining the simple, elegant grid rhythm that Option A is known for.
+The flip metaphor transforms analytics from "information overload" to "discovery experience."
+
