@@ -165,8 +165,8 @@ export function HybridInsightsView({
           isLoading={isLoading || isAnalyzing} 
         />
         
-        {/* Manual Generate Theme Insights button - only show when auto-trigger hasn't run */}
-        {!hasAnalysis && themes.length > 0 && responseCount >= 5 && (
+        {/* Theme analysis buttons */}
+        {themes.length > 0 && responseCount >= 3 && (
           <Button
             variant="outline"
             size="sm"
@@ -178,6 +178,11 @@ export function HybridInsightsView({
               <>
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                 Analyzing themes...
+              </>
+            ) : hasAnalysis ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Re-analyze Themes
               </>
             ) : (
               <>
