@@ -4,17 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { FileText, RefreshCw, Sparkles, Download, ChevronDown, ChevronUp, Wand2 } from "lucide-react";
 import { PulseSummary } from "./PulseSummary";
-import { ThemeTerrain } from "./ThemeTerrain";
-import { QuickInsightBadges } from "./QuickInsightBadges";
+import { ThemeGrid } from "./ThemeGrid";
 import { NarrativeReportViewer } from "./NarrativeReportViewer";
 import { DataConfidenceBanner } from "./DataConfidenceBanner";
-import { ActionSummaryCard } from "./ActionSummaryCard";
 import { AnalyticsEmptyState, getEmptyStateType } from "./AnalyticsEmptyState";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { exportStoryReport } from "@/lib/exportStoryReport";
 import { toast } from "sonner";
 import { useThemeAnalytics } from "@/hooks/useThemeAnalytics";
-import { useConversationAnalytics } from "@/hooks/useConversationAnalytics";
 import type { NarrativeReport } from "@/hooks/useNarrativeReports";
 import type { ParticipationMetrics, SentimentMetrics, ThemeInsight } from "@/hooks/useAnalytics";
 
@@ -66,13 +63,6 @@ export function HybridInsightsView({
     responseCount,
     autoAnalyze: true 
   });
-  
-  // Actionable intelligence from conversation analytics
-  const {
-    quickWins,
-    interventions,
-    isLoading: isActionableLoading,
-  } = useConversationAnalytics({ surveyId: surveyId || undefined });
   
   const handleExportPDF = async () => {
     if (!participation || !sentiment || !latestReport) {
@@ -147,19 +137,9 @@ export function HybridInsightsView({
         isLoading={isLoading}
       />
 
-      {/* Section 2: Quick Insight Badges - Top strength & friction at a glance */}
-      <QuickInsightBadges themes={themes} isLoading={isLoading} />
-
-      {/* Section 3: Actionable Intelligence Summary */}
-      <ActionSummaryCard
-        quickWins={quickWins}
-        criticalIssues={interventions}
-        isLoading={isActionableLoading}
-      />
-
-      {/* Section 4: Theme Terrain - Visual health landscape */}
+      {/* Section 2: Theme Grid - Visual health landscape with expandable cards */}
       <div className="space-y-2">
-        <ThemeTerrain 
+        <ThemeGrid 
           themes={themes} 
           enrichedThemes={enrichedThemes}
           isLoading={isLoading || isAnalyzing} 
