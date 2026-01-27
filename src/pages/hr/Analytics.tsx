@@ -11,15 +11,20 @@ import type { Database } from "@/integrations/supabase/types";
 import { HybridInsightsView } from "@/components/hr/analytics/HybridInsightsView";
 import { SurveyComparison } from "@/components/hr/analytics/SurveyComparison";
 import { AnalyticsRefreshBar } from "@/components/hr/analytics/AnalyticsRefreshBar";
+import { NarrativeReportViewer } from "@/components/hr/analytics/NarrativeReportViewer";
 import { useNarrativeReports } from "@/hooks/useNarrativeReports";
 import { useThemeAnalytics } from "@/hooks/useThemeAnalytics";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, Sparkles } from "lucide-react";
+import { BarChart3, BookOpen, LayoutGrid, FileText, RefreshCw, Sparkles } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { exportStoryReport } from "@/lib/exportStoryReport";
 
 const Analytics = () => {
   const [filters, setFilters] = useState<AnalyticsFilters>({});
-  const [activeTab, setActiveTab] = useState<string>("insights");
+  const [activeTab, setActiveTab] = useState<string>("overview");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(new Date());
   const [newResponseCount, setNewResponseCount] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -65,6 +70,30 @@ const Analytics = () => {
       return;
     }
     generateReport({ surveyId: filters.surveyId, audience });
+  };
+
+  const handleExportPDF = async () => {
+    if (!participation || !sentiment || !latestReport) {
+      toast.error("Generate a story report first before exporting");
+      return;
+    }
+
+    toast.info("Generating PDF...");
+    try {
+      await exportStoryReport({
+        surveyName: selectedSurvey?.title || 'Survey Report',
+        generatedAt: new Date(),
+        participation,
+        sentiment,
+        themes,
+        narrativeReport: latestReport,
+        urgentCount: 0,
+      });
+      toast.success("PDF exported successfully!");
+    } catch (error) {
+      console.error("Export error:", error);
+      toast.error("Failed to export PDF");
+    }
   };
 
   const handleShareLink = () => {
@@ -187,28 +216,29 @@ const Analytics = () => {
               />
             )}
 
-            {/* Tabs for Insights vs Comparison */}
+            {/* 3-Tab Layout: Overview, Story Report, Compare */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
               <TabsList>
-                <TabsTrigger value="insights" className="gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  Insights
+                <TabsTrigger value="overview" className="gap-2">
+                  <LayoutGrid className="h-4 w-4" />
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger value="story" className="gap-2">
+                  <BookOpen className="h-4 w-4" />
+                  Story Report
                 </TabsTrigger>
                 <TabsTrigger value="comparison" className="gap-2">
                   <BarChart3 className="h-4 w-4" />
-                  Compare Surveys
+                  Compare
                 </TabsTrigger>
               </TabsList>
 
-              <TabsContent value="insights" className="mt-6">
+              {/* Overview Tab - Metrics + Theme Grid */}
+              <TabsContent value="overview" className="mt-6">
                 <HybridInsightsView
                   participation={participation}
                   sentiment={sentiment}
                   themes={themes}
-                  latestReport={latestReport}
-                  isReportLoading={isReportLoading}
-                  isGenerating={isGenerating}
-                  onGenerateReport={handleGenerateReport}
                   surveyId={filters.surveyId || null}
                   surveyTitle={selectedSurvey?.title}
                   isLoading={isLoading}
@@ -218,6 +248,70 @@ const Analytics = () => {
                 />
               </TabsContent>
 
+              {/* Story Report Tab - Immersive Reading Experience */}
+              <TabsContent value="story" className="mt-6">
+                {latestReport ? (
+                  <NarrativeReportViewer
+                    report={latestReport}
+                    onRegenerateWithAudience={(audience) => handleGenerateReport(audience)}
+                    isGenerating={isGenerating}
+                    onExport={handleExportPDF}
+                  />
+                ) : (
+                  <Card className="border-dashed border-2">
+                    <CardContent className="p-12 text-center">
+                      <div className="max-w-md mx-auto space-y-6">
+                        <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
+                          <BookOpen className="h-8 w-8 text-primary" />
+                        </div>
+                        
+                        <div>
+                          <h3 className="text-xl font-semibold mb-2">Generate Your Story Report</h3>
+                          <p className="text-muted-foreground">
+                            Transform survey data into an immersive narrative experience with AI-powered insights, 
+                            evidence-backed findings, and actionable recommendations.
+                          </p>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 justify-center">
+                          <Badge variant="outline" className="gap-1">
+                            <Sparkles className="h-3 w-3" />
+                            AI-Powered Analysis
+                          </Badge>
+                          <Badge variant="outline">Evidence Trail</Badge>
+                          <Badge variant="outline">Actionable Insights</Badge>
+                        </div>
+
+                        {!filters.surveyId ? (
+                          <p className="text-sm text-muted-foreground">
+                            Select a survey above to generate a report
+                          </p>
+                        ) : (
+                          <Button
+                            onClick={() => handleGenerateReport()}
+                            disabled={isGenerating}
+                            size="lg"
+                          >
+                            {isGenerating ? (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                Generating Story...
+                              </>
+                            ) : (
+                              <>
+                                <FileText className="h-4 w-4 mr-2" />
+                                Generate Story Report
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+
+              {/* Compare Tab */}
               <TabsContent value="comparison" className="mt-6">
                 <SurveyComparison
                   surveys={surveysForComparison}

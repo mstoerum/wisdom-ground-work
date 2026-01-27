@@ -1,28 +1,16 @@
-import { useState } from "react";
-import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { FileText, RefreshCw, Sparkles, Download, ChevronDown, ChevronUp, Wand2 } from "lucide-react";
+import { RefreshCw, Wand2 } from "lucide-react";
 import { PulseSummary } from "./PulseSummary";
 import { ThemeGrid } from "./ThemeGrid";
-import { NarrativeReportViewer } from "./NarrativeReportViewer";
 import { DataConfidenceBanner } from "./DataConfidenceBanner";
 import { AnalyticsEmptyState, getEmptyStateType } from "./AnalyticsEmptyState";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { exportStoryReport } from "@/lib/exportStoryReport";
-import { toast } from "sonner";
 import { useThemeAnalytics } from "@/hooks/useThemeAnalytics";
-import type { NarrativeReport } from "@/hooks/useNarrativeReports";
 import type { ParticipationMetrics, SentimentMetrics, ThemeInsight } from "@/hooks/useAnalytics";
 
 interface HybridInsightsViewProps {
   participation: ParticipationMetrics | null;
   sentiment: SentimentMetrics | null;
   themes: ThemeInsight[];
-  latestReport: NarrativeReport | null;
-  isReportLoading: boolean;
-  isGenerating: boolean;
-  onGenerateReport: (audience?: 'executive' | 'manager') => void;
   surveyId: string | null;
   surveyTitle?: string;
   isLoading?: boolean;
@@ -31,24 +19,21 @@ interface HybridInsightsViewProps {
   isRefreshing?: boolean;
 }
 
+/**
+ * HybridInsightsView - Overview tab content
+ * Shows Pulse Summary metrics + Theme Grid (flip cards)
+ * Story Report has been moved to its own dedicated tab
+ */
 export function HybridInsightsView({
   participation,
   sentiment,
   themes,
-  latestReport,
-  isReportLoading,
-  isGenerating,
-  onGenerateReport,
   surveyId,
   surveyTitle,
   isLoading,
   onShareLink,
-  onRefresh,
-  isRefreshing,
 }: HybridInsightsViewProps) {
-  const [storyExpanded, setStoryExpanded] = useState(true);
-  
-  // NEW: Use responseCount from participation (actual answers), not just completed sessions
+  // Response count from participation
   const responseCount = participation?.responseCount || participation?.completed || 0;
   const sessionCount = participation?.sessionCount || participation?.totalAssigned || 0;
   const activeSessionCount = participation?.activeSessionCount || participation?.pending || 0;
@@ -64,35 +49,10 @@ export function HybridInsightsView({
     autoAnalyze: true 
   });
   
-  const handleExportPDF = async () => {
-    if (!participation || !sentiment || !latestReport) {
-      toast.error("Generate a story report first before exporting");
-      return;
-    }
-
-    toast.info("Generating PDF...");
-    try {
-      await exportStoryReport({
-        surveyName: surveyTitle || 'Survey Report',
-        generatedAt: new Date(),
-        participation,
-        sentiment,
-        themes,
-        narrativeReport: latestReport,
-        urgentCount: 0,
-      });
-      toast.success("PDF exported successfully!");
-    } catch (error) {
-      console.error("Export error:", error);
-      toast.error("Failed to export PDF");
-    }
-  };
-  
-  // Check for empty state - now response-aware
+  // Check for empty state
   const emptyStateType = getEmptyStateType(surveyId, responseCount, sessionCount, activeSessionCount);
   
-  // Show empty state only for truly empty cases
-  // If we have responses (even without completed sessions), show the data!
+  // Show empty state for truly empty cases
   if (emptyStateType === 'no-survey' || emptyStateType === 'no-responses') {
     return (
       <AnalyticsEmptyState
@@ -106,7 +66,7 @@ export function HybridInsightsView({
     );
   }
   
-  // For few-responses state, show if we really have no data to show
+  // For few-responses state, show if we really have no data
   if (emptyStateType === 'few-responses' && themes.length === 0) {
     return (
       <AnalyticsEmptyState
@@ -137,7 +97,7 @@ export function HybridInsightsView({
         isLoading={isLoading}
       />
 
-      {/* Section 2: Theme Grid - Visual health landscape with expandable cards */}
+      {/* Section 2: Theme Grid - Full space for flip cards */}
       <div className="space-y-2">
         <ThemeGrid 
           themes={themes} 
@@ -145,7 +105,7 @@ export function HybridInsightsView({
           isLoading={isLoading || isAnalyzing} 
         />
         
-        {/* Theme analysis buttons */}
+        {/* Theme analysis button */}
         {themes.length > 0 && responseCount >= 3 && (
           <Button
             variant="outline"
@@ -171,82 +131,6 @@ export function HybridInsightsView({
               </>
             )}
           </Button>
-        )}
-      </div>
-
-      {/* Section 5: Story Report - Collapsible narrative deep-dive */}
-      <div className="space-y-3">
-        {latestReport ? (
-          <Collapsible open={storyExpanded} onOpenChange={setStoryExpanded}>
-            <div className="flex items-center justify-between">
-              <CollapsibleTrigger className="flex items-center gap-2 hover:opacity-70 transition-opacity">
-                <h3 className="text-xs font-medium text-muted-foreground tracking-wide">
-                  Story report
-                </h3>
-                {storyExpanded ? (
-                  <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                )}
-              </CollapsibleTrigger>
-              <Button variant="outline" size="sm" onClick={handleExportPDF}>
-                <Download className="h-4 w-4 mr-2" />
-                Export PDF
-              </Button>
-            </div>
-            <CollapsibleContent className="mt-3">
-              <NarrativeReportViewer
-                report={latestReport}
-                onRegenerateWithAudience={(audience) => onGenerateReport(audience)}
-                isGenerating={isGenerating}
-              />
-            </CollapsibleContent>
-          </Collapsible>
-        ) : (
-          <Card className="border-dashed border-2">
-            <CardContent className="p-8 text-center">
-              <div className="max-w-md mx-auto space-y-4">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
-                  <FileText className="h-6 w-6 text-primary" />
-                </div>
-                
-                <div>
-                  <h3 className="text-lg font-semibold mb-1">Generate Story Report</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Transform data into actionable insights with AI-powered narrative analysis.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-2 justify-center text-xs text-muted-foreground">
-                  <Badge variant="outline" className="gap-1">
-                    <Sparkles className="h-3 w-3" />
-                    AI Analysis
-                  </Badge>
-                  <Badge variant="outline">Evidence-Based</Badge>
-                  <Badge variant="outline">Actionable</Badge>
-                </div>
-
-                <Button
-                  onClick={() => onGenerateReport()}
-                  disabled={isGenerating}
-                  size="default"
-                  className="mt-2"
-                >
-                  {isGenerating ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Generate Report
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
         )}
       </div>
     </div>
