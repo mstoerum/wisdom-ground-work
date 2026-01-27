@@ -1,285 +1,248 @@
 
+# Analytics Page Redesign: Themes & Story as Distinct Experiences
 
-# Analytics Refresh Enhancement Plan
+## Collaborative Design Review
 
-## Overview
+**Darrell Estabrook** (Enterprise Dashboard Specialist):
+> "Splitting into separate pages is exactly right. The current page tries to serve two masters - quick health scanning AND deep narrative reading. These are fundamentally different cognitive modes. Give each room to breathe."
 
-Transform the static analytics dashboard into a live, refresh-aware system that clearly shows data freshness and provides intuitive refresh controls for HR users.
+**Can Yelok** (Data Visualization Expert):
+> "Love the rounded rectangle concept! Current horizontal bars are too 'spreadsheet-y'. Rounded cards are more approachable and create natural tap targets. Think of them as 'theme tiles' - each one a complete story waiting to be opened."
 
----
-
-## Current Problems
-
-1. **Hidden refresh capability** - Real-time subscriptions exist but users don't see updates
-2. **One-time theme analysis** - `autoAnalyzedRef` prevents re-analysis when new responses arrive
-3. **No freshness indicators** - Users can't tell when data was last updated
-4. **Narrative reports are frozen** - Once generated, no way to update without regenerating
-5. **No manual refresh control** - Users must reload the page to get fresh data
+**Volodymyr Deviatkin** (Interaction Designer):
+> "The progressive disclosure pattern is perfect for this. Show just enough to spark curiosity: theme name, a single headline metric, and a clear status indicator. The reveal should feel like opening a drawer, not a jarring page jump."
 
 ---
 
-## Proposed Solutions
+## Architecture Change: Two Distinct Pages
 
-### 1. Add Refresh Control Bar (P0 - Critical)
-
-**New Component:** `src/components/hr/analytics/AnalyticsRefreshBar.tsx`
-
+### Current Structure
 ```text
-┌─────────────────────────────────────────────────────────────────────┐
-│  Last updated: 2 minutes ago  •  24 responses  │  [🔄 Refresh]     │
-│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
-│  ● Live updates enabled                        │  Auto-refresh: 5m │
-└─────────────────────────────────────────────────────────────────────┘
+/hr/analytics (single page with everything)
+    ├── Survey Selector
+    ├── Refresh Bar
+    ├── Tabs (Insights | Compare)
+    │   └── HybridInsightsView
+    │       ├── DataConfidenceBanner
+    │       ├── PulseSummary
+    │       ├── QuickInsightBadges
+    │       ├── ActionSummaryCard
+    │       ├── ThemeTerrain
+    │       └── NarrativeReportViewer
 ```
 
-**Features:**
-- Shows "Last updated" with relative time (e.g., "2 minutes ago")
-- Response count badge
-- Manual "Refresh" button with loading state
-- Live update indicator (green dot when real-time connected)
-- Optional auto-refresh toggle with interval selector
-
----
-
-### 2. Unified Refresh Function (P0 - Critical)
-
-**Changes to:** `src/pages/hr/Analytics.tsx`
-
-Create a central `refreshAllAnalytics()` function that:
-- Refetches `useAnalytics` data
-- Refetches `useThemeAnalytics` data
-- Refetches `useNarrativeReports` data
-- Refetches `useConversationAnalytics` data
-- Shows toast notification on completion
-
-Pass this down to `HybridInsightsView` as a prop.
-
----
-
-### 3. Fix Theme Analytics Re-analysis (P1 - Important)
-
-**Changes to:** `src/hooks/useThemeAnalytics.ts`
-
-**Current Problem:**
-```typescript
-// This blocks re-analysis forever after first run
-if (autoAnalyzedRef.current) return;
-```
-
-**Solution:**
-- Reset `autoAnalyzedRef` when response count increases significantly (e.g., +5 new responses)
-- Add `lastResponseCount` tracking to detect new data
-- Provide `reanalyze()` function for manual re-trigger
-
-```typescript
-// Track response count changes
-const lastResponseCountRef = useRef(responseCount);
-
-useEffect(() => {
-  // Reset auto-analysis flag if we have significantly more data
-  if (responseCount >= lastResponseCountRef.current + 5) {
-    autoAnalyzedRef.current = false;
-    lastResponseCountRef.current = responseCount;
-  }
-}, [responseCount]);
-```
-
----
-
-### 4. Add Real-time to Theme Analytics (P1 - Important)
-
-**Changes to:** `src/hooks/useThemeAnalytics.ts`
-
-Add Supabase Realtime subscription to invalidate `theme-analytics` query when new data arrives:
-
-```typescript
-useEffect(() => {
-  if (!surveyId) return;
-  
-  const channel = supabase
-    .channel(`theme-analytics-${surveyId}`)
-    .on('postgres_changes', 
-      { event: '*', schema: 'public', table: 'theme_analytics', filter: `survey_id=eq.${surveyId}` },
-      () => queryClient.invalidateQueries({ queryKey: ['theme-analytics', surveyId] })
-    )
-    .subscribe();
-
-  return () => supabase.removeChannel(channel);
-}, [surveyId, queryClient]);
-```
-
----
-
-### 5. Expose Refetch from Narrative Reports (P1 - Important)
-
-**Changes to:** `src/hooks/useNarrativeReports.ts`
-
-Expose `refetch` from the query:
-
-```typescript
-return {
-  reports,
-  latestReport,
-  isLoading,
-  error,
-  generateReport: generateReport.mutate,
-  isGenerating: generateReport.isPending,
-  refetch: query.refetch, // NEW: Expose refetch
-};
-```
-
----
-
-### 6. New Data Indicator (P2 - Nice to Have)
-
-**Changes to:** `src/components/hr/analytics/AnalyticsRefreshBar.tsx`
-
-When real-time detects new responses but user hasn't clicked refresh:
-- Show pulsing badge: "3 new responses"
-- Button changes to "Refresh (3 new)"
-
+### New Structure
 ```text
-┌─────────────────────────────────────────────────────────────────────┐
-│  Last updated: 5 minutes ago  •  24 responses  │  [🔄 Refresh (3)] │
-│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━  │
-│  ● 3 new responses available                                        │
-└─────────────────────────────────────────────────────────────────────┘
+/hr/analytics (landing - Theme Health focus)
+    ├── Shared: Survey Selector + Refresh Bar
+    ├── PulseSummary (compact metrics row)
+    └── NEW: ThemeCards (rounded rectangle grid)
+
+/hr/analytics/story (dedicated - Narrative focus)
+    ├── Shared: Survey Selector + Refresh Bar
+    ├── ActionSummaryCard (if relevant)
+    └── NarrativeReportViewer (full width, immersive)
 ```
 
 ---
 
-### 7. Auto-refresh Option (P2 - Nice to Have)
+## New Component: ThemeCard
 
-**Changes to:** `src/pages/hr/Analytics.tsx` and `AnalyticsRefreshBar.tsx`
+Replace horizontal bars with rounded, expandable rectangles.
 
-Add optional auto-refresh with configurable interval:
-
-```typescript
-const [autoRefreshInterval, setAutoRefreshInterval] = useState<number | null>(null);
-
-useEffect(() => {
-  if (!autoRefreshInterval) return;
-  
-  const timer = setInterval(() => {
-    refreshAllAnalytics();
-  }, autoRefreshInterval * 60 * 1000);
-  
-  return () => clearInterval(timer);
-}, [autoRefreshInterval]);
-```
-
-Intervals: Off, 1 min, 5 min, 15 min
-
----
-
-## Files to Modify/Create
-
-| File | Action | Description |
-|------|--------|-------------|
-| `src/components/hr/analytics/AnalyticsRefreshBar.tsx` | Create | Refresh control bar with timestamp and controls |
-| `src/hooks/useThemeAnalytics.ts` | Modify | Add real-time, fix re-analysis blocking |
-| `src/hooks/useNarrativeReports.ts` | Modify | Expose refetch function |
-| `src/pages/hr/Analytics.tsx` | Modify | Add unified refresh, integrate RefreshBar |
-| `src/components/hr/analytics/HybridInsightsView.tsx` | Modify | Accept onRefresh prop, show loading states |
-
----
-
-## Implementation Order
-
-1. **AnalyticsRefreshBar** - Visual refresh control with timestamp
-2. **Unified refresh in Analytics.tsx** - Central refresh function
-3. **Fix useThemeAnalytics** - Reset auto-analysis flag on new data
-4. **Real-time for theme analytics** - Automatic invalidation
-5. **Expose narrative reports refetch** - Complete the refresh chain
-6. **New data indicator** - Show pending updates
-7. **Auto-refresh option** - Configurable polling
-
----
-
-## User Experience Flow
-
+### Collapsed State (Initial View)
 ```text
-User opens Analytics
-        │
-        ▼
-┌───────────────────────┐
-│ Data loads normally   │
-│ "Last updated: now"   │
-└───────────────────────┘
-        │
-        ▼
-    (Time passes, new responses come in)
-        │
-        ▼
-┌───────────────────────┐
-│ Real-time detects     │
-│ "3 new responses"     │◄── Pulsing badge appears
-└───────────────────────┘
-        │
-        ▼
-    User clicks [Refresh]
-        │
-        ▼
-┌───────────────────────┐
-│ All data refetches    │
-│ Theme re-analysis     │◄── If threshold met
-│ "Last updated: now"   │
-└───────────────────────┘
+┌─────────────────────────────────────────────────────────┐
+│                                                         │
+│   🟢  Work-Life Balance                                │
+│                                                         │
+│   THI  78     ○○○○○○○●●●  12 voices     Thriving       │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+**What's shown:**
+- Status indicator (colored dot: emerald/amber/rose)
+- Theme name (prominent)
+- Theme Health Index (THI) number
+- Minimal progress arc or bar
+- Voice count
+- Status label (Thriving/Stable/Friction/Critical)
+
+### Expanded State (Click to Reveal)
+```text
+┌─────────────────────────────────────────────────────────┐
+│   🟢  Work-Life Balance                     [Collapse]  │
+├─────────────────────────────────────────────────────────┤
+│   THI  78     ○○○○○○○●●●  12 voices     Thriving       │
+│─────────────────────────────────────────────────────────│
+│                                                         │
+│   Strengths                                             │
+│   ┌───────────────────────────────────────────────────┐ │
+│   │ "Flexible scheduling appreciated by most team     │ │
+│   │  members" — 8 voices, High confidence             │ │
+│   └───────────────────────────────────────────────────┘ │
+│                                                         │
+│   Frictions                                             │
+│   ┌───────────────────────────────────────────────────┐ │
+│   │ "After-hours messages create pressure" — 4 voices │ │
+│   └───────────────────────────────────────────────────┘ │
+│                                                         │
+│   Root Cause                                            │
+│   ┌───────────────────────────────────────────────────┐ │
+│   │ Unclear boundaries around async communication     │ │
+│   └───────────────────────────────────────────────────┘ │
+│                                                         │
+└─────────────────────────────────────────────────────────┘
+```
+
+**What's revealed:**
+- Full AI-analyzed insights (Strengths, Frictions)
+- Root cause analysis
+- Supporting quotes with voice counts
+- Smooth animation drawer effect
+
+---
+
+## Visual Design Specifications
+
+### ThemeCard Styling
+- **Border radius**: `rounded-2xl` (16px) for soft, approachable feel
+- **Background**: Subtle gradient based on health status
+  - Thriving: `bg-gradient-to-br from-emerald-50 to-white`
+  - Stable: `bg-gradient-to-br from-teal-50 to-white`
+  - Friction: `bg-gradient-to-br from-amber-50 to-white`
+  - Critical: `bg-gradient-to-br from-rose-50 to-white`
+- **Shadow**: `shadow-sm hover:shadow-md` for subtle depth
+- **Status dot**: 12px colored circle with pulse animation for Critical
+
+### Grid Layout
+- **Desktop**: 2-column grid with `gap-4`
+- **Mobile**: Single column, full width cards
+- When expanded, card spans full width on desktop too
+
+### Animation Specifications
+- **Expand**: 300ms ease-out, height grows from content
+- **Collapse**: 250ms ease-in
+- **Hover**: Scale up 1.01 + shadow increase
+- **Status dot pulse**: For Critical themes only
+
+---
+
+## Navigation Between Pages
+
+### Option A: Tabs (Simpler)
+Keep tabs but in HRLayout sidebar:
+- Analytics (Themes)
+- Analytics (Story)
+
+### Option B: In-Page Link (Better UX)
+At bottom of Themes page:
+```text
+┌─────────────────────────────────────────────────────────┐
+│  📖 Ready for the full story?                          │
+│                                                         │
+│  [View Story Report →]                                  │
+└─────────────────────────────────────────────────────────┘
+```
+
+At top of Story page:
+```text
+[← Back to Themes]  Survey: Q1 Engagement  [Refresh]
 ```
 
 ---
 
-## Technical Details
+## Files to Create/Modify
 
-### AnalyticsRefreshBar Props
+### Create New Files
+| File | Purpose |
+|------|---------|
+| `src/pages/hr/AnalyticsStory.tsx` | New page for Story Report |
+| `src/components/hr/analytics/ThemeCard.tsx` | New rounded rectangle component |
+| `src/components/hr/analytics/ThemeGrid.tsx` | Grid layout for theme cards |
 
-```typescript
-interface AnalyticsRefreshBarProps {
-  lastUpdated: Date | null;
-  responseCount: number;
-  newResponseCount: number;
-  isRefreshing: boolean;
-  isLiveConnected: boolean;
-  onRefresh: () => void;
-  autoRefreshInterval: number | null;
-  onAutoRefreshChange: (interval: number | null) => void;
-}
-```
+### Modify Existing Files
+| File | Changes |
+|------|---------|
+| `src/App.tsx` | Add route `/hr/analytics/story` |
+| `src/components/hr/HRLayout.tsx` | Update sidebar (optionally split Analytics) |
+| `src/pages/hr/Analytics.tsx` | Simplify to Theme-focused view |
+| `src/components/hr/analytics/HybridInsightsView.tsx` | Remove or refactor |
 
-### Refresh State Management
-
-```typescript
-// In Analytics.tsx
-const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-const [newResponsesSinceUpdate, setNewResponsesSinceUpdate] = useState(0);
-
-const refreshAllAnalytics = async () => {
-  setIsRefreshing(true);
-  try {
-    await Promise.all([
-      analyticsRefetch(),
-      themeAnalyticsRefetch(),
-      narrativeRefetch?.(),
-      conversationRefetch(),
-    ]);
-    setLastUpdated(new Date());
-    setNewResponsesSinceUpdate(0);
-    toast.success("Analytics refreshed");
-  } finally {
-    setIsRefreshing(false);
-  }
-};
-```
+### Remove/Deprecate
+| File | Reason |
+|------|--------|
+| `ThemeTerrain.tsx` | Replaced by ThemeCard/ThemeGrid |
+| `QuickInsightBadges.tsx` | Redundant with new card design |
 
 ---
 
-## Testing Checklist
+## Implementation Phases
 
-- [ ] Refresh button triggers all data refetch
-- [ ] "Last updated" timestamp updates after refresh
-- [ ] Theme analysis re-triggers when response count increases by 5+
-- [ ] Real-time indicator shows connected state
-- [ ] New response badge appears when data arrives
-- [ ] Auto-refresh works at configured intervals
-- [ ] Loading states shown during refresh
+### Phase 1: ThemeCard Component
+1. Create `ThemeCard.tsx` with collapsed/expanded states
+2. Add smooth expand/collapse animation
+3. Style with rounded corners and gradient backgrounds
+4. Support both basic and AI-enriched data
 
+### Phase 2: Theme Grid Layout
+1. Create `ThemeGrid.tsx` as container
+2. Implement 2-column responsive grid
+3. Add accordion behavior (one expanded at a time)
+4. Sorting by health status
+
+### Phase 3: Analytics Page Refactor
+1. Simplify `Analytics.tsx` to show PulseSummary + ThemeGrid
+2. Add "View Story Report" navigation link
+3. Remove unused components
+
+### Phase 4: Story Report Page
+1. Create `AnalyticsStory.tsx` as dedicated page
+2. Give NarrativeReportViewer full width
+3. Add back navigation to Themes
+4. Add route in App.tsx
+
+### Phase 5: Navigation Polish
+1. Update HRLayout sidebar
+2. Add breadcrumb/back links
+3. Persist selected survey between pages (URL params)
+
+---
+
+## Designer Collaboration Notes
+
+**Darrell**: "Make sure the survey selector is sticky at the top of both pages. Users should never lose context of which survey they're viewing."
+
+**Can**: "For the status dot, use CSS animations not JS. Keep it lightweight. The pulse should be subtle - 1.2x scale, 1.5s infinite."
+
+**Volodymyr**: "Test the expand animation on mobile carefully. The content shift should feel natural, not jumpy. Consider adding a subtle background dim for other cards when one is expanded."
+
+---
+
+## Technical Considerations
+
+### URL Structure for Survey Context
+```text
+/hr/analytics?survey=abc123
+/hr/analytics/story?survey=abc123
+```
+Persist survey selection in URL params to maintain context when navigating.
+
+### Shared State
+Both pages need:
+- Survey selection
+- Refresh functionality
+- Real-time subscriptions
+
+Extract shared logic into a custom hook `useAnalyticsContext` or pass via URL params.
+
+---
+
+## Summary
+
+This redesign creates two focused experiences:
+1. **Themes Page**: Quick health scanning with beautiful, tappable cards
+2. **Story Page**: Immersive narrative reading without distractions
+
+The rounded rectangle cards transform themes from data rows into approachable, explorable tiles that invite interaction.
