@@ -6,8 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { BookOpen, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { StoryChapter } from "./StoryChapter";
 import { AudienceToggle } from "./AudienceToggle";
-import { ChapterProgressNav } from "./ChapterProgressNav";
-import { ReadingTimeEstimate } from "./ReadingTimeEstimate";
+import { StoryJourneyNav } from "./StoryJourneyNav";
+import { StoryProgressBar } from "./StoryProgressBar";
 import { NarrativeReport } from "@/hooks/useNarrativeReports";
 import { CONFIDENCE_CONFIG } from "@/lib/reportDesignSystem";
 import { format } from "date-fns";
@@ -26,12 +26,13 @@ export function NarrativeReportViewer({
   onExport
 }: NarrativeReportViewerProps) {
   const [activeChapter, setActiveChapter] = useState(0);
+  const [direction, setDirection] = useState(0); // -1 for prev, 1 for next
   const [audience, setAudience] = useState<'executive' | 'manager'>(
     report.audience_config.audience
   );
   const [visitedChapters, setVisitedChapters] = useState<number[]>([0]);
 
-  // Handle empty chapters case - prevents crash when report has no data
+  // Handle empty chapters case
   if (!report.chapters || report.chapters.length === 0) {
     return (
       <Card className="border-0 shadow-sm bg-card/50 backdrop-blur-sm p-8">
@@ -65,6 +66,7 @@ export function NarrativeReportViewer({
   };
 
   const handleChapterChange = (index: number) => {
+    setDirection(index > activeChapter ? 1 : -1);
     setActiveChapter(index);
     if (!visitedChapters.includes(index)) {
       setVisitedChapters(prev => [...prev, index]);
@@ -86,14 +88,30 @@ export function NarrativeReportViewer({
   const confidenceLabel = CONFIDENCE_CONFIG.labels[report.confidence_score] || 'Good';
   const confidenceColors = CONFIDENCE_CONFIG.colors[report.confidence_score] || CONFIDENCE_CONFIG.colors[3];
 
+  // Direction-aware slide variants
+  const slideVariants = {
+    enter: (dir: number) => ({
+      x: dir > 0 ? 100 : -100,
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: (dir: number) => ({
+      x: dir < 0 ? 100 : -100,
+      opacity: 0,
+    }),
+  };
+
   return (
-    <div className="space-y-8">
-      {/* Header - Apple-inspired clean design */}
+    <div className="space-y-6">
+      {/* Header */}
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="space-y-6"
+        className="space-y-4"
       >
         {/* Title row */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -104,7 +122,9 @@ export function NarrativeReportViewer({
                 Story Report
               </h2>
             </div>
-            <div className="w-12 h-0.5 bg-primary/60 rounded-full" />
+            <p className="text-sm text-muted-foreground">
+              Generated {format(new Date(report.generated_at), 'MMMM d, yyyy')}
+            </p>
           </div>
           
           <div className="flex items-center gap-3">
@@ -136,18 +156,12 @@ export function NarrativeReportViewer({
           <Badge variant="outline" className="px-3 py-1.5">
             {report.data_snapshot.total_responses} responses
           </Badge>
-          <ReadingTimeEstimate chapters={report.chapters} />
         </div>
-
-        {/* Generation date */}
-        <p className="text-sm text-muted-foreground">
-          Generated {format(new Date(report.generated_at), 'MMMM d, yyyy')}
-        </p>
       </motion.div>
 
-      {/* Chapter Progress Navigation */}
+      {/* Visual Journey Navigation */}
       <Card className="border-0 shadow-sm bg-card/50 backdrop-blur-sm">
-        <ChapterProgressNav
+        <StoryJourneyNav
           chapters={report.chapters.map(c => ({ key: c.key, title: c.title }))}
           activeIndex={activeChapter}
           onChapterSelect={handleChapterChange}
@@ -155,24 +169,38 @@ export function NarrativeReportViewer({
         />
       </Card>
 
-      {/* Active Chapter Content */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeChapter}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
-        >
-          <StoryChapter 
-            chapter={report.chapters[activeChapter]}
-            chapterNumber={activeChapter + 1}
-            totalChapters={report.chapters.length}
-          />
-        </motion.div>
-      </AnimatePresence>
+      {/* Chapter Content with directional animations */}
+      <div className="relative min-h-[400px]">
+        <AnimatePresence mode="wait" custom={direction}>
+          <motion.div
+            key={activeChapter}
+            custom={direction}
+            variants={slideVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ 
+              type: "spring", 
+              stiffness: 300, 
+              damping: 30 
+            }}
+          >
+            <StoryChapter 
+              chapter={report.chapters[activeChapter]}
+              chapterNumber={activeChapter + 1}
+              totalChapters={report.chapters.length}
+            />
+          </motion.div>
+        </AnimatePresence>
+      </div>
 
-      {/* Chapter Navigation Footer */}
+      {/* Progress Bar */}
+      <StoryProgressBar
+        chapters={report.chapters}
+        currentChapterIndex={activeChapter}
+      />
+
+      {/* Navigation Footer */}
       <div className="flex items-center justify-between pt-4 border-t">
         <Button
           variant="ghost"
