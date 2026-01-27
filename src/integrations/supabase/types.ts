@@ -58,6 +58,56 @@ export type Database = {
           },
         ]
       }
+      aggregated_signals: {
+        Row: {
+          agreement_pct: number | null
+          analyzed_at: string | null
+          avg_intensity: number | null
+          dimension: string
+          evidence_ids: string[] | null
+          facet: string | null
+          id: string
+          sentiment: string | null
+          signal_text: string
+          survey_id: string
+          voice_count: number | null
+        }
+        Insert: {
+          agreement_pct?: number | null
+          analyzed_at?: string | null
+          avg_intensity?: number | null
+          dimension: string
+          evidence_ids?: string[] | null
+          facet?: string | null
+          id?: string
+          sentiment?: string | null
+          signal_text: string
+          survey_id: string
+          voice_count?: number | null
+        }
+        Update: {
+          agreement_pct?: number | null
+          analyzed_at?: string | null
+          avg_intensity?: number | null
+          dimension?: string
+          evidence_ids?: string[] | null
+          facet?: string | null
+          id?: string
+          sentiment?: string | null
+          signal_text?: string
+          survey_id?: string
+          voice_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "aggregated_signals_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       analytics_cache: {
         Row: {
           computed_at: string | null
@@ -533,6 +583,67 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "public_survey_links_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      response_signals: {
+        Row: {
+          confidence: number | null
+          created_at: string | null
+          dimension: string
+          facet: string | null
+          id: string
+          intensity: number | null
+          response_id: string
+          sentiment: string | null
+          signal_text: string
+          survey_id: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string | null
+          dimension: string
+          facet?: string | null
+          id?: string
+          intensity?: number | null
+          response_id: string
+          sentiment?: string | null
+          signal_text: string
+          survey_id: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string | null
+          dimension?: string
+          facet?: string | null
+          id?: string
+          intensity?: number | null
+          response_id?: string
+          sentiment?: string | null
+          signal_text?: string
+          survey_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "response_signals_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "anonymized_responses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "response_signals_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "responses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "response_signals_survey_id_fkey"
             columns: ["survey_id"]
             isOneToOne: false
             referencedRelation: "surveys"

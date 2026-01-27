@@ -1706,6 +1706,131 @@ Return ONLY valid JSON in this exact format:
             console.error(`[${conversationId}] [BACKGROUND] Error during LLM analysis:`, analysisError);
           }
 
+          // SEMANTIC SIGNAL EXTRACTION (Employee Satisfaction Only)
+          // Uses research framework: Expertise, Autonomy, Justice, Social Connection, Social Status
+          if (surveyType === "employee_satisfaction") {
+            try {
+              console.log(`[${conversationId}] [BACKGROUND] Starting semantic signal extraction...`);
+              
+              const signalResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${LOVABLE_API_KEY}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  model: AI_MODEL_LITE,
+                  messages: [
+                    {
+                      role: "system",
+                      content: `You analyze employee feedback through a research-backed framework of 5 psychological dimensions that drive workplace satisfaction.
+
+DIMENSIONS:
+1. EXPERTISE - Can they apply knowledge usefully? (skills, learning, growth, challenge, mastery)
+2. AUTONOMY - Can they work in their own way? (control, flexibility, decision-making, independence)
+3. JUSTICE - Do they benefit fairly? (fairness, rewards, recognition distribution, equity)
+4. SOCIAL_CONNECTION - Are they connected to colleagues? (belonging, teamwork, relationships, inclusion)
+5. SOCIAL_STATUS - Are they appreciated? (recognition, respect, value, visibility, acknowledgment)
+
+Extract the underlying dimension driving this feedback, not just surface-level themes.`
+                    },
+                    {
+                      role: "user",
+                      content: `Analyze this employee feedback: "${sanitizedContent}"`
+                    }
+                  ],
+                  tools: [
+                    {
+                      type: "function",
+                      function: {
+                        name: "extract_semantic_signal",
+                        description: "Extract the underlying psychological dimension and semantic signal from employee feedback",
+                        parameters: {
+                          type: "object",
+                          properties: {
+                            signal_text: {
+                              type: "string",
+                              description: "A natural language description of the signal (e.g., 'Employee feels micromanaged in daily tasks'). 8-15 words, written as observation."
+                            },
+                            dimension: {
+                              type: "string",
+                              enum: ["expertise", "autonomy", "justice", "social_connection", "social_status"],
+                              description: "The primary psychological dimension this feedback relates to"
+                            },
+                            facet: {
+                              type: "string",
+                              description: "Specific aspect within the dimension (e.g., 'method_control', 'skill_utilization', 'peer_recognition')"
+                            },
+                            intensity: {
+                              type: "integer",
+                              description: "How strongly this signal is expressed (1-10, where 10 is extremely strong)",
+                              minimum: 1,
+                              maximum: 10
+                            },
+                            sentiment: {
+                              type: "string",
+                              enum: ["positive", "negative", "neutral"],
+                              description: "Overall sentiment of the feedback"
+                            },
+                            confidence: {
+                              type: "number",
+                              description: "Confidence in this extraction (0.0-1.0)",
+                              minimum: 0,
+                              maximum: 1
+                            }
+                          },
+                          required: ["signal_text", "dimension", "facet", "intensity", "sentiment", "confidence"],
+                          additionalProperties: false
+                        }
+                      }
+                    }
+                  ],
+                  tool_choice: { type: "function", function: { name: "extract_semantic_signal" } }
+                }),
+              });
+
+              if (signalResponse.ok) {
+                const signalData = await signalResponse.json();
+                const signalToolCall = signalData.choices[0]?.message?.tool_calls?.[0];
+                
+                if (signalToolCall?.function?.arguments) {
+                  const signal = JSON.parse(signalToolCall.function.arguments);
+                  
+                  console.log(`[${conversationId}] [BACKGROUND] Semantic signal extracted:`, {
+                    dimension: signal.dimension,
+                    facet: signal.facet,
+                    intensity: signal.intensity,
+                    signal: signal.signal_text?.substring(0, 50)
+                  });
+
+                  // Store signal in response_signals table
+                  const { error: signalInsertError } = await supabase
+                    .from("response_signals")
+                    .insert({
+                      response_id: insertedResponse.id,
+                      survey_id: session?.survey_id,
+                      signal_text: signal.signal_text,
+                      dimension: signal.dimension,
+                      facet: signal.facet,
+                      intensity: signal.intensity,
+                      sentiment: signal.sentiment,
+                      confidence: signal.confidence
+                    });
+
+                  if (signalInsertError) {
+                    console.error(`[${conversationId}] [BACKGROUND] Failed to save semantic signal:`, signalInsertError);
+                  } else {
+                    console.log(`[${conversationId}] [BACKGROUND] ✅ Semantic signal saved successfully`);
+                  }
+                }
+              } else {
+                console.error(`[${conversationId}] [BACKGROUND] Signal extraction failed:`, await signalResponse.text());
+              }
+            } catch (signalError) {
+              console.error(`[${conversationId}] [BACKGROUND] Error during signal extraction:`, signalError);
+            }
+          }
+
           // If urgent, create escalation log entry
           if (isUrgent) {
             console.log(`[${conversationId}] [BACKGROUND] Urgent issue detected, logging escalation...`);
