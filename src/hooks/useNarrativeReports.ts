@@ -38,7 +38,7 @@ export interface NarrativeReport {
 export const useNarrativeReports = (surveyId: string | null) => {
   const queryClient = useQueryClient();
 
-  const { data: reports, isLoading, error } = useQuery({
+  const { data: reports, isLoading, error, refetch } = useQuery({
     queryKey: ['narrative-reports', surveyId],
     queryFn: async () => {
       if (!surveyId) return null;
@@ -113,5 +113,6 @@ export const useNarrativeReports = (surveyId: string | null) => {
     error,
     generateReport: generateReport.mutate,
     isGenerating: generateReport.isPending,
+    refetch,
   };
 };

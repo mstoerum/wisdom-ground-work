@@ -30,6 +30,8 @@ interface HybridInsightsViewProps {
   surveyTitle?: string;
   isLoading?: boolean;
   onShareLink?: () => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
 }
 
 export function HybridInsightsView({
@@ -44,6 +46,8 @@ export function HybridInsightsView({
   surveyTitle,
   isLoading,
   onShareLink,
+  onRefresh,
+  isRefreshing,
 }: HybridInsightsViewProps) {
   const [storyExpanded, setStoryExpanded] = useState(true);
   

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { HRLayout } from "@/components/hr/HRLayout";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAnalytics, type AnalyticsFilters } from "@/hooks/useAnalytics";
@@ -10,7 +10,9 @@ import type { Database } from "@/integrations/supabase/types";
 // Components
 import { HybridInsightsView } from "@/components/hr/analytics/HybridInsightsView";
 import { SurveyComparison } from "@/components/hr/analytics/SurveyComparison";
+import { AnalyticsRefreshBar } from "@/components/hr/analytics/AnalyticsRefreshBar";
 import { useNarrativeReports } from "@/hooks/useNarrativeReports";
+import { useThemeAnalytics } from "@/hooks/useThemeAnalytics";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BarChart3, Sparkles } from "lucide-react";
@@ -18,16 +20,27 @@ import { BarChart3, Sparkles } from "lucide-react";
 const Analytics = () => {
   const [filters, setFilters] = useState<AnalyticsFilters>({});
   const [activeTab, setActiveTab] = useState<string>("insights");
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(new Date());
+  const [newResponseCount, setNewResponseCount] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [autoRefreshInterval, setAutoRefreshInterval] = useState<number | null>(null);
+  const [isLiveConnected, setIsLiveConnected] = useState(false);
   
-  const { participation, sentiment, themes, isLoading } = useAnalytics(filters);
+  const { participation, sentiment, themes, isLoading, refetch: refetchAnalytics } = useAnalytics(filters);
 
   // Fetch narrative reports
   const { 
     latestReport, 
     isLoading: isReportLoading, 
     generateReport,
-    isGenerating 
+    isGenerating,
+    refetch: refetchNarrativeReports,
   } = useNarrativeReports(filters.surveyId || null);
+
+  // Theme analytics for re-analysis capability
+  const { refetch: refetchThemeAnalytics } = useThemeAnalytics(filters.surveyId || null, {
+    responseCount: participation?.responseCount || 0,
+  });
 
   const { data: surveys } = useQuery({
     queryKey: ['surveys-list'],
@@ -55,9 +68,69 @@ const Analytics = () => {
   };
 
   const handleShareLink = () => {
-    // TODO: Implement share link modal/functionality
     toast.info("Share link feature coming soon");
   };
+
+  // Unified refresh function
+  const refreshAllAnalytics = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        refetchAnalytics(),
+        refetchThemeAnalytics(),
+        refetchNarrativeReports(),
+      ]);
+      setLastUpdated(new Date());
+      setNewResponseCount(0);
+      toast.success("Analytics refreshed");
+    } catch (error) {
+      console.error("Refresh error:", error);
+      toast.error("Failed to refresh analytics");
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [refetchAnalytics, refetchThemeAnalytics, refetchNarrativeReports]);
+
+  // Auto-refresh interval
+  useEffect(() => {
+    if (!autoRefreshInterval) return;
+
+    const timer = setInterval(() => {
+      refreshAllAnalytics();
+    }, autoRefreshInterval * 60 * 1000);
+
+    return () => clearInterval(timer);
+  }, [autoRefreshInterval, refreshAllAnalytics]);
+
+  // Real-time subscription for new responses
+  useEffect(() => {
+    if (!filters.surveyId) {
+      setIsLiveConnected(false);
+      return;
+    }
+
+    const channel = supabase
+      .channel(`analytics-responses-${filters.surveyId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'responses',
+          filter: `survey_id=eq.${filters.surveyId}`,
+        },
+        () => {
+          setNewResponseCount(prev => prev + 1);
+        }
+      )
+      .subscribe((status) => {
+        setIsLiveConnected(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [filters.surveyId]);
 
   // Format surveys for comparison component
   const surveysForComparison = surveys?.map(s => ({
@@ -100,6 +173,20 @@ const Analytics = () => {
               )}
             </div>
 
+            {/* Refresh Bar */}
+            {filters.surveyId && (
+              <AnalyticsRefreshBar
+                lastUpdated={lastUpdated}
+                responseCount={participation?.responseCount || 0}
+                newResponseCount={newResponseCount}
+                isRefreshing={isRefreshing}
+                isLiveConnected={isLiveConnected}
+                onRefresh={refreshAllAnalytics}
+                autoRefreshInterval={autoRefreshInterval}
+                onAutoRefreshChange={setAutoRefreshInterval}
+              />
+            )}
+
             {/* Tabs for Insights vs Comparison */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
               <TabsList>
@@ -126,6 +213,8 @@ const Analytics = () => {
                   surveyTitle={selectedSurvey?.title}
                   isLoading={isLoading}
                   onShareLink={handleShareLink}
+                  onRefresh={refreshAllAnalytics}
+                  isRefreshing={isRefreshing}
                 />
               </TabsContent>
 
