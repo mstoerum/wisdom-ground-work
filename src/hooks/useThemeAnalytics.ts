@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 export interface SemanticInsight {
   text: string;
@@ -82,6 +83,7 @@ interface UseThemeAnalyticsOptions {
 export function useThemeAnalytics(surveyId: string | null, options: UseThemeAnalyticsOptions = {}) {
   const { responseCount = 0, autoAnalyze = true } = options;
   const queryClient = useQueryClient();
+  const lastResponseCountRef = useRef(responseCount);
   const autoAnalyzedRef = useRef(false);
 
   // Fetch theme analytics data
@@ -158,6 +160,14 @@ export function useThemeAnalytics(surveyId: string | null, options: UseThemeAnal
 
   const hasAnalysis = (query.data?.length || 0) > 0;
 
+  // Reset auto-analysis flag when response count increases significantly
+  useEffect(() => {
+    if (responseCount >= lastResponseCountRef.current + 5) {
+      autoAnalyzedRef.current = false;
+      lastResponseCountRef.current = responseCount;
+    }
+  }, [responseCount]);
+
   // Auto-trigger analysis when conditions are met
   useEffect(() => {
     if (!autoAnalyze) return;
@@ -180,7 +190,33 @@ export function useThemeAnalytics(surveyId: string | null, options: UseThemeAnal
   // Reset auto-analyzed flag when survey changes
   useEffect(() => {
     autoAnalyzedRef.current = false;
+    lastResponseCountRef.current = 0;
   }, [surveyId]);
+
+  // Real-time subscription for theme analytics updates
+  useEffect(() => {
+    if (!surveyId) return;
+
+    const channel: RealtimeChannel = supabase
+      .channel(`theme-analytics-${surveyId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'theme_analytics',
+          filter: `survey_id=eq.${surveyId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['theme-analytics', surveyId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [surveyId, queryClient]);
 
   return {
     data: query.data || [],
