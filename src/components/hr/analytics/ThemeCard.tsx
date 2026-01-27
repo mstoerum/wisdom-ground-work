@@ -1,295 +1,219 @@
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Users } from "lucide-react";
-import { ThemeInsightCard } from "./ThemeInsightCard";
-import { RootCauseCard } from "./RootCauseCard";
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { X, Users, CheckCircle2, AlertTriangle, ArrowRight } from "lucide-react";
 import type { ThemeInsight } from "@/hooks/useAnalytics";
-import type { ThemeAnalyticsData, SemanticInsight } from "@/hooks/useThemeAnalytics";
+import type { ThemeAnalyticsData } from "@/hooks/useThemeAnalytics";
 
 interface ThemeCardProps {
   theme: ThemeInsight;
   enrichedData?: ThemeAnalyticsData;
-  isExpanded: boolean;
-  onToggle: () => void;
   index: number;
 }
 
 // Health status configuration
 const getHealthConfig = (health: number, status?: string) => {
   if (health >= 80) return {
-    gradient: "from-emerald-50/60 to-white dark:from-emerald-950/20 dark:to-card",
-    border: "border-l-emerald-400",
+    gradient: "from-emerald-50 to-emerald-100/50 dark:from-emerald-950/40 dark:to-emerald-900/20",
+    backGradient: "from-emerald-100/80 to-white dark:from-emerald-950/60 dark:to-card",
     orb: "bg-emerald-500",
-    bar: "bg-emerald-500",
-    text: "text-emerald-700 dark:text-emerald-400",
+    text: "text-emerald-600 dark:text-emerald-400",
     label: status || "Thriving",
-    pulse: false,
   };
   if (health >= 60) return {
-    gradient: "from-teal-50/60 to-white dark:from-teal-950/20 dark:to-card",
-    border: "border-l-teal-400",
+    gradient: "from-teal-50 to-teal-100/50 dark:from-teal-950/40 dark:to-teal-900/20",
+    backGradient: "from-teal-100/80 to-white dark:from-teal-950/60 dark:to-card",
     orb: "bg-teal-500",
-    bar: "bg-teal-500",
-    text: "text-teal-700 dark:text-teal-400",
+    text: "text-teal-600 dark:text-teal-400",
     label: status || "Growing",
-    pulse: false,
   };
   if (health >= 45) return {
-    gradient: "from-amber-50/60 to-white dark:from-amber-950/20 dark:to-card",
-    border: "border-l-amber-400",
+    gradient: "from-amber-50 to-amber-100/50 dark:from-amber-950/40 dark:to-amber-900/20",
+    backGradient: "from-amber-100/80 to-white dark:from-amber-950/60 dark:to-card",
     orb: "bg-amber-500",
-    bar: "bg-amber-500",
-    text: "text-amber-700 dark:text-amber-400",
+    text: "text-amber-600 dark:text-amber-400",
     label: status || "Emerging",
-    pulse: false,
   };
   if (health >= 30) return {
-    gradient: "from-orange-50/60 to-white dark:from-orange-950/20 dark:to-card",
-    border: "border-l-orange-400",
+    gradient: "from-orange-50 to-orange-100/50 dark:from-orange-950/40 dark:to-orange-900/20",
+    backGradient: "from-orange-100/80 to-white dark:from-orange-950/60 dark:to-card",
     orb: "bg-orange-500",
-    bar: "bg-orange-500",
-    text: "text-orange-700 dark:text-orange-400",
+    text: "text-orange-600 dark:text-orange-400",
     label: status || "Challenged",
-    pulse: false,
   };
   return {
-    gradient: "from-rose-50/60 to-white dark:from-rose-950/20 dark:to-card",
-    border: "border-l-rose-400",
+    gradient: "from-rose-50 to-rose-100/50 dark:from-rose-950/40 dark:to-rose-900/20",
+    backGradient: "from-rose-100/80 to-white dark:from-rose-950/60 dark:to-card",
     orb: "bg-rose-500",
-    bar: "bg-rose-500",
-    text: "text-rose-700 dark:text-rose-400",
+    text: "text-rose-600 dark:text-rose-400",
     label: status || "Critical",
-    pulse: true,
   };
 };
 
-// Get representative quote based on health
-const getRepresentativeQuote = (
-  theme: ThemeInsight,
-  enrichedData?: ThemeAnalyticsData,
-  health?: number
-): string | null => {
-  const isHealthy = (health ?? 50) >= 50;
-
-  // Try AI-enriched insights first
-  if (enrichedData) {
-    if (isHealthy && enrichedData.insights.strengths.length > 0) {
-      return enrichedData.insights.strengths[0].text;
-    }
-    if (!isHealthy && enrichedData.insights.frictions.length > 0) {
-      return enrichedData.insights.frictions[0].text;
-    }
-  }
-
-  // Fallback to key signals
-  if (isHealthy && theme.keySignals.positives.length > 0) {
-    return theme.keySignals.positives[0];
-  }
-  if (!isHealthy && theme.keySignals.concerns.length > 0) {
-    return theme.keySignals.concerns[0];
-  }
-
-  // Last resort: any available quote
-  return theme.keySignals.positives[0] || theme.keySignals.concerns[0] || null;
-};
-
-export function ThemeCard({ theme, enrichedData, isExpanded, onToggle, index }: ThemeCardProps) {
+export function ThemeCard({ theme, enrichedData, index }: ThemeCardProps) {
+  const [isFlipped, setIsFlipped] = useState(false);
+  
   const healthScore = enrichedData?.healthIndex ?? theme.avgSentiment;
   const healthStatus = enrichedData?.healthStatus;
   const config = getHealthConfig(healthScore, healthStatus);
-  const representativeQuote = getRepresentativeQuote(theme, enrichedData, healthScore);
 
-  // Get insights for expanded state
-  const strengths: SemanticInsight[] = enrichedData?.insights.strengths || [];
-  const frictions: SemanticInsight[] = enrichedData?.insights.frictions || [];
+  // Get insights for back face
+  const strengths = enrichedData?.insights.strengths || [];
+  const frictions = enrichedData?.insights.frictions || [];
   const rootCauses = enrichedData?.rootCauses || [];
-
-  // Fallback quotes when no AI analysis
+  
+  // Fallback quotes
   const fallbackStrengths = theme.keySignals.positives;
   const fallbackFrictions = theme.keySignals.concerns;
+
+  const handleFlip = () => setIsFlipped(!isFlipped);
+  const handleClose = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsFlipped(false);
+  };
+
+  // Keyboard handling
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleFlip();
+    }
+    if (e.key === "Escape" && isFlipped) {
+      setIsFlipped(false);
+    }
+  };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05, duration: 0.4 }}
-      layout
-      className={`
-        rounded-2xl border-l-4 ${config.border}
-        bg-gradient-to-br ${config.gradient}
-        transition-shadow duration-200
-        ${isExpanded ? 'shadow-lg col-span-full' : 'shadow-sm hover:shadow-md'}
-      `}
+      className="relative h-56"
+      style={{ perspective: "1000px" }}
     >
-      {/* Collapsed Header - Always Visible */}
-      <button
-        onClick={onToggle}
-        className="w-full p-5 text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-2xl"
-        aria-expanded={isExpanded}
+      <motion.div
+        className="relative w-full h-full cursor-pointer"
+        style={{ transformStyle: "preserve-3d" }}
+        animate={{ rotateY: isFlipped ? 180 : 0 }}
+        transition={{ type: "spring", stiffness: 260, damping: 20 }}
+        onClick={handleFlip}
+        onKeyDown={handleKeyDown}
+        tabIndex={0}
+        role="button"
+        aria-label={`${theme.name} theme card. ${isFlipped ? "Showing details" : "Click to see details"}`}
       >
-        <div className="flex items-center gap-3">
-          {/* Status Orb */}
-          <div className="relative">
-            <div className={`w-3 h-3 rounded-full ${config.orb}`} />
-            {config.pulse && (
-              <div className={`absolute inset-0 w-3 h-3 rounded-full ${config.orb} animate-ping opacity-75`} />
-            )}
-          </div>
-
+        {/* Front Face */}
+        <div
+          className={`
+            absolute inset-0 w-full h-full
+            rounded-2xl shadow-sm hover:shadow-md
+            bg-gradient-to-br ${config.gradient}
+            flex flex-col items-center justify-center gap-3
+            transition-shadow duration-200
+          `}
+          style={{ backfaceVisibility: "hidden" }}
+        >
           {/* Theme Name */}
-          <h3 className="text-base font-semibold text-foreground flex-1">
+          <h3 className="text-base font-medium text-foreground/80 px-4 text-center">
             {theme.name}
           </h3>
 
-          {/* Chevron */}
-          <motion.div
-            animate={{ rotate: isExpanded ? 180 : 0 }}
-            transition={{ duration: 0.2 }}
-          >
-            <ChevronDown className="h-5 w-5 text-muted-foreground" />
-          </motion.div>
-        </div>
-
-        {/* Health Bar Section */}
-        <div className="mt-4 flex items-center gap-4">
-          {/* Score */}
-          <span className={`text-2xl font-bold ${config.text} w-12`}>
+          {/* Large Score */}
+          <span className={`text-5xl font-bold ${config.text}`}>
             {Math.round(healthScore)}
           </span>
 
-          {/* Progress Bar */}
-          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-            <motion.div
-              className={`h-full rounded-full ${config.bar}`}
-              initial={{ width: 0 }}
-              animate={{ width: `${healthScore}%` }}
-              transition={{ delay: index * 0.05 + 0.2, duration: 0.6, ease: "easeOut" }}
-            />
+          {/* Status with Orb */}
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium text-muted-foreground">
+              {config.label}
+            </span>
+            <div className={`w-2.5 h-2.5 rounded-full ${config.orb}`} />
           </div>
-
-          {/* Voice Count */}
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Users className="h-3.5 w-3.5" />
-            <span>{theme.responseCount}</span>
-          </div>
-
-          {/* Status Label */}
-          <span className={`text-xs font-medium ${config.text} min-w-[70px] text-right`}>
-            {config.label}
-          </span>
         </div>
 
-        {/* Representative Quote */}
-        {representativeQuote && (
-          <p className="mt-3 text-sm text-muted-foreground italic line-clamp-2">
-            "{representativeQuote}"
-          </p>
-        )}
-      </button>
+        {/* Back Face */}
+        <div
+          className={`
+            absolute inset-0 w-full h-full
+            rounded-2xl shadow-lg
+            bg-gradient-to-br ${config.backGradient}
+            flex flex-col overflow-hidden
+          `}
+          style={{ 
+            backfaceVisibility: "hidden",
+            transform: "rotateY(180deg)"
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-border/30">
+            <h3 className="text-sm font-semibold text-foreground truncate flex-1">
+              {theme.name}
+            </h3>
+            <button
+              onClick={handleClose}
+              className="p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
+              aria-label="Close details"
+            >
+              <X className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </div>
 
-      {/* Expanded Content */}
-      <AnimatePresence initial={false}>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="overflow-hidden"
-          >
-            <div className="px-5 pb-5 pt-0">
-              {/* Divider */}
-              <div className="border-t border-border/50 mb-5" />
-
-              <motion.div
-                initial="collapsed"
-                animate="expanded"
-                exit="collapsed"
-                variants={{
-                  expanded: { transition: { staggerChildren: 0.1 } },
-                  collapsed: {},
-                }}
-                className="space-y-6"
-              >
-                {/* Strengths Section */}
-                {(strengths.length > 0 || fallbackStrengths.length > 0) && (
-                  <motion.div
-                    variants={{
-                      collapsed: { opacity: 0, y: 8 },
-                      expanded: { opacity: 1, y: 0 },
-                    }}
-                    className="space-y-2"
-                  >
-                    <h4 className="text-[10px] uppercase tracking-wider text-emerald-600 font-medium">
-                      Strengths
-                    </h4>
-                    {strengths.length > 0 ? (
-                      strengths.slice(0, 3).map((insight, i) => (
-                        <ThemeInsightCard key={i} insight={insight} variant="strength" />
-                      ))
-                    ) : (
-                      fallbackStrengths.slice(0, 2).map((quote, i) => (
-                        <div
-                          key={i}
-                          className="rounded-lg border-l-2 border-l-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20 p-3"
-                        >
-                          <p className="text-sm text-foreground italic">"{quote}"</p>
-                        </div>
-                      ))
-                    )}
-                  </motion.div>
-                )}
-
-                {/* Frictions Section */}
-                {(frictions.length > 0 || fallbackFrictions.length > 0) && (
-                  <motion.div
-                    variants={{
-                      collapsed: { opacity: 0, y: 8 },
-                      expanded: { opacity: 1, y: 0 },
-                    }}
-                    className="space-y-2"
-                  >
-                    <h4 className="text-[10px] uppercase tracking-wider text-amber-600 font-medium">
-                      Frictions
-                    </h4>
-                    {frictions.length > 0 ? (
-                      frictions.slice(0, 3).map((insight, i) => (
-                        <ThemeInsightCard key={i} insight={insight} variant="friction" />
-                      ))
-                    ) : (
-                      fallbackFrictions.slice(0, 2).map((quote, i) => (
-                        <div
-                          key={i}
-                          className="rounded-lg border-l-2 border-l-amber-400 bg-amber-50/50 dark:bg-amber-950/20 p-3"
-                        >
-                          <p className="text-sm text-foreground italic">"{quote}"</p>
-                        </div>
-                      ))
-                    )}
-                  </motion.div>
-                )}
-
-                {/* Root Causes Section */}
-                {rootCauses.length > 0 && (
-                  <motion.div
-                    variants={{
-                      collapsed: { opacity: 0, y: 8 },
-                      expanded: { opacity: 1, y: 0 },
-                    }}
-                    className="space-y-2 pt-2 border-t border-border/50"
-                  >
-                    <h4 className="text-[10px] uppercase tracking-wider text-foreground/70 font-medium">
-                      Root Causes
-                    </h4>
-                    {rootCauses.slice(0, 2).map((cause, i) => (
-                      <RootCauseCard key={i} rootCause={cause} />
-                    ))}
-                  </motion.div>
-                )}
-              </motion.div>
+          {/* Metrics Row */}
+          <div className="flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground border-b border-border/20">
+            <span className={`font-semibold ${config.text}`}>{Math.round(healthScore)}</span>
+            <span>·</span>
+            <span>{config.label}</span>
+            <span>·</span>
+            <div className="flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              <span>{theme.responseCount} voices</span>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+
+          {/* Content - Scrollable */}
+          <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+            {/* Strengths */}
+            {(strengths.length > 0 || fallbackStrengths.length > 0) && (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-emerald-600 font-medium">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Strengths
+                </div>
+                <p className="text-xs text-foreground/80 italic line-clamp-2">
+                  "{strengths[0]?.text || fallbackStrengths[0] || "No data"}"
+                </p>
+              </div>
+            )}
+
+            {/* Frictions */}
+            {(frictions.length > 0 || fallbackFrictions.length > 0) && (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-amber-600 font-medium">
+                  <AlertTriangle className="h-3 w-3" />
+                  Frictions
+                </div>
+                <p className="text-xs text-foreground/80 italic line-clamp-2">
+                  "{frictions[0]?.text || fallbackFrictions[0] || "No data"}"
+                </p>
+              </div>
+            )}
+
+            {/* Root Cause */}
+            {rootCauses.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-foreground/60 font-medium">
+                  <ArrowRight className="h-3 w-3" />
+                  Root Cause
+                </div>
+                <p className="text-xs text-foreground/80 line-clamp-2">
+                  {rootCauses[0].cause}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
     </motion.div>
   );
 }
