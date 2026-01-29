@@ -1,3 +1,5 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 type AppRole = Database['public']['Enums']['app_role'];
@@ -11,13 +13,54 @@ interface UserRoleData {
 }
 
 export const useUserRole = (): UserRoleData => {
-  // DEMO MODE: All roles granted for showcase
-  // TODO: Restore role checking before production
+  const [roles, setRoles] = useState<AppRole[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user) {
+          setRoles([]);
+          setLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id);
+
+        if (error) {
+          console.error('Error fetching user roles:', error);
+          setRoles([]);
+        } else {
+          setRoles(data?.map(r => r.role) || []);
+        }
+      } catch (error) {
+        console.error('Error in useUserRole:', error);
+        setRoles([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRoles();
+
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      fetchRoles();
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   return {
-    roles: ['employee', 'hr_admin', 'hr_analyst'],
-    isEmployee: true,
-    isHRAdmin: true,
-    isHRAnalyst: true,
-    loading: false,
+    roles,
+    isEmployee: roles.includes('employee'),
+    isHRAdmin: roles.includes('hr_admin'),
+    isHRAnalyst: roles.includes('hr_analyst'),
+    loading,
   };
 };
