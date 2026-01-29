@@ -1,221 +1,62 @@
 
+# Fix: Restore Survey Selection in Analytics Tab
 
-# Implementation Plan: Research-Based Meta-Framework for Employee Interviews
+## Problem Identified
 
-## Overview
+The survey selector dropdown is not appearing because:
 
-This plan adds the research framework (Expertise, Autonomy, Justice, Social Connection, Social Status) to employee satisfaction interviews and creates a new **"Drivers"** tab in analytics. The course evaluation flow remains completely unchanged.
+1. **Your current account** (`sebdackus@gmail.com`) only has the `employee` role
+2. **Not the `hr_admin` role** needed to view all surveys in the analytics dashboard
+3. The RLS policy correctly blocks employees from seeing surveys they haven't been assigned to
 
----
+## Root Cause
 
-## What Gets Built
+This is an **account permissions issue**, not a code bug. The code is working correctly - the Select dropdown is hidden when `surveys.length === 0`:
 
-### 1. AI Interviewer Enhancement (Employee Surveys Only)
-The AI will use the 5 research dimensions as a "meta-lens" when probing employee responses, asking questions that uncover root causes behind surface-level feedback.
-
-### 2. New "Drivers" Analytics Tab
-A fourth tab alongside Overview, Story Report, and Compare that shows:
-- **Dimension Health Radar**: 5-axis visualization of the research dimensions
-- **Aggregated Semantic Signals**: Natural language patterns like *"Spradley senses friction around daily task autonomy"*
-- **Cross-Dimension Patterns**: Correlations between dimensions
-
-### 3. Zero Latency Impact
-Signal extraction runs in the background after the AI response is sent, using `EdgeRuntime.waitUntil()`.
-
-### 4. Preserved Existing Functionality
-- Overview Tab (Pulse Summary + Theme Grid) unchanged
-- Course evaluation surveys completely unchanged
-- Story Report and Compare tabs unchanged
-
----
-
-## Research Framework Reference
-
-| Dimension | Definition | Example Signals |
-|-----------|------------|-----------------|
-| **Expertise** | Can I apply my knowledge usefully? | "skills underutilized", "not learning" |
-| **Autonomy** | Can I work in my own way? | "micromanaged", "no control over methods" |
-| **Justice** | Do I benefit fairly? | "unequal treatment", "favoritism" |
-| **Social Connection** | Am I connected to colleagues? | "isolated", "disconnected from team" |
-| **Social Status** | Am I appreciated? | "unrecognized", "invisible contributions" |
-
----
-
-## Architecture
-
-```text
-INTERVIEW FLOW (Employee Satisfaction Only)
-┌─────────────────────────────────────────────────────────┐
-│  Employee Response                                       │
-│       ↓                                                  │
-│  AI generates follow-up (existing flow)                 │
-│       ↓                                                  │
-│  Response sent to user immediately                      │
-│       ↓                                                  │
-│  BACKGROUND: Extract signal, dimension, facet, intensity│
-│       ↓                                                  │
-│  Store in response_signals table                        │
-└─────────────────────────────────────────────────────────┘
-
-ANALYTICS STRUCTURE
-┌─────────────────────────────────────────────────────────┐
-│  [Overview]  [Drivers]  [Story Report]  [Compare]       │
-├─────────────────────────────────────────────────────────┤
-│  OVERVIEW TAB (unchanged):                               │
-│  - Pulse Summary (Voices, Engaged, Health, Themes)      │
-│  - Theme Grid (flip cards)                              │
-├─────────────────────────────────────────────────────────┤
-│  DRIVERS TAB (new, employee surveys only):              │
-│  - Dimension Health Radar (5-axis)                      │
-│  - Aggregated Semantic Signals                          │
-│  - Cross-Dimension Patterns                             │
-└─────────────────────────────────────────────────────────┘
+```tsx
+{surveys && surveys.length > 0 && (
+  <Select ...>
 ```
 
----
+## Solution Options
 
-## Implementation Phases
+### Option A: Quick Fix - Add hr_admin Role (Recommended)
+Add the `hr_admin` role to your current account so you can access the analytics features.
 
-### Phase 1: Database Schema (1-2 credits)
+**Database change needed:**
+```sql
+INSERT INTO public.user_roles (user_id, role)
+VALUES ('7f531441-8730-4814-b978-1ac8c13bc340', 'hr_admin')
+ON CONFLICT (user_id, role) DO NOTHING;
+```
 
-Create two new tables with RLS policies:
+### Option B: Login with Existing HR Admin Account
+The surveys were created by user `ddf2dad0-46e8-43ad-9d93-03142ae05943`. If you have access to that account, logging in with it will show all surveys.
 
-**`response_signals` table:**
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| response_id | uuid | FK to responses |
-| survey_id | uuid | FK for faster queries |
-| signal_text | text | Natural language signal |
-| dimension | text | expertise, autonomy, justice, social_connection, social_status |
-| facet | text | Specific aspect (e.g., method_control) |
-| intensity | integer (1-10) | How strongly expressed |
-| sentiment | text | positive/negative/neutral |
-| confidence | numeric (0-1) | AI extraction confidence |
-| created_at | timestamp | When extracted |
+### Option C: UI Improvement - Show Empty State
+Instead of hiding the dropdown when no surveys are accessible, show a message explaining why no surveys appear.
 
-**`aggregated_signals` table:**
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| survey_id | uuid | FK to surveys |
-| signal_text | text | Aggregated signal description |
-| dimension | text | Research dimension |
-| facet | text | Specific facet |
-| sentiment | text | Overall sentiment |
-| voice_count | integer | Number of supporting responses |
-| agreement_pct | integer | Agreement percentage (0-100) |
-| avg_intensity | numeric | Average intensity |
-| evidence_ids | uuid[] | Response IDs supporting this |
-| analyzed_at | timestamp | When aggregated |
+**Changes to `src/pages/hr/Analytics.tsx`:**
 
-### Phase 2: AI Prompt Enhancement (1-2 credits)
+| Line | Change |
+|------|--------|
+| 186-204 | Replace conditional rendering with always-visible selector + empty state message |
 
-Update `supabase/functions/chat/context-prompts.ts` to add the meta-framework lens to `getEmployeeSatisfactionPrompt()` only. The AI will use these dimensions to craft more insightful follow-up questions.
+## Recommended Implementation
 
-### Phase 3: Background Signal Extraction (2-3 credits)
+I recommend **Option A** (database migration) to grant your account the `hr_admin` role. This is the simplest fix and restores full functionality.
 
-Modify `supabase/functions/chat/index.ts` to:
-1. Check if survey type is `employee_satisfaction`
-2. After sending the response, use `EdgeRuntime.waitUntil()` to extract signals in the background
-3. Store extracted signals in `response_signals` table
+After that, you'll be able to:
+- See all surveys in the dropdown
+- Access analytics for any survey
+- Create new surveys without RLS errors
 
-This ensures zero latency impact on the interview experience.
-
-### Phase 4: Signal Aggregation Function (2-3 credits)
-
-Create new edge function `supabase/functions/aggregate-signals/index.ts` that:
-1. Triggers on session completion (via existing trigger)
-2. Groups semantically similar signals
-3. Calculates agreement percentages and voice counts
-4. Stores patterns in `aggregated_signals` table
-
-### Phase 5: Drivers Tab UI (3-4 credits)
-
-Create new frontend components:
-
-| Component | Purpose |
-|-----------|---------|
-| `DriversTab.tsx` | Container for the new tab |
-| `DimensionRadar.tsx` | 5-axis radar chart visualization |
-| `SignalCard.tsx` | Individual signal display with evidence |
-| `CrossPatterns.tsx` | Dimension correlation insights |
-
-Modify `src/pages/hr/Analytics.tsx` to add "Drivers" tab (only visible for employee satisfaction surveys).
-
-### Phase 6: Data Hook & Integration (2-3 credits)
-
-Create `src/hooks/useSemanticSignals.ts` to fetch and process signal data for the Drivers tab.
-
----
-
-## File Changes Summary
+## Files Changed
 
 | File | Action | Purpose |
 |------|--------|---------|
-| Database migration | CREATE | `response_signals` and `aggregated_signals` tables |
-| `supabase/functions/chat/context-prompts.ts` | MODIFY | Add meta-framework to employee prompt only |
-| `supabase/functions/chat/index.ts` | MODIFY | Add background signal extraction |
-| `supabase/functions/aggregate-signals/index.ts` | CREATE | Aggregate signals across responses |
-| `supabase/config.toml` | MODIFY | Register new edge function |
-| `src/pages/hr/Analytics.tsx` | MODIFY | Add Drivers tab conditionally |
-| `src/components/hr/analytics/DriversTab.tsx` | CREATE | New tab container |
-| `src/components/hr/analytics/DimensionRadar.tsx` | CREATE | 5-axis visualization |
-| `src/components/hr/analytics/SignalCard.tsx` | CREATE | Signal display component |
-| `src/components/hr/analytics/CrossPatterns.tsx` | CREATE | Correlation insights |
-| `src/hooks/useSemanticSignals.ts` | CREATE | Data fetching hook |
+| Database migration | CREATE | Grant `hr_admin` role to your user account |
 
----
+## Estimated Effort
 
-## Example Output
-
-### During Interview
-
-**Employee says:** "I feel like every little decision needs approval from my manager"
-
-**AI extracts (in background):**
-- Dimension: AUTONOMY
-- Facet: method_control
-- Signal: "Employees feel micromanaged in daily task decisions"
-- Intensity: 7/10
-- Sentiment: negative
-
-### In Analytics (Drivers Tab)
-
-```text
-┌─────────────────────────────────────────────────────────┐
-│  AUTONOMY                                                │
-│  ●●●●●●○○○○ 6/10 Health                                 │
-├─────────────────────────────────────────────────────────┤
-│  ⚠️ "Employees feel micromanaged in daily decisions"    │
-│     8 voices • 73% agreement • Negative                  │
-├─────────────────────────────────────────────────────────┤
-│  ✓ "People have freedom in project selection"           │
-│     5 voices • 60% agreement • Positive                  │
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
-## What Stays Unchanged
-
-- Course Evaluation surveys (prompts, extraction, analytics)
-- Overview Tab (Pulse Summary + Theme Grid)
-- Story Report Tab
-- Compare Tab
-- Interview latency (signal extraction runs in background)
-
----
-
-## Estimated Credits
-
-| Phase | Scope | Credits |
-|-------|-------|---------|
-| 1 | Database migration + RLS | 1-2 |
-| 2 | Prompt enhancement | 1-2 |
-| 3 | Background signal extraction | 2-3 |
-| 4 | Aggregation edge function | 2-3 |
-| 5 | DriversTab + DimensionRadar | 3-4 |
-| 6 | SignalCard + hooks | 2-3 |
-| **Total** | | **11-17** |
-
+1 credit - Single database migration to add the role.
