@@ -1,9 +1,10 @@
 import { UseFormReturn } from "react-hook-form";
 import { SurveyFormData } from "@/lib/surveySchema";
-import { FormControl, FormDescription, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { FormControl, FormDescription, FormField, FormItem } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Users, GraduationCap, Building2, BookOpen } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface SurveyTypeSelectorProps {
   form: UseFormReturn<SurveyFormData>;
@@ -31,12 +32,17 @@ export const SurveyTypeSelector = ({ form }: SurveyTypeSelectorProps) => {
                 className="grid grid-cols-1 md:grid-cols-2 gap-4"
               >
                 {/* Employee Satisfaction Survey */}
-                <FormItem>
-                  <FormControl>
-                    <RadioGroupItem value="employee_satisfaction" id="employee_satisfaction" className="sr-only peer" />
-                  </FormControl>
-                  <FormLabel htmlFor="employee_satisfaction" className="cursor-pointer">
-                    <Card className="peer-data-[state=checked]:border-primary peer-data-[state=checked]:ring-2 peer-data-[state=checked]:ring-primary/20 transition-all hover:border-primary/50">
+                <div className="relative">
+                  <RadioGroupItem 
+                    value="employee_satisfaction" 
+                    id="employee_satisfaction" 
+                    className="sr-only" 
+                  />
+                  <label htmlFor="employee_satisfaction" className="cursor-pointer block">
+                    <Card className={cn(
+                      "transition-all hover:border-primary/50 h-full",
+                      field.value === 'employee_satisfaction' && "border-primary ring-2 ring-primary/20"
+                    )}>
                       <CardHeader>
                         <div className="flex items-center gap-3">
                           <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -74,16 +80,21 @@ export const SurveyTypeSelector = ({ form }: SurveyTypeSelectorProps) => {
                         </p>
                       </CardContent>
                     </Card>
-                  </FormLabel>
-                </FormItem>
+                  </label>
+                </div>
 
                 {/* Course Evaluation */}
-                <FormItem>
-                  <FormControl>
-                    <RadioGroupItem value="course_evaluation" id="course_evaluation" className="sr-only peer" />
-                  </FormControl>
-                  <FormLabel htmlFor="course_evaluation" className="cursor-pointer">
-                    <Card className="peer-data-[state=checked]:border-primary peer-data-[state=checked]:ring-2 peer-data-[state=checked]:ring-primary/20 transition-all hover:border-primary/50">
+                <div className="relative">
+                  <RadioGroupItem 
+                    value="course_evaluation" 
+                    id="course_evaluation" 
+                    className="sr-only" 
+                  />
+                  <label htmlFor="course_evaluation" className="cursor-pointer block">
+                    <Card className={cn(
+                      "transition-all hover:border-primary/50 h-full",
+                      field.value === 'course_evaluation' && "border-primary ring-2 ring-primary/20"
+                    )}>
                       <CardHeader>
                         <div className="flex items-center gap-3">
                           <div className="h-12 w-12 rounded-lg bg-accent/10 flex items-center justify-center">
@@ -121,8 +132,8 @@ export const SurveyTypeSelector = ({ form }: SurveyTypeSelectorProps) => {
                         </p>
                       </CardContent>
                     </Card>
-                  </FormLabel>
-                </FormItem>
+                  </label>
+                </div>
               </RadioGroup>
             </FormControl>
             <FormDescription>
