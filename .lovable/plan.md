@@ -1,132 +1,221 @@
 
-# Fix Plan: Survey Creation Issues
 
-## Problem Summary
+# Implementation Plan: Research-Based Meta-Framework for Employee Interviews
 
-Two issues are preventing survey creation:
+## Overview
 
-1. **Survey type selection appears broken** - Clicking on "Employee Satisfaction" or "Course Evaluation" cards doesn't show visual selection feedback
-2. **Save Draft and Deploy fail silently** - No authentication session exists, so database writes fail
+This plan adds the research framework (Expertise, Autonomy, Justice, Social Connection, Social Status) to employee satisfaction interviews and creates a new **"Drivers"** tab in analytics. The course evaluation flow remains completely unchanged.
 
 ---
 
-## Root Cause Analysis
+## What Gets Built
 
-### Issue 1: Visual Selection Feedback Not Working
+### 1. AI Interviewer Enhancement (Employee Surveys Only)
+The AI will use the 5 research dimensions as a "meta-lens" when probing employee responses, asking questions that uncover root causes behind surface-level feedback.
 
-The `SurveyTypeSelector` component uses Tailwind's `peer` CSS pattern to style cards when their associated radio button is selected. However, the DOM structure breaks this pattern:
+### 2. New "Drivers" Analytics Tab
+A fourth tab alongside Overview, Story Report, and Compare that shows:
+- **Dimension Health Radar**: 5-axis visualization of the research dimensions
+- **Aggregated Semantic Signals**: Natural language patterns like *"Spradley senses friction around daily task autonomy"*
+- **Cross-Dimension Patterns**: Correlations between dimensions
+
+### 3. Zero Latency Impact
+Signal extraction runs in the background after the AI response is sent, using `EdgeRuntime.waitUntil()`.
+
+### 4. Preserved Existing Functionality
+- Overview Tab (Pulse Summary + Theme Grid) unchanged
+- Course evaluation surveys completely unchanged
+- Story Report and Compare tabs unchanged
+
+---
+
+## Research Framework Reference
+
+| Dimension | Definition | Example Signals |
+|-----------|------------|-----------------|
+| **Expertise** | Can I apply my knowledge usefully? | "skills underutilized", "not learning" |
+| **Autonomy** | Can I work in my own way? | "micromanaged", "no control over methods" |
+| **Justice** | Do I benefit fairly? | "unequal treatment", "favoritism" |
+| **Social Connection** | Am I connected to colleagues? | "isolated", "disconnected from team" |
+| **Social Status** | Am I appreciated? | "unrecognized", "invisible contributions" |
+
+---
+
+## Architecture
 
 ```text
-Current structure (BROKEN):
-FormItem
-  ├── FormControl
-  │     └── RadioGroupItem (peer, sr-only) 
-  └── FormLabel
-        └── Card (peer-data-[state=checked]:...)
+INTERVIEW FLOW (Employee Satisfaction Only)
+┌─────────────────────────────────────────────────────────┐
+│  Employee Response                                       │
+│       ↓                                                  │
+│  AI generates follow-up (existing flow)                 │
+│       ↓                                                  │
+│  Response sent to user immediately                      │
+│       ↓                                                  │
+│  BACKGROUND: Extract signal, dimension, facet, intensity│
+│       ↓                                                  │
+│  Store in response_signals table                        │
+└─────────────────────────────────────────────────────────┘
+
+ANALYTICS STRUCTURE
+┌─────────────────────────────────────────────────────────┐
+│  [Overview]  [Drivers]  [Story Report]  [Compare]       │
+├─────────────────────────────────────────────────────────┤
+│  OVERVIEW TAB (unchanged):                               │
+│  - Pulse Summary (Voices, Engaged, Health, Themes)      │
+│  - Theme Grid (flip cards)                              │
+├─────────────────────────────────────────────────────────┤
+│  DRIVERS TAB (new, employee surveys only):              │
+│  - Dimension Health Radar (5-axis)                      │
+│  - Aggregated Semantic Signals                          │
+│  - Cross-Dimension Patterns                             │
+└─────────────────────────────────────────────────────────┘
 ```
-
-The `peer-data-[state=checked]` selector requires the `RadioGroupItem` to be a direct sibling, but it's wrapped in `FormControl` while the `Card` is inside `FormLabel`.
-
-**Note**: The selection actually WORKS functionally - the form value updates correctly. Only the visual feedback (border highlight) is broken.
-
-### Issue 2: Authentication Not Active
-
-The codebase has `ProtectedRoute` and `useUserRole` in **demo mode**, which bypasses authentication checks. However, the `saveDraft` function in `CreateSurvey.tsx` still requires a real authenticated user:
-
-```typescript
-const { data: { user } } = await supabase.auth.getUser();
-if (!user) throw new Error('Not authenticated');  // This fails!
-```
-
-Since no actual Supabase session exists, all database writes fail.
 
 ---
 
-## Solution
+## Implementation Phases
 
-### Fix 1: Update SurveyTypeSelector DOM Structure
+### Phase 1: Database Schema (1-2 credits)
 
-Restructure the component so the `RadioGroupItem` is a direct sibling of the styled `Card`:
+Create two new tables with RLS policies:
 
-**File: `src/components/hr/wizard/SurveyTypeSelector.tsx`**
+**`response_signals` table:**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| response_id | uuid | FK to responses |
+| survey_id | uuid | FK for faster queries |
+| signal_text | text | Natural language signal |
+| dimension | text | expertise, autonomy, justice, social_connection, social_status |
+| facet | text | Specific aspect (e.g., method_control) |
+| intensity | integer (1-10) | How strongly expressed |
+| sentiment | text | positive/negative/neutral |
+| confidence | numeric (0-1) | AI extraction confidence |
+| created_at | timestamp | When extracted |
 
-Change from wrapping in `FormItem` to a simpler structure where the hidden radio and visible card label are direct siblings:
+**`aggregated_signals` table:**
+| Column | Type | Description |
+|--------|------|-------------|
+| id | uuid | Primary key |
+| survey_id | uuid | FK to surveys |
+| signal_text | text | Aggregated signal description |
+| dimension | text | Research dimension |
+| facet | text | Specific facet |
+| sentiment | text | Overall sentiment |
+| voice_count | integer | Number of supporting responses |
+| agreement_pct | integer | Agreement percentage (0-100) |
+| avg_intensity | numeric | Average intensity |
+| evidence_ids | uuid[] | Response IDs supporting this |
+| analyzed_at | timestamp | When aggregated |
 
-```tsx
-<RadioGroup className="grid grid-cols-1 md:grid-cols-2 gap-4">
-  <div className="relative">
-    <RadioGroupItem 
-      value="employee_satisfaction" 
-      id="employee_satisfaction" 
-      className="peer sr-only" 
-    />
-    <label htmlFor="employee_satisfaction" className="cursor-pointer block">
-      <Card className="peer-data-[state=checked]:border-primary ...">
-        {/* Card content */}
-      </Card>
-    </label>
-  </div>
-  {/* Same for course_evaluation */}
-</RadioGroup>
-```
+### Phase 2: AI Prompt Enhancement (1-2 credits)
 
-**Alternative approach**: Use React state to track selection and apply styles conditionally instead of relying on CSS peer selectors:
+Update `supabase/functions/chat/context-prompts.ts` to add the meta-framework lens to `getEmployeeSatisfactionPrompt()` only. The AI will use these dimensions to craft more insightful follow-up questions.
 
-```tsx
-const selectedType = field.value;
+### Phase 3: Background Signal Extraction (2-3 credits)
 
-<Card className={cn(
-  "transition-all hover:border-primary/50",
-  selectedType === 'employee_satisfaction' && "border-primary ring-2 ring-primary/20"
-)}>
-```
+Modify `supabase/functions/chat/index.ts` to:
+1. Check if survey type is `employee_satisfaction`
+2. After sending the response, use `EdgeRuntime.waitUntil()` to extract signals in the background
+3. Store extracted signals in `response_signals` table
 
-### Fix 2: Restore Real Authentication
+This ensures zero latency impact on the interview experience.
 
-The demo mode bypasses need to be removed to enable actual authentication:
+### Phase 4: Signal Aggregation Function (2-3 credits)
 
-**File: `src/hooks/useUserRole.ts`**
-- Remove hardcoded demo roles
-- Restore actual Supabase role fetching from `user_roles` table
+Create new edge function `supabase/functions/aggregate-signals/index.ts` that:
+1. Triggers on session completion (via existing trigger)
+2. Groups semantically similar signals
+3. Calculates agreement percentages and voice counts
+4. Stores patterns in `aggregated_signals` table
 
-**File: `src/components/ProtectedRoute.tsx`**
-- Remove demo bypass
-- Restore actual session checking with redirect to `/auth`
+### Phase 5: Drivers Tab UI (3-4 credits)
 
-This ensures users must sign in before accessing protected routes like `/hr/create-survey`.
+Create new frontend components:
+
+| Component | Purpose |
+|-----------|---------|
+| `DriversTab.tsx` | Container for the new tab |
+| `DimensionRadar.tsx` | 5-axis radar chart visualization |
+| `SignalCard.tsx` | Individual signal display with evidence |
+| `CrossPatterns.tsx` | Dimension correlation insights |
+
+Modify `src/pages/hr/Analytics.tsx` to add "Drivers" tab (only visible for employee satisfaction surveys).
+
+### Phase 6: Data Hook & Integration (2-3 credits)
+
+Create `src/hooks/useSemanticSignals.ts` to fetch and process signal data for the Drivers tab.
 
 ---
 
-## Files to Modify
+## File Changes Summary
 
-| File | Change | Purpose |
+| File | Action | Purpose |
 |------|--------|---------|
-| `src/components/hr/wizard/SurveyTypeSelector.tsx` | Fix DOM structure or use state-based styling | Enable visual selection feedback |
-| `src/hooks/useUserRole.ts` | Remove demo mode, restore Supabase role fetching | Enable real role checking |
-| `src/components/ProtectedRoute.tsx` | Remove demo bypass, restore auth checking | Require login for protected routes |
+| Database migration | CREATE | `response_signals` and `aggregated_signals` tables |
+| `supabase/functions/chat/context-prompts.ts` | MODIFY | Add meta-framework to employee prompt only |
+| `supabase/functions/chat/index.ts` | MODIFY | Add background signal extraction |
+| `supabase/functions/aggregate-signals/index.ts` | CREATE | Aggregate signals across responses |
+| `supabase/config.toml` | MODIFY | Register new edge function |
+| `src/pages/hr/Analytics.tsx` | MODIFY | Add Drivers tab conditionally |
+| `src/components/hr/analytics/DriversTab.tsx` | CREATE | New tab container |
+| `src/components/hr/analytics/DimensionRadar.tsx` | CREATE | 5-axis visualization |
+| `src/components/hr/analytics/SignalCard.tsx` | CREATE | Signal display component |
+| `src/components/hr/analytics/CrossPatterns.tsx` | CREATE | Correlation insights |
+| `src/hooks/useSemanticSignals.ts` | CREATE | Data fetching hook |
 
 ---
 
-## Implementation Order
+## Example Output
 
-1. **Fix authentication first** - This is the primary blocker for save/deploy functionality
-2. **Fix visual selection** - Secondary UX issue
+### During Interview
+
+**Employee says:** "I feel like every little decision needs approval from my manager"
+
+**AI extracts (in background):**
+- Dimension: AUTONOMY
+- Facet: method_control
+- Signal: "Employees feel micromanaged in daily task decisions"
+- Intensity: 7/10
+- Sentiment: negative
+
+### In Analytics (Drivers Tab)
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│  AUTONOMY                                                │
+│  ●●●●●●○○○○ 6/10 Health                                 │
+├─────────────────────────────────────────────────────────┤
+│  ⚠️ "Employees feel micromanaged in daily decisions"    │
+│     8 voices • 73% agreement • Negative                  │
+├─────────────────────────────────────────────────────────┤
+│  ✓ "People have freedom in project selection"           │
+│     5 voices • 60% agreement • Positive                  │
+└─────────────────────────────────────────────────────────┘
+```
 
 ---
 
-## Estimated Effort
+## What Stays Unchanged
 
-- Authentication restoration: 2-3 credits
-- Survey type selector fix: 1 credit
-- **Total: 3-4 credits**
+- Course Evaluation surveys (prompts, extraction, analytics)
+- Overview Tab (Pulse Summary + Theme Grid)
+- Story Report Tab
+- Compare Tab
+- Interview latency (signal extraction runs in background)
 
 ---
 
-## What This Fixes
+## Estimated Credits
 
-After implementation:
-- Users must sign in to access HR dashboard
-- Survey type cards show visual selection when clicked
-- Save Draft button successfully saves to database
-- Deploy button successfully creates survey and assignments
+| Phase | Scope | Credits |
+|-------|-------|---------|
+| 1 | Database migration + RLS | 1-2 |
+| 2 | Prompt enhancement | 1-2 |
+| 3 | Background signal extraction | 2-3 |
+| 4 | Aggregation edge function | 2-3 |
+| 5 | DriversTab + DimensionRadar | 3-4 |
+| 6 | SignalCard + hooks | 2-3 |
+| **Total** | | **11-17** |
 
