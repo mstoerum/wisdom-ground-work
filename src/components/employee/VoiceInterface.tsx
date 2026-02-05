@@ -45,15 +45,15 @@ export const VoiceInterface = ({
   const analyserRef = useRef<AnalyserNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
 
-  // Connection quality check
+  // Connection quality check - using Supabase REST API health check
   useEffect(() => {
     const checkConnection = async () => {
       try {
         const start = Date.now();
         
-        // Ping Supabase endpoint
-        await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/realtime-session`,
+        // Ping Supabase REST API (always available)
+        const response = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/rest/v1/`,
           {
             method: 'HEAD',
             headers: {
@@ -65,11 +65,15 @@ export const VoiceInterface = ({
         const latency = Date.now() - start;
         setConnectionLatency(latency);
         
-        // Categorize quality
-        if (latency < 100) setConnectionQuality('excellent');
-        else if (latency < 300) setConnectionQuality('good');
-        else if (latency < 500) setConnectionQuality('fair');
-        else setConnectionQuality('poor');
+        // Categorize quality based on latency
+        if (response.ok || response.status === 400) { // 400 is expected without table
+          if (latency < 100) setConnectionQuality('excellent');
+          else if (latency < 300) setConnectionQuality('good');
+          else if (latency < 500) setConnectionQuality('fair');
+          else setConnectionQuality('poor');
+        } else {
+          setConnectionQuality('fair');
+        }
         
       } catch (error) {
         console.error('Connection check failed:', error);
@@ -81,8 +85,8 @@ export const VoiceInterface = ({
     // Check on mount
     checkConnection();
     
-    // Check every 5 seconds
-    const interval = setInterval(checkConnection, 5000);
+    // Check every 10 seconds (less aggressive)
+    const interval = setInterval(checkConnection, 10000);
     
     return () => clearInterval(interval);
   }, []);
