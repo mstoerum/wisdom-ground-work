@@ -131,43 +131,32 @@ export const SurveyModeSelector = ({
             </Card>
           </div>
 
-          {/* Voice Mode Card */}
+          {/* Voice Mode Card - Coming Soon */}
           <div className="animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
             <Card 
-              className="h-full hover:border-primary/50 transition-all cursor-pointer group relative border-primary/30 shadow-lg"
-              onClick={() => onSelectMode('voice')}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  onSelectMode('voice');
-                }
-              }}
-              aria-label="Select voice conversation mode - recommended"
+              className="h-full transition-all relative opacity-75"
+              aria-label="Voice conversation mode - coming soon"
             >
-              {/* Recommended Badge */}
+              {/* Coming Soon Badge */}
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
-                <Badge className="bg-gradient-to-r from-primary to-primary/80 text-white px-4 py-1 shadow-md">
-                  ⭐ Recommended
+                <Badge className="bg-muted text-muted-foreground px-4 py-1 shadow-md">
+                  🔜 Coming Soon
                 </Badge>
               </div>
 
               <CardHeader className="pb-4">
                 <div className="flex items-start justify-between">
-                  <div className="p-3 bg-primary/10 rounded-lg group-hover:bg-primary/20 transition-colors relative">
-                    <Mic className="h-8 w-8 text-primary" />
-                    {/* Subtle pulse animation */}
-                    <div className="absolute inset-0 bg-primary/20 rounded-lg animate-ping" style={{ animationDuration: '2s' }} />
+                  <div className="p-3 bg-muted/50 rounded-lg relative">
+                    <Mic className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <Badge variant="outline" className="flex items-center gap-1 border-primary/50">
+                  <Badge variant="outline" className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     5-10 min
                   </Badge>
                 </div>
-                <CardTitle className="text-2xl mt-4 flex items-center gap-2">
+                <CardTitle className="text-2xl mt-4 flex items-center gap-2 text-muted-foreground">
                   Voice Conversation
-                  <Badge variant="secondary" className="text-xs">NEW</Badge>
+                  <Badge variant="outline" className="text-xs">SOON</Badge>
                 </CardTitle>
                 <CardDescription className="text-base">
                   Speak naturally, no typing needed
@@ -175,50 +164,51 @@ export const SurveyModeSelector = ({
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Benefits */}
-                <div className="space-y-3">
+                <div className="space-y-3 text-muted-foreground">
                   <div className="flex items-start gap-3">
                     <div className="mt-1">
-                      <Zap className="h-4 w-4 text-primary" />
+                      <Zap className="h-4 w-4" />
                     </div>
                     <div>
                       <p className="text-sm font-medium">Faster & More Natural</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs">
                         Just talk like a regular conversation
                       </p>
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
                     <div className="mt-1">
-                      <Volume2 className="h-4 w-4 text-primary" />
+                      <Volume2 className="h-4 w-4" />
                     </div>
                     <div>
                       <p className="text-sm font-medium">No Typing Required</p>
-                      <p className="text-xs text-muted-foreground">
+                      <p className="text-xs">
                         Perfect for mobile or on-the-go
                       </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Privacy Note */}
-                <div className="mt-6 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                {/* Coming Soon Note */}
+                <div className="mt-6 p-3 bg-muted/30 rounded-lg border border-border">
                   <p className="text-xs font-medium mb-1 flex items-center gap-1">
                     <Info className="h-3 w-3" />
-                    Privacy & Recording
+                    Voice Mode Setup
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    Your voice is converted to text in real-time. Audio is not permanently stored—only text transcripts are saved (with your consent).
+                    Voice conversations require ElevenLabs agent configuration. Contact your administrator to enable this feature.
                   </p>
                 </div>
 
-                {/* CTA */}
+                {/* Disabled CTA */}
                 <Button 
-                  className="w-full mt-4 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70" 
+                  className="w-full mt-4" 
                   size="lg"
-                  onClick={() => onSelectMode('voice')}
+                  variant="secondary"
+                  disabled
                 >
                   <Mic className="mr-2 h-5 w-5" />
-                  Start Voice Conversation
+                  Coming Soon
                 </Button>
               </CardContent>
             </Card>
