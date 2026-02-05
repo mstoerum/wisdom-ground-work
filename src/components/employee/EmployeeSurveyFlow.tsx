@@ -1,11 +1,10 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { FocusedInterviewInterface } from "@/components/employee/FocusedInterviewInterface";
 import { AnonymizationBanner } from "@/components/employee/AnonymizationBanner";
 import { WelcomeScreen } from "@/components/employee/WelcomeScreen";
 import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
 import { FocusedEvaluation } from "@/components/employee/FocusedEvaluation";
-import { MoodDial } from "@/components/employee/MoodDial";
 import { useConversation } from "@/hooks/useConversation";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -15,8 +14,8 @@ import { PlayCircle } from "lucide-react";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { InterviewContext, createDefaultContext } from "@/utils/evaluationQuestions";
 
-// Flow steps: welcome → mood → chat → evaluation → complete
-type ConversationStep = "welcome" | "mood" | "chat" | "evaluation" | "complete";
+// Flow steps: welcome → chat → evaluation → complete
+type ConversationStep = "welcome" | "chat" | "evaluation" | "complete";
 
 interface EmployeeSurveyFlowProps {
   surveyId: string;
@@ -42,8 +41,8 @@ export const EmployeeSurveyFlow = ({
   skipIntro = false,
 }: EmployeeSurveyFlowProps) => {
   const { isPreviewMode } = usePreviewMode();
-  // Skip directly to mood for demo mode (skipIntro)
-  const [step, setStep] = useState<ConversationStep>(skipIntro ? "mood" : "welcome");
+  // Skip directly to chat for demo mode (skipIntro)
+  const [step, setStep] = useState<ConversationStep>(skipIntro ? "chat" : "welcome");
   const [autoStarted, setAutoStarted] = useState(false);
   const { conversationId, startConversation, endConversation } = useConversation(publicLinkId);
   const { toast } = useToast();
@@ -52,13 +51,13 @@ export const EmployeeSurveyFlow = ({
   const [interviewContext, setInterviewContext] = useState<InterviewContext>(createDefaultContext());
   const conversationStartTime = useRef<number>(Date.now());
 
-  // Auto-start conversation for skipIntro mode when mode is selected
-  const autoStartConversation = async (mood: number | null = null) => {
+  // Auto-start conversation for skipIntro mode
+  const autoStartConversation = useCallback(async () => {
     if (autoStarted || !surveyId) return;
     setAutoStarted(true);
     
     try {
-      const sessionId = await startConversation(surveyId, mood, publicLinkId);
+      const sessionId = await startConversation(surveyId, null, publicLinkId);
       if (!sessionId) {
         toast({
           title: "Error",
@@ -69,7 +68,14 @@ export const EmployeeSurveyFlow = ({
     } catch (error) {
       console.error("Error auto-starting conversation:", error);
     }
-  };
+  }, [autoStarted, surveyId, startConversation, publicLinkId, toast]);
+
+  // Auto-start conversation when skipIntro is true
+  useEffect(() => {
+    if (skipIntro && !conversationId && !autoStarted) {
+      autoStartConversation();
+    }
+  }, [skipIntro, conversationId, autoStarted, autoStartConversation]);
 
   // Handle welcome screen completion (consent only, now goes to mode selection)
   const handleWelcomeComplete = async () => {
@@ -89,23 +95,14 @@ export const EmployeeSurveyFlow = ({
     // Mark user as having visited Spradley
     localStorage.setItem("spradley-visited", "true");
     
-    // Go directly to mood selection
-    setStep("mood");
+    // Start conversation and go to chat
+    await handleStartConversation();
   };
 
-  // Handle mood selection and start conversation
-  const handleMoodSelect = async (moodValue: number) => {
-    // Store initial mood for context
-    localStorage.setItem(`spradley_initial_mood_${surveyId}`, String(moodValue));
-    
-    // Update interview context with initial mood
-    setInterviewContext(prev => ({
-      ...prev,
-      initialMood: moodValue,
-    }));
+  // Handle starting the conversation
+  const handleStartConversation = async () => {
     conversationStartTime.current = Date.now();
 
-    // Start conversation with mood
     if (!surveyId) {
       toast({
         title: "Error",
@@ -116,9 +113,8 @@ export const EmployeeSurveyFlow = ({
     }
 
     try {
-      const sessionId = await startConversation(surveyId, moodValue, publicLinkId);
+      const sessionId = await startConversation(surveyId, null, publicLinkId);
       if (sessionId) {
-        // Go directly to text chat
         setStep("chat");
       } else {
         toast({
@@ -279,12 +275,6 @@ export const EmployeeSurveyFlow = ({
               onDecline={handleDecline}
               anonymizationLevel={surveyDetails?.consent_config?.anonymization_level}
             />
-          )}
-
-          {step === "mood" && (
-            <div className="flex items-center justify-center min-h-[400px]">
-              <MoodDial onMoodSelect={handleMoodSelect} />
-            </div>
           )}
 
           {step === "chat" && conversationId && (
