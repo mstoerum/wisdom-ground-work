@@ -2,8 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { VoiceOrb } from './VoiceOrb';
-import { useVoiceChat } from '@/hooks/useVoiceChat';
-import { useRealtimeVoice } from '@/hooks/useRealtimeVoice';
+import { useElevenLabsVoice } from '@/hooks/useElevenLabsVoice';
 import { usePreviewMode } from '@/contexts/PreviewModeContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Mic, MicOff, MessageSquare, Info } from 'lucide-react';
@@ -167,17 +166,20 @@ export const VoiceInterface = ({
     }
   }, [isPreviewMode, previewSurveyData]);
 
-  // Use WebRTC-based voice for preview mode, fallback to WebSocket for production
-  const realtimeVoice = useRealtimeVoice({
+  // Unified ElevenLabs Conversational AI voice hook
+  const {
+    voiceState,
+    messages,
+    userTranscript,
+    aiTranscript,
+    isSupported,
+    startVoiceChat,
+    stopVoiceChat,
+    conversation,
+  } = useElevenLabsVoice({
+    conversationId,
     isPreviewMode,
     surveyData: surveyDataForVoice,
-    onError: (error) => {
-      console.error('Realtime voice error:', error);
-    },
-  });
-
-  const legacyVoice = useVoiceChat({
-    conversationId,
     onTranscript: (text, role) => {
       console.log(`${role}: ${text}`);
       
@@ -190,17 +192,6 @@ export const VoiceInterface = ({
       console.error('Voice error:', error);
     },
   });
-
-  // Select voice mode based on preview status
-  const {
-    voiceState,
-    messages,
-    userTranscript,
-    aiTranscript,
-    isSupported,
-    startVoiceChat,
-    stopVoiceChat,
-  } = isPreviewMode ? realtimeVoice : legacyVoice;
 
   const isActive = voiceState !== 'idle' && voiceState !== 'error';
 
