@@ -5,8 +5,6 @@ import { AnonymizationBanner } from "@/components/employee/AnonymizationBanner";
 import { WelcomeScreen } from "@/components/employee/WelcomeScreen";
 import { ChatErrorBoundary } from "@/components/employee/ChatErrorBoundary";
 import { FocusedEvaluation } from "@/components/employee/FocusedEvaluation";
-import { SurveyModeSelector } from "@/components/hr/wizard/SurveyModeSelector";
-import { VoiceInterface } from "@/components/employee/VoiceInterface";
 import { MoodDial } from "@/components/employee/MoodDial";
 import { useConversation } from "@/hooks/useConversation";
 import { useToast } from "@/hooks/use-toast";
@@ -17,8 +15,8 @@ import { PlayCircle } from "lucide-react";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { InterviewContext, createDefaultContext } from "@/utils/evaluationQuestions";
 
-// Flow steps: welcome → mode-select → mood → chat/voice → evaluation → complete
-type ConversationStep = "welcome" | "mode-select" | "mood" | "chat" | "voice" | "evaluation" | "complete";
+// Flow steps: welcome → mood → chat → evaluation → complete
+type ConversationStep = "welcome" | "mood" | "chat" | "evaluation" | "complete";
 
 interface EmployeeSurveyFlowProps {
   surveyId: string;
@@ -44,9 +42,8 @@ export const EmployeeSurveyFlow = ({
   skipIntro = false,
 }: EmployeeSurveyFlowProps) => {
   const { isPreviewMode } = usePreviewMode();
-  // Skip directly to mode-select for demo mode (skipIntro)
-  const [step, setStep] = useState<ConversationStep>(skipIntro ? "mode-select" : "welcome");
-  const [selectedMode, setSelectedMode] = useState<'text' | 'voice' | null>(null);
+  // Skip directly to mood for demo mode (skipIntro)
+  const [step, setStep] = useState<ConversationStep>(skipIntro ? "mood" : "welcome");
   const [autoStarted, setAutoStarted] = useState(false);
   const { conversationId, startConversation, endConversation } = useConversation(publicLinkId);
   const { toast } = useToast();
@@ -92,13 +89,7 @@ export const EmployeeSurveyFlow = ({
     // Mark user as having visited Spradley
     localStorage.setItem("spradley-visited", "true");
     
-    // Go to mode selection
-    setStep("mode-select");
-  };
-
-  // Handle mode selection (text vs voice)
-  const handleModeSelect = (mode: 'text' | 'voice') => {
-    setSelectedMode(mode);
+    // Go directly to mood selection
     setStep("mood");
   };
 
@@ -127,8 +118,8 @@ export const EmployeeSurveyFlow = ({
     try {
       const sessionId = await startConversation(surveyId, moodValue, publicLinkId);
       if (sessionId) {
-        // Route to voice or text based on selection
-        setStep(selectedMode === 'voice' ? "voice" : "chat");
+        // Go directly to text chat
+        setStep("chat");
       } else {
         toast({
           title: quickPreview ? "Preview Error" : "Error",
@@ -146,11 +137,6 @@ export const EmployeeSurveyFlow = ({
     }
   };
 
-  // Handle switching from voice to text mid-conversation
-  const handleSwitchToText = () => {
-    setSelectedMode('text');
-    setStep("chat");
-  };
 
 
   const handleDecline = async () => {
@@ -275,7 +261,7 @@ export const EmployeeSurveyFlow = ({
           </div>
         )}
 
-        {(step === "chat" || step === "voice") && !isPreviewMode && (
+        {step === "chat" && !isPreviewMode && (
           <Alert className="mt-6 border-[hsl(var(--terracotta-primary))] bg-[hsl(var(--terracotta-pale))] rounded-2xl">
             <PlayCircle className="h-5 w-5 text-[hsl(var(--terracotta-primary))]" />
             <AlertDescription className="text-foreground">
@@ -295,14 +281,6 @@ export const EmployeeSurveyFlow = ({
             />
           )}
 
-          {step === "mode-select" && (
-            <SurveyModeSelector
-              onSelectMode={handleModeSelect}
-              surveyTitle={surveyDetails?.title || "Feedback Survey"}
-              firstMessage={surveyDetails?.first_message}
-            />
-          )}
-
           {step === "mood" && (
             <div className="flex items-center justify-center min-h-[400px]">
               <MoodDial onMoodSelect={handleMoodSelect} />
@@ -318,16 +296,6 @@ export const EmployeeSurveyFlow = ({
                 publicLinkId={publicLinkId}
                 minimalUI={skipIntro}
                 surveyType={surveyDetails?.survey_type}
-              />
-            </ChatErrorBoundary>
-          )}
-
-          {step === "voice" && conversationId && (
-            <ChatErrorBoundary conversationId={conversationId} onExit={handleSaveAndExit}>
-              <VoiceInterface
-                conversationId={conversationId}
-                onSwitchToText={handleSwitchToText}
-                onComplete={handleChatComplete}
               />
             </ChatErrorBoundary>
           )}
