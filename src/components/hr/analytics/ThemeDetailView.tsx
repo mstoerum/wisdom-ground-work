@@ -36,13 +36,11 @@ export function ThemeDetailView({ theme, enrichedData, onBack }: ThemeDetailView
   const polarizationLevel = enrichedData?.polarizationLevel || 'low';
   const polarizationScore = enrichedData?.polarizationScore;
 
-  // Collect quotes from insights as supporting evidence — use fullText for detail view
   const allQuotes = [
     ...theme.keySignals.positives.map(q => ({ text: q.fullText, question: q.question, type: 'positive' as const })),
     ...theme.keySignals.concerns.map(q => ({ text: q.fullText, question: q.question, type: 'concern' as const })),
   ].slice(0, 5);
 
-  // Escape key to go back
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onBack();
@@ -59,12 +57,8 @@ export function ThemeDetailView({ theme, enrichedData, onBack }: ThemeDetailView
       transition={{ duration: 0.3 }}
       className="space-y-6"
     >
-      {/* Back button */}
-      <motion.div
-        initial={{ opacity: 0, x: -12 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 0.15, duration: 0.3 }}
-      >
+      {/* Back button — no stagger */}
+      <div>
         <Button
           variant="ghost"
           size="sm"
@@ -74,7 +68,7 @@ export function ThemeDetailView({ theme, enrichedData, onBack }: ThemeDetailView
           <ArrowLeft className="h-4 w-4" />
           Back to Theme Landscape
         </Button>
-      </motion.div>
+      </div>
 
       {/* Header - shared layout animation from card */}
       <motion.div
@@ -125,14 +119,9 @@ export function ThemeDetailView({ theme, enrichedData, onBack }: ThemeDetailView
         </div>
       </motion.div>
 
-      {/* Root Causes & Recommendations - PRIMARY SECTION */}
+      {/* Root Causes & Recommendations */}
       {rootCauses.length > 0 && (
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.4 }}
-          className="space-y-3"
-        >
+        <section className="space-y-3">
           <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
             Root Causes & Recommendations
           </h3>
@@ -141,31 +130,20 @@ export function ThemeDetailView({ theme, enrichedData, onBack }: ThemeDetailView
               <RootCauseCard key={i} rootCause={cause} />
             ))}
           </div>
-        </motion.section>
+        </section>
       )}
 
       {/* No root causes fallback */}
       {rootCauses.length === 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2, duration: 0.4 }}
-          className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground"
-        >
+        <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
           Root cause analysis will appear here after AI analysis runs.
           Make sure you have enough responses and click "Generate Theme Insights" below.
-        </motion.div>
+        </div>
       )}
 
-      {/* Strengths & Frictions - Two columns */}
+      {/* Strengths & Frictions */}
       {(strengths.length > 0 || frictions.length > 0) && (
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.4 }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6"
-        >
-          {/* What's Working */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-3">
             <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               What's Working
@@ -181,7 +159,6 @@ export function ThemeDetailView({ theme, enrichedData, onBack }: ThemeDetailView
             )}
           </div>
 
-          {/* What Needs Attention */}
           <div className="space-y-3">
             <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               What Needs Attention
@@ -196,17 +173,12 @@ export function ThemeDetailView({ theme, enrichedData, onBack }: ThemeDetailView
               <p className="text-sm text-muted-foreground italic">No frictions identified yet</p>
             )}
           </div>
-        </motion.section>
+        </section>
       )}
 
       {/* Supporting Quotes */}
       {allQuotes.length > 0 && (
-        <motion.section
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.4 }}
-          className="space-y-3"
-        >
+        <section className="space-y-3">
           <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
             <MessageSquareQuote className="h-3.5 w-3.5" />
             Supporting Quotes
@@ -229,7 +201,7 @@ export function ThemeDetailView({ theme, enrichedData, onBack }: ThemeDetailView
                   {quote.question && (
                     <button
                       onClick={() => setExpandedQuote(expandedQuote === i ? null : i)}
-                      className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-semibold shrink-0 mt-0.5 transition-colors ${
+                      className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-semibold shrink-0 mt-0.5 transition-colors ${
                         expandedQuote === i
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-muted text-muted-foreground hover:bg-muted-foreground/20'
@@ -256,7 +228,7 @@ export function ThemeDetailView({ theme, enrichedData, onBack }: ThemeDetailView
               </div>
             ))}
           </div>
-        </motion.section>
+        </section>
       )}
     </motion.div>
   );

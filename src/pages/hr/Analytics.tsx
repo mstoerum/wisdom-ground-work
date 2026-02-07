@@ -10,7 +10,7 @@ import type { Database } from "@/integrations/supabase/types";
 // Components
 import { HybridInsightsView } from "@/components/hr/analytics/HybridInsightsView";
 import { SurveyComparison } from "@/components/hr/analytics/SurveyComparison";
-import { AnalyticsRefreshBar } from "@/components/hr/analytics/AnalyticsRefreshBar";
+import { AnalyticsRefreshInline } from "@/components/hr/analytics/AnalyticsRefreshInline";
 import { NarrativeReportViewer } from "@/components/hr/analytics/NarrativeReportViewer";
 import { DriversTab } from "@/components/hr/analytics/DriversTab";
 import { useNarrativeReports } from "@/hooks/useNarrativeReports";
@@ -173,24 +173,16 @@ const Analytics = () => {
       <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
         <div className="container mx-auto px-4 py-8 max-w-7xl">
           <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div>
-                <h1 className="text-3xl font-bold">{terminology.analyticsTitle}</h1>
-                <p className="text-muted-foreground mt-1">
-                  Comprehensive insights from {participation?.completed || 0} completed {terminology.completedCount}
-                </p>
-              </div>
-            </div>
+            {/* Collapsed Header: Title + Survey Selector + Refresh — one row */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <h1 className="text-2xl font-bold shrink-0">{terminology.analyticsTitle}</h1>
 
-            {/* Survey Selector */}
-            <div className="flex flex-wrap gap-4">
               {surveys && surveys.length > 0 && (
                 <Select 
                   value={filters.surveyId || "all"} 
                   onValueChange={(value) => setFilters({ ...filters, surveyId: value === "all" ? undefined : value })}
                 >
-                  <SelectTrigger className="w-[250px]">
+                  <SelectTrigger className="w-[220px]">
                     <SelectValue placeholder="Select a survey" />
                   </SelectTrigger>
                   <SelectContent>
@@ -201,21 +193,23 @@ const Analytics = () => {
                   </SelectContent>
                 </Select>
               )}
-            </div>
 
-            {/* Refresh Bar */}
-            {filters.surveyId && (
-              <AnalyticsRefreshBar
-                lastUpdated={lastUpdated}
-                responseCount={participation?.responseCount || 0}
-                newResponseCount={newResponseCount}
-                isRefreshing={isRefreshing}
-                isLiveConnected={isLiveConnected}
-                onRefresh={refreshAllAnalytics}
-                autoRefreshInterval={autoRefreshInterval}
-                onAutoRefreshChange={setAutoRefreshInterval}
-              />
-            )}
+              {/* Spacer */}
+              <div className="flex-1" />
+
+              {/* Inline refresh controls */}
+              {filters.surveyId && (
+                <AnalyticsRefreshInline
+                  lastUpdated={lastUpdated}
+                  newResponseCount={newResponseCount}
+                  isRefreshing={isRefreshing}
+                  isLiveConnected={isLiveConnected}
+                  onRefresh={refreshAllAnalytics}
+                  autoRefreshInterval={autoRefreshInterval}
+                  onAutoRefreshChange={setAutoRefreshInterval}
+                />
+              )}
+            </div>
 
             {/* 4-Tab Layout: Overview, Drivers (employee only), Story Report, Compare */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

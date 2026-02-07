@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { RefreshCw, Wand2 } from "lucide-react";
 import { PulseSummary } from "./PulseSummary";
 import { ThemeGrid } from "./ThemeGrid";
-import { DataConfidenceBanner } from "./DataConfidenceBanner";
 import { AnalyticsEmptyState, getEmptyStateType } from "./AnalyticsEmptyState";
 import { useThemeAnalytics } from "@/hooks/useThemeAnalytics";
 import type { ParticipationMetrics, SentimentMetrics, ThemeInsight } from "@/hooks/useAnalytics";
@@ -22,7 +21,7 @@ interface HybridInsightsViewProps {
 /**
  * HybridInsightsView - Overview tab content
  * Shows Pulse Summary metrics + Theme Grid (flip cards)
- * Story Report has been moved to its own dedicated tab
+ * DataConfidenceBanner merged into PulseSummary as 5th metric
  */
 export function HybridInsightsView({
   participation,
@@ -33,12 +32,10 @@ export function HybridInsightsView({
   isLoading,
   onShareLink,
 }: HybridInsightsViewProps) {
-  // Response count from participation
   const responseCount = participation?.responseCount || participation?.completed || 0;
   const sessionCount = participation?.sessionCount || participation?.totalAssigned || 0;
   const activeSessionCount = participation?.activeSessionCount || participation?.pending || 0;
   
-  // Theme analytics hook with auto-trigger
   const { 
     data: enrichedThemes, 
     isAnalyzing, 
@@ -49,10 +46,8 @@ export function HybridInsightsView({
     autoAnalyze: true 
   });
   
-  // Check for empty state
   const emptyStateType = getEmptyStateType(surveyId, responseCount, sessionCount, activeSessionCount);
   
-  // Show empty state for truly empty cases
   if (emptyStateType === 'no-survey' || emptyStateType === 'no-responses') {
     return (
       <AnalyticsEmptyState
@@ -66,7 +61,6 @@ export function HybridInsightsView({
     );
   }
   
-  // For few-responses state, show if we really have no data
   if (emptyStateType === 'few-responses' && themes.length === 0) {
     return (
       <AnalyticsEmptyState
@@ -82,22 +76,16 @@ export function HybridInsightsView({
 
   return (
     <div className="space-y-6">
-      {/* Data Confidence Banner */}
-      <DataConfidenceBanner
-        responseCount={responseCount}
-        surveyId={surveyId}
-        onShareLink={onShareLink}
-      />
-
-      {/* Section 1: Pulse Summary - Key metrics at a glance */}
+      {/* Section 1: Pulse Summary - Key metrics + confidence (5th card) */}
       <PulseSummary
         participation={participation}
         sentiment={sentiment}
         themes={themes}
+        responseCount={responseCount}
         isLoading={isLoading}
       />
 
-      {/* Section 2: Theme Grid - Full space for flip cards */}
+      {/* Section 2: Theme Grid */}
       <div className="space-y-2">
         <ThemeGrid 
           themes={themes} 
@@ -105,7 +93,6 @@ export function HybridInsightsView({
           isLoading={isLoading || isAnalyzing} 
         />
         
-        {/* Theme analysis button */}
         {themes.length > 0 && responseCount >= 3 && (
           <Button
             variant="outline"

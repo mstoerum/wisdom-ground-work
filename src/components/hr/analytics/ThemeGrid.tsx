@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { motion, AnimatePresence, LayoutGroup } from "framer-motion";
+import { AnimatePresence, LayoutGroup } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { ThemeCard } from "./ThemeCard";
 import { ThemeDetailView } from "./ThemeDetailView";
@@ -12,16 +12,9 @@ interface ThemeGridProps {
   isLoading?: boolean;
 }
 
-/**
- * ThemeGrid: Responsive grid of theme cards with detail view transition
- * - Click a card to expand into full-width ThemeDetailView
- * - Uses framer-motion layoutId for shared element transitions
- * - Sorted by health (lowest first to surface issues)
- */
 export function ThemeGrid({ themes, enrichedThemes, isLoading }: ThemeGridProps) {
   const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
 
-  // Merge themes with enriched data
   const mergedThemes = themes.map(theme => {
     const enriched = enrichedThemes?.find(e => e.themeId === theme.id);
     return {
@@ -31,7 +24,6 @@ export function ThemeGrid({ themes, enrichedThemes, isLoading }: ThemeGridProps)
     };
   });
 
-  // Sort by health (lowest first to surface issues)
   const sortedThemes = [...mergedThemes].sort((a, b) => a.displayHealth - b.displayHealth);
 
   const hasAIAnalysis = enrichedThemes && enrichedThemes.length > 0;
@@ -42,7 +34,6 @@ export function ThemeGrid({ themes, enrichedThemes, isLoading }: ThemeGridProps)
 
   const handleBack = useCallback(() => setSelectedThemeId(null), []);
 
-  // Loading state
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -51,14 +42,13 @@ export function ThemeGrid({ themes, enrichedThemes, isLoading }: ThemeGridProps)
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-56 bg-muted rounded-2xl animate-pulse" />
+            <div key={i} className="h-52 bg-muted rounded-2xl animate-pulse" />
           ))}
         </div>
       </div>
     );
   }
 
-  // Empty state
   if (themes.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -70,27 +60,20 @@ export function ThemeGrid({ themes, enrichedThemes, isLoading }: ThemeGridProps)
   return (
     <LayoutGroup>
       <div className="space-y-3">
-        {/* Section Header - only show when grid is visible */}
-        <AnimatePresence>
-          {!selectedThemeId && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="flex items-center justify-between px-1"
-            >
-              <h3 className="text-xs font-medium text-muted-foreground tracking-wide">
-                Theme landscape
-              </h3>
-              {hasAIAnalysis && (
-                <span className="flex items-center gap-1 text-[10px] text-primary">
-                  <Sparkles className="h-3 w-3" />
-                  AI-analyzed
-                </span>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Section Header — no animation, always visible when grid shown */}
+        {!selectedThemeId && (
+          <div className="flex items-center justify-between px-1">
+            <h3 className="text-xs font-medium text-muted-foreground tracking-wide">
+              Theme landscape
+            </h3>
+            {hasAIAnalysis && (
+              <span className="flex items-center gap-1 text-xs text-primary">
+                <Sparkles className="h-3 w-3" />
+                AI-analyzed
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Grid or Detail View */}
         <AnimatePresence mode="wait">
@@ -102,12 +85,8 @@ export function ThemeGrid({ themes, enrichedThemes, isLoading }: ThemeGridProps)
               onBack={handleBack}
             />
           ) : (
-            <motion.div
+            <div
               key="grid"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, scale: 0.98 }}
-              transition={{ duration: 0.2 }}
               className="grid grid-cols-1 md:grid-cols-2 gap-4"
             >
               {sortedThemes.map((theme, index) => (
@@ -119,7 +98,7 @@ export function ThemeGrid({ themes, enrichedThemes, isLoading }: ThemeGridProps)
                   onClick={() => setSelectedThemeId(theme.id)}
                 />
               ))}
-            </motion.div>
+            </div>
           )}
         </AnimatePresence>
       </div>

@@ -48,17 +48,17 @@ export function ThemeCard({ theme, enrichedData, index, onClick }: ThemeCardProp
   const healthStatus = enrichedData?.healthStatus;
   const config = getHealthConfig(healthScore, healthStatus);
 
+  // Signal preview data
+  const responseCount = enrichedData?.responseCount || theme.responseCount;
+  const frictionCount = enrichedData?.insights?.frictions?.length || 0;
+
   return (
     <motion.div
       layoutId={`theme-card-${theme.id}`}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ delay: index * 0.05, duration: 0.3 }}
       className={`
-        relative h-56 rounded-2xl shadow-sm
+        relative h-52 rounded-2xl shadow-sm
         bg-gradient-to-br ${config.gradient}
-        flex flex-col items-center justify-center gap-3
+        flex flex-col items-center justify-center gap-2.5
         cursor-pointer select-none
         hover:shadow-md hover:scale-[1.02]
         transition-shadow duration-200
@@ -100,6 +100,17 @@ export function ThemeCard({ theme, enrichedData, index, onClick }: ThemeCardProp
         </span>
         <div className={`w-2.5 h-2.5 rounded-full ${config.orb}`} />
       </motion.div>
+
+      {/* Signal Preview */}
+      <div className="text-xs text-muted-foreground/70">
+        {responseCount} voice{responseCount !== 1 ? 's' : ''}
+        {frictionCount > 0 && (
+          <>
+            <span className="mx-1.5">·</span>
+            <span className="text-amber-600 dark:text-amber-400">{frictionCount} flag{frictionCount !== 1 ? 's' : ''}</span>
+          </>
+        )}
+      </div>
     </motion.div>
   );
 }
