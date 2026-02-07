@@ -1,92 +1,94 @@
 
 
-# Top 5 Design Improvements from Notion Designer Review
+# Story Report: 10 Design Fixes from Notion Designer Review
 
-## 1. Collapse Header to One Row
+## Fix 1: Remove StoryProgressBar and Footer Counter
 
-Currently the analytics page stacks three separate blocks vertically: title/subtitle, survey selector, and refresh bar. This wastes ~120px of vertical space before any data appears.
+The StoryProgressBar and the "1 of 6" text in the navigation footer duplicate information already shown in the StoryJourneyNav. This creates triple redundancy.
 
-**Change:** Merge the title, survey selector, and live status into a single compact row. The refresh bar gets absorbed into the header as inline controls rather than a standalone banner.
+**Changes in `NarrativeReportViewer.tsx`:**
+- Remove the `<StoryProgressBar>` render (lines 198-201) and its import (line 10)
+- Remove the `<span>` showing "X of Y" in the footer (line 215-217)
+- Keep the Previous/Next buttons (they serve a real navigation purpose)
 
-```text
-BEFORE (3 rows, ~120px):
-  Row 1: "Analytics" + subtitle
-  Row 2: [Survey selector dropdown]
-  Row 3: [Updated 2m ago] [42 responses] [Live] [Auto-refresh: Off] [Refresh]
+## Fix 2: Kill Internal Stagger Animations in StoryChapter
 
-AFTER (1 row, ~48px):
-  "Analytics"  [Survey selector v]  *Live  Updated 2m ago  [Refresh icon]
-```
+The chapter already slides in via the parent `AnimatePresence` in `NarrativeReportViewer`. Internal stagger animations on the icon, narrative, and insight list cause a "double animation" effect.
 
-### Files changed:
-- **`src/pages/hr/Analytics.tsx`**: Combine the header `<div>`, survey selector `<div>`, and `<AnalyticsRefreshBar>` into a single flex row. Remove the subtitle paragraph (it duplicates information shown in PulseSummary). The refresh button becomes an icon-only button inline with the title. Auto-refresh selector moves into a dropdown menu on the refresh button.
-- **`src/components/hr/analytics/AnalyticsRefreshBar.tsx`**: Refactor into a compact inline component (`AnalyticsRefreshInline`) that renders just a live dot, relative timestamp, and refresh icon -- no wrapping border/background.
+**Changes in `StoryChapter.tsx`:**
+- Replace the `motion.div` wrapping the icon (lines 95-106) with a plain `div`
+- Replace the `motion.div` wrapping the narrative (lines 131-140) with a plain `div`
+- Replace each insight's `motion.div` wrapper (lines 150-160) with a plain `div`
+- Remove the `motion` import from framer-motion (no longer needed)
 
-## 2. Merge Confidence Badge into PulseSummary
+## Fix 3: Remove Header motion.div in NarrativeReportViewer
 
-The `DataConfidenceBanner` currently sits as a separate full-width block above PulseSummary, pushing content down. Its information (response count + confidence level) duplicates what PulseSummary already shows.
+The header section has its own fade-in animation that plays on every chapter change, adding unnecessary motion.
 
-**Change:** Remove the standalone `DataConfidenceBanner` from `HybridInsightsView`. Instead, add a 5th metric card to `PulseSummary` showing data confidence level (Low/Good/High) with the shield icon and color coding from the banner.
+**Changes in `NarrativeReportViewer.tsx`:**
+- Replace `<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>` (lines 110-114) with a plain `<div>`
 
-### Files changed:
-- **`src/components/hr/analytics/HybridInsightsView.tsx`**: Remove the `<DataConfidenceBanner>` render. Pass `surveyId` to `PulseSummary` so it can compute confidence internally.
-- **`src/components/hr/analytics/PulseSummary.tsx`**: Add a "Confidence" metric card that uses the same threshold logic from `DataConfidenceBanner` (Low 0-9, Good 10-49, High 50+). Uses shield icon and color coding. Change grid from `grid-cols-4` to `grid-cols-5` on desktop (stays `grid-cols-2` on mobile, wrapping naturally).
+## Fix 4: Remove Journey Nav Active Chapter Info Block
 
-## 3. Enforce 12px Minimum Text Size
+The "active chapter info" block below the journey line (lines 128-145 in `StoryJourneyNav.tsx`) repeats the chapter title that is already shown in the chapter card itself. It also shows another "X of Y" counter.
 
-Several components use sub-12px text that fails accessibility. Specific offenders:
+**Changes in `StoryJourneyNav.tsx`:**
+- Remove the entire `motion.div` block (lines 128-145) that shows the active chapter title, description, and "X of Y" counter
+- This saves ~80px of vertical space
 
-| Component | Current | Fix |
-|-----------|---------|-----|
-| PulseSummary subtext | `text-[9px]` | `text-xs` (12px) |
-| PulseSummary description | `text-[10px]` | `text-xs` (12px) |
-| ThemeGrid "AI-analyzed" | `text-[10px]` | `text-xs` (12px) |
-| ThemeDetailView "Q" badge | `text-[10px]` | `text-xs` (12px) |
+## Fix 5: Restructure InsightCard to Lead with Agreement %
 
-### Files changed:
-- **`src/components/hr/analytics/PulseSummary.tsx`**: Replace `text-[9px]` and `text-[10px]` with `text-xs`.
-- **`src/components/hr/analytics/ThemeGrid.tsx`**: Replace `text-[10px]` with `text-xs`.
-- **`src/components/hr/analytics/ThemeDetailView.tsx`**: Replace `text-[10px]` on Q badge with `text-xs`.
+Currently, InsightCard shows text first, then the agreement bar below. For HR scanning multiple insights, the agreement percentage should be the first thing they see.
 
-## 4. Add Signal Preview to ThemeCards
+**Changes in `InsightCard.tsx`:**
+- Restructure to a horizontal layout: large agreement percentage number on the left, insight text + metadata on the right
+- When no agreement data exists, fall back to the current full-width text layout
+- The agreement number becomes a bold, large `text-2xl` element with "agree" label below it
+- Remove the separate `AgreementBar` component usage (the number itself is the bar)
 
-Currently, theme cards show only name + score + status orb. They are "information-sparse" -- you have to click to learn anything useful. Adding a small signal line gives HR a reason to click.
+## Fix 6: Remove Per-Quote Anonymous Attribution
 
-**Change:** Add a single-line signal preview below the status orb showing voice count and a friction/strength hint when enriched data is available.
+Every quote in `QuoteCarousel` shows "-- Anonymous" which is redundant -- all responses are anonymous. This wastes space and adds visual noise.
 
-```text
-BEFORE:                          AFTER:
-+---------------------+         +---------------------+
-|   Work-Life Balance |         |   Work-Life Balance |
-|        62           |         |        62           |
-|     Growing  *      |         |     Growing  *      |
-|                     |         |  18 voices . 2 flags |
-+---------------------+         +---------------------+
-```
+**Changes in `QuoteCarousel.tsx`:**
+- Remove the "-- Anonymous" span (lines 80-83)
+- Add a single disclaimer at the top of the carousel: "All responses are anonymous" in `text-xs text-muted-foreground`
 
-### Files changed:
-- **`src/components/hr/analytics/ThemeCard.tsx`**: Add a new line below the status orb. Show `{responseCount} voices` and, if enriched data exists, a dot separator followed by the number of frictions flagged (e.g., "2 flags") or "All positive" if no frictions. Use `text-xs text-muted-foreground` styling. Reduce card height from `h-56` to `h-52` to keep it compact with the new line.
+## Fix 7: Fix Sub-12px Text in QuoteCarousel
 
-## 5. Remove Unnecessary Entry Animations
+Two instances of sub-12px text remain in `QuoteCarousel.tsx`.
 
-The review flagged "motion bloat" -- staggered fade-in animations on every card and section feel slow on repeat visits and add no information. Keep only interaction-triggered motion (the card-to-detail transition).
+**Changes in `QuoteCarousel.tsx`:**
+- Line 50: Change `text-[10px]` on urgency indicator to `text-xs`
+- Line 81: Change `text-[11px]` on anonymous attribution to `text-xs` (this line is being removed per Fix 6, so only the urgency fix applies)
+- Line 90: Change `text-[10px]` on voices count to `text-xs`
 
-**Change:** Remove automatic `initial`/`animate` entry animations from:
-- ThemeCard stagger (`delay: index * 0.05`)
-- ThemeDetailView section staggers (`delay: 0.2`, `0.3`, `0.4`)
-- PulseSummary metric card stagger (`delay: index * 0.08`)
-- ThemeGrid section header fade
+## Fix 8: Replace Infinite Pulse with Single-Play Animation
 
-Keep:
-- `layoutId` transitions (card morphing into detail -- this is interaction-triggered)
-- `AnimatePresence` exit animations (grid/detail swap)
-- The click-to-reveal quote expansion animation
+The active chapter node in `StoryJourneyNav` has an infinite pulsing ring that is distracting. A single pulse on selection is sufficient to draw attention.
 
-### Files changed:
-- **`src/components/hr/analytics/ThemeCard.tsx`**: Remove `initial`, `animate`, `exit`, and `transition` with delay from the outer `motion.div`. Keep only `layoutId` and the CSS `hover:` effects.
-- **`src/components/hr/analytics/PulseSummary.tsx`**: Replace `motion.div` with plain `div` for each metric card (remove framer-motion import if no longer needed).
-- **`src/components/hr/analytics/ThemeDetailView.tsx`**: Remove staggered `initial`/`animate` from section wrappers. Keep `AnimatePresence` on the quote expansion.
-- **`src/components/hr/analytics/ThemeGrid.tsx`**: Remove the `motion.div` and `AnimatePresence` from the section header. Keep the grid/detail `AnimatePresence` swap.
+**Changes in `StoryJourneyNav.tsx`:**
+- Change the pulse ring animation (lines 104-109): remove `repeat: Infinity` so it plays once and fades out
+- Add a `key` based on `activeIndex` so it replays when the user switches chapters
+
+## Fix 9: Add AlertDialog to AudienceToggle
+
+Switching audience triggers a full AI regeneration without warning. Users may not realize they are about to wait 10-30 seconds for a new report.
+
+**Changes in `AudienceToggle.tsx`:**
+- Import `AlertDialog` components from radix
+- When user clicks a different audience, show a confirmation dialog: "Switching views will regenerate the report using AI. This may take 15-30 seconds."
+- Only call `onChange` if the user confirms
+- If clicking the already-active audience, do nothing (no dialog needed)
+
+## Fix 10: Responsive Padding and Accent Bar Thickness
+
+`StoryChapter` uses fixed `px-8` padding that crowds content on tablets. The accent bar at top is only 1px (`h-1`) which is barely visible.
+
+**Changes in `StoryChapter.tsx`:**
+- Change `px-8` to `px-5 sm:px-8` on `CardHeader` (line 91) and `CardContent` (line 129)
+- Change `pt-8` to `pt-6 sm:pt-8` on `CardHeader`
+- Change accent bar from `h-1` to `h-1.5` (line 87) for better visibility
 
 ---
 
@@ -94,12 +96,12 @@ Keep:
 
 | File | Changes |
 |------|---------|
-| `src/pages/hr/Analytics.tsx` | Collapse header to single row, inline refresh controls |
-| `src/components/hr/analytics/AnalyticsRefreshBar.tsx` | Refactor to compact inline format |
-| `src/components/hr/analytics/HybridInsightsView.tsx` | Remove DataConfidenceBanner, pass surveyId to PulseSummary |
-| `src/components/hr/analytics/PulseSummary.tsx` | Add confidence metric, fix text sizes, remove entry animations |
-| `src/components/hr/analytics/ThemeCard.tsx` | Add signal preview line, remove entry animations |
-| `src/components/hr/analytics/ThemeGrid.tsx` | Fix text sizes, remove header animation |
-| `src/components/hr/analytics/ThemeDetailView.tsx` | Fix text sizes, remove section stagger animations |
+| `NarrativeReportViewer.tsx` | Remove StoryProgressBar, footer "X of Y", header motion.div |
+| `StoryChapter.tsx` | Remove all internal motion.divs, responsive padding, thicker accent bar |
+| `StoryJourneyNav.tsx` | Remove active chapter info block, single-play pulse |
+| `InsightCard.tsx` | Restructure layout to lead with agreement % |
+| `QuoteCarousel.tsx` | Remove per-quote Anonymous, fix sub-12px text, add global disclaimer |
+| `AudienceToggle.tsx` | Add AlertDialog confirmation before regeneration |
 
 No database or backend changes required.
+
