@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,18 +9,20 @@ import { AudienceToggle } from "./AudienceToggle";
 import { StoryJourneyNav } from "./StoryJourneyNav";
 
 import { NarrativeReport } from "@/hooks/useNarrativeReports";
-import { CONFIDENCE_CONFIG } from "@/lib/reportDesignSystem";
+import { CONFIDENCE_CONFIG, CHAPTER_LABELS } from "@/lib/reportDesignSystem";
 import { format } from "date-fns";
 
 interface NarrativeReportViewerProps {
   report: NarrativeReport;
+  surveyId: string;
   onRegenerateWithAudience?: (audience: 'executive' | 'manager') => void;
   isGenerating?: boolean;
   onExport?: () => void;
 }
 
 export function NarrativeReportViewer({ 
-  report, 
+  report,
+  surveyId,
   onRegenerateWithAudience,
   isGenerating,
   onExport
@@ -32,7 +34,39 @@ export function NarrativeReportViewer({
   );
   const [visitedChapters, setVisitedChapters] = useState<number[]>([0]);
 
-  // Handle empty chapters case
+  const handleChapterChange = (index: number) => {
+    setDirection(index > activeChapter ? 1 : -1);
+    setActiveChapter(index);
+    if (!visitedChapters.includes(index)) {
+      setVisitedChapters(prev => [...prev, index]);
+    }
+  };
+
+  const goToNextChapter = useCallback(() => {
+    if (report.chapters && activeChapter < report.chapters.length - 1) {
+      handleChapterChange(activeChapter + 1);
+    }
+  }, [activeChapter, report.chapters?.length]);
+
+  const goToPrevChapter = useCallback(() => {
+    if (activeChapter > 0) {
+      handleChapterChange(activeChapter - 1);
+    }
+  }, [activeChapter]);
+
+  // Feature 1: Keyboard arrow navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      if (e.key === 'ArrowRight') goToNextChapter();
+      if (e.key === 'ArrowLeft') goToPrevChapter();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [goToNextChapter, goToPrevChapter]);
+
+  // Handle empty chapters case (after all hooks)
   if (!report.chapters || report.chapters.length === 0) {
     return (
       <Card className="border-0 shadow-sm bg-card/50 backdrop-blur-sm p-8">
@@ -62,26 +96,6 @@ export function NarrativeReportViewer({
     setAudience(newAudience);
     if (onRegenerateWithAudience && newAudience !== report.audience_config.audience) {
       onRegenerateWithAudience(newAudience);
-    }
-  };
-
-  const handleChapterChange = (index: number) => {
-    setDirection(index > activeChapter ? 1 : -1);
-    setActiveChapter(index);
-    if (!visitedChapters.includes(index)) {
-      setVisitedChapters(prev => [...prev, index]);
-    }
-  };
-
-  const goToNextChapter = () => {
-    if (activeChapter < report.chapters.length - 1) {
-      handleChapterChange(activeChapter + 1);
-    }
-  };
-
-  const goToPrevChapter = () => {
-    if (activeChapter > 0) {
-      handleChapterChange(activeChapter - 1);
     }
   };
 
@@ -183,14 +197,14 @@ export function NarrativeReportViewer({
             <StoryChapter 
               chapter={report.chapters[activeChapter]}
               chapterNumber={activeChapter + 1}
-              totalChapters={report.chapters.length}
+              surveyId={surveyId}
             />
           </motion.div>
         </AnimatePresence>
       </div>
 
       {/* Navigation Footer */}
-      <div className="flex items-center justify-end gap-2 pt-4 border-t">
+      <div className="flex items-center justify-between gap-2 pt-4 border-t">
         <Button
           variant="ghost"
           onClick={goToPrevChapter}
@@ -198,7 +212,11 @@ export function NarrativeReportViewer({
           className="gap-2"
         >
           <ChevronLeft className="h-4 w-4" />
-          <span className="hidden sm:inline">Previous</span>
+          {activeChapter > 0 && (
+            <span className="hidden sm:inline text-sm">
+              {CHAPTER_LABELS[report.chapters[activeChapter - 1]?.key] || 'Previous'}
+            </span>
+          )}
         </Button>
         
         <Button
@@ -207,7 +225,11 @@ export function NarrativeReportViewer({
           disabled={activeChapter === report.chapters.length - 1}
           className="gap-2"
         >
-          <span className="hidden sm:inline">Next</span>
+          {activeChapter < report.chapters.length - 1 && (
+            <span className="hidden sm:inline text-sm">
+              {CHAPTER_LABELS[report.chapters[activeChapter + 1]?.key] || 'Next'}
+            </span>
+          )}
           <ChevronRight className="h-4 w-4" />
         </Button>
       </div>

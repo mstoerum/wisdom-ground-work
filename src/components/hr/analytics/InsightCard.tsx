@@ -2,10 +2,11 @@ import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EvidenceTrail } from "./EvidenceTrail";
 import { NarrativeInsight } from "@/hooks/useNarrativeReports";
+import { useBookmarkedInsights } from "@/hooks/useBookmarkedInsights";
 import { CONFIDENCE_CONFIG } from "@/lib/reportDesignSystem";
 import { cn } from "@/lib/utils";
 
@@ -13,10 +14,30 @@ interface InsightCardProps {
   insight: NarrativeInsight;
   colorClass?: string;
   accentColor?: string;
+  surveyId?: string;
+  chapterKey?: string;
 }
 
-export function InsightCard({ insight, colorClass, accentColor }: InsightCardProps) {
+export function InsightCard({ insight, colorClass, accentColor, surveyId, chapterKey }: InsightCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { isBookmarked, getBookmarkId, addBookmark, removeBookmark } = useBookmarkedInsights(surveyId ?? null);
+
+  const starred = isBookmarked(insight.text);
+
+  const toggleBookmark = () => {
+    if (starred) {
+      const id = getBookmarkId(insight.text);
+      if (id) removeBookmark.mutate(id);
+    } else if (surveyId) {
+      addBookmark.mutate({
+        survey_id: surveyId,
+        insight_text: insight.text,
+        insight_category: insight.category || null,
+        agreement_percentage: insight.agreement_percentage || null,
+        chapter_key: chapterKey || null,
+      });
+    }
+  };
 
   const confidenceLabel = CONFIDENCE_CONFIG.labels[insight.confidence] || 'Good';
   const confidenceColors = CONFIDENCE_CONFIG.colors[insight.confidence] || CONFIDENCE_CONFIG.colors[3];
@@ -40,7 +61,21 @@ export function InsightCard({ insight, colorClass, accentColor }: InsightCardPro
         colorClass
       )}
     >
-      <div className="p-5">
+      <div className="p-5 relative">
+        {/* Bookmark star button */}
+        {surveyId && (
+          <button
+            onClick={toggleBookmark}
+            className="absolute top-4 right-4 p-1 rounded-md hover:bg-muted/50 transition-colors"
+            aria-label={starred ? "Remove bookmark" : "Bookmark insight"}
+          >
+            <Star className={cn(
+              "h-4 w-4 transition-colors",
+              starred ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40 hover:text-muted-foreground"
+            )} />
+          </button>
+        )}
+
         {/* Main content: horizontal layout when agreement data exists */}
         {hasAgreementData ? (
           <div className="flex gap-5">
