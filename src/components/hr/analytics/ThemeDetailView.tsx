@@ -1,13 +1,7 @@
-import { useEffect } from "react";
-import { motion } from "framer-motion";
-import { ArrowLeft, Users, MessageSquareQuote, HelpCircle } from "lucide-react";
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Users, MessageSquareQuote } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import { RootCauseCard } from "./RootCauseCard";
 import { ThemeInsightCard } from "./ThemeInsightCard";
 import { PolarizationBadge } from "./PolarizationBadge";
@@ -29,6 +23,7 @@ function getConfidenceLevel(score: number): 'high' | 'medium' | 'low' {
 }
 
 export function ThemeDetailView({ theme, enrichedData, onBack }: ThemeDetailViewProps) {
+  const [expandedQuote, setExpandedQuote] = useState<number | null>(null);
   const healthScore = enrichedData?.healthIndex ?? theme.avgSentiment;
   const healthStatus = enrichedData?.healthStatus;
   const config = getHealthConfig(healthScore, healthStatus);
@@ -222,29 +217,42 @@ export function ThemeDetailView({ theme, enrichedData, onBack }: ThemeDetailView
                 key={i}
                 className={`
                   rounded-lg p-3 text-sm text-foreground/80
-                  border-l-2 flex items-start gap-2
+                  border-l-2
                   ${quote.type === 'positive'
                     ? 'border-l-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/10'
                     : 'border-l-amber-400 bg-amber-50/30 dark:bg-amber-950/10'
                   }
                 `}
               >
-                <span className="italic flex-1">"{quote.text}"</span>
-                {quote.question && (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-muted text-muted-foreground text-[10px] font-semibold cursor-help shrink-0 mt-0.5">
-                          Q
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent side="left" className="max-w-xs">
-                        <p className="text-xs text-muted-foreground mb-0.5">Question asked:</p>
-                        <p className="text-sm font-medium">"{quote.question}"</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                )}
+                <div className="flex items-start gap-2">
+                  <span className="italic flex-1">"{quote.text}"</span>
+                  {quote.question && (
+                    <button
+                      onClick={() => setExpandedQuote(expandedQuote === i ? null : i)}
+                      className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-semibold shrink-0 mt-0.5 transition-colors ${
+                        expandedQuote === i
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted-foreground/20'
+                      }`}
+                      aria-label="Show question context"
+                    >
+                      Q
+                    </button>
+                  )}
+                </div>
+                <AnimatePresence>
+                  {expandedQuote === i && quote.question && (
+                    <motion.p
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="text-xs text-muted-foreground mt-2 pl-1 overflow-hidden"
+                    >
+                      Asked: "{quote.question}"
+                    </motion.p>
+                  )}
+                </AnimatePresence>
               </div>
             ))}
           </div>
