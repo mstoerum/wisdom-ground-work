@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { EvidenceTrail } from "./EvidenceTrail";
-import { AgreementBar } from "./AgreementBar";
 import { NarrativeInsight } from "@/hooks/useNarrativeReports";
 import { CONFIDENCE_CONFIG } from "@/lib/reportDesignSystem";
 import { cn } from "@/lib/utils";
@@ -22,11 +21,16 @@ export function InsightCard({ insight, colorClass, accentColor }: InsightCardPro
   const confidenceLabel = CONFIDENCE_CONFIG.labels[insight.confidence] || 'Good';
   const confidenceColors = CONFIDENCE_CONFIG.colors[insight.confidence] || CONFIDENCE_CONFIG.colors[3];
 
-  // Calculate display values
   const agreementPercentage = insight.agreement_percentage;
   const sampleSize = insight.sample_size;
   const hasAgreementData = typeof agreementPercentage === 'number' && agreementPercentage > 0;
   const hasEvidence = insight.evidence_ids && insight.evidence_ids.length > 0;
+
+  const getAgreementColor = (pct: number) => {
+    if (pct >= 70) return "text-emerald-600 dark:text-emerald-400";
+    if (pct >= 50) return "text-amber-600 dark:text-amber-400";
+    return "text-rose-600 dark:text-rose-400";
+  };
 
   return (
     <Card 
@@ -36,46 +40,69 @@ export function InsightCard({ insight, colorClass, accentColor }: InsightCardPro
         colorClass
       )}
     >
-      <div className="p-5 space-y-4">
-        {/* Main insight text - statement first */}
-        <p className="text-base font-medium leading-relaxed tracking-[-0.01em]">
-          {insight.text}
-        </p>
+      <div className="p-5">
+        {/* Main content: horizontal layout when agreement data exists */}
+        {hasAgreementData ? (
+          <div className="flex gap-5">
+            {/* Agreement % - primary visual */}
+            <div className="flex-shrink-0 flex flex-col items-center justify-center min-w-[64px]">
+              <span className={cn("text-2xl font-bold tabular-nums", getAgreementColor(agreementPercentage!))}>
+                {agreementPercentage}%
+              </span>
+              <span className="text-xs text-muted-foreground">agree</span>
+              {sampleSize && (
+                <span className="text-xs text-muted-foreground/60 mt-0.5">
+                  n={sampleSize}
+                </span>
+              )}
+            </div>
 
-        {/* Agreement percentage with visual bar */}
-        {hasAgreementData && (
-          <AgreementBar 
-            percentage={agreementPercentage!}
-            sampleSize={sampleSize}
-          />
+            {/* Insight text + metadata */}
+            <div className="flex-1 space-y-3">
+              <p className="text-base font-medium leading-relaxed tracking-[-0.01em]">
+                {insight.text}
+              </p>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge 
+                  variant="outline" 
+                  className={cn("text-xs font-medium border-0", confidenceColors.bg, confidenceColors.text)}
+                >
+                  {confidenceLabel} confidence
+                </Badge>
+                {insight.category && (
+                  <Badge variant="secondary" className="text-xs font-normal">
+                    {insight.category}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Fallback: full-width text layout */
+          <div className="space-y-3">
+            <p className="text-base font-medium leading-relaxed tracking-[-0.01em]">
+              {insight.text}
+            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge 
+                variant="outline" 
+                className={cn("text-xs font-medium border-0", confidenceColors.bg, confidenceColors.text)}
+              >
+                {confidenceLabel} confidence
+              </Badge>
+              {insight.category && (
+                <Badge variant="secondary" className="text-xs font-normal">
+                  {insight.category}
+                </Badge>
+              )}
+            </div>
+          </div>
         )}
 
-        {/* Metadata row - clean & minimal */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <Badge 
-            variant="outline" 
-            className={cn(
-              "text-xs font-medium border-0",
-              confidenceColors.bg,
-              confidenceColors.text
-            )}
-          >
-            {confidenceLabel} confidence
-          </Badge>
-          
-          {insight.category && (
-            <Badge 
-              variant="secondary" 
-              className="text-xs font-normal"
-            >
-              {insight.category}
-            </Badge>
-          )}
-        </div>
-
-        {/* Evidence toggle - collapsible */}
+        {/* Evidence toggle */}
         {hasEvidence && (
-          <div className="pt-2">
+          <div className="pt-3 mt-3 border-t border-muted/50">
             <Button
               variant="ghost"
               size="sm"
