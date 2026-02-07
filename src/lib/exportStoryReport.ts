@@ -335,8 +335,10 @@ export async function exportStoryReport(
 
     // Key signal (if available)
     if (theme.keySignals?.concerns?.length || theme.keySignals?.positives?.length) {
-      const signal = theme.keySignals?.concerns?.[0] || theme.keySignals?.positives?.[0] || '';
-      const isConcern = theme.keySignals?.concerns?.length > 0;
+      const firstConcern = theme.keySignals?.concerns?.[0];
+      const firstPositive = theme.keySignals?.positives?.[0];
+      const signal = firstConcern ? (typeof firstConcern === 'string' ? firstConcern : firstConcern.text) : (firstPositive ? (typeof firstPositive === 'string' ? firstPositive : firstPositive.text) : '');
+      const isConcern = !!firstConcern;
       
       pdf.setFontSize(8);
       const signalColor = isConcern ? COLORS.danger : COLORS.success;

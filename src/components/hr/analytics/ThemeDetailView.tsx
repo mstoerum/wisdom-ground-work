@@ -1,7 +1,13 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { ArrowLeft, Users, MessageSquareQuote } from "lucide-react";
+import { ArrowLeft, Users, MessageSquareQuote, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { RootCauseCard } from "./RootCauseCard";
 import { ThemeInsightCard } from "./ThemeInsightCard";
 import { PolarizationBadge } from "./PolarizationBadge";
@@ -35,10 +41,10 @@ export function ThemeDetailView({ theme, enrichedData, onBack }: ThemeDetailView
   const polarizationLevel = enrichedData?.polarizationLevel || 'low';
   const polarizationScore = enrichedData?.polarizationScore;
 
-  // Collect quotes from insights as supporting evidence
+  // Collect quotes from insights as supporting evidence — use fullText for detail view
   const allQuotes = [
-    ...theme.keySignals.positives.map(q => ({ text: q, type: 'positive' as const })),
-    ...theme.keySignals.concerns.map(q => ({ text: q, type: 'concern' as const })),
+    ...theme.keySignals.positives.map(q => ({ text: q.fullText, question: q.question, type: 'positive' as const })),
+    ...theme.keySignals.concerns.map(q => ({ text: q.fullText, question: q.question, type: 'concern' as const })),
   ].slice(0, 5);
 
   // Escape key to go back
@@ -215,15 +221,30 @@ export function ThemeDetailView({ theme, enrichedData, onBack }: ThemeDetailView
               <div
                 key={i}
                 className={`
-                  rounded-lg p-3 text-sm italic text-foreground/80
-                  border-l-2
+                  rounded-lg p-3 text-sm text-foreground/80
+                  border-l-2 flex items-start gap-2
                   ${quote.type === 'positive'
                     ? 'border-l-emerald-400 bg-emerald-50/30 dark:bg-emerald-950/10'
                     : 'border-l-amber-400 bg-amber-50/30 dark:bg-amber-950/10'
                   }
                 `}
               >
-                "{quote.text}"
+                <span className="italic flex-1">"{quote.text}"</span>
+                {quote.question && (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-muted text-muted-foreground text-[10px] font-semibold cursor-help shrink-0 mt-0.5">
+                          Q
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="left" className="max-w-xs">
+                        <p className="text-xs text-muted-foreground mb-0.5">Question asked:</p>
+                        <p className="text-sm font-medium">"{quote.question}"</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
               </div>
             ))}
           </div>

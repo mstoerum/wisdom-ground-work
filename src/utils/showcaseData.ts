@@ -55,15 +55,15 @@ export const showcaseThemes: BasicThemeInsight[] = [
     urgencyCount: 8,
     keySignals: {
       concerns: [
-        "Manager expects immediate responses to emails sent after 10pm, even on weekends...",
-        "Working weekends has become the norm, not the exception anymore...",
-        "No boundaries between work and personal life - I'm exhausted...",
+        { text: "Manager expects immediate responses to emails sent after 10pm, even on weekends...", fullText: "Manager expects immediate responses to emails sent after 10pm, even on weekends..." },
+        { text: "Working weekends has become the norm, not the exception anymore...", fullText: "Working weekends has become the norm, not the exception anymore..." },
+        { text: "No boundaries between work and personal life - I'm exhausted...", fullText: "No boundaries between work and personal life - I'm exhausted..." },
       ],
       positives: [
-        "Flexible hours policy has been helpful for doctor's appointments...",
+        { text: "Flexible hours policy has been helpful for doctor's appointments...", fullText: "Flexible hours policy has been helpful for doctor's appointments..." },
       ],
       other: [
-        "Would appreciate clearer guidelines on after-hours communication expectations...",
+        { text: "Would appreciate clearer guidelines on after-hours communication expectations...", fullText: "Would appreciate clearer guidelines on after-hours communication expectations..." },
       ],
     },
   },
@@ -75,15 +75,15 @@ export const showcaseThemes: BasicThemeInsight[] = [
     urgencyCount: 0,
     keySignals: {
       concerns: [
-        "More clarity needed on promotion criteria...",
+        { text: "More clarity needed on promotion criteria...", fullText: "More clarity needed on promotion criteria..." },
       ],
       positives: [
-        "The new mentorship program has been incredible for my growth...",
-        "My manager creates a clear development plan every quarter...",
-        "Learning budget is generous and easy to use...",
+        { text: "The new mentorship program has been incredible for my growth...", fullText: "The new mentorship program has been incredible for my growth..." },
+        { text: "My manager creates a clear development plan every quarter...", fullText: "My manager creates a clear development plan every quarter..." },
+        { text: "Learning budget is generous and easy to use...", fullText: "Learning budget is generous and easy to use..." },
       ],
       other: [
-        "Would love more cross-team project opportunities...",
+        { text: "Would love more cross-team project opportunities...", fullText: "Would love more cross-team project opportunities..." },
       ],
     },
   },
@@ -95,14 +95,14 @@ export const showcaseThemes: BasicThemeInsight[] = [
     urgencyCount: 2,
     keySignals: {
       concerns: [
-        "Decisions are made without consulting the people who do the work...",
-        "Communication from leadership feels inconsistent...",
+        { text: "Decisions are made without consulting the people who do the work...", fullText: "Decisions are made without consulting the people who do the work..." },
+        { text: "Communication from leadership feels inconsistent...", fullText: "Communication from leadership feels inconsistent..." },
       ],
       positives: [
-        "Direct manager is supportive and advocates for the team...",
+        { text: "Direct manager is supportive and advocates for the team...", fullText: "Direct manager is supportive and advocates for the team..." },
       ],
       other: [
-        "Town halls are informative but Q&A time is too short...",
+        { text: "Town halls are informative but Q&A time is too short...", fullText: "Town halls are informative but Q&A time is too short..." },
       ],
     },
   },
@@ -114,14 +114,14 @@ export const showcaseThemes: BasicThemeInsight[] = [
     urgencyCount: 1,
     keySignals: {
       concerns: [
-        "Salary hasn't kept up with market rates for my role...",
+        { text: "Salary hasn't kept up with market rates for my role...", fullText: "Salary hasn't kept up with market rates for my role..." },
       ],
       positives: [
-        "Healthcare benefits are excellent compared to previous jobs...",
-        "401k matching is very competitive...",
+        { text: "Healthcare benefits are excellent compared to previous jobs...", fullText: "Healthcare benefits are excellent compared to previous jobs..." },
+        { text: "401k matching is very competitive...", fullText: "401k matching is very competitive..." },
       ],
       other: [
-        "Would appreciate more transparency about pay bands...",
+        { text: "Would appreciate more transparency about pay bands...", fullText: "Would appreciate more transparency about pay bands..." },
       ],
     },
   },
@@ -133,14 +133,14 @@ export const showcaseThemes: BasicThemeInsight[] = [
     urgencyCount: 0,
     keySignals: {
       concerns: [
-        "Too many meetings that could have been emails...",
+        { text: "Too many meetings that could have been emails...", fullText: "Too many meetings that could have been emails..." },
       ],
       positives: [
-        "Slack channels keep everyone aligned on priorities...",
-        "Weekly standups are actually useful and well-run...",
+        { text: "Slack channels keep everyone aligned on priorities...", fullText: "Slack channels keep everyone aligned on priorities..." },
+        { text: "Weekly standups are actually useful and well-run...", fullText: "Weekly standups are actually useful and well-run..." },
       ],
       other: [
-        "Would be nice to have more async communication options...",
+        { text: "Would be nice to have more async communication options...", fullText: "Would be nice to have more async communication options..." },
       ],
     },
   },

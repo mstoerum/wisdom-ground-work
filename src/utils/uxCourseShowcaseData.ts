@@ -3,7 +3,9 @@
  * Based on real course evaluation data from DTU
  */
 
-import type { ParticipationMetrics, SentimentMetrics, ThemeInsight as BasicThemeInsight } from "@/hooks/useAnalytics";
+import type { ParticipationMetrics, SentimentMetrics, ThemeInsight as BasicThemeInsight, QuoteSignal } from "@/hooks/useAnalytics";
+
+const q = (text: string): QuoteSignal => ({ text, fullText: text });
 import type { 
   ThemeInsight as EnhancedThemeInsight, 
   ConversationQuote 
@@ -57,15 +59,15 @@ export const showcaseThemes: BasicThemeInsight[] = [
     urgencyCount: 0,
     keySignals: {
       concerns: [
-        "Would appreciate more guidance on transitioning prototypes to production...",
+        q("Would appreciate more guidance on transitioning prototypes to production..."),
       ],
       positives: [
-        "I really like the fast iterations in the course program. It allowed us to create and test a lot which worked very efficiently...",
-        "The hands-on approach helped me understand UX concepts much better than reading alone...",
-        "Building actual prototypes gave me confidence in my design skills...",
+        q("I really like the fast iterations in the course program. It allowed us to create and test a lot which worked very efficiently..."),
+        q("The hands-on approach helped me understand UX concepts much better than reading alone..."),
+        q("Building actual prototypes gave me confidence in my design skills..."),
       ],
       other: [
-        "Would love to see more advanced prototyping techniques in future sessions...",
+        q("Would love to see more advanced prototyping techniques in future sessions..."),
       ],
     },
   },
@@ -77,15 +79,15 @@ export const showcaseThemes: BasicThemeInsight[] = [
     urgencyCount: 0,
     keySignals: {
       concerns: [
-        "Sometimes examples moved too quickly to follow along...",
+        q("Sometimes examples moved too quickly to follow along..."),
       ],
       positives: [
-        "The material he was teaching about was very applicable. He used a lot of examples which was great...",
-        "Professor was always available for questions and provided constructive feedback...",
-        "Clear explanations of complex UX principles with real-world context...",
+        q("The material he was teaching about was very applicable. He used a lot of examples which was great..."),
+        q("Professor was always available for questions and provided constructive feedback..."),
+        q("Clear explanations of complex UX principles with real-world context..."),
       ],
       other: [
-        "More time for individual Q&A sessions would be helpful...",
+        q("More time for individual Q&A sessions would be helpful..."),
       ],
     },
   },
@@ -97,15 +99,15 @@ export const showcaseThemes: BasicThemeInsight[] = [
     urgencyCount: 1,
     keySignals: {
       concerns: [
-        "Some materials felt outdated compared to current industry practices...",
-        "Lecture slides could use more visual examples...",
+        q("Some materials felt outdated compared to current industry practices..."),
+        q("Lecture slides could use more visual examples..."),
       ],
       positives: [
-        "Well-structured curriculum that builds skills progressively...",
-        "Good balance between theory and practice...",
+        q("Well-structured curriculum that builds skills progressively..."),
+        q("Good balance between theory and practice..."),
       ],
       other: [
-        "Would appreciate supplementary reading lists for deeper exploration...",
+        q("Would appreciate supplementary reading lists for deeper exploration..."),
       ],
     },
   },
@@ -117,14 +119,14 @@ export const showcaseThemes: BasicThemeInsight[] = [
     urgencyCount: 0,
     keySignals: {
       concerns: [
-        "Group work logistics were sometimes challenging...",
+        q("Group work logistics were sometimes challenging..."),
       ],
       positives: [
-        "Peer feedback sessions were incredibly valuable for improving my designs...",
-        "Collaborative atmosphere encouraged experimentation...",
+        q("Peer feedback sessions were incredibly valuable for improving my designs..."),
+        q("Collaborative atmosphere encouraged experimentation..."),
       ],
       other: [
-        "More structured peer review guidelines would help...",
+        q("More structured peer review guidelines would help..."),
       ],
     },
   },
@@ -136,14 +138,14 @@ export const showcaseThemes: BasicThemeInsight[] = [
     urgencyCount: 2,
     keySignals: {
       concerns: [
-        "Grading criteria could be more transparent and detailed...",
-        "Feedback turnaround time was sometimes slow...",
+        q("Grading criteria could be more transparent and detailed..."),
+        q("Feedback turnaround time was sometimes slow..."),
       ],
       positives: [
-        "Portfolio-based assessment felt authentic to real design work...",
+        q("Portfolio-based assessment felt authentic to real design work..."),
       ],
       other: [
-        "Would appreciate rubrics shared at the start of each assignment...",
+        q("Would appreciate rubrics shared at the start of each assignment..."),
       ],
     },
   },
@@ -156,12 +158,12 @@ export const showcaseThemes: BasicThemeInsight[] = [
     keySignals: {
       concerns: [],
       positives: [
-        "I feel like this is a skill that is very useful for myself as a tech student...",
-        "The prototyping exercises directly apply to my thesis project...",
-        "Industry guest speakers provided excellent real-world perspective...",
+        q("I feel like this is a skill that is very useful for myself as a tech student..."),
+        q("The prototyping exercises directly apply to my thesis project..."),
+        q("Industry guest speakers provided excellent real-world perspective..."),
       ],
       other: [
-        "Would love more opportunities to work with real clients...",
+        q("Would love more opportunities to work with real clients..."),
       ],
     },
   },
