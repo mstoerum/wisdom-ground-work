@@ -96,7 +96,7 @@ function KeySignalsPanel({ keySignals }: { keySignals: ThemeInsight['keySignals'
           {keySignals.concerns.length > 0 ? (
             keySignals.concerns.map((quote, i) => (
               <div key={i} className="text-xs p-2 bg-destructive/10 rounded border border-destructive/20">
-                "{quote}"
+                "{typeof quote === 'string' ? quote : quote.text}"
               </div>
             ))
           ) : (
@@ -115,7 +115,7 @@ function KeySignalsPanel({ keySignals }: { keySignals: ThemeInsight['keySignals'
           {keySignals.positives.length > 0 ? (
             keySignals.positives.map((quote, i) => (
               <div key={i} className="text-xs p-2 bg-green-500/10 rounded border border-green-500/20">
-                "{quote}"
+                "{typeof quote === 'string' ? quote : quote.text}"
               </div>
             ))
           ) : (
@@ -134,7 +134,7 @@ function KeySignalsPanel({ keySignals }: { keySignals: ThemeInsight['keySignals'
           {keySignals.other.length > 0 ? (
             keySignals.other.map((quote, i) => (
               <div key={i} className="text-xs p-2 bg-muted rounded border">
-                "{quote}"
+                "{typeof quote === 'string' ? quote : quote.text}"
               </div>
             ))
           ) : (

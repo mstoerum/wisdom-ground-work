@@ -26,11 +26,13 @@ export interface MockThemeInsight {
   avgSentiment: number;
   urgencyCount: number;
   keySignals: {
-    concerns: string[];
-    positives: string[];
-    other: string[];
+    concerns: { text: string; fullText: string; question?: string }[];
+    positives: { text: string; fullText: string; question?: string }[];
+    other: { text: string; fullText: string; question?: string }[];
   };
 }
+
+const q = (text: string): { text: string; fullText: string } => ({ text, fullText: text });
 
 export interface MockUrgencyFlag {
   id: string;
@@ -86,15 +88,15 @@ export const generateMockThemes = (): MockThemeInsight[] => [
     urgencyCount: 8,
     keySignals: {
       concerns: [
-        "Manager expects immediate responses to emails sent after 10pm...",
-        "Working weekends has become the norm, not the exception...",
-        "No boundaries between work and personal life anymore..."
+        q("Manager expects immediate responses to emails sent after 10pm..."),
+        q("Working weekends has become the norm, not the exception..."),
+        q("No boundaries between work and personal life anymore...")
       ],
       positives: [
-        "Flexible hours policy has been helpful for appointments..."
+        q("Flexible hours policy has been helpful for appointments...")
       ],
       other: [
-        "Would appreciate clearer guidelines on after-hours communication..."
+        q("Would appreciate clearer guidelines on after-hours communication...")
       ]
     }
   },
@@ -106,15 +108,15 @@ export const generateMockThemes = (): MockThemeInsight[] => [
     urgencyCount: 2,
     keySignals: {
       concerns: [
-        "Haven't had a promotion discussion in over 2 years..."
+        q("Haven't had a promotion discussion in over 2 years...")
       ],
       positives: [
-        "The new mentorship program has been incredibly valuable...",
-        "Clear career ladder gives me visibility into growth path...",
-        "Manager actively supports my professional development goals..."
+        q("The new mentorship program has been incredibly valuable..."),
+        q("Clear career ladder gives me visibility into growth path..."),
+        q("Manager actively supports my professional development goals...")
       ],
       other: [
-        "Would like more cross-functional project opportunities..."
+        q("Would like more cross-functional project opportunities...")
       ]
     }
   },
@@ -126,14 +128,14 @@ export const generateMockThemes = (): MockThemeInsight[] => [
     urgencyCount: 1,
     keySignals: {
       concerns: [
-        "Silos between departments make collaboration difficult..."
+        q("Silos between departments make collaboration difficult...")
       ],
       positives: [
-        "New collaboration tools have improved async communication...",
-        "Team standups help everyone stay aligned on priorities..."
+        q("New collaboration tools have improved async communication..."),
+        q("Team standups help everyone stay aligned on priorities...")
       ],
       other: [
-        "More cross-team social events would help build relationships..."
+        q("More cross-team social events would help build relationships...")
       ]
     }
   },
@@ -145,15 +147,15 @@ export const generateMockThemes = (): MockThemeInsight[] => [
     urgencyCount: 5,
     keySignals: {
       concerns: [
-        "Decisions are made without consulting the people affected...",
-        "Lack of transparency around company direction...",
-        "Middle management seems disconnected from day-to-day work..."
+        q("Decisions are made without consulting the people affected..."),
+        q("Lack of transparency around company direction..."),
+        q("Middle management seems disconnected from day-to-day work...")
       ],
       positives: [
-        "Senior leadership town halls have been more frequent..."
+        q("Senior leadership town halls have been more frequent...")
       ],
       other: [
-        "Would appreciate more direct access to department heads..."
+        q("Would appreciate more direct access to department heads...")
       ]
     }
   },
@@ -165,15 +167,15 @@ export const generateMockThemes = (): MockThemeInsight[] => [
     urgencyCount: 6,
     keySignals: {
       concerns: [
-        "Salary hasn't kept pace with market rates for my role...",
-        "Benefits package is less competitive than other companies...",
-        "Unclear how compensation decisions are made..."
+        q("Salary hasn't kept pace with market rates for my role..."),
+        q("Benefits package is less competitive than other companies..."),
+        q("Unclear how compensation decisions are made...")
       ],
       positives: [
-        "Recent equity refresh was appreciated..."
+        q("Recent equity refresh was appreciated...")
       ],
       other: [
-        "More transparency around compensation bands would help..."
+        q("More transparency around compensation bands would help...")
       ]
     }
   },
@@ -185,15 +187,15 @@ export const generateMockThemes = (): MockThemeInsight[] => [
     urgencyCount: 3,
     keySignals: {
       concerns: [
-        "Culture has shifted since rapid growth, feels less personal...",
-        "Core values don't seem to guide actual decisions..."
+        q("Culture has shifted since rapid growth, feels less personal..."),
+        q("Core values don't seem to guide actual decisions...")
       ],
       positives: [
-        "DEI initiatives show genuine commitment to inclusion...",
-        "Team events help maintain connection despite remote work..."
+        q("DEI initiatives show genuine commitment to inclusion..."),
+        q("Team events help maintain connection despite remote work...")
       ],
       other: [
-        "Would like to see values reflected more in performance reviews..."
+        q("Would like to see values reflected more in performance reviews...")
       ]
     }
   },
@@ -205,14 +207,14 @@ export const generateMockThemes = (): MockThemeInsight[] => [
     urgencyCount: 1,
     keySignals: {
       concerns: [
-        "Open office can be noisy and distracting..."
+        q("Open office can be noisy and distracting...")
       ],
       positives: [
-        "Hybrid work policy gives great flexibility...",
-        "Office amenities have improved significantly..."
+        q("Hybrid work policy gives great flexibility..."),
+        q("Office amenities have improved significantly...")
       ],
       other: [
-        "More quiet spaces for focused work would be helpful..."
+        q("More quiet spaces for focused work would be helpful...")
       ]
     }
   },
@@ -224,15 +226,15 @@ export const generateMockThemes = (): MockThemeInsight[] => [
     urgencyCount: 4,
     keySignals: {
       concerns: [
-        "Important updates get lost in Slack noise...",
-        "Conflicting information from different sources...",
-        "Meeting overload leaves no time for actual work..."
+        q("Important updates get lost in Slack noise..."),
+        q("Conflicting information from different sources..."),
+        q("Meeting overload leaves no time for actual work...")
       ],
       positives: [
-        "Weekly newsletter helps surface key announcements..."
+        q("Weekly newsletter helps surface key announcements...")
       ],
       other: [
-        "Would appreciate a single source of truth for policies..."
+        q("Would appreciate a single source of truth for policies...")
       ]
     }
   }

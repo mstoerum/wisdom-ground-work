@@ -37,6 +37,12 @@ export interface SentimentMetrics {
   moodImprovement: number;
 }
 
+export interface QuoteSignal {
+  text: string;
+  fullText: string;
+  question?: string;
+}
+
 export interface ThemeInsight {
   id: string;
   name: string;
@@ -44,9 +50,9 @@ export interface ThemeInsight {
   avgSentiment: number;
   urgencyCount: number;
   keySignals: {
-    concerns: string[];
-    positives: string[];
-    other: string[];
+    concerns: QuoteSignal[];
+    positives: QuoteSignal[];
+    other: QuoteSignal[];
   };
 }
 
@@ -143,9 +149,9 @@ const calculateThemeInsights = (responses: any[]): ThemeInsight[] => {
     responseCount: number;
     sentimentSum: number;
     urgencyCount: number;
-    concerns: string[];
-    positives: string[];
-    other: string[];
+    concerns: QuoteSignal[];
+    positives: QuoteSignal[];
+    other: QuoteSignal[];
   }>();
 
   responses?.forEach(r => {
@@ -173,13 +179,17 @@ const calculateThemeInsights = (responses: any[]): ThemeInsight[] => {
 
     // Group quotes by sentiment for key signals
     if (r.content && r.content.trim()) {
-      const quote = truncateText(r.content);
+      const signal: QuoteSignal = {
+        text: truncateText(r.content),
+        fullText: r.content.trim(),
+        question: r.ai_response?.trim() || undefined,
+      };
       if (r.sentiment === 'negative') {
-        existing.concerns.push(quote);
+        existing.concerns.push(signal);
       } else if (r.sentiment === 'positive') {
-        existing.positives.push(quote);
+        existing.positives.push(signal);
       } else {
-        existing.other.push(quote);
+        existing.other.push(signal);
       }
     }
 
@@ -344,7 +354,7 @@ export const useAnalytics = (filters: AnalyticsFilters = {}) => {
     queryFn: async () => {
       let query = supabase
         .from('responses')
-        .select('theme_id, sentiment_score, urgency_escalated, sentiment, content, survey_themes(name)');
+        .select('theme_id, sentiment_score, urgency_escalated, sentiment, content, ai_response, survey_themes(name)');
 
       if (filters.surveyId) {
         query = query.eq('survey_id', filters.surveyId);
