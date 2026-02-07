@@ -1,107 +1,97 @@
 
 
-# Story Report: 10 Design Fixes from Notion Designer Review
+# Story Report Enhancements: 5 Features
 
-## Fix 1: Remove StoryProgressBar and Footer Counter
+## Feature 1: Keyboard Arrow Navigation
+Add left/right arrow key support for chapter navigation in `NarrativeReportViewer.tsx`.
 
-The StoryProgressBar and the "1 of 6" text in the navigation footer duplicate information already shown in the StoryJourneyNav. This creates triple redundancy.
+**Technical approach:**
+- Add a `useEffect` with a `keydown` event listener for `ArrowLeft` and `ArrowRight`
+- Call `goToPrevChapter` / `goToNextChapter` respectively
+- Clean up listener on unmount
+- Only respond when no input/textarea is focused (to avoid conflicts)
 
-**Changes in `NarrativeReportViewer.tsx`:**
-- Remove the `<StoryProgressBar>` render (lines 198-201) and its import (line 10)
-- Remove the `<span>` showing "X of Y" in the footer (line 215-217)
-- Keep the Previous/Next buttons (they serve a real navigation purpose)
-
-## Fix 2: Kill Internal Stagger Animations in StoryChapter
-
-The chapter already slides in via the parent `AnimatePresence` in `NarrativeReportViewer`. Internal stagger animations on the icon, narrative, and insight list cause a "double animation" effect.
-
-**Changes in `StoryChapter.tsx`:**
-- Replace the `motion.div` wrapping the icon (lines 95-106) with a plain `div`
-- Replace the `motion.div` wrapping the narrative (lines 131-140) with a plain `div`
-- Replace each insight's `motion.div` wrapper (lines 150-160) with a plain `div`
-- Remove the `motion` import from framer-motion (no longer needed)
-
-## Fix 3: Remove Header motion.div in NarrativeReportViewer
-
-The header section has its own fade-in animation that plays on every chapter change, adding unnecessary motion.
-
-**Changes in `NarrativeReportViewer.tsx`:**
-- Replace `<motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>` (lines 110-114) with a plain `<div>`
-
-## Fix 4: Remove Journey Nav Active Chapter Info Block
-
-The "active chapter info" block below the journey line (lines 128-145 in `StoryJourneyNav.tsx`) repeats the chapter title that is already shown in the chapter card itself. It also shows another "X of Y" counter.
-
-**Changes in `StoryJourneyNav.tsx`:**
-- Remove the entire `motion.div` block (lines 128-145) that shows the active chapter title, description, and "X of Y" counter
-- This saves ~80px of vertical space
-
-## Fix 5: Restructure InsightCard to Lead with Agreement %
-
-Currently, InsightCard shows text first, then the agreement bar below. For HR scanning multiple insights, the agreement percentage should be the first thing they see.
-
-**Changes in `InsightCard.tsx`:**
-- Restructure to a horizontal layout: large agreement percentage number on the left, insight text + metadata on the right
-- When no agreement data exists, fall back to the current full-width text layout
-- The agreement number becomes a bold, large `text-2xl` element with "agree" label below it
-- Remove the separate `AgreementBar` component usage (the number itself is the bar)
-
-## Fix 6: Remove Per-Quote Anonymous Attribution
-
-Every quote in `QuoteCarousel` shows "-- Anonymous" which is redundant -- all responses are anonymous. This wastes space and adds visual noise.
-
-**Changes in `QuoteCarousel.tsx`:**
-- Remove the "-- Anonymous" span (lines 80-83)
-- Add a single disclaimer at the top of the carousel: "All responses are anonymous" in `text-xs text-muted-foreground`
-
-## Fix 7: Fix Sub-12px Text in QuoteCarousel
-
-Two instances of sub-12px text remain in `QuoteCarousel.tsx`.
-
-**Changes in `QuoteCarousel.tsx`:**
-- Line 50: Change `text-[10px]` on urgency indicator to `text-xs`
-- Line 81: Change `text-[11px]` on anonymous attribution to `text-xs` (this line is being removed per Fix 6, so only the urgency fix applies)
-- Line 90: Change `text-[10px]` on voices count to `text-xs`
-
-## Fix 8: Replace Infinite Pulse with Single-Play Animation
-
-The active chapter node in `StoryJourneyNav` has an infinite pulsing ring that is distracting. A single pulse on selection is sufficient to draw attention.
-
-**Changes in `StoryJourneyNav.tsx`:**
-- Change the pulse ring animation (lines 104-109): remove `repeat: Infinity` so it plays once and fades out
-- Add a `key` based on `activeIndex` so it replays when the user switches chapters
-
-## Fix 9: Add AlertDialog to AudienceToggle
-
-Switching audience triggers a full AI regeneration without warning. Users may not realize they are about to wait 10-30 seconds for a new report.
-
-**Changes in `AudienceToggle.tsx`:**
-- Import `AlertDialog` components from radix
-- When user clicks a different audience, show a confirmation dialog: "Switching views will regenerate the report using AI. This may take 15-30 seconds."
-- Only call `onChange` if the user confirms
-- If clicking the already-active audience, do nothing (no dialog needed)
-
-## Fix 10: Responsive Padding and Accent Bar Thickness
-
-`StoryChapter` uses fixed `px-8` padding that crowds content on tablets. The accent bar at top is only 1px (`h-1`) which is barely visible.
-
-**Changes in `StoryChapter.tsx`:**
-- Change `px-8` to `px-5 sm:px-8` on `CardHeader` (line 91) and `CardContent` (line 129)
-- Change `pt-8` to `pt-6 sm:pt-8` on `CardHeader`
-- Change accent bar from `h-1` to `h-1.5` (line 87) for better visibility
+**File:** `src/components/hr/analytics/NarrativeReportViewer.tsx`
 
 ---
 
-## Summary of All Files Touched
+## Feature 2: Remove "Chapter X of Y" Badge
+The `StoryChapter` component still renders a `<Badge>` showing "Chapter 1 of 6" (line 103-108). This duplicates the journey nav.
 
-| File | Changes |
-|------|---------|
-| `NarrativeReportViewer.tsx` | Remove StoryProgressBar, footer "X of Y", header motion.div |
-| `StoryChapter.tsx` | Remove all internal motion.divs, responsive padding, thicker accent bar |
-| `StoryJourneyNav.tsx` | Remove active chapter info block, single-play pulse |
-| `InsightCard.tsx` | Restructure layout to lead with agreement % |
-| `QuoteCarousel.tsx` | Remove per-quote Anonymous, fix sub-12px text, add global disclaimer |
-| `AudienceToggle.tsx` | Add AlertDialog confirmation before regeneration |
+**Technical approach:**
+- Remove the `<Badge>` element from `StoryChapter.tsx` (lines 103-108)
+- Remove `totalChapters` from the props interface since it's no longer needed
+- Update the caller in `NarrativeReportViewer.tsx` to stop passing `totalChapters`
 
-No database or backend changes required.
+**Files:** `src/components/hr/analytics/StoryChapter.tsx`, `src/components/hr/analytics/NarrativeReportViewer.tsx`
+
+---
+
+## Feature 3: Footer Buttons Show Destination Chapter Name
+Instead of generic "Previous" / "Next", show the actual chapter title the user will navigate to.
+
+**Technical approach:**
+- In the footer of `NarrativeReportViewer.tsx`, replace `<span>Previous</span>` with the title of `report.chapters[activeChapter - 1]` using the `CHAPTER_LABELS` map
+- Replace `<span>Next</span>` with the title of `report.chapters[activeChapter + 1]`
+- Truncate long titles on mobile (keep icons only on small screens, show title on `sm:` and up)
+
+**File:** `src/components/hr/analytics/NarrativeReportViewer.tsx`
+
+---
+
+## Feature 4: Insight Bookmarking (Star/Pin Insights)
+Let HR users star specific insights they want to act on. Starred insights persist per survey and can later feed into the Commitments page.
+
+**Technical approach:**
+- Create a new database table `bookmarked_insights` with columns: `id`, `survey_id`, `insight_text`, `insight_category`, `agreement_percentage`, `chapter_key`, `bookmarked_by` (user id), `created_at`
+- Add a small star/bookmark icon button to `InsightCard.tsx` (top-right corner)
+- Create a `useBookmarkedInsights(surveyId)` hook for CRUD operations
+- When starred, the insight text, category, agreement %, and chapter key are saved
+- Starred insights show a filled star icon; clicking again removes the bookmark
+- Add RLS policies so users can only manage their own bookmarks
+
+**Files:**
+- New migration for `bookmarked_insights` table
+- New hook: `src/hooks/useBookmarkedInsights.ts`
+- Edit: `src/components/hr/analytics/InsightCard.tsx` (add star button + bookmark state)
+- Edit: `src/components/hr/analytics/NarrativeReportViewer.tsx` (pass surveyId down to StoryChapter -> InsightCard)
+
+---
+
+## Feature 5: CommitmentSection in Commitment Chapter
+
+Wire the existing `CommitmentSection` component into the "Commitment" chapter of the Story Report. This creates the natural overlap with bookmarking: when viewing the Commitment chapter, HR sees both the AI narrative AND their existing action commitments + starred insights, making the report a living action document.
+
+**Research findings on best practices:**
+- Tools like Culture Amp and Qualtrics surface "action plans" directly alongside survey results rather than on a separate page. The pattern is: insight --> bookmark --> action item --> tracked commitment.
+- The best approach is a **layered display**: the AI-generated narrative stays at the top (read-only), followed by a "Your Bookmarked Insights" summary (from Feature 4), then the interactive CommitmentSection where HR can pledge actions.
+- This avoids a separate "Commitments" page visit -- the report itself becomes the action space.
+
+**Overlap with bookmarking (Feature 4):**
+- Starred insights from any chapter automatically surface in the Commitment chapter as a "Flagged for Action" list
+- Each starred insight gets a "Create Commitment" button that pre-fills the commitment form with the insight text
+- This creates a natural flow: Read chapter --> Star important insight --> Reach Commitment chapter --> See all starred insights --> Create commitments from them
+
+**Technical approach:**
+- Detect when the current chapter key is `commitment` in `StoryChapter.tsx`
+- Below the narrative + insights, render:
+  1. **Bookmarked Insights Summary** -- a compact list of all starred insights from the report with a "Create Commitment" button per item
+  2. **CommitmentSection** -- the existing component, adapted to use the `useCommitments` hook with the current survey ID
+- The `CommitmentSection` already handles the form, pledges, and signature UI
+- Pass `surveyId` through `NarrativeReportViewer` --> `StoryChapter` to enable the data hooks
+- The commitments are saved to the existing `action_commitments` table (already has RLS)
+
+**Files:**
+- Edit: `src/components/hr/analytics/StoryChapter.tsx` (add commitment chapter detection + render CommitmentSection + bookmarked insights)
+- Edit: `src/components/hr/analytics/NarrativeReportViewer.tsx` (pass surveyId to StoryChapter)
+- New component: `src/components/hr/analytics/BookmarkedInsightsSummary.tsx` (compact list of starred insights with "Create Commitment" action)
+
+---
+
+## Implementation Order
+1. Feature 1 (keyboard nav) -- standalone, no dependencies
+2. Feature 2 (remove badge) -- standalone, quick
+3. Feature 3 (destination names) -- standalone, quick
+4. Feature 4 (bookmarking) -- needs DB migration first, then hook + UI
+5. Feature 5 (commitments) -- depends on Feature 4 for the bookmarked insights summary
 
