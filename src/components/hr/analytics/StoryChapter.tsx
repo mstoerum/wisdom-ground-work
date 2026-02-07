@@ -3,7 +3,6 @@ import { Badge } from "@/components/ui/badge";
 import { InsightCard } from "./InsightCard";
 import { NarrativeChapter } from "@/hooks/useNarrativeReports";
 import { CHAPTER_STRUCTURE, EMOTION_SPECTRUM, CHAPTER_LABELS } from "@/lib/reportDesignSystem";
-import { motion } from "framer-motion";
 import { 
   MessageCircle, 
   Mountain, 
@@ -84,18 +83,15 @@ export function StoryChapter({ chapter, chapterNumber, totalChapters }: StoryCha
     <Card className="border-0 shadow-lg rounded-2xl overflow-hidden">
       {/* Subtle accent bar at top */}
       <div 
-        className="h-1"
+        className="h-1.5"
         style={{ backgroundColor: style.accentColor.primary }}
       />
       
-      <CardHeader className="pb-4 pt-8 px-8">
+      <CardHeader className="pb-4 pt-6 sm:pt-8 px-5 sm:px-8">
         <div className="space-y-4">
           {/* Chapter indicator & icon */}
           <div className="flex items-center gap-4">
-            <motion.div 
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ duration: 0.3 }}
+            <div 
               className="p-3 rounded-xl"
               style={{ backgroundColor: style.accentColor.background }}
             >
@@ -103,7 +99,7 @@ export function StoryChapter({ chapter, chapterNumber, totalChapters }: StoryCha
                 className="h-5 w-5" 
                 style={{ color: style.accentColor.primary }}
               />
-            </motion.div>
+            </div>
             <Badge 
               variant="secondary" 
               className="text-xs font-medium tracking-wide uppercase px-3 py-1"
@@ -126,20 +122,15 @@ export function StoryChapter({ chapter, chapterNumber, totalChapters }: StoryCha
         </div>
       </CardHeader>
       
-      <CardContent className="px-8 pb-8 space-y-8">
+      <CardContent className="px-5 sm:px-8 pb-8 space-y-8">
         {/* Main Narrative - Apple-style typography */}
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.1, duration: 0.4 }}
-          className="prose prose-neutral dark:prose-invert max-w-none"
-        >
+        <div className="prose prose-neutral dark:prose-invert max-w-none">
           <p className="text-[17px] leading-[1.65] font-light text-foreground/90 whitespace-pre-wrap">
             {chapter.narrative}
           </p>
-        </motion.div>
+        </div>
 
-        {/* Insights - staggered reveal */}
+        {/* Insights */}
         {chapter.insights.length > 0 && (
           <div className="space-y-5">
             <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
@@ -147,17 +138,12 @@ export function StoryChapter({ chapter, chapterNumber, totalChapters }: StoryCha
             </h3>
             <div className="space-y-4">
               {chapter.insights.map((insight, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.15 + index * 0.05, duration: 0.3 }}
-                >
+                <div key={index}>
                   <InsightCard 
                     insight={insight}
                     accentColor={style.accentColor.primary}
                   />
-                </motion.div>
+                </div>
               ))}
             </div>
           </div>

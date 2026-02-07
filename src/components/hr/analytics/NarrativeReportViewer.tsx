@@ -7,7 +7,7 @@ import { BookOpen, Download, ChevronLeft, ChevronRight } from "lucide-react";
 import { StoryChapter } from "./StoryChapter";
 import { AudienceToggle } from "./AudienceToggle";
 import { StoryJourneyNav } from "./StoryJourneyNav";
-import { StoryProgressBar } from "./StoryProgressBar";
+
 import { NarrativeReport } from "@/hooks/useNarrativeReports";
 import { CONFIDENCE_CONFIG } from "@/lib/reportDesignSystem";
 import { format } from "date-fns";
@@ -107,12 +107,7 @@ export function NarrativeReportViewer({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="space-y-4"
-      >
+      <div className="space-y-4">
         {/* Title row */}
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="space-y-2">
@@ -157,7 +152,7 @@ export function NarrativeReportViewer({
             {report.data_snapshot.total_responses} responses
           </Badge>
         </div>
-      </motion.div>
+      </div>
 
       {/* Visual Journey Navigation */}
       <Card className="border-0 shadow-sm bg-card/50 backdrop-blur-sm">
@@ -194,14 +189,8 @@ export function NarrativeReportViewer({
         </AnimatePresence>
       </div>
 
-      {/* Progress Bar */}
-      <StoryProgressBar
-        chapters={report.chapters}
-        currentChapterIndex={activeChapter}
-      />
-
       {/* Navigation Footer */}
-      <div className="flex items-center justify-between pt-4 border-t">
+      <div className="flex items-center justify-end gap-2 pt-4 border-t">
         <Button
           variant="ghost"
           onClick={goToPrevChapter}
@@ -211,10 +200,6 @@ export function NarrativeReportViewer({
           <ChevronLeft className="h-4 w-4" />
           <span className="hidden sm:inline">Previous</span>
         </Button>
-        
-        <span className="text-sm text-muted-foreground">
-          {activeChapter + 1} of {report.chapters.length}
-        </span>
         
         <Button
           variant="ghost"

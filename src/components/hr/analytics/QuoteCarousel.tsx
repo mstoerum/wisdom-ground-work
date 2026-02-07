@@ -20,7 +20,7 @@ interface QuoteCarouselProps {
  * QuoteCarousel: Tufte-inspired quote display
  * - Text size scales by agreement (importance)
  * - Left border indicates sentiment
- * - Minimal attribution styling
+ * - Single global anonymity disclaimer
  */
 export function QuoteCarousel({ responses }: QuoteCarouselProps) {
   const getSentimentBorderColor = (sentiment: string | null) => {
@@ -37,7 +37,6 @@ export function QuoteCarousel({ responses }: QuoteCarouselProps) {
   };
 
   const getTextSize = (agreementPercentage?: number) => {
-    // Scale text size by agreement - Tufte: data is the decoration
     if (!agreementPercentage) return 'text-sm';
     if (agreementPercentage >= 70) return 'text-base font-medium';
     if (agreementPercentage >= 50) return 'text-sm';
@@ -47,7 +46,7 @@ export function QuoteCarousel({ responses }: QuoteCarouselProps) {
   const getUrgencyIndicator = (score: number | null) => {
     if (!score || score < 4) return null;
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] text-rose-600 dark:text-rose-400">
+      <span className="inline-flex items-center gap-1 text-xs text-rose-600 dark:text-rose-400">
         <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
         urgent
       </span>
@@ -56,6 +55,9 @@ export function QuoteCarousel({ responses }: QuoteCarouselProps) {
 
   return (
     <div className="space-y-3">
+      {/* Global anonymity disclaimer */}
+      <p className="text-xs text-muted-foreground">All responses are anonymous</p>
+
       {responses.map((response) => {
         const urgencyIndicator = getUrgencyIndicator(response.urgency_score);
         
@@ -77,17 +79,12 @@ export function QuoteCarousel({ responses }: QuoteCarouselProps) {
             
             {/* Attribution row - minimal */}
             <div className="flex items-center gap-3 mt-2 flex-wrap">
-              {/* Anonymous attribution */}
-              <span className="text-[11px] text-muted-foreground/50">
-                — Anonymous
-              </span>
-              
               {/* Agreement bar - if available */}
               {response.agreementPercentage !== undefined && (
                 <div className="flex items-center gap-2">
                   <AgreementBar percentage={response.agreementPercentage} />
                   {response.voiceCount !== undefined && (
-                    <span className="text-[10px] text-muted-foreground">
+                    <span className="text-xs text-muted-foreground">
                       {response.voiceCount} voices agree
                     </span>
                   )}

@@ -99,13 +99,14 @@ export function StoryJourneyNav({
                 >
                   <Icon className="h-5 w-5" />
                   
-                  {/* Active pulse ring */}
+                  {/* Active pulse ring - single play */}
                   {isActive && (
                     <motion.div
+                      key={`pulse-${activeIndex}`}
                       className="absolute inset-0 rounded-full border-2 border-primary"
                       initial={{ scale: 1, opacity: 1 }}
                       animate={{ scale: 1.4, opacity: 0 }}
-                      transition={{ duration: 1.5, repeat: Infinity }}
+                      transition={{ duration: 1 }}
                     />
                   )}
                 </motion.div>
@@ -125,24 +126,6 @@ export function StoryJourneyNav({
         </div>
       </div>
 
-      {/* Active chapter info */}
-      <motion.div
-        key={activeIndex}
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="mt-6 text-center"
-      >
-        <h3 className="text-lg font-semibold">
-          {chapters[activeIndex]?.title || "Chapter"}
-        </h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          {getChapterMeta(chapters[activeIndex], activeIndex).description}
-        </p>
-        <span className="text-xs text-muted-foreground mt-2 block">
-          {activeIndex + 1} of {chapters.length}
-        </span>
-      </motion.div>
     </div>
   );
 }
