@@ -221,6 +221,47 @@ export type Database = {
         }
         Relationships: []
       }
+      bookmarked_insights: {
+        Row: {
+          agreement_percentage: number | null
+          bookmarked_by: string
+          chapter_key: string | null
+          created_at: string
+          id: string
+          insight_category: string | null
+          insight_text: string
+          survey_id: string
+        }
+        Insert: {
+          agreement_percentage?: number | null
+          bookmarked_by: string
+          chapter_key?: string | null
+          created_at?: string
+          id?: string
+          insight_category?: string | null
+          insight_text: string
+          survey_id: string
+        }
+        Update: {
+          agreement_percentage?: number | null
+          bookmarked_by?: string
+          chapter_key?: string | null
+          created_at?: string
+          id?: string
+          insight_category?: string | null
+          insight_text?: string
+          survey_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bookmarked_insights_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       consent_history: {
         Row: {
           anonymization_level: string

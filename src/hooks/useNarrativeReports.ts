@@ -13,7 +13,7 @@ export interface NarrativeInsight {
 
 export interface NarrativeChapter {
   title: string;
-  key: 'pulse' | 'working' | 'warnings' | 'why' | 'forward';
+  key: string;
   narrative: string;
   insights: NarrativeInsight[];
 }

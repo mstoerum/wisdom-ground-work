@@ -261,6 +261,7 @@ const Analytics = () => {
                 {latestReport ? (
                   <NarrativeReportViewer
                     report={latestReport}
+                    surveyId={filters.surveyId!}
                     onRegenerateWithAudience={(audience) => handleGenerateReport(audience)}
                     isGenerating={isGenerating}
                     onExport={handleExportPDF}
