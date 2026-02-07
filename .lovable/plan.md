@@ -1,175 +1,119 @@
 
 
-# Re-Enable Voice Mode with ElevenLabs Integration
+# Theme Deep-Dive: Full-Width Detail View with Smooth Transitions
 
-## Overview
+## What Changes
 
-This plan integrates the existing `SurveyModeSelector` and `VoiceInterface` components into the survey flow, giving users a clear choice between text and voice conversation modes.
+The theme landscape grid keeps its clean, scannable card layout. But instead of flipping cards in place, clicking a card smoothly expands into a full-width detail view right where the grid was -- no page navigation, no route change. A "Back to landscape" button brings you back with the reverse animation.
 
-## Current Problem
+The detail view is dedicated to **root causes and recommendations**, with supporting strengths/frictions and employee quotes as evidence.
 
-Voice mode is completely inaccessible because:
-- `SurveyModeSelector` exists but isn't used anywhere
-- `VoiceInterface` exists (with new ElevenLabs integration) but is disconnected
-- No entry point in the user flow to choose voice
+## How the Transition Works
 
-## Proposed Solution
+The transition uses framer-motion's `layoutId` prop -- the same technique Apple uses in their App Store card animations. Here's the flow:
 
-### Architecture Change
+1. You click a theme card (e.g. "Work-Life Balance, score 62")
+2. The card's background, score, and title **morph** into the detail view's header -- same element, new size/position
+3. The rest of the grid fades out while the detail content fades in below the header
+4. Clicking "Back to landscape" reverses: the header shrinks back into the card, grid fades back in
 
-```
-BEFORE:
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  WelcomeScreen  │ --> │ FocusedInterview│ --> │    Complete     │
-│  (mood dial)    │     │   (text only)   │     │                 │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
+This creates a feeling of continuity -- the card *becomes* the detail view rather than navigating away.
 
-AFTER:
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  WelcomeScreen  │ --> │  ModeSelector   │ --> │  Mood Dial      │
-│  (consent only) │     │ (text/voice)    │     │  (quick check)  │
-└─────────────────┘     └─────────────────┘     └────────┬────────┘
-                                                         │
-                                    ┌────────────────────┴────────────────────┐
-                                    │                                         │
-                              ┌─────▼─────┐                            ┌──────▼──────┐
-                              │   Text    │ <-- switch -->             │   Voice     │
-                              │ Interview │                            │  Interface  │
-                              └───────────┘                            └─────────────┘
-```
+## Detail View Layout
 
-### File Changes
+The full-width detail view is structured in clear sections, prioritizing root causes:
 
-| File | Change |
-|------|--------|
-| `EmployeeSurveyFlow.tsx` | Add `mode-select` and `voice` steps |
-| `WelcomeScreen.tsx` | Remove mood dial (move to separate step) |
-| `VoiceInterface.tsx` | Add `onComplete` handler alignment |
-
-### New Flow Steps
-
-1. **Welcome** - Privacy info + consent only
-2. **Mode Selection** - `SurveyModeSelector` (text vs voice choice)
-3. **Mood** - Quick 1-5 mood check
-4. **Chat/Voice** - Route based on selection
-5. **Complete** - Summary + evaluation
-
-### Implementation Details
-
-**1. Update EmployeeSurveyFlow.tsx**
-
-Add new conversation steps:
-```typescript
-type ConversationStep = "welcome" | "mode-select" | "mood" | "chat" | "voice" | "evaluation" | "complete";
+```text
++--------------------------------------------------------------+
+| < Back to Theme Landscape                                     |
++--------------------------------------------------------------+
+| WORK-LIFE BALANCE                    62 / Growing  [orb]      |
+| 24 voices  |  Medium confidence  |  Mixed opinions            |
++--------------------------------------------------------------+
+|                                                                |
+|  ROOT CAUSES & RECOMMENDATIONS                                |
+|  +---------------------------+  +---------------------------+  |
+|  | [HIGH] Meeting overload   |  | [MED] Unclear priorities  |  |
+|  | reduces focus time        |  | across teams              |  |
+|  | Affects 15 respondents    |  | Affects 9 respondents     |  |
+|  | -> Block 2hr daily focus  |  | -> Weekly priority sync   |  |
+|  +---------------------------+  +---------------------------+  |
+|                                                                |
+|  +-----------------------------+-----------------------------+ |
+|  | WHAT'S WORKING              | WHAT NEEDS ATTENTION        | |
+|  | "Remote work flexibility.." | "Too many back-to-back.."   | |
+|  |  12 voices, High confidence |  8 voices, Moderate conf.   | |
+|  | "Team support is great..."  | "Hard to disconnect..."     | |
+|  |  9 voices, High confidence  |  6 voices, Moderate conf.   | |
+|  +-----------------------------+-----------------------------+ |
+|                                                                |
+|  SUPPORTING QUOTES (3 most relevant)                          |
+|  "I love my team but spend 4-5hrs daily in meetings..."       |
+|  "The flexibility to work from home has been transformative.." |
+|  "Would be great if leadership shared priorities more..."     |
++--------------------------------------------------------------+
 ```
 
-Add state for selected mode:
-```typescript
-const [selectedMode, setSelectedMode] = useState<'text' | 'voice' | null>(null);
+## Files to Create / Modify
+
+### New file: `src/components/hr/analytics/ThemeDetailView.tsx`
+The full-width detail view component. Receives the selected theme + enriched data and renders:
+- Header with score, status, confidence, polarization badge
+- Root causes grid using existing `RootCauseCard` components
+- Two-column strengths/frictions using existing `ThemeInsightCard` components
+- Supporting quotes section (top 3-5 from theme data)
+- "Back to landscape" button
+
+### Modify: `src/components/hr/analytics/ThemeGrid.tsx`
+- Add state for `selectedThemeId`
+- Wrap grid + detail view in `AnimatePresence`
+- When a theme is selected: hide the grid (fade out), show `ThemeDetailView` (fade in)
+- When deselected: reverse
+
+### Modify: `src/components/hr/analytics/ThemeCard.tsx`
+- Remove the 3D flip logic entirely (no more `isFlipped`, `rotateY`, back face)
+- Keep only the front face (score, name, orb)
+- Add `layoutId={theme.id}` to enable shared element transition
+- Add `onClick` callback prop instead of internal flip state
+- Add a subtle hover effect (slight scale + shadow lift) to indicate clickability
+
+### Modify: `src/components/hr/analytics/HybridInsightsView.tsx`
+- Pass the `onThemeSelect` / `selectedTheme` state down to `ThemeGrid`
+- No structural changes needed -- ThemeGrid handles the view swap internally
+
+## Transition Implementation Details
+
+```text
+ThemeGrid (manages state)
+  |
+  +-- selectedTheme === null --> Show grid of ThemeCards
+  |     Each card has layoutId={theme.id}
+  |     Cards fade in with staggered delay
+  |
+  +-- selectedTheme !== null --> Show ThemeDetailView
+        Header shares layoutId={theme.id}
+        Content enters with fade + slide-up
+        "Back" button sets selectedTheme = null
 ```
 
-Add mode selection handler:
-```typescript
-const handleModeSelect = (mode: 'text' | 'voice') => {
-  setSelectedMode(mode);
-  setStep("mood");
-};
-```
+Key framer-motion techniques:
+- `layoutId` on the card surface and detail header for morphing
+- `AnimatePresence mode="wait"` to sequence exit before enter
+- Exit animation: grid cards fade out (opacity 0, slight scale down)
+- Enter animation: detail content fades in from below (opacity 0 -> 1, y: 20 -> 0)
+- Spring physics: stiffness ~300, damping ~30 for snappy but smooth feel
+- Escape key closes detail view (keyboard accessibility)
 
-Update mood handler to route correctly:
-```typescript
-const handleMoodSelect = async (mood: number) => {
-  const sessionId = await startConversation(surveyId, mood, publicLinkId);
-  if (sessionId) {
-    setStep(selectedMode === 'voice' ? "voice" : "chat");
-  }
-};
-```
+## What Gets Reused
 
-Render mode selector and voice interface:
-```typescript
-{step === "mode-select" && (
-  <SurveyModeSelector
-    onSelectMode={handleModeSelect}
-    surveyTitle={surveyDetails?.title || "Feedback Survey"}
-    firstMessage={surveyDetails?.first_message}
-  />
-)}
+These existing components are already built and will be composed into the detail view:
+- `RootCauseCard` -- renders cause, impact level, affected count, recommendation
+- `ThemeInsightCard` -- renders semantic insights with voice count and confidence
+- `PolarizationBadge` -- shows "Mixed" or "Divided" opinion indicator
+- `ConfidenceIndicator` -- shows data reliability level
+- `getHealthConfig()` -- reused from ThemeCard for consistent color theming
 
-{step === "voice" && conversationId && (
-  <VoiceInterface
-    conversationId={conversationId}
-    onSwitchToText={() => setStep("chat")}
-    onComplete={handleChatComplete}
-  />
-)}
-```
+## No Database or Backend Changes
 
-**2. Update WelcomeScreen.tsx**
-
-Simplify to consent/privacy focus only (mood moves to separate step).
-
-**3. Add MoodDial Component Usage**
-
-Create a dedicated mood selection step that's shown after mode selection:
-```typescript
-{step === "mood" && (
-  <MoodDial onMoodSelect={handleMoodSelect} />
-)}
-```
-
-### UX Improvements for Voice Mode Design
-
-Based on best practices, consider these enhancements:
-
-1. **Orb Animation** - Improve the VoiceOrb pulse animation to feel more "alive"
-2. **Transcript Styling** - Better visual hierarchy for user vs AI messages  
-3. **Loading States** - Clearer "thinking" indicator with estimated time
-4. **Privacy Reminder** - Persistent but unobtrusive badge showing "Audio not stored"
-5. **Quick Exit** - Easy switch to text if voice feels uncomfortable
-
-### Demo Mode Handling
-
-For demo mode (`skipIntro=true`), show mode selector immediately:
-```typescript
-const [step, setStep] = useState<ConversationStep>(
-  skipIntro ? "mode-select" : "welcome"
-);
-```
-
-### Fallback Strategy
-
-If ElevenLabs connection fails:
-1. Show friendly error message
-2. Offer "Switch to text" button prominently
-3. Auto-fallback after 10 seconds of no connection
-
-### Files to Modify
-
-1. **`src/components/employee/EmployeeSurveyFlow.tsx`**
-   - Import `SurveyModeSelector` and `VoiceInterface`
-   - Add new steps to type
-   - Add mode state and handlers
-   - Render mode selector and voice interface
-
-2. **`src/components/employee/MoodDial.tsx`** (or create new)
-   - Standalone mood selection component
-
-3. **`src/pages/demo/DemoEmployee.tsx`**
-   - Update to show mode selector in demo
-
-### Estimated Effort
-
-- Mode selector integration: 2-3 credits
-- Voice interface connection: 1-2 credits  
-- UI polish and testing: 1-2 credits
-- **Total: 4-7 credits**
-
-### Success Criteria
-
-- Users see clear text vs voice choice
-- Voice mode uses ElevenLabs "Lily" voice
-- Smooth switching between modes mid-conversation
-- Demo mode showcases voice prominently
-- Fallback to text works reliably
+All data already exists in `ThemeAnalyticsData` (root causes, insights, polarization, health scores). This is purely a frontend presentation change.
 
