@@ -1,15 +1,42 @@
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useTypewriter } from "@/hooks/useTypewriter";
 
 interface AIResponseDisplayProps {
   empathy?: string;
   question: string;
   isLoading?: boolean;
   isTransitioning?: boolean;
+  onTypingComplete?: () => void;
 }
 
-export const AIResponseDisplay = ({ empathy, question, isLoading, isTransitioning }: AIResponseDisplayProps) => {
+export const AIResponseDisplay = ({ empathy, question, isLoading, isTransitioning, onTypingComplete }: AIResponseDisplayProps) => {
   const showLoading = (isLoading || isTransitioning) && !question;
-  
+
+  // Phase 1: Type out empathy
+  const empathyTypewriter = useTypewriter({
+    text: empathy || "",
+    speed: 30,
+    enabled: !!empathy && !!question && !showLoading,
+  });
+
+  // Phase 2: Type out question (starts after empathy completes or immediately if no empathy)
+  const questionTypewriter = useTypewriter({
+    text: question,
+    speed: 30,
+    startDelay: empathy ? 200 : 0,
+    enabled: !!question && !showLoading && (!empathy || empathyTypewriter.isComplete),
+  });
+
+  // Notify parent when all typing is done
+  useEffect(() => {
+    if (questionTypewriter.isComplete && onTypingComplete) {
+      onTypingComplete();
+    }
+  }, [questionTypewriter.isComplete, onTypingComplete]);
+
+  const isAnyTyping = empathyTypewriter.isTyping || questionTypewriter.isTyping;
+
   return (
     <AnimatePresence mode="wait">
       {showLoading ? (
@@ -25,7 +52,7 @@ export const AIResponseDisplay = ({ empathy, question, isLoading, isTransitionin
             <motion.div
               key={i}
               className="w-2 h-2 rounded-full bg-primary"
-              animate={{ 
+              animate={{
                 scale: [1, 1.3, 1],
                 opacity: [0.5, 1, 0.5]
               }}
@@ -49,11 +76,20 @@ export const AIResponseDisplay = ({ empathy, question, isLoading, isTransitionin
           <p className="text-xl md:text-2xl font-medium leading-relaxed">
             {empathy && (
               <>
-                <span className="text-muted-foreground">{empathy}</span>
-                <span className="text-muted-foreground/50"> — </span>
+                <span className="text-muted-foreground">
+                  {empathyTypewriter.displayText}
+                </span>
+                {empathyTypewriter.isComplete && (
+                  <span className="text-muted-foreground/50"> — </span>
+                )}
               </>
             )}
-            <span className="text-foreground">{question}</span>
+            <span className="text-foreground">
+              {questionTypewriter.displayText}
+            </span>
+            {isAnyTyping && (
+              <span className="inline-block w-[2px] h-[1em] bg-primary ml-0.5 align-middle animate-[blink_0.7s_step-end_infinite]" />
+            )}
           </p>
         </motion.div>
       )}

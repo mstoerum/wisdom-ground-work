@@ -75,6 +75,7 @@ export const FocusedInterviewInterface = ({
   // Voice transcription disabled - kept for future re-enablement
   // const [isTranscribing, setIsTranscribing] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isTypingComplete, setIsTypingComplete] = useState(false);
   
   // Local theme progress for initial transitions - sync with hook
   const [localThemeProgress, setLocalThemeProgress] = useState<ThemeProgress | null>(null);
@@ -225,6 +226,7 @@ export const FocusedInterviewInterface = ({
     
     // Immediately start transitioning out the current question
     setIsTransitioning(true);
+    setIsTypingComplete(false);
     setConversationHistory(updatedHistory);
     setCurrentAnswer("");
     setIsLoading(true);
@@ -412,6 +414,7 @@ export const FocusedInterviewInterface = ({
               question={currentQuestion}
               isLoading={isLoading && !currentQuestion}
               isTransitioning={isTransitioning}
+              onTypingComplete={() => setIsTypingComplete(true)}
             />
 
             <AnswerInput
@@ -420,7 +423,7 @@ export const FocusedInterviewInterface = ({
               onSubmit={handleSubmit}
               isLoading={isLoading}
               placeholder="Share your thoughts..."
-              disabled={isLoading}
+              disabled={isLoading || !isTypingComplete}
             />
           </div>
         )}
