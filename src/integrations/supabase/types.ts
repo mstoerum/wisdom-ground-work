@@ -1126,6 +1126,7 @@ export type Database = {
       surveys: {
         Row: {
           ai_prompt_overrides: Json | null
+          chat_engine: string
           consent_config: Json
           created_at: string | null
           created_by: string
@@ -1141,6 +1142,7 @@ export type Database = {
         }
         Insert: {
           ai_prompt_overrides?: Json | null
+          chat_engine?: string
           consent_config: Json
           created_at?: string | null
           created_by: string
@@ -1156,6 +1158,7 @@ export type Database = {
         }
         Update: {
           ai_prompt_overrides?: Json | null
+          chat_engine?: string
           consent_config?: Json
           created_at?: string | null
           created_by?: string

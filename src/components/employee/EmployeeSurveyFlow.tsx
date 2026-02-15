@@ -286,6 +286,7 @@ export const EmployeeSurveyFlow = ({
                 publicLinkId={publicLinkId}
                 minimalUI={skipIntro}
                 surveyType={surveyDetails?.survey_type}
+                chatEngine={surveyDetails?.chat_engine || 'standard'}
               />
             </ChatErrorBoundary>
           )}
