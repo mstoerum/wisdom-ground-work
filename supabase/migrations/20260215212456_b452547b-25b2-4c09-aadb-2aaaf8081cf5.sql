@@ -1,0 +1,1 @@
+ALTER TABLE public.surveys ADD COLUMN chat_engine text NOT NULL DEFAULT 'standard';

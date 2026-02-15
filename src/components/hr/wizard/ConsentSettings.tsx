@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Shield, AlertCircle, HelpCircle, MessageSquare } from "lucide-react";
+import { Shield, AlertCircle, HelpCircle, MessageSquare, Zap, MessageCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { useContextualTerms } from "@/lib/contextualTerminology";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -160,6 +160,61 @@ export const ConsentSettings = ({ form }: ConsentSettingsProps) => {
             <FormDescription>
               How long should we keep the survey responses before automatic deletion?
             </FormDescription>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="chat_engine"
+        render={({ field }) => (
+          <FormItem className="space-y-4">
+            <div className="flex items-center gap-2">
+              <FormLabel>Interview Engine *</FormLabel>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-xs">
+                    <p>Choose how the AI conversation is paced. Standard uses automatic pacing; Adaptive lets {terms.participants} choose how much time they want to spend.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+            <FormControl>
+              <RadioGroup
+                onValueChange={field.onChange}
+                value={field.value}
+                className="space-y-3"
+              >
+                <div className="flex items-start space-x-2 p-4 border rounded-lg">
+                  <RadioGroupItem value="standard" id="engine-standard" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="engine-standard" className="font-medium cursor-pointer flex items-center gap-2">
+                      <MessageCircle className="h-4 w-4" />
+                      Standard
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Classic interview flow with automatic pacing. The AI guides the conversation through all selected themes.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-2 p-4 border rounded-lg">
+                  <RadioGroupItem value="adaptive" id="engine-adaptive" className="mt-1" />
+                  <div className="flex-1">
+                    <Label htmlFor="engine-adaptive" className="font-medium cursor-pointer flex items-center gap-2">
+                      <Zap className="h-4 w-4" />
+                      Adaptive
+                    </Label>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {terms.participants} choose their time commitment upfront (5, 10, or 15 minutes). The AI adapts depth and pacing accordingly.
+                    </p>
+                  </div>
+                </div>
+              </RadioGroup>
+            </FormControl>
             <FormMessage />
           </FormItem>
         )}

@@ -12,6 +12,7 @@ import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { supabase } from "@/integrations/supabase/client";
 import { CheckCircle } from "lucide-react";
 import { FinishEarlyConfirmationDialog } from "./FinishEarlyConfirmationDialog";
+import { DurationSelector } from "./DurationSelector";
 import { useInterviewCompletion } from "@/hooks/useInterviewCompletion";
 import type { Message, ThemeProgress } from "@/types/interview";
 
@@ -22,6 +23,7 @@ interface FocusedInterviewInterfaceProps {
   publicLinkId?: string;
   minimalUI?: boolean;
   surveyType?: 'employee_satisfaction' | 'course_evaluation';
+  chatEngine?: 'standard' | 'adaptive';
 }
 
 export const FocusedInterviewInterface = ({
@@ -31,6 +33,7 @@ export const FocusedInterviewInterface = ({
   publicLinkId,
   minimalUI = false,
   surveyType = 'employee_satisfaction',
+  chatEngine = 'standard',
 }: FocusedInterviewInterfaceProps) => {
   const { toast } = useToast();
   const { isPreviewMode, previewSurveyData } = usePreviewMode();
@@ -76,6 +79,10 @@ export const FocusedInterviewInterface = ({
   // const [isTranscribing, setIsTranscribing] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isTypingComplete, setIsTypingComplete] = useState(false);
+  const [showDurationSelector, setShowDurationSelector] = useState(false);
+  
+  // Determine which backend function to call
+  const chatFunctionName = chatEngine === 'adaptive' ? 'chat-v2' : 'chat';
   
   // Local theme progress for initial transitions - sync with hook
   const [localThemeProgress, setLocalThemeProgress] = useState<ThemeProgress | null>(null);
@@ -112,7 +119,7 @@ export const FocusedInterviewInterface = ({
       }
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${chatFunctionName}`,
         {
           method: "POST",
           headers: {
@@ -128,6 +135,13 @@ export const FocusedInterviewInterface = ({
       }
 
       const data = await response.json();
+      
+      // Handle duration_selection phase from chat-v2
+      if (data.phase === 'duration_selection') {
+        setShowDurationSelector(true);
+        setIsApiReady(true);
+        return;
+      }
       
       // Safety check: clean any JSON artifacts from the message
       let introMessage = data.message || "How have things been feeling at work lately?";
@@ -174,7 +188,58 @@ export const FocusedInterviewInterface = ({
         });
       }
     }
-  }, [conversationId, isPreviewMode, previewSurveyData, getSession, toast]);
+  }, [conversationId, isPreviewMode, previewSurveyData, getSession, toast, chatFunctionName]);
+
+  // Handle duration selection (for adaptive/chat-v2 engine)
+  const handleDurationSelect = useCallback(async (minutes: number) => {
+    setShowDurationSelector(false);
+    setShowMoodTransition(true);
+    
+    try {
+      const session = await getSession();
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${chatFunctionName}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
+          },
+          body: JSON.stringify({
+            conversationId,
+            messages: [{ role: "user", content: `[DURATION_SELECTED:${minutes}]` }],
+            selectedDuration: minutes,
+            testMode: isPreviewMode,
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to set duration");
+      
+      const data = await response.json();
+      
+      let introMessage = data.message || "Great! Let's get started.";
+      
+      pendingQuestionRef.current = {
+        question: introMessage,
+        empathy: data.empathy || null,
+        history: [{ role: "assistant", content: introMessage }],
+        themeProgress: data.themeProgress || null,
+      };
+      setIsApiReady(true);
+    } catch (error) {
+      console.error("Error setting duration:", error);
+      pendingQuestionRef.current = {
+        question: "Let's get started! How have things been going?",
+        empathy: null,
+        history: [{ role: "assistant", content: "Let's get started! How have things been going?" }],
+        themeProgress: null,
+      };
+      setIsApiReady(true);
+    }
+  }, [conversationId, isPreviewMode, getSession, chatFunctionName]);
+  
 
   // Handle mood selection - show transition and start API call in parallel
   const handleMoodSelect = useCallback(async (mood: number) => {
@@ -241,7 +306,7 @@ export const FocusedInterviewInterface = ({
       const session = await getSession();
 
       const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${chatFunctionName}`,
         {
           method: "POST",
           headers: {
@@ -313,10 +378,15 @@ export const FocusedInterviewInterface = ({
       setIsLoading(false);
       setIsTransitioning(false);
     }
-  }, [currentAnswer, isLoading, conversationHistory, conversationId, isPreviewMode, previewSurveyData, getSession, toast, updateThemeProgress, enterReviewingPhase]);
+  }, [currentAnswer, isLoading, conversationHistory, conversationId, isPreviewMode, previewSurveyData, getSession, toast, updateThemeProgress, enterReviewingPhase, chatFunctionName]);
 
   // Voice transcription disabled - kept for future re-enablement
   // const handleTranscribe = useCallback(async (audioBlob: Blob) => { ... }, [getSession, toast]);
+
+  // Show duration selector (for adaptive/chat-v2 engine)
+  if (showDurationSelector) {
+    return <DurationSelector onSelect={handleDurationSelect} />;
+  }
 
   // Show mood selector first (only in minimalUI/demo mode)
   if (showMoodSelector) {

@@ -126,6 +126,7 @@ const CreateSurvey = () => {
         consent_message: safeConsentMessage,
         data_retention_days: (draftData.consent_config as any)?.data_retention_days || '60',
         enable_spradley_evaluation: (draftData.consent_config as any)?.enable_spradley_evaluation || false,
+        chat_engine: (draftData as any).chat_engine || 'standard',
       });
     }
   }, [draftData, form, surveyDefaults]);
@@ -138,7 +139,7 @@ const CreateSurvey = () => {
       
       if (!user) throw new Error('Not authenticated');
 
-      const surveyData = {
+      const surveyData: Record<string, any> = {
         survey_type: values.survey_type,
         title: values.title || 'Untitled Survey',
         description: values.description,
@@ -160,6 +161,7 @@ const CreateSurvey = () => {
           data_retention_days: values.data_retention_days,
           enable_spradley_evaluation: values.enable_spradley_evaluation,
         },
+        chat_engine: values.chat_engine,
         created_by: user.id,
         status: 'draft',
       };
@@ -169,14 +171,14 @@ const CreateSurvey = () => {
       if (surveyId) {
         const { error } = await supabase
           .from('surveys')
-          .update(surveyData)
+          .update(surveyData as any)
           .eq('id', surveyId);
         
         if (error) throw error;
       } else {
         const { data, error } = await supabase
           .from('surveys')
-          .insert(surveyData)
+          .insert(surveyData as any)
           .select()
           .single();
         
