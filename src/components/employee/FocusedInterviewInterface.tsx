@@ -62,7 +62,7 @@ export const FocusedInterviewInterface = ({
   });
   
   // Mood was already selected in WelcomeScreen, so skip mood selector unless minimalUI (demo mode)
-  const [showMoodSelector, setShowMoodSelector] = useState(minimalUI);
+  const [showMoodSelector, setShowMoodSelector] = useState(true);
   const [showMoodTransition, setShowMoodTransition] = useState(false);
   const [transitionMood, setTransitionMood] = useState<number>(3);
   const [isApiReady, setIsApiReady] = useState(false);
@@ -269,18 +269,7 @@ export const FocusedInterviewInterface = ({
     }
   }, [updateThemeProgress]);
 
-  // Auto-initialize conversation when coming from WelcomeScreen (mood already selected)
-  useEffect(() => {
-    if (!showMoodSelector && !showMoodTransition && !isInitialized && conversationId) {
-      // Retrieve mood from WelcomeScreen's localStorage
-      const storedMood = localStorage.getItem('spradley_initial_mood');
-      const mood = storedMood ? parseInt(storedMood, 10) : 3; // Default to "okay"
-      setTransitionMood(mood);
-      setShowMoodTransition(true);
-      setIsInitialized(true);
-      initializeConversation(mood);
-    }
-  }, [showMoodSelector, showMoodTransition, isInitialized, conversationId, initializeConversation]);
+  // Auto-initialize removed: MoodSelector now always shows first
 
   // Submit answer and get next question
   const handleSubmit = useCallback(async () => {
