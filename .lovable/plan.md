@@ -1,85 +1,55 @@
 
 
-# Chat Engine Selection and Duration Prompt for chat-v2
+# Restore the "How's your week been?" Mood Selector
 
-## Overview
-Add a setting in the survey creation wizard that lets HR admins choose which interview engine to use ("Standard" using the `chat` function, or "Adaptive" using `chat-v2`). When `chat-v2` is selected, the employee will see a duration selector at the start of the interview instead of jumping straight into questions.
+## Problem
+The mood selector screen ("How's work been this week?" with emoji options from Tough to Great) is no longer shown to employees during the normal survey flow. It was removed as part of a previous "minimalist optimization" and currently only appears in demo mode (`minimalUI=true`).
+
+In the normal flow, the code silently reads a mood value from localStorage (which is never set), defaults to "Okay" (3), and skips straight to the transition animation. Employees never get to express how they're feeling before the interview begins.
+
+## Solution
+Re-enable the mood selector as a visible step between the Welcome/Consent screen and the interview questions. This restores the empathetic "check-in" moment that sets the tone for the conversation.
 
 ## What Changes
 
-### 1. Database: Add `chat_engine` column to `surveys` table
-- New column: `chat_engine` (text, default `'standard'`, values: `'standard'` or `'adaptive'`)
-- Stored inside the survey record so the frontend knows which backend function to call.
-
-### 2. Survey Schema: Add `chat_engine` field
-**File:** `src/lib/surveySchema.ts`
-- Add `chat_engine: z.enum(['standard', 'adaptive'])` to the Zod schema
-- Default value: `'standard'`
-
-### 3. Survey Creation Wizard: New "Interview Engine" selector
-**File:** `src/components/hr/wizard/ConsentSettings.tsx` (or a new section in the Privacy/Settings step)
-- Add a simple radio/select control with two options:
-  - **Standard** -- "Classic interview flow with automatic pacing" (uses `chat` function)
-  - **Adaptive** -- "Employee chooses their time commitment upfront" (uses `chat-v2` function)
-- Brief description under each option explaining the difference
-
-### 4. Save `chat_engine` to database
-**File:** `src/pages/hr/CreateSurvey.tsx`
-- Include `chat_engine` in the `surveyData` object sent to Supabase when saving drafts
-- Store it as a top-level column on the `surveys` table
-
-### 5. Frontend: Route to correct backend function based on `chat_engine`
-**File:** `src/hooks/useChatAPI.ts`
-- Accept a new `chatEngine` option (`'standard' | 'adaptive'`)
-- Change the fetch URL from hardcoded `/functions/v1/chat` to either `/functions/v1/chat` or `/functions/v1/chat-v2` based on this value
-
-### 6. Pass `chat_engine` through the component chain
-- `EmployeeSurveyFlow` reads `surveyDetails.chat_engine` and passes it down
-- `FocusedInterviewInterface` receives and forwards it to `useChatAPI`
-
-### 7. Duration Selector in chat-v2 flow
-**Existing file:** `src/components/employee/DurationSelector.tsx` (already built)
+### 1. Show the Mood Selector in the normal flow
 **File:** `src/components/employee/FocusedInterviewInterface.tsx`
-- When `chatEngine === 'adaptive'` and the backend returns `phase: "duration_selection"`, show the `DurationSelector` component
-- On selection, send the `selectedDuration` to the `chat-v2` function which already handles it (lines 361-417 of chat-v2)
 
-### 8. Load draft: restore `chat_engine` from existing survey data
-**File:** `src/pages/hr/CreateSurvey.tsx`
-- When loading a draft, read `chat_engine` from the survey record and set it on the form
+Currently, `showMoodSelector` is initialized to `minimalUI` (only true in demo mode). Change it so the mood selector always shows at the start, regardless of mode:
+- Set `showMoodSelector` initial state to `true` (instead of `minimalUI`)
+- Remove or adjust the `useEffect` (around line 202) that auto-skips mood selection when coming from the WelcomeScreen, since the mood selector will now handle this
+
+### 2. Remove the silent localStorage fallback
+**File:** `src/components/employee/FocusedInterviewInterface.tsx`
+
+The `useEffect` that reads `spradley_initial_mood` from localStorage and auto-starts without showing the selector will be updated. Instead of silently defaulting to mood 3 and skipping to the transition, this path will now show the mood selector so the employee can make a choice.
+
+### 3. Keep demo mode behavior intact
+The `skipIntro` / `minimalUI` flow will continue to work exactly as before -- the mood selector will still show in demo mode since `showMoodSelector` will now always start as `true`.
 
 ## Technical Details
 
-### Database Migration
-```sql
-ALTER TABLE public.surveys
-ADD COLUMN chat_engine text NOT NULL DEFAULT 'standard';
-```
-
-### Data Flow
+### Current flow (broken)
 ```text
-HR creates survey → selects "Adaptive" engine → saved as chat_engine='adaptive'
-Employee opens survey → frontend reads chat_engine → calls /functions/v1/chat-v2
-chat-v2 returns phase="duration_selection" → DurationSelector shown
-Employee picks 10 min → sent as selectedDuration → chat-v2 starts interview with time-aware pacing
+WelcomeScreen -> FocusedInterviewInterface
+                   -> useEffect detects no mood selector shown
+                   -> reads localStorage (empty) -> defaults to mood 3
+                   -> shows MoodTransition -> starts interview
 ```
 
-### chat-v2 Already Handles Duration
-The `chat-v2` edge function already has:
-- Duration selection phase (returns `phase: "duration_selection"` on `[START_CONVERSATION]`)
-- Duration targets mapping (5/10/15 min to exchange counts)
-- Time-aware pacing logic
-- Theme selection support
+### Restored flow
+```text
+WelcomeScreen -> FocusedInterviewInterface
+                   -> MoodSelector shown ("How's work been this week?")
+                   -> Employee clicks emoji
+                   -> MoodTransition animation
+                   -> Interview begins with mood-aware first question
+```
 
-No changes needed to the `chat-v2` edge function itself.
+### Changes in detail
 
-### Files Modified
-1. `src/lib/surveySchema.ts` -- add `chat_engine` field
-2. `src/pages/hr/CreateSurvey.tsx` -- save/load `chat_engine`
-3. `src/components/hr/wizard/ConsentSettings.tsx` -- add engine selector UI
-4. `src/hooks/useChatAPI.ts` -- route to correct function
-5. `src/components/employee/FocusedInterviewInterface.tsx` -- handle duration_selection phase
-6. `src/components/employee/EmployeeSurveyFlow.tsx` -- pass chatEngine prop
+**`src/components/employee/FocusedInterviewInterface.tsx`:**
+- Line 37: Change `useState(minimalUI)` to `useState(true)` so the mood selector always shows
+- Lines 202-210: Remove or disable the `useEffect` that auto-initializes when `showMoodSelector` is false, since the selector will now always be shown first
 
-### New Database Migration
-- Add `chat_engine` column to `surveys` table
-
+No other files need changes. The `MoodSelector` component, `MoodTransition`, and the rest of the interview flow are all already wired up correctly.
