@@ -1,55 +1,103 @@
 
 
-# Restore the "How's your week been?" Mood Selector
+# Build "Resonance Rings" Progress Visualization
 
-## Problem
-The mood selector screen ("How's work been this week?" with emoji options from Tough to Great) is no longer shown to employees during the normal survey flow. It was removed as part of a previous "minimalist optimization" and currently only appears in demo mode (`minimalUI=true`).
+Replace the side-panel journey map with an ambient concentric ripple visualization that grows organically as the user answers questions. No numbers, no fixed endpoints -- just expanding rings of impact.
 
-In the normal flow, the code silently reads a mood value from localStorage (which is never set), defaults to "Okay" (3), and skips straight to the transition animation. Employees never get to express how they're feeling before the interview begins.
+## Visual Design
 
-## Solution
-Re-enable the mood selector as a visible step between the Welcome/Consent screen and the interview questions. This restores the empathetic "check-in" moment that sets the tone for the conversation.
+Each answer creates a ripple that expands outward and settles as a persistent ring behind the question area. The rings communicate progress through density and warmth rather than numbers.
+
+- **Ring radius**: Proportional to cumulative progress (inner = early, outer = later)
+- **Ring thickness**: Driven by response quality (word count as a proxy -- longer, more thoughtful answers produce thicker rings)
+- **Ring color**: Maps to sentiment/theme -- uses existing palette (terracotta for passionate, sage for reflective, butter-yellow for positive, coral for neutral)
+- **Ring opacity**: 15-25% so it's ambient, not distracting
+- **Animation**: Each new ring ripples outward with a 600ms ease-out, then settles with a brief glow pulse as a micro-reward
+- **Theme transitions**: Subtle shift in ring style (solid vs slightly dashed) when a new theme begins
 
 ## What Changes
 
-### 1. Show the Mood Selector in the normal flow
-**File:** `src/components/employee/FocusedInterviewInterface.tsx`
+### 1. New component: `src/components/employee/ResonanceRings.tsx`
 
-Currently, `showMoodSelector` is initialized to `minimalUI` (only true in demo mode). Change it so the mood selector always shows at the start, regardless of mode:
-- Set `showMoodSelector` initial state to `true` (instead of `minimalUI`)
-- Remove or adjust the `useEffect` (around line 202) that auto-skips mood selection when coming from the WelcomeScreen, since the mood selector will now handle this
+A self-contained SVG component that receives the current ring data and renders the concentric visualization.
 
-### 2. Remove the silent localStorage fallback
-**File:** `src/components/employee/FocusedInterviewInterface.tsx`
+**Props:**
+- `rings`: Array of ring data (one per answered question), each with radius, thickness, color, and animation state
+- `questionNumber`: Current question count (drives ring count)
+- `themeProgress`: Optional theme data to influence ring colors
+- `latestRingTrigger`: A counter that increments on each new answer, triggering the ripple animation for the newest ring
 
-The `useEffect` that reads `spradley_initial_mood` from localStorage and auto-starts without showing the selector will be updated. Instead of silently defaulting to mood 3 and skipping to the transition, this path will now show the mood selector so the employee can make a choice.
+**Rendering approach:**
+- SVG viewBox centered on origin (0,0), rendered at full width of the question area
+- Each ring is an SVG circle with Framer Motion entry animation
+- The newest ring gets an extra "ripple" animation (expanding + fading ghost circle)
+- A very subtle radial gradient in the center provides warmth
+- Rings use the existing CSS custom properties for colors (terracotta, sage, coral, butter-yellow)
 
-### 3. Keep demo mode behavior intact
-The `skipIntro` / `minimalUI` flow will continue to work exactly as before -- the mood selector will still show in demo mode since `showMoodSelector` will now always start as `true`.
+### 2. Modify: `src/components/employee/FocusedInterviewInterface.tsx`
 
-## Technical Details
+**Remove:**
+- The 240px side panel (`<motion.aside>` block, lines 430-444) containing `ThemeJourneyPath`
+- The mobile "Topic X of Y" text counter (lines 405-408)
+- The import of `ThemeJourneyPath` (line 6)
 
-### Current flow (broken)
+**Add:**
+- Import `ResonanceRings`
+- Place `<ResonanceRings>` as an absolute-positioned background layer behind the question/answer area (inside the `isActive` main content div)
+- Pass `questionNumber`, `themeProgress`, and a trigger value that increments after each successful `handleSubmit`
+- The main content area becomes full-width (no longer sharing space with a side panel)
+
+### 3. Ring data generation logic
+
+Built into the `ResonanceRings` component:
+- Each question answered adds a ring to an internal array
+- Ring properties are calculated from:
+  - **Radius**: `baseRadius + (index * radiusStep)` -- rings grow outward
+  - **Thickness**: `clamp(2, wordCount / 15, 8)` -- longer answers = thicker rings
+  - **Color**: Cycles through theme-mapped colors from the palette, or uses the current theme's color from `themeProgress`
+- The component maintains its own ring state array, appending when `questionNumber` changes
+
+### 4. Micro-reward animation
+
+When a new ring appears:
+1. A ghost circle starts at the center and expands to the ring's final radius (400ms, ease-out)
+2. The actual ring fades in at its position with a brief glow (opacity pulse from 0.4 to 0.2 over 800ms)
+3. A subtle warmth shift: the center radial gradient becomes slightly warmer with each ring
+
+## Layout Change
+
 ```text
-WelcomeScreen -> FocusedInterviewInterface
-                   -> useEffect detects no mood selector shown
-                   -> reads localStorage (empty) -> defaults to mood 3
-                   -> shows MoodTransition -> starts interview
+BEFORE:
++--[Side Panel 240px]--+--[Question Area]--+
+|  ThemeJourneyPath     |  AI Question      |
+|  (vertical list)      |  Answer Input     |
++-----------------------+-------------------+
+
+AFTER:
++----------[Full Width Question Area]----------+
+|  +--(Resonance Rings, absolute, behind)--+   |
+|  |  ○  ○  ○  (concentric rings)          |   |
+|  |       AI Question                     |   |
+|  |       Answer Input                    |   |
+|  +---------------------------------------+   |
++----------------------------------------------+
 ```
 
-### Restored flow
-```text
-WelcomeScreen -> FocusedInterviewInterface
-                   -> MoodSelector shown ("How's work been this week?")
-                   -> Employee clicks emoji
-                   -> MoodTransition animation
-                   -> Interview begins with mood-aware first question
-```
+## Files Summary
 
-### Changes in detail
+| File | Action |
+|------|--------|
+| `src/components/employee/ResonanceRings.tsx` | **Create** -- new SVG ring visualization component |
+| `src/components/employee/FocusedInterviewInterface.tsx` | **Modify** -- remove side panel, add ResonanceRings as background layer |
 
-**`src/components/employee/FocusedInterviewInterface.tsx`:**
-- Line 37: Change `useState(minimalUI)` to `useState(true)` so the mood selector always shows
-- Lines 202-210: Remove or disable the `useEffect` that auto-initializes when `showMoodSelector` is false, since the selector will now always be shown first
+## Accessibility
 
-No other files need changes. The `MoodSelector` component, `MoodTransition`, and the rest of the interview flow are all already wired up correctly.
+- All rings are decorative (`aria-hidden="true"` on the SVG)
+- An `aria-live="polite"` region with screen-reader-only text: "Question {n} answered" updates after each submission
+- No information is conveyed solely through the visual -- the existing text-based hints remain
+
+## Mobile Behavior
+
+- Rings render at a smaller scale (max 200px diameter) on mobile via responsive sizing
+- The removal of the side panel means mobile gets full-width content (improvement over current layout where the panel was hidden anyway)
+
