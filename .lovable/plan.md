@@ -1,103 +1,119 @@
 
 
-# Build "Resonance Rings" Progress Visualization
+# Apple-Inspired Progress Indicator for Spradley
 
-Replace the side-panel journey map with an ambient concentric ripple visualization that grows organically as the user answers questions. No numbers, no fixed endpoints -- just expanding rings of impact.
+Remove the Resonance Rings SVG overlay and replace it with a minimal, refined progress element that follows Apple's design principles: clarity, deference, and depth. The progress indicator should serve the content, never compete with it.
 
-## Visual Design
+---
 
-Each answer creates a ripple that expands outward and settles as a persistent ring behind the question area. The rings communicate progress through density and warmth rather than numbers.
+## Design Philosophy
 
-- **Ring radius**: Proportional to cumulative progress (inner = early, outer = later)
-- **Ring thickness**: Driven by response quality (word count as a proxy -- longer, more thoughtful answers produce thicker rings)
-- **Ring color**: Maps to sentiment/theme -- uses existing palette (terracotta for passionate, sage for reflective, butter-yellow for positive, coral for neutral)
-- **Ring opacity**: 15-25% so it's ambient, not distracting
-- **Animation**: Each new ring ripples outward with a 600ms ease-out, then settles with a brief glow pulse as a micro-reward
-- **Theme transitions**: Subtle shift in ring style (solid vs slightly dashed) when a new theme begins
+Apple's approach to progress is about **confidence without noise**. Think of the Activity Rings on Apple Watch -- simple, glanceable, satisfying. Or the iOS download progress circle -- you know where you are without thinking about it. The indicator should feel like it belongs to the OS, not to a feature.
+
+**Core principles applied:**
+
+- **Deference**: The chat is the hero. Progress lives in the periphery of attention.
+- **Clarity**: One glance tells you "I'm making progress" without requiring interpretation.
+- **Depth**: Subtle physicality -- light, shadow, blur -- gives it weight without bulk.
+- **Reward**: Completion of each segment feels like a gentle "click" into place (haptic metaphor through animation).
+
+---
+
+## The Design: "Ambient Arc"
+
+A thin, elegant arc sits at the very top of the interview area (or just below the header). It is inspired by the Apple Watch activity ring but linearized into a gentle curve.
+
+**Visual description:**
+
+- A single, thin (3px) track line spans the top of the content area -- slightly curved like a gentle smile, or perfectly horizontal
+- As themes are covered, segments of the arc fill in with a smooth, spring-based animation
+- Each segment corresponds to a theme but is **not labeled** -- the arc simply fills
+- The fill color uses a subtle gradient that shifts warmer as coverage increases (from the existing sage to terracotta palette)
+- When a segment completes, a tiny light bloom travels along the arc to the new position (like the iOS charging animation)
+- The unfilled portion is a barely-visible track (5% opacity foreground color)
+
+**What makes it Apple:**
+
+- **No text, no numbers** on the indicator itself
+- **Spring physics** on the fill animation (slight overshoot, then settle)
+- **Backdrop blur** on the track gives it a frosted-glass feel against the content behind it
+- **SF-style proportions**: thin, precise, with generous whitespace around it
+
+---
 
 ## What Changes
 
-### 1. New component: `src/components/employee/ResonanceRings.tsx`
+### 1. Remove `ResonanceRings` from `FocusedInterviewInterface.tsx`
 
-A self-contained SVG component that receives the current ring data and renders the concentric visualization.
+- Remove the `ResonanceRings` import and the `<ResonanceRings>` component from the active interview area
+- Remove the `lastAnswerLength` state variable (no longer needed)
+- Keep the `themeProgress` data -- the new indicator uses it
+
+### 2. Create new component: `src/components/employee/AmbientArc.tsx`
+
+A lightweight component that renders a thin progress arc.
 
 **Props:**
-- `rings`: Array of ring data (one per answered question), each with radius, thickness, color, and animation state
-- `questionNumber`: Current question count (drives ring count)
-- `themeProgress`: Optional theme data to influence ring colors
-- `latestRingTrigger`: A counter that increments on each new answer, triggering the ripple animation for the newest ring
+- `themeProgress`: The existing `ThemeProgress` type (themes array with discussed/current status, coveragePercent)
+- `questionNumber`: Current question count (used as fallback if no theme data)
 
-**Rendering approach:**
-- SVG viewBox centered on origin (0,0), rendered at full width of the question area
-- Each ring is an SVG circle with Framer Motion entry animation
-- The newest ring gets an extra "ripple" animation (expanding + fading ghost circle)
-- A very subtle radial gradient in the center provides warmth
-- Rings use the existing CSS custom properties for colors (terracotta, sage, coral, butter-yellow)
+**Rendering:**
+- A single SVG element, 100% width, ~20px tall
+- Background track: thin line (3px) with 5% opacity foreground color
+- Progress fill: animated line segment whose width maps to `coveragePercent`
+- Fill uses a CSS linear gradient transitioning through the palette as coverage grows
+- Animation: Framer Motion `spring` transition (stiffness: 300, damping: 30) for the fill width
+- On each segment completion: a brief luminance pulse (opacity 0.6 to 0.2 over 400ms) at the leading edge
 
-### 2. Modify: `src/components/employee/FocusedInterviewInterface.tsx`
+**Segment logic:**
+- The arc is divided into equal segments matching the number of themes
+- Each discussed theme fills its segment with a satisfying spring animation
+- The "current" theme segment shows a subtle pulse (breathing opacity)
+- Segments fill left-to-right in theme order
 
-**Remove:**
-- The 240px side panel (`<motion.aside>` block, lines 430-444) containing `ThemeJourneyPath`
-- The mobile "Topic X of Y" text counter (lines 405-408)
-- The import of `ThemeJourneyPath` (line 6)
+### 3. Place `AmbientArc` in the layout
 
-**Add:**
-- Import `ResonanceRings`
-- Place `<ResonanceRings>` as an absolute-positioned background layer behind the question/answer area (inside the `isActive` main content div)
-- Pass `questionNumber`, `themeProgress`, and a trigger value that increments after each successful `handleSubmit`
-- The main content area becomes full-width (no longer sharing space with a side panel)
+Position it directly below the header bar, above the question area:
 
-### 3. Ring data generation logic
-
-Built into the `ResonanceRings` component:
-- Each question answered adds a ring to an internal array
-- Ring properties are calculated from:
-  - **Radius**: `baseRadius + (index * radiusStep)` -- rings grow outward
-  - **Thickness**: `clamp(2, wordCount / 15, 8)` -- longer answers = thicker rings
-  - **Color**: Cycles through theme-mapped colors from the palette, or uses the current theme's color from `themeProgress`
-- The component maintains its own ring state array, appending when `questionNumber` changes
-
-### 4. Micro-reward animation
-
-When a new ring appears:
-1. A ghost circle starts at the center and expands to the ring's final radius (400ms, ease-out)
-2. The actual ring fades in at its position with a brief glow (opacity pulse from 0.4 to 0.2 over 800ms)
-3. A subtle warmth shift: the center radial gradient becomes slightly warmer with each ring
-
-## Layout Change
-
-```text
-BEFORE:
-+--[Side Panel 240px]--+--[Question Area]--+
-|  ThemeJourneyPath     |  AI Question      |
-|  (vertical list)      |  Answer Input     |
-+-----------------------+-------------------+
-
-AFTER:
-+----------[Full Width Question Area]----------+
-|  +--(Resonance Rings, absolute, behind)--+   |
-|  |  ○  ○  ○  (concentric rings)          |   |
-|  |       AI Question                     |   |
-|  |       Answer Input                    |   |
-|  +---------------------------------------+   |
-+----------------------------------------------+
 ```
++--[Header: Finish Early button]--+
+|  ═══════════○─────────────────  |  <-- AmbientArc (thin, elegant)
+|                                 |
+|        AI Question              |
+|        Answer Input             |
+|                                 |
++--[Footer: Enter hint]----------+
+```
+
+The arc sits in its own `div` with `px-6` horizontal padding to align with content, and minimal vertical space (`py-2`).
+
+### 4. Animation details
+
+- **Fill advance**: `spring` with slight overshoot when a new theme segment fills
+- **Leading edge glow**: A small radial gradient "bead" at the progress tip that pulses gently
+- **Completion**: When all segments fill, the entire arc does a single warm pulse (opacity flash), then settles to a calm full state
+- **Current theme breathing**: The segment being actively explored has a gentle opacity oscillation (0.6 to 0.9, 2s duration, infinite)
+
+---
 
 ## Files Summary
 
 | File | Action |
 |------|--------|
-| `src/components/employee/ResonanceRings.tsx` | **Create** -- new SVG ring visualization component |
-| `src/components/employee/FocusedInterviewInterface.tsx` | **Modify** -- remove side panel, add ResonanceRings as background layer |
+| `src/components/employee/AmbientArc.tsx` | **Create** -- new minimal progress arc component |
+| `src/components/employee/FocusedInterviewInterface.tsx` | **Modify** -- remove ResonanceRings, add AmbientArc below header |
+
+---
 
 ## Accessibility
 
-- All rings are decorative (`aria-hidden="true"` on the SVG)
-- An `aria-live="polite"` region with screen-reader-only text: "Question {n} answered" updates after each submission
-- No information is conveyed solely through the visual -- the existing text-based hints remain
+- The SVG arc is `aria-hidden="true"` (decorative)
+- An `aria-live="polite"` visually-hidden span announces: "{discussed} of {total} topics explored" when theme coverage changes
+- No information is conveyed solely through the visual
 
-## Mobile Behavior
+## Mobile
 
-- Rings render at a smaller scale (max 200px diameter) on mobile via responsive sizing
-- The removal of the side panel means mobile gets full-width content (improvement over current layout where the panel was hidden anyway)
+- The arc scales to full width on any screen size
+- The 3px thickness and minimal height (~20px total with padding) means zero layout impact
+- Touch targets are not needed -- the arc is non-interactive
 
