@@ -2,8 +2,8 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { AIResponseDisplay } from "./AIResponseDisplay";
-import { AnswerInput } from "./AnswerInput";
 import { AmbientArc } from "./AmbientArc";
+import { InteractiveInputRouter, type InputType, type InputConfig } from "./inputs/InteractiveInputRouter";
 import { MoodSelector } from "./MoodSelector";
 import { MoodTransition } from "./MoodTransition";
 import { SummaryReceipt } from "./SummaryReceipt";
@@ -80,6 +80,8 @@ export const FocusedInterviewInterface = ({
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isTypingComplete, setIsTypingComplete] = useState(false);
   const [showDurationSelector, setShowDurationSelector] = useState(false);
+  const [currentInputType, setCurrentInputType] = useState<InputType>("text");
+  const [currentInputConfig, setCurrentInputConfig] = useState<InputConfig | undefined>(undefined);
   
   // Determine which backend function to call
   const chatFunctionName = chatEngine === 'adaptive' ? 'chat-v2' : 'chat';
@@ -271,11 +273,12 @@ export const FocusedInterviewInterface = ({
 
   // Auto-initialize removed: MoodSelector now always shows first
 
-  // Submit answer and get next question
-  const handleSubmit = useCallback(async () => {
-    if (!currentAnswer.trim() || isLoading) return;
+  // Submit answer and get next question — accepts an optional override for interactive inputs
+  const handleSubmit = useCallback(async (interactiveValue?: string) => {
+    const content = interactiveValue || currentAnswer.trim();
+    if (!content || isLoading) return;
 
-    const userMessage: Message = { role: "user", content: currentAnswer.trim() };
+    const userMessage: Message = { role: "user", content };
     const updatedHistory = [...conversationHistory, userMessage];
     
     // Immediately start transitioning out the current question
@@ -283,6 +286,8 @@ export const FocusedInterviewInterface = ({
     setIsTypingComplete(false);
     setConversationHistory(updatedHistory);
     setCurrentAnswer("");
+    setCurrentInputType("text");
+    setCurrentInputConfig(undefined);
     setIsLoading(true);
     
     // Quick fade-out, then show loading dots
@@ -336,6 +341,15 @@ export const FocusedInterviewInterface = ({
       if (data.themeProgress) {
         setLocalThemeProgress(data.themeProgress);
         updateThemeProgress(data.themeProgress);
+      }
+
+      // Extract interactive input type if signaled by backend
+      if (data.inputType && data.inputType !== "text") {
+        setCurrentInputType(data.inputType as InputType);
+        setCurrentInputConfig(data.inputConfig || undefined);
+      } else {
+        setCurrentInputType("text");
+        setCurrentInputConfig(undefined);
       }
 
       // Handle completion - use hook's enterReviewingPhase
@@ -457,7 +471,9 @@ export const FocusedInterviewInterface = ({
               onTypingComplete={() => setIsTypingComplete(true)}
             />
 
-            <AnswerInput
+            <InteractiveInputRouter
+              inputType={currentInputType}
+              inputConfig={currentInputConfig}
               value={currentAnswer}
               onChange={setCurrentAnswer}
               onSubmit={handleSubmit}

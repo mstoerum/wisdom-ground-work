@@ -418,7 +418,7 @@ ${conversationContext}`;
 /**
  * Parse structured AI response into empathy and question
  */
-const parseStructuredResponse = (aiMessage: string): { empathy: string | null; question: string; raw: string } => {
+const parseStructuredResponse = (aiMessage: string): { empathy: string | null; question: string; raw: string; inputType?: string; inputConfig?: any } => {
   try {
     // Clean markdown code blocks if present
     let cleaned = aiMessage.trim();
@@ -433,7 +433,9 @@ const parseStructuredResponse = (aiMessage: string): { empathy: string | null; q
       return {
         empathy: parsed.empathy || null,
         question: parsed.question,
-        raw: aiMessage
+        raw: aiMessage,
+        inputType: parsed.inputType || undefined,
+        inputConfig: parsed.inputConfig || undefined,
       };
     }
   } catch (e) {
@@ -445,7 +447,7 @@ const parseStructuredResponse = (aiMessage: string): { empathy: string | null; q
       try {
         const parsed = JSON.parse(jsonMatch[0]);
         if (parsed.question) {
-          return { empathy: parsed.empathy || null, question: parsed.question, raw: aiMessage };
+          return { empathy: parsed.empathy || null, question: parsed.question, raw: aiMessage, inputType: parsed.inputType, inputConfig: parsed.inputConfig };
         }
       } catch (e2) {
         console.log("JSON extraction failed, trying regex");
@@ -863,7 +865,7 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
         AI_MODEL,
         [{ role: "system", content: systemPrompt }, ...filteredMessages],
         0.8,
-        200
+        300 // Increased for JSON responses with inputType/inputConfig
       );
 
       // For preview mode, estimate which theme is being discussed based on exchange count
@@ -874,15 +876,16 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
       );
 
       // Parse structured response for preview mode
-      const { empathy, question } = parseStructuredResponse(aiMessage);
-      console.log("Preview mode parsed response:", { empathy, question: question.substring(0, 50) });
+      const { empathy, question, inputType, inputConfig } = parseStructuredResponse(aiMessage);
+      console.log("Preview mode parsed response:", { empathy, question: question.substring(0, 50), inputType });
       
       return new Response(
         JSON.stringify({ 
           message: question,
           empathy: empathy,
           shouldComplete: shouldComplete,
-          themeProgress: previewThemeProgress
+          themeProgress: previewThemeProgress,
+          ...(inputType && inputType !== "text" ? { inputType, inputConfig } : {})
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -1531,11 +1534,11 @@ Return ONLY valid JSON in this exact format:
       AI_MODEL,
       [{ role: "system", content: systemPrompt }, ...filteredMessages],
       0.8,
-      180 // Safe buffer for JSON responses without impacting speed
+      300 // Increased for JSON responses with inputType/inputConfig
     );
 
     // Parse structured response
-    const { empathy, question, raw } = parseStructuredResponse(aiMessageRaw);
+    const { empathy, question, raw, inputType, inputConfig } = parseStructuredResponse(aiMessageRaw);
     const aiMessage = question; // Use question as the main message for storage
 
       // IMPORTANT: Don't save the [START_CONVERSATION] trigger to database
@@ -1976,7 +1979,8 @@ Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}`;
         message: aiMessage,
         empathy: empathy,
         shouldComplete: false,
-        themeProgress
+        themeProgress,
+        ...(inputType && inputType !== "text" ? { inputType, inputConfig } : {})
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
