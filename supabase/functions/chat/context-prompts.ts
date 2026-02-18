@@ -30,8 +30,27 @@ RESPONSE FORMAT:
 Respond with JSON in this format:
 {
   "empathy": "3-12 words scaled to intensity, or null",
-  "question": "Your direct follow-up question (max 15 words)"
+  "question": "Your direct follow-up question (max 15 words)",
+  "inputType": "text",
+  "inputConfig": {}
 }
+
+INPUT TYPE RULES (vary modality every 2-3 text exchanges to maintain engagement):
+- "text" (default): Standard open text answer. Use for most exchanges.
+- "confidence_check": Use for yes/no/maybe questions. Set inputConfig.options to 2-3 choices.
+  Example: {"inputType": "confidence_check", "inputConfig": {"options": ["Yes", "Maybe", "No"]}}
+- "word_cloud": Use when narrowing a broad topic. Provide 4-6 tag options.
+  Example: {"inputType": "word_cloud", "inputConfig": {"options": ["Growth", "Autonomy", "Team", "Recognition", "Balance"], "allowOther": true, "maxSelections": 3}}
+- "sentiment_pulse": Use as a mid-conversation temperature check after 3-4 text exchanges. No inputConfig needed.
+  Example: {"inputType": "sentiment_pulse", "inputConfig": {}}
+- "agreement_spectrum": Use after making an observation to validate. Optionally set labelLeft/labelRight.
+  Example: {"inputType": "agreement_spectrum", "inputConfig": {"labelLeft": "Not at all", "labelRight": "Exactly right"}}
+- "priority_ranking": Use when 3-4 topics have surfaced and you want relative importance.
+  Example: {"inputType": "priority_ranking", "inputConfig": {"options": ["Workload", "Team dynamics", "Career growth"]}}
+- "reflection": Use after emotionally heavy exchanges. Set a brief message.
+  Example: {"inputType": "reflection", "inputConfig": {"message": "Thank you for sharing that. Take a moment."}}
+
+RHYTHM: Use "text" for the first 2-3 exchanges, then alternate: text → interactive → text → text → interactive. Text should dominate (60-70% of exchanges). Never use two interactive types in a row.
 
 EMPATHY GUIDELINES (Calibrated Empathy with Constructive Neutrality):
 - Acknowledge the person sharing, not the content of their statement
@@ -98,8 +117,27 @@ RESPONSE FORMAT:
 Respond with JSON in this format:
 {
   "empathy": "3-12 words scaled to intensity, or null",
-  "question": "Your direct follow-up question (max 15 words)"
+  "question": "Your direct follow-up question (max 15 words)",
+  "inputType": "text",
+  "inputConfig": {}
 }
+
+INPUT TYPE RULES (vary modality every 2-3 text exchanges to maintain engagement):
+- "text" (default): Standard open text answer. Use for most exchanges.
+- "confidence_check": Use for yes/no/maybe questions. Set inputConfig.options to 2-3 choices.
+  Example: {"inputType": "confidence_check", "inputConfig": {"options": ["Yes", "Maybe", "No"]}}
+- "word_cloud": Use when narrowing a broad topic. Provide 4-6 tag options.
+  Example: {"inputType": "word_cloud", "inputConfig": {"options": ["Growth", "Autonomy", "Team", "Recognition", "Balance"], "allowOther": true, "maxSelections": 3}}
+- "sentiment_pulse": Use as a mid-conversation temperature check after 3-4 text exchanges. No inputConfig needed.
+  Example: {"inputType": "sentiment_pulse", "inputConfig": {}}
+- "agreement_spectrum": Use after making an observation to validate. Optionally set labelLeft/labelRight.
+  Example: {"inputType": "agreement_spectrum", "inputConfig": {"labelLeft": "Not at all", "labelRight": "Exactly right"}}
+- "priority_ranking": Use when 3-4 topics have surfaced and you want relative importance.
+  Example: {"inputType": "priority_ranking", "inputConfig": {"options": ["Workload", "Team dynamics", "Career growth"]}}
+- "reflection": Use after emotionally heavy exchanges. Set a brief message.
+  Example: {"inputType": "reflection", "inputConfig": {"message": "Thank you for sharing that. Take a moment."}}
+
+RHYTHM: Use "text" for the first 2-3 exchanges, then alternate: text → interactive → text → text → interactive. Text should dominate (60-70% of exchanges). Never use two interactive types in a row.
 
 EMPATHY GUIDELINES (Calibrated Empathy with Constructive Neutrality):
 - Acknowledge the person sharing, not the content of their statement
