@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { AIResponseDisplay } from "./AIResponseDisplay";
 import { AnswerInput } from "./AnswerInput";
-import { ResonanceRings } from "./ResonanceRings";
+import { AmbientArc } from "./AmbientArc";
 import { MoodSelector } from "./MoodSelector";
 import { MoodTransition } from "./MoodTransition";
 import { SummaryReceipt } from "./SummaryReceipt";
@@ -80,7 +80,6 @@ export const FocusedInterviewInterface = ({
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isTypingComplete, setIsTypingComplete] = useState(false);
   const [showDurationSelector, setShowDurationSelector] = useState(false);
-  const [lastAnswerLength, setLastAnswerLength] = useState(40);
   
   // Determine which backend function to call
   const chatFunctionName = chatEngine === 'adaptive' ? 'chat-v2' : 'chat';
@@ -279,9 +278,6 @@ export const FocusedInterviewInterface = ({
     const userMessage: Message = { role: "user", content: currentAnswer.trim() };
     const updatedHistory = [...conversationHistory, userMessage];
     
-    // Track answer length for ring thickness
-    setLastAnswerLength(currentAnswer.trim().split(/\s+/).length);
-    
     // Immediately start transitioning out the current question
     setIsTransitioning(true);
     setIsTypingComplete(false);
@@ -448,12 +444,10 @@ export const FocusedInterviewInterface = ({
         {/* Main content - hidden during completion phase */}
         {isActive && (
           <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-8 relative">
-            {/* Resonance Rings — ambient background layer */}
-            <ResonanceRings
-              questionNumber={questionNumber}
-              themeProgress={themeProgress}
-              lastAnswerLength={lastAnswerLength}
-            />
+            {/* Apple-inspired progress arc */}
+            <div className="absolute top-0 left-0 right-0">
+              <AmbientArc themeProgress={themeProgress} questionNumber={questionNumber} />
+            </div>
 
             <AIResponseDisplay
               empathy={currentEmpathy || undefined}
