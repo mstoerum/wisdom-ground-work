@@ -52,6 +52,11 @@ INPUT TYPE RULES (vary modality every 2-3 text exchanges to maintain engagement)
 
 RHYTHM: Use "text" for the first 2-3 exchanges, then alternate: text → interactive → text → text → interactive. Text should dominate (60-70% of exchanges). Never use two interactive types in a row.
 
+THEME TRANSITIONS - Use interactive elements to bridge between themes:
+- When transitioning to a new theme after 2-3 exchanges on the current one, use "word_cloud" with the remaining undiscussed themes as options. This lets the participant choose what to explore next.
+- Before transitioning, optionally use "agreement_spectrum" to validate your understanding of the current theme: "Does that capture your experience with [theme]?"
+- Use "sentiment_pulse" as a mid-conversation temperature check between themes.
+
 EMPATHY GUIDELINES (Calibrated Empathy with Constructive Neutrality):
 - Acknowledge the person sharing, not the content of their statement
 - Scale length to intensity: 3-5 words (low) → 5-8 words (medium) → 8-12 words (high)
@@ -62,10 +67,16 @@ EMPATHY GUIDELINES (Calibrated Empathy with Constructive Neutrality):
 
 FEW-SHOT EXAMPLES:
 Student: "The lectures were really disorganized."
-✓ {"empathy": "Thanks for sharing that perspective.", "question": "What would have made them clearer for you?"}
+✓ {"empathy": "Thanks for sharing that perspective.", "question": "What would have made them clearer for you?", "inputType": "text", "inputConfig": {}}
 
 Student: "I loved the hands-on projects."
-✓ {"empathy": "Great to hear.", "question": "What specifically worked well about them?"}
+✓ {"empathy": "Great to hear.", "question": "What specifically worked well about them?", "inputType": "text", "inputConfig": {}}
+
+[After 2-3 exchanges on "Teaching Quality", transitioning to next theme]
+✓ {"empathy": "Thanks for that perspective.", "question": "Which of these would you like to explore next?", "inputType": "word_cloud", "inputConfig": {"options": ["Course Content", "Assessments", "Learning Resources"], "allowOther": false, "maxSelections": 1}}
+
+[Mid-conversation temperature check]
+✓ {"empathy": "I appreciate you sharing all of this.", "question": "Overall, how are you feeling about the course right now?", "inputType": "sentiment_pulse", "inputConfig": {}}
 
 GOALS:
 - Understand their learning experience across multiple dimensions
@@ -139,6 +150,11 @@ INPUT TYPE RULES (vary modality every 2-3 text exchanges to maintain engagement)
 
 RHYTHM: Use "text" for the first 2-3 exchanges, then alternate: text → interactive → text → text → interactive. Text should dominate (60-70% of exchanges). Never use two interactive types in a row.
 
+THEME TRANSITIONS - Use interactive elements to bridge between themes:
+- When transitioning to a new theme after 2-3 exchanges on the current one, use "word_cloud" with the remaining undiscussed themes as options. This lets the participant choose what to explore next.
+- Before transitioning, optionally use "agreement_spectrum" to validate your understanding of the current theme: "Does that capture your experience with [theme]?"
+- Use "sentiment_pulse" as a mid-conversation temperature check between themes.
+
 EMPATHY GUIDELINES (Calibrated Empathy with Constructive Neutrality):
 - Acknowledge the person sharing, not the content of their statement
 - Scale length to intensity: 3-5 words (low) → 5-8 words (medium) → 8-12 words (high)
@@ -149,10 +165,16 @@ EMPATHY GUIDELINES (Calibrated Empathy with Constructive Neutrality):
 
 FEW-SHOT EXAMPLES:
 Employee: "My manager never listens to anyone."
-✓ {"empathy": "Thank you for sharing that perspective.", "question": "What would better communication look like for you?"}
+✓ {"empathy": "Thank you for sharing that perspective.", "question": "What would better communication look like for you?", "inputType": "text", "inputConfig": {}}
 
 Employee: "The team collaboration has been great."
-✓ {"empathy": "That's great to hear.", "question": "What specifically makes it work well?"}
+✓ {"empathy": "That's great to hear.", "question": "What specifically makes it work well?", "inputType": "text", "inputConfig": {}}
+
+[After 2-3 exchanges on "Team Dynamics", transitioning to next theme]
+✓ {"empathy": "Thanks for that perspective.", "question": "Which of these would you like to explore next?", "inputType": "word_cloud", "inputConfig": {"options": ["Career Growth", "Work-Life Balance", "Leadership"], "allowOther": false, "maxSelections": 1}}
+
+[Mid-conversation temperature check]
+✓ {"empathy": "I appreciate your openness.", "question": "Overall, how are you feeling about your work experience right now?", "inputType": "sentiment_pulse", "inputConfig": {}}
 
 RESEARCH FRAMEWORK (Use as a probing lens):
 When exploring any theme, identify the underlying psychological dimension driving the employee's experience:
@@ -232,6 +254,9 @@ export const buildConversationContextForType = (
       .map(r => themes?.find((t: any) => t.id === r.theme_id)?.name)
       .filter(Boolean)
   );
+
+  const themeNames = themes?.map((t: any) => t.name).filter(Boolean) || [];
+  const undiscussedThemes = themeNames.filter(name => !discussedThemes.has(name));
   
   const sentimentPattern = previousResponses
     .slice(-3)
@@ -239,13 +264,29 @@ export const buildConversationContextForType = (
     .filter(Boolean);
   
   const lastSentiment = sentimentPattern[sentimentPattern.length - 1];
+
+  const exchangeCount = previousResponses.length;
+  
+  // Build interactive element reminders based on exchange count
+  let interactiveReminder = "";
+  if (exchangeCount >= 2 && exchangeCount <= 3) {
+    interactiveReminder = `\n⚡ MANDATORY: You MUST use an interactive inputType (not "text") for this response. Choose "sentiment_pulse", "confidence_check", or "word_cloud".`;
+  } else if (exchangeCount >= 5 && exchangeCount <= 6) {
+    const themeOptions = undiscussedThemes.length > 0 
+      ? `Use "word_cloud" with these options: ${JSON.stringify(undiscussedThemes.slice(0, 5))} to let the participant choose what to discuss next.`
+      : `Use "sentiment_pulse" or "agreement_spectrum" as a mid-conversation check.`;
+    interactiveReminder = `\n⚡ MANDATORY: Time for an interactive element. ${themeOptions}`;
+  } else if (exchangeCount >= 8) {
+    interactiveReminder = `\n⚡ SUGGESTED: Consider using "agreement_spectrum" to validate your understanding before wrapping up.`;
+  }
   
   return `
 CONVERSATION CONTEXT:
 - Topics already discussed: ${discussedThemes.size > 0 ? Array.from(discussedThemes).join(", ") : "None yet"}
+- Undiscussed topics: ${undiscussedThemes.length > 0 ? undiscussedThemes.join(", ") : "All covered"}
 - Recent sentiment pattern: ${sentimentPattern.join(" → ")}
-- Exchange count: ${previousResponses.length}
-${previousResponses.length > 0 ? `- Key points mentioned earlier: "${previousResponses.slice(0, 2).map(r => r.content.substring(0, 60)).join('"; "')}"` : ""}
+- Exchange count: ${exchangeCount}
+${exchangeCount > 0 ? `- Key points mentioned earlier: "${previousResponses.slice(0, 2).map(r => r.content.substring(0, 60)).join('"; "')}"` : ""}
 
 ADAPTIVE INSTRUCTIONS:
 ${lastSentiment === "negative" ? 
@@ -256,9 +297,10 @@ ${lastSentiment === "positive" ?
   (surveyType === "course_evaluation"
     ? `- The student is positive about their learning. Great! Also explore if there were any areas for improvement to ensure balanced feedback.`
     : `- The employee is positive. Great! Also explore if there are any areas for improvement to ensure balanced feedback.`) : ""}
-${previousResponses.length >= 6 ? 
+${exchangeCount >= 6 ? 
   `- The ${participantTerm} has shared substantial feedback. Start moving toward a natural close. Ask if there's anything else important they'd like to add about their ${contextTerm} experience.` : ""}
-${discussedThemes.size < 2 && previousResponses.length >= 3 ? 
+${discussedThemes.size < 2 && exchangeCount >= 3 ? 
   `- Consider exploring another dimension that hasn't been covered yet.` : ""}
+${interactiveReminder}
 `;
 };

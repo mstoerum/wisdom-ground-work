@@ -806,7 +806,7 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
       }
 
       // Build context-aware prompt based on survey type
-      const conversationContext = buildConversationContextForType(surveyType, [], themes);
+      const conversationContext = buildConversationContextForType(surveyType, mockResponses, themes);
       let systemPrompt = getSystemPromptForSurveyType(surveyType, themes, conversationContext);
       
       // If firstMessage is provided and this is an introduction, use it as the initial message
