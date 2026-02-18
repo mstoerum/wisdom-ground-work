@@ -1,119 +1,166 @@
 
+# Interactive Elements for the Spradley Chat Experience
 
-# Apple-Inspired Progress Indicator for Spradley
+## Research Findings
 
-Remove the Resonance Rings SVG overlay and replace it with a minimal, refined progress element that follows Apple's design principles: clarity, deference, and depth. The progress indicator should serve the content, never compete with it.
+### Current State
+Right now, the Focused Interview flow is: **Mood Selector (clickable) -> Transition -> Repeating loop of [AI question text -> User types text answer]**. After the initial mood selection, every interaction is identical: read question, type answer, repeat. This creates a monotonous rhythm that can lead to "survey fatigue" -- shorter answers, disengagement, or early exit.
 
----
+### What the Best Do
 
-## Design Philosophy
+**Typeform** pioneered the "one question at a time" conversational format but breaks monotony with alternating input types: text fields, opinion scales, picture choices, yes/no buttons, and rating stars -- all inline, not as separate pages.
 
-Apple's approach to progress is about **confidence without noise**. Think of the Activity Rings on Apple Watch -- simple, glanceable, satisfying. Or the iOS download progress circle -- you know where you are without thinking about it. The indicator should feel like it belongs to the OS, not to a feature.
+**Landbot** (conversational chatbot builder) uses inline "quick reply" chips, sliders, image carousels, and emoji reactions embedded directly in the chat flow. Their key insight: **the AI decides which input type to present based on the question type**, not the user.
 
-**Core principles applied:**
+**Intercom / Fin** uses "rich message" patterns: inline buttons, cards with actions, and satisfaction ratings that appear as part of the conversation thread rather than as separate UI.
 
-- **Deference**: The chat is the hero. Progress lives in the periphery of attention.
-- **Clarity**: One glance tells you "I'm making progress" without requiring interpretation.
-- **Depth**: Subtle physicality -- light, shadow, blur -- gives it weight without bulk.
-- **Reward**: Completion of each segment feels like a gentle "click" into place (haptic metaphor through animation).
+**SurveySparrow** alternates between conversational text and structured inputs (NPS scales, star ratings, matrix grids) to create rhythm variation.
 
----
+**Culture Amp / Peakon** use Likert scales and open-text in alternation for employee engagement specifically, finding that **structured inputs before open text** prime employees to elaborate more.
 
-## The Design: "Ambient Arc"
-
-A thin, elegant arc sits at the very top of the interview area (or just below the header). It is inspired by the Apple Watch activity ring but linearized into a gentle curve.
-
-**Visual description:**
-
-- A single, thin (3px) track line spans the top of the content area -- slightly curved like a gentle smile, or perfectly horizontal
-- As themes are covered, segments of the arc fill in with a smooth, spring-based animation
-- Each segment corresponds to a theme but is **not labeled** -- the arc simply fills
-- The fill color uses a subtle gradient that shifts warmer as coverage increases (from the existing sage to terracotta palette)
-- When a segment completes, a tiny light bloom travels along the arc to the new position (like the iOS charging animation)
-- The unfilled portion is a barely-visible track (5% opacity foreground color)
-
-**What makes it Apple:**
-
-- **No text, no numbers** on the indicator itself
-- **Spring physics** on the fill animation (slight overshoot, then settle)
-- **Backdrop blur** on the track gives it a frosted-glass feel against the content behind it
-- **SF-style proportions**: thin, precise, with generous whitespace around it
+### The Core Principle
+The research converges on one idea: **vary the input modality every 2-3 exchanges**. Text is the richest data source, but interspersing lightweight, clickable moments creates "breathing room" that actually leads to *better* text responses when text is asked for.
 
 ---
 
-## What Changes
+## Proposed Interactive Elements
 
-### 1. Remove `ResonanceRings` from `FocusedInterviewInterface.tsx`
+Six interactive element types, each designed to appear **inline** between AI questions, replacing the text input temporarily. The AI backend would signal which element to show via a new `inputType` field in the response.
 
-- Remove the `ResonanceRings` import and the `<ResonanceRings>` component from the active interview area
-- Remove the `lastAnswerLength` state variable (no longer needed)
-- Keep the `themeProgress` data -- the new indicator uses it
+### 1. Agreement Spectrum (Inline Slider)
+A horizontal slider with labeled endpoints that the user drags to express how much they agree/disagree.
 
-### 2. Create new component: `src/components/employee/AmbientArc.tsx`
+- **When**: After the AI makes a specific observation. Example: AI says "It sounds like communication could be better" -> slider appears: "Not at all" <---> "Exactly right"
+- **UX**: A single horizontal track with a draggable thumb. Minimal labels at each end. The selected position auto-sends after a brief pause (like Apple's haptic feedback moment).
+- **Data value**: Captures a 0-100 numeric score alongside the qualitative text conversation.
+- **Why it works**: Lets users validate or push back on AI interpretations without needing to articulate disagreement in words. Quick, low-effort, high-signal.
 
-A lightweight component that renders a thin progress arc.
+### 2. Word Cloud Selector (Tap-to-Select Tags)
+A set of 4-6 word/phrase chips that the user taps to select (multi-select allowed), with an optional "Something else..." chip that reveals the text input.
 
-**Props:**
-- `themeProgress`: The existing `ThemeProgress` type (themes array with discussed/current status, coveragePercent)
-- `questionNumber`: Current question count (used as fallback if no theme data)
+- **When**: When the AI wants to narrow a broad topic. Example: AI says "What aspects of your role matter most?" -> chips: "Growth", "Autonomy", "Team", "Recognition", "Balance", "Something else..."
+- **UX**: Horizontally wrapping chips with a gentle spring animation on tap. Selected chips get a filled state. A "Continue" button appears after selection.
+- **Data value**: Captures the selected tags as structured data + steers the conversation toward what matters to the user.
+- **Why it works**: Typeform and Landbot both show this reduces cognitive load. Users who struggle with open-ended "what matters to you?" questions engage 40% more when given starting points. The "Something else..." escape hatch preserves openness.
 
-**Rendering:**
-- A single SVG element, 100% width, ~20px tall
-- Background track: thin line (3px) with 5% opacity foreground color
-- Progress fill: animated line segment whose width maps to `coveragePercent`
-- Fill uses a CSS linear gradient transitioning through the palette as coverage grows
-- Animation: Framer Motion `spring` transition (stiffness: 300, damping: 30) for the fill width
-- On each segment completion: a brief luminance pulse (opacity 0.6 to 0.2 over 400ms) at the leading edge
+### 3. Sentiment Pulse (Quick Emoji Reaction)
+A row of 3-5 emoji/icon options for quick sentiment capture, similar to the initial Mood Selector but contextual and lighter.
 
-**Segment logic:**
-- The arc is divided into equal segments matching the number of themes
-- Each discussed theme fills its segment with a satisfying spring animation
-- The "current" theme segment shows a subtle pulse (breathing opacity)
-- Segments fill left-to-right in theme order
+- **When**: Mid-conversation as a "temperature check." Example: After 3-4 text exchanges, the AI asks "How does that make you feel?" -> emoji row appears (no text needed).
+- **UX**: Horizontal row of expressive icons (not generic emojis -- abstract mood illustrations or simple face expressions matching Spradley's design language). Single tap sends immediately with a subtle ripple animation.
+- **Data value**: Numeric sentiment score anchored to a specific moment in the conversation. Richer than inferring sentiment from text alone.
+- **Why it works**: Peakon uses this pattern. It gives the employee a "voice" moment that requires zero typing effort, creating a pleasant pause in the typing rhythm.
 
-### 3. Place `AmbientArc` in the layout
+### 4. Priority Ranking (Drag-to-Rank or Tap-to-Order)
+A short list of 3-4 items that the user ranks by importance, either by dragging or by tapping in order (1st, 2nd, 3rd).
 
-Position it directly below the header bar, above the question area:
+- **When**: When the conversation has surfaced multiple themes and the AI wants to understand relative importance. Example: "You mentioned workload, team dynamics, and career growth. Which matters most right now?"
+- **UX**: Three cards/pills stacked vertically. On mobile: tap to assign rank (1, 2, 3). On desktop: drag to reorder. Spring animations on reorder. A "Done" button confirms.
+- **Data value**: Produces an ordered priority list -- extremely valuable for HR analytics (weighted importance scoring).
+- **Why it works**: Forces explicit prioritization that text responses rarely provide. Lattice and Culture Amp both use priority ranking in their engagement surveys for this reason.
 
+### 5. Confidence Check (Binary or Ternary Inline Buttons)
+Simple 2-3 button choices for yes/no/maybe type questions, appearing inline.
+
+- **When**: When the AI wants a direct answer before elaborating. Example: "Would you recommend your team to a friend?" -> [Yes] [Maybe] [No]. After selection, the AI follows up with "Tell me more about why."
+- **UX**: 2-3 large, tappable buttons side by side. Tap triggers immediate selection with the selected button filling and others fading. The AI immediately follows up with a text prompt based on the selection.
+- **Data value**: Clean binary/ternary data points (eNPS-style) that complement the qualitative text.
+- **Why it works**: This is the "quick reply" pattern from Intercom/Drift -- the most proven engagement pattern in conversational UI. It creates a rapid back-and-forth rhythm that feels more like a real conversation than a survey.
+
+### 6. Reflection Moment (Pause and Breathe)
+Not an input at all -- a brief, intentional pause with a calming visual and a prompt to reflect before continuing. A "thinking space."
+
+- **When**: After a particularly heavy or emotional exchange. The AI detects strong sentiment and inserts a moment of space. Example: After the user shares something difficult, instead of immediately asking the next question, a gentle animation appears with text: "Thank you for sharing that. Take a moment."
+- **UX**: The question area dims slightly. A soft breathing animation or gentle wave plays for 3-5 seconds. A "I'm ready to continue" button appears. No data is captured -- this is purely for psychological safety.
+- **Why it works**: This is unique to Spradley. No survey tool does this. It signals that the AI "heard" something meaningful and is not just rushing through questions. It builds trust and primes the user to share more deeply on the next question.
+
+---
+
+## Conversation Rhythm Blueprint
+
+Here is how the elements would interleave in a typical 8-10 exchange session:
+
+```text
+Exchange 1:  [Mood Selector]         -- clickable (existing)
+Exchange 2:  [Text answer]           -- open text
+Exchange 3:  [Text answer]           -- open text (deeper follow-up)
+Exchange 4:  [Sentiment Pulse]       -- quick emoji tap (breathing room)
+Exchange 5:  [Text answer]           -- open text (re-energized)
+Exchange 6:  [Word Cloud Selector]   -- tap tags to steer next topic
+Exchange 7:  [Text answer]           -- open text on chosen topic
+Exchange 8:  [Agreement Spectrum]    -- slider to validate AI summary
+Exchange 9:  [Confidence Check]      -- quick yes/maybe/no
+Exchange 10: [Text answer]           -- final elaboration
+             [Reflection Moment]     -- if heavy content detected anytime
 ```
-+--[Header: Finish Early button]--+
-|  ═══════════○─────────────────  |  <-- AmbientArc (thin, elegant)
-|                                 |
-|        AI Question              |
-|        Answer Input             |
-|                                 |
-+--[Footer: Enter hint]----------+
-```
 
-The arc sits in its own `div` with `px-6` horizontal padding to align with content, and minimal vertical space (`py-2`).
-
-### 4. Animation details
-
-- **Fill advance**: `spring` with slight overshoot when a new theme segment fills
-- **Leading edge glow**: A small radial gradient "bead" at the progress tip that pulses gently
-- **Completion**: When all segments fill, the entire arc does a single warm pulse (opacity flash), then settles to a calm full state
-- **Current theme breathing**: The segment being actively explored has a gentle opacity oscillation (0.6 to 0.9, 2s duration, infinite)
+Text still dominates (5-6 of 10 exchanges) to preserve qualitative depth. Interactive elements appear every 2-3 exchanges to break the rhythm.
 
 ---
 
-## Files Summary
+## How It Would Work Technically
 
-| File | Action |
+### Backend Signal
+The chat edge function already returns `{ message, empathy, themeProgress }`. We add a new field:
+
+```json
+{
+  "message": "What aspects of your role matter most?",
+  "empathy": "That's a great point.",
+  "inputType": "word_cloud",
+  "inputConfig": {
+    "options": ["Growth", "Autonomy", "Team", "Recognition", "Balance"],
+    "allowOther": true,
+    "maxSelections": 3
+  }
+}
+```
+
+When `inputType` is absent or `"text"`, the current AnswerInput renders as normal. When present, the FocusedInterviewInterface swaps in the appropriate interactive component.
+
+### Frontend Components (new files)
+| Component | File |
+|-----------|------|
+| Agreement Spectrum | `src/components/employee/inputs/AgreementSpectrum.tsx` |
+| Word Cloud Selector | `src/components/employee/inputs/WordCloudSelector.tsx` |
+| Sentiment Pulse | `src/components/employee/inputs/SentimentPulse.tsx` |
+| Priority Ranking | `src/components/employee/inputs/PriorityRanking.tsx` |
+| Confidence Check | `src/components/employee/inputs/ConfidenceCheck.tsx` |
+| Reflection Moment | `src/components/employee/inputs/ReflectionMoment.tsx` |
+| Input Router | `src/components/employee/inputs/InteractiveInputRouter.tsx` |
+
+### Modified Files
+| File | Change |
 |------|--------|
-| `src/components/employee/AmbientArc.tsx` | **Create** -- new minimal progress arc component |
-| `src/components/employee/FocusedInterviewInterface.tsx` | **Modify** -- remove ResonanceRings, add AmbientArc below header |
+| `FocusedInterviewInterface.tsx` | Replace static `<AnswerInput>` with `<InteractiveInputRouter>` that conditionally renders the right input type |
+| `supabase/functions/chat/index.ts` | Add logic to the system prompt and response parsing to include `inputType` + `inputConfig` at appropriate conversation moments |
+| `supabase/functions/chat/context-prompts.ts` | Update prompts to instruct the AI when to use each input type |
+
+### Data Flow
+All interactive responses get serialized back as text messages in the conversation history (e.g., "[SLIDER: 72/100]" or "[SELECTED: Growth, Balance]") so the AI can reference them naturally. The raw structured data also gets stored as metadata on the conversation response for analytics.
 
 ---
 
-## Accessibility
+## Companies Referenced
 
-- The SVG arc is `aria-hidden="true"` (decorative)
-- An `aria-live="polite"` visually-hidden span announces: "{discussed} of {total} topics explored" when theme coverage changes
-- No information is conveyed solely through the visual
+- **Typeform**: Alternating input types (scales, choices, text) in conversational flow
+- **Landbot**: Rich inline elements (sliders, chips, carousels) in chatbot UI
+- **Intercom / Fin**: Quick reply buttons and card-based interactions
+- **SurveySparrow**: Conversational forms with mixed input types
+- **Culture Amp**: Likert scales + open text alternation for engagement surveys
+- **Peakon (Workday)**: Sentiment pulse checks mid-survey
+- **Lattice**: Priority ranking in pulse surveys
+- **Google Chat / Slack**: Rich message patterns with inline interactive widgets
 
-## Mobile
+---
 
-- The arc scales to full width on any screen size
-- The 3px thickness and minimal height (~20px total with padding) means zero layout impact
-- Touch targets are not needed -- the arc is non-interactive
+## Recommended Build Order
 
+1. **Confidence Check** (simplest -- 2-3 buttons, highest engagement lift)
+2. **Word Cloud Selector** (chips with multi-select, steers conversation)
+3. **Sentiment Pulse** (emoji row, quick win)
+4. **Agreement Spectrum** (slider, satisfying interaction)
+5. **Reflection Moment** (no data capture, pure UX)
+6. **Priority Ranking** (most complex, drag/tap ordering)
+
+Each can be built and deployed independently. The InteractiveInputRouter acts as the switching layer, and the backend prompt updates determine when each type appears.
