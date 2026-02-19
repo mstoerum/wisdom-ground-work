@@ -12,12 +12,12 @@ import { HybridInsightsView } from "@/components/hr/analytics/HybridInsightsView
 import { SurveyComparison } from "@/components/hr/analytics/SurveyComparison";
 import { AnalyticsRefreshInline } from "@/components/hr/analytics/AnalyticsRefreshInline";
 import { NarrativeReportViewer } from "@/components/hr/analytics/NarrativeReportViewer";
-import { DriversTab } from "@/components/hr/analytics/DriversTab";
+
 import { useNarrativeReports } from "@/hooks/useNarrativeReports";
 import { useThemeAnalytics } from "@/hooks/useThemeAnalytics";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, BookOpen, LayoutGrid, FileText, RefreshCw, Sparkles, Brain } from "lucide-react";
+import { BarChart3, BookOpen, LayoutGrid, FileText, RefreshCw, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -211,19 +211,13 @@ const Analytics = () => {
               )}
             </div>
 
-            {/* 4-Tab Layout: Overview, Drivers (employee only), Story Report, Compare */}
+            {/* 3-Tab Layout: Overview, Story Report, Compare */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
               <TabsList>
                 <TabsTrigger value="overview" className="gap-2">
                   <LayoutGrid className="h-4 w-4" />
                   Overview
                 </TabsTrigger>
-                {surveyType === 'employee_satisfaction' && (
-                  <TabsTrigger value="drivers" className="gap-2">
-                    <Brain className="h-4 w-4" />
-                    Drivers
-                  </TabsTrigger>
-                )}
                 <TabsTrigger value="story" className="gap-2">
                   <BookOpen className="h-4 w-4" />
                   Story Report
@@ -248,13 +242,6 @@ const Analytics = () => {
                   isRefreshing={isRefreshing}
                 />
               </TabsContent>
-
-              {/* Drivers Tab - Employee Satisfaction Only */}
-              {surveyType === 'employee_satisfaction' && filters.surveyId && (
-                <TabsContent value="drivers" className="mt-6">
-                  <DriversTab surveyId={filters.surveyId} />
-                </TabsContent>
-              )}
 
               {/* Story Report Tab - Immersive Reading Experience */}
               <TabsContent value="story" className="mt-6">
