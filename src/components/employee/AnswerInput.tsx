@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { HoverButton } from "@/components/ui/hover-button";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowRight, Mic, MicOff, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -136,11 +135,11 @@ export const AnswerInput = ({
       </div>
 
       <div className="flex justify-center">
-        <HoverButton
+        <Button
           onClick={onSubmit}
           disabled={!canSubmit}
-          className="px-8 py-6 text-lg font-medium bg-[hsl(var(--terracotta-primary))] hover:bg-[hsl(var(--terracotta-primary))]/90 text-primary-foreground rounded-full transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 inline-flex items-center justify-center"
-          style={{ "--circle-start": "hsl(var(--terracotta-primary))", "--circle-end": "hsl(var(--coral-accent))" } as React.CSSProperties}
+          size="lg"
+          className="px-8 py-6 text-lg font-medium bg-[hsl(var(--terracotta-primary))] hover:bg-[hsl(var(--terracotta-primary))]/90 rounded-full transition-all duration-200 disabled:opacity-50"
         >
           {isLoading ? (
             <>
@@ -153,7 +152,7 @@ export const AnswerInput = ({
               <ArrowRight className="ml-2 h-5 w-5" />
             </>
           )}
-        </HoverButton>
+        </Button>
       </div>
     </motion.div>
   );
