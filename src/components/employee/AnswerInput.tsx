@@ -139,7 +139,8 @@ export const AnswerInput = ({
         <HoverButton
           onClick={onSubmit}
           disabled={!canSubmit}
-          className="px-8 py-6 text-lg font-medium bg-[hsl(var(--terracotta-primary))] hover:bg-[hsl(var(--terracotta-primary))]/90 text-primary-foreground rounded-full transition-all duration-200 disabled:opacity-50"
+          className="px-8 py-6 text-lg font-medium bg-[hsl(var(--terracotta-primary))] hover:bg-[hsl(var(--terracotta-primary))]/90 text-primary-foreground rounded-full transition-all duration-200 disabled:pointer-events-none disabled:opacity-50 inline-flex items-center justify-center"
+          style={{ "--circle-start": "hsl(var(--terracotta-primary))", "--circle-end": "hsl(var(--coral-accent))" } as React.CSSProperties}
         >
           {isLoading ? (
             <>
