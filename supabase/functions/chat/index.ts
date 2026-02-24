@@ -19,7 +19,7 @@ const RATE_LIMIT_MAX_REQUESTS = 10;
 const PREVIEW_RATE_LIMIT_MAX_REQUESTS = 5; // Stricter limit for unauthenticated preview mode
 const PREVIEW_RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
 const MAX_MESSAGE_LENGTH = 2000;
-const MIN_EXCHANGES = 4; // Minimum exchanges for meaningful conversation
+const MIN_EXCHANGES = 6; // Minimum exchanges for meaningful conversation
 const MAX_EXCHANGES = 20; // Maximum exchanges to prevent overly long conversations
 const AI_MODEL = "google/gemini-2.5-flash";
 const AI_MODEL_LITE = "google/gemini-2.5-flash-lite";
@@ -125,8 +125,9 @@ const shouldCompleteBasedOnThemes = (
     return turnCount >= 8 && turnCount <= MAX_EXCHANGES;
   }
 
-  // Need minimum exchanges for meaningful conversation
-  if (turnCount < MIN_EXCHANGES) {
+  // Hard minimum: at least themes.length * 2 or MIN_EXCHANGES, whichever is larger
+  const hardMinimum = Math.max(MIN_EXCHANGES, themes.length * 2);
+  if (turnCount < hardMinimum) {
     return false;
   }
 
@@ -146,35 +147,32 @@ const shouldCompleteBasedOnThemes = (
   const discussedCount = discussedThemeIds.size;
   const totalThemes = themes.length;
 
-  // Calculate coverage percentage
-  const coveragePercent = totalThemes > 0 ? (discussedCount / totalThemes) * 100 : 0;
+  // Theme-gated: ALL themes must be touched before completion can trigger
+  const allThemesTouched = discussedCount >= totalThemes;
+  if (!allThemesTouched) {
+    console.log(`[shouldCompleteBasedOnThemes] turnCount=${turnCount}, discussed=${discussedCount}/${totalThemes} — NOT all themes touched, continuing`);
+    return false;
+  }
 
-  // Count exchanges per theme (for depth check)
+  // Depth check: average at least 2 exchanges per discussed theme
   const themeExchangeCounts = new Map<string, number>();
   previousResponses.forEach(r => {
     if (r.theme_id) {
       themeExchangeCounts.set(r.theme_id, (themeExchangeCounts.get(r.theme_id) || 0) + 1);
     }
   });
-  
-  const avgExchangesPerTheme = discussedCount > 0 
-    ? Array.from(themeExchangeCounts.values()).reduce((a, b) => a + b, 0) / discussedCount 
+
+  const avgExchangesPerTheme = discussedCount > 0
+    ? Array.from(themeExchangeCounts.values()).reduce((a, b) => a + b, 0) / discussedCount
     : 0;
 
-  // Completion criteria:
-  // 1. At least 60% theme coverage AND average 2+ exchanges per theme
-  // 2. OR 80%+ theme coverage (even if some themes are light)
-  // 3. OR all themes covered with at least 1 exchange each
-  const hasGoodCoverage = coveragePercent >= 60 && avgExchangesPerTheme >= 2;
-  const hasHighCoverage = coveragePercent >= 80;
-  const allThemesTouched = discussedCount >= totalThemes && turnCount >= totalThemes;
+  if (avgExchangesPerTheme < 2) {
+    console.log(`[shouldCompleteBasedOnThemes] turnCount=${turnCount}, allTouched=true, avgDepth=${avgExchangesPerTheme.toFixed(1)} — insufficient depth, continuing`);
+    return false;
+  }
 
-  // Also check if we have sufficient depth (at least 6 exchanges and good coverage)
-  const hasSufficientDepth = turnCount >= 6 && (hasGoodCoverage || hasHighCoverage);
-
-  console.log(`[shouldCompleteBasedOnThemes] turnCount=${turnCount}, coverage=${coveragePercent.toFixed(0)}%, discussed=${discussedCount}/${totalThemes}, hasSufficientDepth=${hasSufficientDepth}, allThemesTouched=${allThemesTouched}`);
-
-  return hasSufficientDepth || allThemesTouched;
+  console.log(`[shouldCompleteBasedOnThemes] turnCount=${turnCount}, discussed=${discussedCount}/${totalThemes}, avgDepth=${avgExchangesPerTheme.toFixed(1)} — COMPLETE`);
+  return true;
 };
 
 /**
@@ -299,9 +297,9 @@ ${lastSentiment === "negative" ?
   "- The employee is sharing challenges. Ask specific follow-up questions to understand what happened and what would help." : ""}
 ${lastSentiment === "positive" ? 
   "- The employee is positive. Great! Also explore if there are any areas for improvement to ensure balanced feedback." : ""}
-${uncoveredThemes.length > 0 && previousResponses.length < 10 ? 
-  `- Themes not yet covered: ${uncoveredThemes.map((t: any) => t.name).join(", ")}. Transition naturally to explore these.` : ""}
-${isNearCompletion && previousResponses.length >= MIN_EXCHANGES ? 
+${uncoveredThemes.length > 0 ? 
+  `\nCRITICAL: These themes have NOT been discussed yet: ${uncoveredThemes.map((t: any) => t.name).join(", ")}.\nYou MUST transition to one of these themes in your next question.\nDo NOT wrap up or suggest completion until all themes are covered.\n` : ""}
+${isNearCompletion && uncoveredThemes.length === 0 && previousResponses.length >= MIN_EXCHANGES ? 
   `- You have gathered good insights across ${discussedThemeIds.size} themes. Start moving toward a natural conclusion. Ask if there's anything else important they'd like to share, then thank them warmly.` : ""}
 ${previousResponses.length >= 3 ? "- Reference earlier points when relevant to build on what they've shared." : ""}
 ${previousResponses.length < MIN_EXCHANGES ? "- Continue exploring to gather sufficient depth. Ask specific follow-up questions to get concrete examples." : ""}
