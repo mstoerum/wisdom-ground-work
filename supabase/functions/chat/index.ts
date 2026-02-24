@@ -1588,8 +1588,6 @@ Return ONLY valid JSON in this exact format:
 
       console.log(`[${conversationId}] ✅ Response saved successfully:`, {
         responseId: insertedResponse?.id,
-        theme: detectedThemeId,
-        sentiment,
       });
 
       // PERF: Background task handles ALL classification + analysis (not blocking response)
