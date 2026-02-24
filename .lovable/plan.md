@@ -1,158 +1,157 @@
 
 
-# Solution 4: SSE Streaming for Chat Responses
+# Solution 4: SSE Streaming Implementation Plan
 
-## The Challenge
+## Overview
 
-The AI returns **structured JSON** (`{"empathy": "...", "question": "...", "inputType": "...", "inputConfig": {...}}`). You can't stream JSON token-by-token to the frontend because you need the complete object to extract fields. This is the core tension.
+Add streaming to the chat edge function so that empathy text appears within ~1 second and the question streams in real-time, replacing the artificial typewriter animation. The backend will call the AI gateway with `stream: true`, perform incremental JSON extraction from the token stream, and emit custom SSE events. The frontend will consume these events and render content as it arrives.
 
-## Approach: Two-Phase SSE Stream
+## Backend Changes (`supabase/functions/chat/index.ts`)
 
-Instead of streaming raw tokens, use a **two-phase approach**:
+### 1. Add `callAIStreaming()` function (after existing `callAI` at ~line 532)
 
-1. **Phase 1**: The edge function calls the AI with `stream: true`, buffers the full response internally, parses the JSON
-2. **Phase 2**: Sends parsed fields to the frontend as discrete SSE events, with the `question` field streamed character-by-character
+A new function that calls the AI gateway with `stream: true` and returns the raw `ReadableStream` body. Same parameters as `callAI` but returns the response body stream instead of a parsed string.
 
-This gives us fast time-to-first-token (the empathy text arrives as soon as JSON is parsed) and the question streams in real-time, replacing the artificial `useTypewriter` animation with actual streaming.
+### 2. Add `streamSSEResponse()` helper
 
-```text
-SSE Event Flow:
-  event: empathy     → data: "Thanks for sharing that."     (~1.5s after request)
-  event: question    → data: "W"                             (~1.5s)
-  event: question    → data: "Wh"                            (...)
-  event: question    → data: "Wha"                           (...)
-  ...
-  event: question    → data: "What would help?"              (~1.8s)
-  event: metadata    → data: {"inputType":"text",...}         (~1.8s)
-  event: done        → data: {"shouldComplete":false,...}     (~1.8s)
+This function takes the AI stream, reads tokens incrementally, buffers them, and performs regex-based extraction:
+
+- Accumulates all content deltas into a buffer string
+- After each delta, attempts to extract `"empathy"` value via regex: `/"empathy"\s*:\s*"((?:[^"\\]|\\.)*)"/`
+- Once empathy is found, emits an SSE `event: empathy` immediately
+- Watches for `"question": "` marker in the buffer, then emits each subsequent character batch as `event: question_delta`
+- When the stream ends, parses the complete JSON for `inputType`/`inputConfig` and emits `event: metadata`
+- Emits `event: done` with completion flags (`shouldComplete`, `structuredSummary`, `themeProgress`)
+
+SSE format:
 ```
-
-Wait — this is over-engineering it. The real bottleneck is the **AI inference time** (~1.5-3s). Streaming character-by-character from a buffered response adds no value since we already have the typewriter effect doing that.
-
-## Revised Approach: Stream the AI Call Itself
-
-The Lovable AI gateway supports OpenAI-compatible streaming (`stream: true`). Instead of buffering the full response, we:
-
-1. Call AI with `stream: true`
-2. Forward the raw token stream as SSE to the frontend  
-3. The frontend accumulates tokens, attempts JSON parse on each chunk
-4. Once JSON is parseable, extract `empathy` → show immediately, then stream `question` tokens as they arrive
-
-But this is fragile — partial JSON won't parse until it's nearly complete, and `inputType`/`inputConfig` won't be available until the very end.
-
-## Pragmatic Solution: Keep JSON, Stream the Gateway Response
-
-The simplest high-impact approach:
-
-1. **Backend**: Call AI gateway with `stream: true`, accumulate the full streamed response (faster than non-streaming because first token arrives sooner and we can detect errors earlier), then send the parsed result as a normal JSON response
-2. **Frontend**: No changes needed — the typewriter effect already provides perceived streaming
-
-This doesn't reduce perceived latency much. Let me think about what actually will.
-
-## Final Design: Hybrid Stream
-
-The real win is sending the **empathy** and **question** as separate SSE events as soon as we can parse them from the streaming AI response, while metadata (`inputType`, `themeProgress`, etc.) comes as a final event.
-
-### Backend Changes (`supabase/functions/chat/index.ts`)
-
-**New function: `callAIStreaming`** — wraps the AI gateway with `stream: true`, returns an async iterator of content chunks.
-
-**New function: `streamParsedResponse`** — buffers chunks, attempts incremental JSON extraction:
-- As soon as `"empathy"` value is complete → emit SSE `empathy` event
-- As soon as `"question"` value starts → emit SSE `question_start`, then stream each new character as `question_delta`
-- When complete → emit `metadata` event with `inputType`, `inputConfig`, `shouldComplete`, `themeProgress`
-- Emit `done` event
-
-**Response format change**: For streaming-capable requests (frontend sends `Accept: text/event-stream`), return SSE. For non-streaming (backward compat), return JSON as before.
-
-### Frontend Changes
-
-**`src/hooks/useChatAPI.ts` → `sendMessage`**: 
-- Add `Accept: text/event-stream` header
-- Use `EventSource` or manual `ReadableStream` reader on the response
-- On `empathy` event → set empathy immediately (no typewriter needed — it's already fast)
-- On `question_start` → begin showing question
-- On `question_delta` → append to displayed question (replaces typewriter)
-- On `metadata` → set `inputType`, `inputConfig`, `themeProgress`
-- On `done` → set `shouldComplete`, `structuredSummary`, finalize
-
-**`src/components/employee/AIResponseDisplay.tsx`**:
-- Add a `streaming` mode where `question` updates incrementally (bypasses `useTypewriter`)
-- When `streaming=true`, render `question` directly with cursor instead of typewriter
-
-**`src/components/employee/FocusedInterviewInterface.tsx`**:
-- Update `handleSubmit` to use streaming fetch
-- Manage streaming state: `isStreaming`, incremental `currentQuestion` updates
-
-### SSE Protocol
-
-```text
 event: empathy
 data: Thanks for sharing that.
-
-event: question_start
-data: 
 
 event: question_delta
 data: What
 
-event: question_delta  
-data: What would
-
 event: question_delta
 data: What would help
 
-event: question_delta
-data: What would help improve
-
-event: question_delta
-data: What would help improve this?
-
 event: metadata
-data: {"inputType":"text","themeProgress":{...}}
+data: {"inputType":"text","inputConfig":{},"themeProgress":{...}}
 
 event: done
 data: {"shouldComplete":false}
 ```
 
-### Incremental JSON Parsing Strategy
+### 3. Modify the two main AI call paths to support streaming
 
-The AI returns `{"empathy": "...", "question": "...", "inputType": "..."}`. As tokens stream in:
+**Detection**: Check if the incoming request has `Accept: text/event-stream` header. If yes, use streaming path. If no, use existing JSON path (backward compatibility).
 
-1. Buffer all tokens into a string
-2. After each token, check if we can extract `empathy` using regex: `/"empathy"\s*:\s*"([^"]*)"/`
-3. Once empathy is extracted → emit `empathy` SSE event immediately  
-4. For question: watch for `"question": "` marker, then stream every subsequent character until closing `"`
-5. After stream ends, parse full JSON for `inputType`/`inputConfig`
+**Preview mode path (~line 863)**: Replace the `callAI` + JSON response with `callAIStreaming` + `streamSSEResponse` when streaming is requested. The response will be `new Response(readableStream, { headers: { "Content-Type": "text/event-stream", ...corsHeaders } })`.
 
-This means empathy appears **as soon as the AI generates it** (typically within the first ~20 tokens), and the question streams in real-time.
+**Authenticated path (~line 1532)**: Same change. The DB insert and background classification still happen — the stream emits the AI response while a callback after stream completion handles the DB write and background task kick-off.
 
----
+**Completion path (~line 1788)**: For the `shouldComplete` flow, the structured summary AI call still uses non-streaming `callAI` (it's a small fast call to the lite model). The summary is included in the `done` SSE event.
 
-## Files to Change
+**Introduction triggers**: These return static/pre-computed messages, so they continue to use JSON responses (no streaming needed for instant responses).
 
-| File | Changes |
-|------|---------|
-| `supabase/functions/chat/index.ts` | Add `callAIStreaming()` function. Modify the two main response paths (preview ~line 863 and authenticated ~line 1532) to use streaming when client requests it. Add SSE response helpers. |
-| `src/hooks/useChatAPI.ts` | Update `sendMessage` and `triggerIntroduction` to use streaming fetch with `ReadableStream` reader. Parse SSE events incrementally. |
-| `src/components/employee/AIResponseDisplay.tsx` | Add `streaming` prop that bypasses typewriter and renders question text directly with cursor animation. |
-| `src/components/employee/FocusedInterviewInterface.tsx` | Update `handleSubmit` to use streaming. Manage `isStreaming` state. Pass streaming question/empathy updates to `AIResponseDisplay`. |
-| `src/hooks/useTypewriter.ts` | No changes needed — streaming mode bypasses it entirely. |
+### 4. Handle DB save timing for streaming
+
+The DB insert currently happens before the response is sent. With streaming, we need to:
+- Start the AI stream and pipe SSE events to the client immediately
+- Buffer the complete AI response text as we stream it
+- After the stream ends, perform the DB insert and kick off background classification
+- Use `EdgeRuntime.waitUntil()` for the DB save so it doesn't block the SSE connection close
+
+## Frontend Changes
+
+### 1. `src/components/employee/FocusedInterviewInterface.tsx` — Update `handleSubmit`
+
+Replace the current `fetch` + `response.json()` pattern (lines 299-383) with a streaming fetch:
+
+- Add `Accept: text/event-stream` header to the fetch request
+- Read the response body as a `ReadableStream` using `getReader()`
+- Parse SSE events line-by-line (using the pattern from the knowledge doc)
+- Handle custom events:
+  - `empathy` → call `setCurrentEmpathy(data)` immediately
+  - `question_delta` → call `setCurrentQuestion(data)` (accumulative — each delta is the full question so far)
+  - `metadata` → set `inputType`, `inputConfig`, `themeProgress`
+  - `done` → set `shouldComplete`/`structuredSummary`, finalize loading state
+- Add `isStreaming` state to distinguish streaming mode from typewriter mode
+- Add fallback: if response content-type is `application/json` (non-streaming), fall back to existing JSON parsing logic
+
+### 2. `src/components/employee/AIResponseDisplay.tsx` — Add streaming mode
+
+Add a `streaming` prop to the component interface:
+
+```typescript
+interface AIResponseDisplayProps {
+  empathy?: string;
+  question: string;
+  isLoading?: boolean;
+  isTransitioning?: boolean;
+  streaming?: boolean;  // NEW
+  onTypingComplete?: () => void;
+}
+```
+
+When `streaming=true`:
+- Bypass both `useTypewriter` hooks entirely
+- Render `empathy` and `question` directly as they update via props
+- Show the blinking cursor while `question` is still growing (detect via prop changes)
+- Call `onTypingComplete` when streaming finishes (signaled by parent setting `streaming=false`)
+
+When `streaming=false` (default): existing typewriter behavior unchanged.
+
+### 3. `src/components/employee/FocusedInterviewInterface.tsx` — Pass streaming state
+
+- Pass `streaming={isStreaming}` to `AIResponseDisplay`
+- When streaming completes (on `done` event), set `isStreaming=false` and `isTypingComplete=true`
+- The input field remains disabled during streaming (same as during typewriter)
+
+## Files Changed
+
+| File | What |
+|------|------|
+| `supabase/functions/chat/index.ts` | Add `callAIStreaming()`, `streamSSEResponse()`. Modify preview path (~line 863) and authenticated path (~line 1532) to use streaming when `Accept: text/event-stream`. Handle DB save after stream. |
+| `src/components/employee/AIResponseDisplay.tsx` | Add `streaming` prop that bypasses typewriter hooks and renders text directly with cursor. |
+| `src/components/employee/FocusedInterviewInterface.tsx` | Update `handleSubmit` to use streaming fetch with SSE parsing. Add `isStreaming` state. Pass to `AIResponseDisplay`. |
 
 ## Backward Compatibility
 
-- If the frontend doesn't send `Accept: text/event-stream`, the backend returns JSON as before (no breaking change)
-- The `useChatAPI.ts` hook (used by `ChatInterface`) and `FocusedInterviewInterface` (direct fetch) both get streaming support
-- `handleFinalResponse` and `handleConfirmFinishEarly` in `useChatAPI` keep using JSON (these are completion flows where streaming adds little value)
+- Non-streaming clients (no `Accept: text/event-stream` header) get JSON as before
+- `useChatAPI.ts` hook (used by `ChatInterface.tsx`) is NOT changed — it continues using JSON. Only `FocusedInterviewInterface` gets streaming since it's the primary interview experience
+- Introduction triggers and completion summary generation remain JSON-based
+- If streaming fetch fails mid-stream, fall back to error handling same as current
 
-## Expected Latency Improvement
+## Technical Details
 
-| Metric | Before | After Streaming |
-|--------|--------|----------------|
+### Incremental JSON Extraction Strategy
+
+The AI returns tokens like: `{`, `"em`, `pathy`, `": "`, `Thanks`, ` for`, ` sharing`, `."`, `, "`, `quest`, `ion"`, `: "`, `What`, ` would`, ` help`, `?"`, `}`
+
+Extraction approach:
+1. Buffer all content deltas into a single string
+2. After each delta, check for completed empathy: `/"empathy"\s*:\s*"((?:[^"\\]|\\.)*)"/` — emit once matched
+3. For question: track position after `"question": "` marker, emit cumulative text for each new character batch
+4. Handle escaped quotes in values (`\"`) correctly
+5. After stream ends: full `JSON.parse` for `inputType`/`inputConfig` (these are short values at the end)
+
+### SSE Event Format (custom, not OpenAI-compatible)
+
+Each event uses the standard SSE format with custom event types:
+```
+event: empathy\ndata: <text>\n\n
+event: question_delta\ndata: <cumulative text>\n\n
+event: metadata\ndata: <json>\n\n
+event: done\ndata: <json>\n\n
+```
+
+The frontend parser reads `event:` lines to determine type, then `data:` lines for content. This is simpler than parsing OpenAI-format SSE on the frontend since we control both sides.
+
+## Expected Impact
+
+| Metric | Before | After |
+|--------|--------|-------|
 | Time to empathy visible | 2-3s | ~0.8-1.2s |
-| Time to first question character | 2-3s + typewriter delay | ~1.0-1.5s |
-| Total question visible | 2-3s + typewriter (1-2s) | ~1.5-2.5s (real-time) |
-| Perceived wait (blank screen) | 2-3s | ~0.8s |
-
-The main win: the user sees **empathy text within ~1 second** instead of staring at loading dots for 2-3 seconds. The question then streams in naturally instead of via artificial typewriter animation.
+| Time to first question char | 2-3s + typewriter | ~1.0-1.5s |
+| Perceived blank screen wait | 2-3s | ~0.8s |
 
