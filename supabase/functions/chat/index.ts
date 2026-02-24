@@ -20,7 +20,6 @@ const PREVIEW_RATE_LIMIT_MAX_REQUESTS = 5; // Stricter limit for unauthenticated
 const PREVIEW_RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
 const MAX_MESSAGE_LENGTH = 2000;
 const MIN_EXCHANGES = 6; // Minimum exchanges for meaningful conversation
-const MAX_EXCHANGES = 20; // Maximum exchanges to prevent overly long conversations
 const AI_MODEL = "google/gemini-2.5-flash";
 const AI_MODEL_LITE = "google/gemini-2.5-flash-lite";
 
@@ -122,18 +121,13 @@ const shouldCompleteBasedOnThemes = (
 ): boolean => {
   if (!themes || themes.length === 0) {
     // No themes specified - use exchange count as fallback
-    return turnCount >= 8 && turnCount <= MAX_EXCHANGES;
+    return turnCount >= 8;
   }
 
-  // Hard minimum: at least themes.length * 2 or MIN_EXCHANGES, whichever is larger
-  const hardMinimum = Math.max(MIN_EXCHANGES, themes.length * 2);
+  // Hard minimum: at least themes.length + 2 or MIN_EXCHANGES, whichever is larger
+  const hardMinimum = Math.max(MIN_EXCHANGES, themes.length + 2);
   if (turnCount < hardMinimum) {
     return false;
-  }
-
-  // Cap at maximum to prevent overly long conversations
-  if (turnCount >= MAX_EXCHANGES) {
-    return true;
   }
 
   // Count unique themes discussed
@@ -154,7 +148,7 @@ const shouldCompleteBasedOnThemes = (
     return false;
   }
 
-  // Depth check: average at least 2 exchanges per discussed theme
+  // Depth check: average at least 1 exchange per discussed theme
   const themeExchangeCounts = new Map<string, number>();
   previousResponses.forEach(r => {
     if (r.theme_id) {
@@ -166,7 +160,7 @@ const shouldCompleteBasedOnThemes = (
     ? Array.from(themeExchangeCounts.values()).reduce((a, b) => a + b, 0) / discussedCount
     : 0;
 
-  if (avgExchangesPerTheme < 2) {
+  if (avgExchangesPerTheme < 1) {
     console.log(`[shouldCompleteBasedOnThemes] turnCount=${turnCount}, allTouched=true, avgDepth=${avgExchangesPerTheme.toFixed(1)} — insufficient depth, continuing`);
     return false;
   }
@@ -299,10 +293,9 @@ ${lastSentiment === "positive" ?
   "- The employee is positive. Great! Also explore if there are any areas for improvement to ensure balanced feedback." : ""}
 ${uncoveredThemes.length > 0 ? 
   `\nCRITICAL: These themes have NOT been discussed yet: ${uncoveredThemes.map((t: any) => t.name).join(", ")}.\nYou MUST transition to one of these themes in your next question.\nDo NOT wrap up or suggest completion until all themes are covered.\n` : ""}
-${isNearCompletion && uncoveredThemes.length === 0 && previousResponses.length >= MIN_EXCHANGES ? 
-  `- You have gathered good insights across ${discussedThemeIds.size} themes. Start moving toward a natural conclusion. Ask if there's anything else important they'd like to share, then thank them warmly.` : ""}
+${isNearCompletion && uncoveredThemes.length === 0 ? 
+  `- All themes covered with good depth. Start moving toward a natural conclusion. Ask if there's anything else important they'd like to share, then thank them warmly.` : ""}
 ${previousResponses.length >= 3 ? "- Reference earlier points when relevant to build on what they've shared." : ""}
-${previousResponses.length < MIN_EXCHANGES ? "- Continue exploring to gather sufficient depth. Ask specific follow-up questions to get concrete examples." : ""}
 `;
 };
 
@@ -406,9 +399,10 @@ NEUTRAL STANCE:
 ${introGuidance}
 
 FLOW:
-- Explore themes with 2-3 exchanges each
-- Cover 60%+ themes before concluding
-- When done: ask if anything else, then thank briefly
+- 1-2 follow-ups per theme, then move on naturally
+- Cover ALL themes before concluding
+- Do NOT linger on any single theme — after 2 exchanges, transition with a brief bridging sentence
+- When all themes covered: ask if anything else, then thank briefly
 
 ${conversationContext}`;
 };
