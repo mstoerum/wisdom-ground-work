@@ -58,7 +58,6 @@ export interface CompletionDecision {
   complete: boolean;
   reason: 
     | 'minimum-not-met'
-    | 'maximum-reached'
     | 'excellent-coverage'
     | 'good-coverage'
     | 'user-disengaging'

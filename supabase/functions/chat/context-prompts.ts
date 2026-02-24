@@ -28,7 +28,7 @@ const INPUT_TYPES = `INPUT TYPES (vary every 2-3 text exchanges):
 
 RHYTHM: Text for first 2-3 exchanges, then alternate: text → interactive → text → text → interactive. Text dominates (60-70%). Never two interactive types in a row.`;
 
-const THEME_TRANSITIONS = `THEME TRANSITIONS: After 2-3 exchanges on a theme, use "word_cloud" with remaining undiscussed themes to let participant choose next. Optionally use "agreement_spectrum" to validate understanding before transitioning. Use "sentiment_pulse" between themes as a temperature check.`;
+const THEME_TRANSITIONS = `THEME TRANSITIONS: After 1-2 follow-ups on a theme, transition naturally to the next undiscussed theme with a brief bridging sentence. Do NOT use word_cloud for theme transitions. Do NOT ask the participant which theme to explore next — you decide based on conversational flow. Example bridge: "Thanks for that insight. Shifting gears a bit —" then ask about the next theme.`;
 
 const EMPATHY_RULES = `EMPATHY: Acknowledge the person, not the content. Scale: 3-5 words (low) → 5-8 (medium) → 8-12 (high). For negative feedback: acknowledge perspective, redirect to improvement. Never validate criticism as fact, mirror emotions, or name emotions directly. Use null for first message only.`;
 
@@ -70,8 +70,8 @@ EXAMPLES:
 Student: "The lectures were really disorganized."
 ✓ {"empathy": "Thanks for sharing that perspective.", "question": "What would have made them clearer for you?", "inputType": "text", "inputConfig": {}}
 
-[After 2-3 exchanges, transitioning]
-✓ {"empathy": "Thanks for that perspective.", "question": "Which of these would you like to explore next?", "inputType": "word_cloud", "inputConfig": {"options": ["Course Content", "Assessments", "Learning Resources"], "allowOther": false, "maxSelections": 1}}
+[After 1-2 follow-ups, transitioning naturally]
+✓ {"empathy": "Thanks for that perspective.", "question": "Shifting gears — how did you find the assessment methods used in this course?", "inputType": "text", "inputConfig": {}}
 
 QUESTION GUIDELINES:
 - Direct and specific - no preamble or repetition
@@ -84,13 +84,10 @@ ${themesText}
 
 CONVERSATION FLOW:
 1. Start with the provided first question - do NOT ask open-ended or scale-based questions
-2. Explore dimensions systematically - aim for 2-3 exchanges per dimension
-3. Ask specific follow-ups to get concrete examples
-4. Transition naturally between dimensions after adequate depth
-5. Adaptively conclude when dimensions are adequately explored:
-   - Minimum 4 exchanges for meaningful evaluation
-   - Aim for 60%+ dimension coverage with 2+ exchanges each, OR 80%+ coverage
-   - When near completion, ask "Anything else?" then thank briefly
+2. Explore each dimension with 1-2 follow-ups, then move on — do NOT linger
+3. Transition naturally with a brief bridging sentence (do NOT use word_cloud for transitions)
+4. Cover ALL dimensions before attempting to conclude
+5. When all dimensions covered: ask "Anything else?" then thank briefly
 
 ${conversationContext}
 
@@ -116,8 +113,8 @@ EXAMPLES:
 Employee: "My manager never listens to anyone."
 ✓ {"empathy": "Thank you for sharing that perspective.", "question": "What would better communication look like for you?", "inputType": "text", "inputConfig": {}}
 
-[After 2-3 exchanges, transitioning]
-✓ {"empathy": "Thanks for that perspective.", "question": "Which of these would you like to explore next?", "inputType": "word_cloud", "inputConfig": {"options": ["Career Growth", "Work-Life Balance", "Leadership"], "allowOther": false, "maxSelections": 1}}
+[After 1-2 follow-ups, transitioning naturally]
+✓ {"empathy": "Thanks for that perspective.", "question": "Shifting gears a bit — how would you describe the growth opportunities available to you?", "inputType": "text", "inputConfig": {}}
 
 PROBING LENSES: Expertise (skills used?), Autonomy (control over work?), Justice (fair rewards?), Social Connection (team bonds?), Social Status (valued/recognized?). Identify which dimension drives their feedback and probe deeper.
 
@@ -132,13 +129,10 @@ ${themesText}
 
 CONVERSATION FLOW:
 1. Start with the provided first question
-2. Explore themes systematically - aim for 2-3 exchanges per theme
-3. Ask specific follow-ups to get concrete examples
-4. Transition naturally between themes after adequate depth
-5. Adaptively conclude when themes are adequately explored:
-   - Minimum 4 exchanges for meaningful conversation
-   - Aim for 60%+ theme coverage with 2+ exchanges each, OR 80%+ coverage
-   - When near completion, ask "Anything else?" then thank briefly
+2. Explore each theme with 1-2 follow-ups, then move on — do NOT linger
+3. Transition naturally with a brief bridging sentence (do NOT use word_cloud for transitions)
+4. Cover ALL themes before attempting to conclude
+5. When all themes covered: ask "Anything else?" then thank briefly
 
 ${conversationContext}
 
@@ -180,13 +174,8 @@ export const buildConversationContextForType = (
   // Build interactive element reminders based on exchange count
   let interactiveReminder = "";
   if (exchangeCount >= 2 && exchangeCount <= 3) {
-    interactiveReminder = `\n⚡ MANDATORY: You MUST use an interactive inputType (not "text") for this response. Choose "sentiment_pulse", "confidence_check", or "word_cloud".`;
-  } else if (exchangeCount >= 5 && exchangeCount <= 6) {
-    const themeOptions = undiscussedThemes.length > 0 
-      ? `Use "word_cloud" with these options: ${JSON.stringify(undiscussedThemes.slice(0, 5))} to let the participant choose what to discuss next.`
-      : `Use "sentiment_pulse" or "agreement_spectrum" as a mid-conversation check.`;
-    interactiveReminder = `\n⚡ MANDATORY: Time for an interactive element. ${themeOptions}`;
-  } else if (exchangeCount >= 8) {
+    interactiveReminder = `\n⚡ SUGGESTED: Consider using an interactive inputType like "sentiment_pulse" or "confidence_check" to add variety.`;
+  } else if (exchangeCount >= 6) {
     interactiveReminder = `\n⚡ SUGGESTED: Consider using "agreement_spectrum" to validate your understanding before wrapping up.`;
   }
   
