@@ -1543,25 +1543,9 @@ Return ONLY valid JSON in this exact format:
 
       // IMPORTANT: Don't save the [START_CONVERSATION] trigger to database
     if (!isIntroductionTrigger) {
-      // Run sentiment, theme, and urgency detection in PARALLEL for faster response
-      const [sentimentResult, detectedThemeId, isUrgent] = await Promise.all([
-        analyzeSentiment(LOVABLE_API_KEY, sanitizedContent),
-        detectTheme(LOVABLE_API_KEY, sanitizedContent, themes || []),
-        detectUrgency(LOVABLE_API_KEY, sanitizedContent)
-      ]);
-      const { sentiment, score: sentimentScore } = sentimentResult;
-
-      // Store response in database (use sanitized content)
-      console.log("Attempting to insert response:", {
-        conversationId,
-        surveyId: session?.survey_id,
-        hasContent: !!sanitizedContent,
-        hasAiMessage: !!aiMessage,
-        sentiment,
-        themeId: detectedThemeId
-      });
-
-      console.log(`[${conversationId}] Attempting to save response to database...`);
+      // PERF: Insert response immediately WITHOUT waiting for classification
+      // Classification (sentiment, theme, urgency) runs in background via EdgeRuntime.waitUntil()
+      console.log(`[${conversationId}] Inserting response immediately (classification deferred to background)...`);
       const { data: insertedResponse, error: insertError } = await supabase
         .from("responses")
         .insert({
@@ -1569,10 +1553,10 @@ Return ONLY valid JSON in this exact format:
           survey_id: session?.survey_id,
           content: sanitizedContent,
           ai_response: aiMessage,
-          sentiment,
-          sentiment_score: sentimentScore,
-          theme_id: detectedThemeId,
-          urgency_escalated: isUrgent,
+          sentiment: null,          // Will be filled by background task
+          sentiment_score: null,    // Will be filled by background task
+          theme_id: null,           // Will be filled by background task
+          urgency_escalated: false, // Will be updated by background task if urgent
           created_at: new Date().toISOString(),
         })
         .select()
@@ -1608,10 +1592,39 @@ Return ONLY valid JSON in this exact format:
         sentiment,
       });
 
-      // SPRINT 1: Background LLM analysis - fire and forget for faster response
+      // PERF: Background task handles ALL classification + analysis (not blocking response)
       if (insertedResponse?.id) {
         const backgroundTask = async () => {
           try {
+            // Step 1: Run classification (sentiment, theme, urgency) in parallel
+            console.log(`[${conversationId}] [BACKGROUND] Starting classification...`);
+            const [sentimentResult, detectedThemeId, isUrgent] = await Promise.all([
+              analyzeSentiment(LOVABLE_API_KEY, sanitizedContent),
+              detectTheme(LOVABLE_API_KEY, sanitizedContent, themes || []),
+              detectUrgency(LOVABLE_API_KEY, sanitizedContent)
+            ]);
+            const { sentiment, score: sentimentScore } = sentimentResult;
+
+            console.log(`[${conversationId}] [BACKGROUND] Classification complete:`, {
+              sentiment, sentimentScore, detectedThemeId, isUrgent
+            });
+
+            // Step 2: Update response with classification results
+            const { error: classifyError } = await supabase
+              .from("responses")
+              .update({
+                sentiment,
+                sentiment_score: sentimentScore,
+                theme_id: detectedThemeId,
+                urgency_escalated: isUrgent,
+              })
+              .eq("id", insertedResponse.id);
+
+            if (classifyError) {
+              console.error(`[${conversationId}] [BACKGROUND] Failed to update classification:`, classifyError);
+            }
+
+            // Step 3: LLM deep analysis (existing behavior)
             console.log(`[${conversationId}] [BACKGROUND] Starting LLM analysis...`);
             
             const analysisResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -1687,7 +1700,6 @@ Return ONLY valid JSON in this exact format:
                   urgency_reason: analysis.urgency_reason
                 });
 
-                // Update response with analysis results
                 const { error: updateError } = await supabase
                   .from("responses")
                   .update({
@@ -1706,23 +1718,33 @@ Return ONLY valid JSON in this exact format:
               console.error(`[${conversationId}] [BACKGROUND] LLM analysis failed:`, await analysisResponse.text());
             }
           } catch (analysisError) {
-            console.error(`[${conversationId}] [BACKGROUND] Error during LLM analysis:`, analysisError);
+            console.error(`[${conversationId}] [BACKGROUND] Error during background tasks:`, analysisError);
           }
 
-          // If urgent, create escalation log entry
-          if (isUrgent) {
-            console.log(`[${conversationId}] [BACKGROUND] Urgent issue detected, logging escalation...`);
-            const { error: escalationError } = await supabase.from("escalation_log").insert({
-              response_id: insertedResponse.id,
-              escalation_type: 'ai_detected',
-              escalated_at: new Date().toISOString(),
-            });
+          // If urgent, create escalation log entry (use fresh check since isUrgent is in closure)
+          try {
+            const { data: freshResponse } = await supabase
+              .from("responses")
+              .select("urgency_escalated")
+              .eq("id", insertedResponse.id)
+              .single();
+            
+            if (freshResponse?.urgency_escalated) {
+              console.log(`[${conversationId}] [BACKGROUND] Urgent issue detected, logging escalation...`);
+              const { error: escalationError } = await supabase.from("escalation_log").insert({
+                response_id: insertedResponse.id,
+                escalation_type: 'ai_detected',
+                escalated_at: new Date().toISOString(),
+              });
 
-            if (escalationError) {
-              console.error(`[${conversationId}] [BACKGROUND] Failed to log escalation:`, escalationError);
-            } else {
-              console.log(`[${conversationId}] [BACKGROUND] ✅ Escalation logged successfully`);
+              if (escalationError) {
+                console.error(`[${conversationId}] [BACKGROUND] Failed to log escalation:`, escalationError);
+              } else {
+                console.log(`[${conversationId}] [BACKGROUND] ✅ Escalation logged successfully`);
+              }
             }
+          } catch (escError) {
+            console.error(`[${conversationId}] [BACKGROUND] Escalation check error:`, escError);
           }
 
           // Log to audit logs (only for authenticated users)
@@ -1734,9 +1756,6 @@ Return ONLY valid JSON in this exact format:
               resource_id: conversationId,
               metadata: {
                 survey_id: session?.survey_id,
-                theme_id: detectedThemeId,
-                sentiment: sentiment,
-                urgency_escalated: isUrgent,
               },
             });
           }
@@ -1746,40 +1765,23 @@ Return ONLY valid JSON in this exact format:
 
         // Fire and forget - don't block the response
         EdgeRuntime.waitUntil(backgroundTask());
-        console.log(`[${conversationId}] Background analysis task queued, returning response immediately`);
+        console.log(`[${conversationId}] Background task queued (classification + analysis), returning response immediately`);
       }
     }
 
-    // Build theme progress - for non-introduction messages, re-fetch the latest detected theme
-    // For introduction trigger, just use previous responses
-    let currentThemeId: string | null = null;
+    // PERF: Build theme progress from in-memory data instead of re-fetching from DB
+    // For non-introduction messages, use previousResponses (already fetched) + the new response
     let updatedResponses: any[] = previousResponses || [];
-    
     if (!isIntroductionTrigger) {
-      // Get the most recent response's theme_id (we just inserted it)
-      const { data: latestResponse } = await supabase
-        .from("responses")
-        .select("theme_id")
-        .eq("conversation_session_id", conversationId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-      
-      currentThemeId = latestResponse?.theme_id || null;
-      
-      // Re-fetch all responses to get accurate progress
-      const { data: allResponses } = await supabase
-        .from("responses")
-        .select("theme_id")
-        .eq("conversation_session_id", conversationId);
-      
-      updatedResponses = allResponses || [];
+      // Append current response to in-memory list (theme_id is null since classification is background)
+      // This is fine - theme progress will be slightly behind by one exchange
+      updatedResponses = [...(previousResponses || []), { theme_id: null }];
     }
     
     const themeProgress = buildThemeProgress(
       updatedResponses,
       themes || [],
-      currentThemeId
+      null // theme_id for current response not yet available (background classification)
     );
 
     // If shouldComplete is true, ALWAYS generate structured summary and proper completion flags
