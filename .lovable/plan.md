@@ -1,45 +1,98 @@
 
 
-# Fix Typewriter Text Jumping in AIResponseDisplay
+# End-of-Conversation: Employee-Driven Topic Exploration
 
-## Problem
+## Summary
 
-The `AIResponseDisplay` component uses `text-center` and `justify-center` on a flex container. As the typewriter reveals characters, the text block grows in width and height, causing the entire paragraph to reflow and shift on every character. This makes it impossible to read because:
+When all HR-configured themes are covered, the AI will offer a `word_cloud` with **new topics the employee might care about** — things not in the survey but inferred from conversation hints. This gives employees agency to surface what matters to them. The existing mid-conversation `word_cloud` for narrowing sub-topics within a theme stays unchanged.
 
-1. The container is centered (`flex items-center justify-center text-center`) — as text wraps to new lines, everything re-centers vertically and horizontally
-2. The text size is large (`text-xl md:text-2xl`) so line breaks happen frequently
-3. Each new character can cause a line break, shifting all previous text
+## Flow
 
-## Solution
+```text
+Main conversation (unchanged):
+  Theme A → word_cloud to pick sub-topic → follow-up → bridge
+  Theme B → follow-up → bridge
+  Theme C → word_cloud to pick sub-topic → follow-up
 
-Reserve the full space for the text upfront so it doesn't reflow during typing. Two changes:
+End-of-conversation (new):
+  AI: "We've covered the main topics. Anything else on your mind?"
+  [Career Growth] [Compensation] [Team Culture] [Something else…] [I'm all good]
 
-### `src/components/employee/AIResponseDisplay.tsx`
+  Employee picks "Career Growth" →
+  AI: 1-2 questions exploring career growth →
+  AI: "Anything else?"
+  [Compensation] [Team Culture] [Something else…] [I'm all good]
 
-1. **Render the full text invisibly** to reserve the correct height and width, then overlay the visible typewriter text on top. This prevents layout shifts as characters are revealed.
+  Employee picks "I'm all good" → Summary Receipt → Complete
+```
 
-   The approach: wrap the text area in a `relative` container. Render the full final text with `visibility: hidden` (takes up space but isn't seen), and position the typewriter text absolutely on top of it with `text-left` alignment.
+## Technical Changes
 
-2. **Change from `text-center` to `text-left`** — left-aligned text doesn't reflow when new characters are added (new characters only appear at the end of the last line). Center-aligned text causes every line to re-center when wrapping changes.
+### 1. `supabase/functions/chat/context-prompts.ts`
 
-### Specific changes
+**Update step 5** in both `getEmployeeSatisfactionPrompt` (line 135) and `getCourseEvaluationPrompt` (line 90):
 
-**Line 68-70** — the motion.div wrapper:
-- Change `className` from `"flex items-center justify-center text-center px-4 max-w-2xl"` to `"flex items-center justify-center px-4 max-w-2xl w-full"`
+From:
+```
+5. When all themes covered: ask "Anything else?" then thank briefly
+```
 
-**Lines 76-93** — the `<p>` element:
-- Wrap in a `relative` div
-- Add a hidden copy of the full text (empathy + question) to reserve space
-- Position the typewriter text absolutely over it with `text-left`
-- This ensures the container never changes size during typing
+To:
+```
+5. When all themes covered: offer a word_cloud with 3-4 NEW topics NOT in the survey themes.
+   Infer relevant topics from conversation hints (e.g. mentions of workload → "Work-Life Balance",
+   mentions of skills → "Career Growth", mentions of pay → "Compensation").
+   Always include "I'm all good" as the last option. Set allowOther to true and maxSelections to 1.
+   If they pick a topic, explore it with 1-2 questions, then offer another word_cloud
+   (minus explored topics) with "I'm all good". If they pick "I'm all good", thank them briefly.
+```
 
-### Result
+**Add example** to the EXAMPLES section in both prompts:
+```json
+{"empathy": "Thanks for sharing all of that.", "question": "We've covered the main topics. Is there anything else on your mind?", "inputType": "word_cloud", "inputConfig": {"options": ["Career Growth", "Team Culture", "Work-Life Balance", "I'm all good"], "maxSelections": 1, "allowOther": true}}
+```
 
-The text area reserves its final dimensions immediately. As characters type in, they fill the space left-to-right without causing any layout reflow. The reading experience becomes smooth and stable.
+**Keep unchanged**: The `word_cloud` input type definition (line 23) and its use for narrowing sub-topics within a theme.
 
-### Files changed
+### 2. `supabase/functions/chat/index.ts`
 
-| File | What changes |
-|------|-------------|
-| `src/components/employee/AIResponseDisplay.tsx` | Add invisible space-reserving text, overlay typewriter text with absolute positioning, switch to left-aligned text |
+**Update adaptive instructions** (lines 296-297) for the `isNearCompletion && uncoveredThemes.length === 0` case:
+
+From:
+```
+All themes covered with good depth. Start moving toward a natural conclusion.
+Ask if there's anything else important they'd like to share, then thank them warmly.
+```
+
+To:
+```
+All themes covered. Offer a word_cloud with 3-4 NEW topics NOT in the survey themes.
+Infer from conversation hints (e.g. mentions of workload → "Work-Life Balance",
+mentions of skills → "Career Growth"). Always include "I'm all good" as last option.
+Set allowOther: true, maxSelections: 1.
+If user selected "[SELECTED: I'm all good]", proceed to completion and generate structuredSummary.
+If they selected a topic, explore with 1-2 questions then offer word_cloud again.
+```
+
+**Add detection** for `[SELECTED: I'm all good]` in the user message processing: when detected, set `shouldComplete: true` and generate the structured summary to trigger the existing summary receipt flow.
+
+### 3. Delete `src/components/employee/ThemeSelector.tsx`
+
+This component is unused — never imported in the interview flow. The `WordCloudSelector` component handles all chip-based selection. The HR wizard's `ThemeSelector` (`src/components/hr/wizard/ThemeSelector.tsx`) is a completely different component and stays.
+
+## What stays unchanged
+
+- `WordCloudSelector` component — handles chip UI for both mid-conversation sub-topics and the new end-of-conversation topics
+- Mid-conversation `word_cloud` usage for sub-topic narrowing (e.g. "Was it workload or support?")
+- `InteractiveInputRouter` routing for `word_cloud` type
+- Theme-gated completion logic — all HR themes must be covered before deepening chips appear
+- HR wizard `ThemeSelector` — completely separate component for survey configuration
+
+## Files changed
+
+| File | Change |
+|------|--------|
+| `supabase/functions/chat/context-prompts.ts` | Update step 5 in both prompts to offer new employee-driven topics via word_cloud; add example |
+| `supabase/functions/chat/index.ts` | Update adaptive instructions for all-themes-covered; add "I'm all good" detection for completion |
+| `src/components/employee/ThemeSelector.tsx` | Delete (unused) |
 
