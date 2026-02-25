@@ -67,30 +67,43 @@ export const AIResponseDisplay = ({ empathy, question, isLoading, isTransitionin
       ) : (
         <motion.div
           key={question}
-          className="flex items-center justify-center text-center px-4 max-w-2xl"
+          className="flex items-center justify-center px-4 max-w-2xl w-full"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -6, transition: { duration: 0.12 } }}
           transition={{ duration: 0.2 }}
         >
-          <p className="text-xl md:text-2xl font-medium leading-relaxed">
-            {empathy && (
-              <>
-                <span className="text-muted-foreground">
-                  {empathyTypewriter.displayText}
-                </span>
-                {empathyTypewriter.isComplete && (
-                  <span className="text-muted-foreground/50"> — </span>
-                )}
-              </>
-            )}
-            <span className="text-foreground">
-              {questionTypewriter.displayText}
-            </span>
-            {isAnyTyping && (
-              <span className="inline-block w-[2px] h-[1em] bg-primary ml-0.5 align-middle animate-[blink_0.7s_step-end_infinite]" />
-            )}
-          </p>
+          <div className="relative w-full">
+            {/* Hidden ghost text to reserve full dimensions */}
+            <p className="text-xl md:text-2xl font-medium leading-relaxed text-left invisible" aria-hidden="true">
+              {empathy && (
+                <>
+                  <span>{empathy}</span>
+                  <span> — </span>
+                </>
+              )}
+              <span>{question}</span>
+            </p>
+            {/* Visible typewriter text overlaid on top */}
+            <p className="text-xl md:text-2xl font-medium leading-relaxed text-left absolute inset-0">
+              {empathy && (
+                <>
+                  <span className="text-muted-foreground">
+                    {empathyTypewriter.displayText}
+                  </span>
+                  {empathyTypewriter.isComplete && (
+                    <span className="text-muted-foreground/50"> — </span>
+                  )}
+                </>
+              )}
+              <span className="text-foreground">
+                {questionTypewriter.displayText}
+              </span>
+              {isAnyTyping && (
+                <span className="inline-block w-[2px] h-[1em] bg-primary ml-0.5 align-middle animate-[blink_0.7s_step-end_infinite]" />
+              )}
+            </p>
+          </div>
         </motion.div>
       )}
     </AnimatePresence>
