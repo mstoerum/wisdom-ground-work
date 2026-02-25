@@ -1,48 +1,45 @@
 
 
-# Remove MAX_EXCHANGES Hard Cap
+# Fix Typewriter Text Jumping in AIResponseDisplay
 
 ## Problem
 
-The current `MAX_EXCHANGES = 20` acts as a hard cutoff that forcibly ends the conversation regardless of theme coverage. This creates an unnatural abrupt ending. The conversation should end organically when all themes are adequately covered, not because an arbitrary counter was hit.
+The `AIResponseDisplay` component uses `text-center` and `justify-center` on a flex container. As the typewriter reveals characters, the text block grows in width and height, causing the entire paragraph to reflow and shift on every character. This makes it impossible to read because:
 
-## Changes
+1. The container is centered (`flex items-center justify-center text-center`) — as text wraps to new lines, everything re-centers vertically and horizontally
+2. The text size is large (`text-xl md:text-2xl`) so line breaks happen frequently
+3. Each new character can cause a line break, shifting all previous text
 
-### `supabase/functions/chat/index.ts`
+## Solution
 
-1. **Remove `MAX_EXCHANGES` constant** (line 23) — delete the constant entirely.
+Reserve the full space for the text upfront so it doesn't reflow during typing. Two changes:
 
-2. **Update `shouldCompleteBasedOnThemes`** (lines 118-176):
-   - Remove the `turnCount >= MAX_EXCHANGES` early-return block (lines 134-137)
-   - Keep the theme-gated logic: all themes must be touched with avg depth ≥ 1 exchange per theme
-   - Lower avg depth requirement from 2 to 1 (line 169) — aligns with your 1-2 follow-ups per theme preference
-   - Update the hard minimum formula from `themes.length * 2` to `themes.length + 2` — a 4-theme survey can complete at turn 6 instead of 8
-   - For no-themes fallback (line 125), just use `turnCount >= 8` without an upper bound
+### `src/components/employee/AIResponseDisplay.tsx`
 
-3. **Update adaptive instructions** (line 302): Remove the `MIN_EXCHANGES` check from the "near completion" prompt since there's no max cap — completion is purely theme-driven now.
+1. **Render the full text invisibly** to reserve the correct height and width, then overlay the visible typewriter text on top. This prevents layout shifts as characters are revealed.
 
-4. **Update `context-prompts.ts`**: Change pacing instructions from "2-3 exchanges per theme" to "1-2 follow-ups per theme, then move on naturally." Remove word cloud transition examples; replace with natural AI-driven bridging. This ensures the AI doesn't linger on any single theme.
+   The approach: wrap the text area in a `relative` container. Render the full final text with `visibility: hidden` (takes up space but isn't seen), and position the typewriter text absolutely on top of it with `text-left` alignment.
 
-### Target flow for a 4-theme survey (~8-10 exchanges)
+2. **Change from `text-center` to `text-left`** — left-aligned text doesn't reflow when new characters are added (new characters only appear at the end of the last line). Center-aligned text causes every line to re-center when wrapping changes.
 
-```text
-Turn 1:  Opening question (Theme A)
-Turn 2:  One follow-up on Theme A
-Turn 3:  Natural bridge → Theme B
-Turn 4:  One follow-up on Theme B
-Turn 5:  Natural bridge → Theme C
-Turn 6:  One follow-up on Theme C
-Turn 7:  Natural bridge → Theme D
-Turn 8:  One follow-up on Theme D
-Turn 9:  "Anything else?" → wrap up
-```
+### Specific changes
 
-No artificial cap — if themes need more exploration, the conversation continues naturally. Completion only triggers when all themes are touched with sufficient depth.
+**Line 68-70** — the motion.div wrapper:
+- Change `className` from `"flex items-center justify-center text-center px-4 max-w-2xl"` to `"flex items-center justify-center px-4 max-w-2xl w-full"`
+
+**Lines 76-93** — the `<p>` element:
+- Wrap in a `relative` div
+- Add a hidden copy of the full text (empathy + question) to reserve space
+- Position the typewriter text absolutely over it with `text-left`
+- This ensures the container never changes size during typing
+
+### Result
+
+The text area reserves its final dimensions immediately. As characters type in, they fill the space left-to-right without causing any layout reflow. The reading experience becomes smooth and stable.
 
 ### Files changed
 
 | File | What changes |
 |------|-------------|
-| `supabase/functions/chat/index.ts` | Remove `MAX_EXCHANGES`, update `shouldCompleteBasedOnThemes` to be purely theme-gated with avg depth ≥ 1, lower hard minimum formula |
-| `supabase/functions/chat/context-prompts.ts` | Update pacing to 1-2 follow-ups per theme, natural AI-driven transitions instead of word cloud |
+| `src/components/employee/AIResponseDisplay.tsx` | Add invisible space-reserving text, overlay typewriter text with absolute positioning, switch to left-aligned text |
 
