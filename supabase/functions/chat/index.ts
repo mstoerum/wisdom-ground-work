@@ -294,7 +294,7 @@ ${lastSentiment === "positive" ?
 ${uncoveredThemes.length > 0 ? 
   `\nCRITICAL: These themes have NOT been discussed yet: ${uncoveredThemes.map((t: any) => t.name).join(", ")}.\nYou MUST transition to one of these themes in your next question.\nDo NOT wrap up or suggest completion until all themes are covered.\n` : ""}
 ${isNearCompletion && uncoveredThemes.length === 0 ? 
-  `- All themes covered with good depth. Start moving toward a natural conclusion. Ask if there's anything else important they'd like to share, then thank them warmly.` : ""}
+  `- All themes covered. Offer a word_cloud with 3-4 NEW topics NOT in the survey themes. Infer from conversation hints (e.g. mentions of workload → "Work-Life Balance", mentions of skills → "Career Growth"). Always include "I'm all good" as last option. Set allowOther: true, maxSelections: 1. If user selected "[SELECTED: I'm all good]", proceed to thank them briefly and signal completion. If they selected a topic, explore with 1-2 questions then offer word_cloud again (minus explored topics).` : ""}
 ${previousResponses.length >= 3 ? "- Reference earlier points when relevant to build on what they've shared." : ""}
 `;
 };
@@ -1272,9 +1272,79 @@ Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
     // Determine completion based on theme exploration, not just exchange count
     const shouldComplete = shouldCompleteBasedOnThemes(previousResponses || [], themes || [], turnCount);
     
+    // Check if user selected "I'm all good" from end-of-conversation word cloud
+    const isAllGoodSelection = sanitizedContent.includes("[SELECTED: I'm all good]") || sanitizedContent.toLowerCase() === "i'm all good";
+    
     // Check if user is confirming completion
     const userConfirmingCompletion = sanitizedContent.toLowerCase().match(/\b(yes|yeah|sure|ok|okay|done|finished|that'?s all|nothing else|no|nope)\b/);
     
+    // Handle "I'm all good" selection — trigger completion with structured summary
+    if (isAllGoodSelection && shouldComplete && !isIntroductionTrigger) {
+      console.log(`[${conversationId}] User selected "I'm all good" — triggering completion`);
+      
+      // Save the selection as a response
+      if (sanitizedContent.length > 3) {
+        const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, sanitizedContent);
+        await supabase.from("responses").insert({
+          conversation_session_id: conversationId,
+          survey_id: session?.survey_id,
+          content: sanitizedContent,
+          ai_response: "Thank you for your time and valuable insights.",
+          sentiment,
+          sentiment_score: sentimentScore,
+          created_at: new Date().toISOString(),
+        });
+      }
+
+      // Generate structured summary
+      const conversationContext = previousResponses?.map(r => r.content).join("\n") || "";
+      let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
+      try {
+        const summaryResponse = await callAI(
+          LOVABLE_API_KEY,
+          AI_MODEL_LITE,
+          [
+            { role: "system", content: "You extract structured insights from conversations. Always return valid JSON only, no markdown." },
+            { role: "user", content: `Based on this conversation about ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'}, extract:
+1. KEY_POINTS: 2-4 bullet points summarizing what the participant shared (each under 15 words)
+2. SENTIMENT: overall tone (positive, mixed, or negative)
+
+Conversation content:
+${conversationContext}
+
+Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
+          ],
+          0.3,
+          250
+        );
+        let cleaned = summaryResponse.trim();
+        if (cleaned.startsWith('```json')) {
+          cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
+        } else if (cleaned.startsWith('```')) {
+          cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
+        }
+        const parsed = JSON.parse(cleaned);
+        if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
+          structuredSummary = {
+            keyPoints: parsed.keyPoints.slice(0, 4),
+            sentiment: parsed.sentiment || "mixed"
+          };
+        }
+      } catch (e) {
+        console.error("Failed to parse structured summary for 'I'm all good':", e);
+      }
+
+      return new Response(
+        JSON.stringify({
+          message: "Thank you for your time and valuable insights. Your feedback will help create meaningful change.",
+          structuredSummary,
+          shouldComplete: true,
+          isCompletionPrompt: true
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Natural completion flow: AI detected completion + user confirms
     if (shouldComplete && !isFinalResponse && !isIntroductionTrigger) {
       // Generate structured summary with key points

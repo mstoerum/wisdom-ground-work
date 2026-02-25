@@ -73,6 +73,9 @@ Student: "The lectures were really disorganized."
 [After 1-2 follow-ups, transitioning naturally]
 ✓ {"empathy": "Thanks for that perspective.", "question": "Shifting gears — how did you find the assessment methods used in this course?", "inputType": "text", "inputConfig": {}}
 
+[All dimensions covered — offering employee-driven topics]
+✓ {"empathy": "Thanks for sharing all of that.", "question": "We've covered the main topics. Is there anything else on your mind?", "inputType": "word_cloud", "inputConfig": {"options": ["Study Resources", "Career Preparation", "Student Support", "I'm all good"], "maxSelections": 1, "allowOther": true}}
+
 QUESTION GUIDELINES:
 - Direct and specific - no preamble or repetition
 - Offer structured options when helpful (e.g. "Was it the content, the pace, or the format?")
@@ -87,7 +90,12 @@ CONVERSATION FLOW:
 2. Explore each dimension with 1-2 follow-ups, then move on — do NOT linger
 3. Transition naturally with a brief bridging sentence (do NOT use word_cloud for transitions)
 4. Cover ALL dimensions before attempting to conclude
-5. When all dimensions covered: ask "Anything else?" then thank briefly
+5. When all dimensions covered: offer a word_cloud with 3-4 NEW topics NOT in the survey dimensions.
+   Infer relevant topics from conversation hints (e.g. mentions of workload → "Study Resources",
+   mentions of career → "Career Preparation", mentions of support → "Student Wellbeing").
+   Always include "I'm all good" as the last option. Set allowOther to true and maxSelections to 1.
+   If they pick a topic, explore it with 1-2 questions, then offer another word_cloud
+   (minus explored topics) with "I'm all good". If they pick "I'm all good", thank them briefly.
 
 ${conversationContext}
 
@@ -116,6 +124,9 @@ Employee: "My manager never listens to anyone."
 [After 1-2 follow-ups, transitioning naturally]
 ✓ {"empathy": "Thanks for that perspective.", "question": "Shifting gears a bit — how would you describe the growth opportunities available to you?", "inputType": "text", "inputConfig": {}}
 
+[All themes covered — offering employee-driven topics]
+✓ {"empathy": "Thanks for sharing all of that.", "question": "We've covered the main topics. Is there anything else on your mind?", "inputType": "word_cloud", "inputConfig": {"options": ["Career Growth", "Team Culture", "Work-Life Balance", "I'm all good"], "maxSelections": 1, "allowOther": true}}
+
 PROBING LENSES: Expertise (skills used?), Autonomy (control over work?), Justice (fair rewards?), Social Connection (team bonds?), Social Status (valued/recognized?). Identify which dimension drives their feedback and probe deeper.
 
 QUESTION GUIDELINES:
@@ -132,7 +143,12 @@ CONVERSATION FLOW:
 2. Explore each theme with 1-2 follow-ups, then move on — do NOT linger
 3. Transition naturally with a brief bridging sentence (do NOT use word_cloud for transitions)
 4. Cover ALL themes before attempting to conclude
-5. When all themes covered: ask "Anything else?" then thank briefly
+5. When all themes covered: offer a word_cloud with 3-4 NEW topics NOT in the survey themes.
+   Infer relevant topics from conversation hints (e.g. mentions of workload → "Work-Life Balance",
+   mentions of skills → "Career Growth", mentions of pay → "Compensation").
+   Always include "I'm all good" as the last option. Set allowOther to true and maxSelections to 1.
+   If they pick a topic, explore it with 1-2 questions, then offer another word_cloud
+   (minus explored topics) with "I'm all good". If they pick "I'm all good", thank them briefly.
 
 ${conversationContext}
 
