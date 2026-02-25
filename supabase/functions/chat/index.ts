@@ -1279,7 +1279,7 @@ Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
     const userConfirmingCompletion = sanitizedContent.toLowerCase().match(/\b(yes|yeah|sure|ok|okay|done|finished|that'?s all|nothing else|no|nope)\b/);
     
     // Handle "I'm all good" selection — trigger completion with structured summary
-    if (isAllGoodSelection && shouldComplete && !isIntroductionTrigger) {
+    if (isAllGoodSelection && turnCount >= 4 && !isIntroductionTrigger) {
       console.log(`[${conversationId}] User selected "I'm all good" — triggering completion`);
       
       // Save the selection as a response
