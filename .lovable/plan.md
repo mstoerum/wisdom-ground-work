@@ -1,68 +1,45 @@
 
 
-# Feature: Skip Question (Jump to Next Theme)
+# Add Linear Progress Bar to Interview Interface
 
 ## Overview
 
-Add a "Skip" button to the interview interface that lets the employee skip the current question. When skipped, the backend receives a `[SKIP_QUESTION]` signal and responds with a question from the next undiscussed theme instead of following up on the current one.
+Replace the current `AmbientArc` segmented progress visualization with the new `Progress` (linear bar) component. The bar fills left-to-right based on how many questions remain, calculated from `questionNumber` relative to the estimated total (derived from theme count).
 
-## User Experience
+## Changes
 
-- A subtle "Skip" link/button appears below the answer input area (next to "Continue")
-- Clicking it immediately transitions to the next question -- no confirmation dialog needed
-- The AI acknowledges the skip gracefully (e.g., "No worries, let's move on.") and asks about a different theme
-- Skips are tracked so analytics can see which themes employees chose to skip
-- The button is disabled while loading or on the very first question
+### `src/components/employee/FocusedInterviewInterface.tsx`
 
-## Technical Changes
+1. **Import** `Progress` from `@/components/ui/progress` (replace or keep `AmbientArc` import)
+2. **Calculate progress value**: `Math.min((questionNumber / estimatedTotal) * 100, 100)` where `estimatedTotal` comes from `themeProgress?.totalCount * 3` (roughly 3 questions per theme) or falls back to a default of 12
+3. **Replace the AmbientArc block** (lines 461-464) with:
+   - A `Progress` component spanning full width at the top of the active interview area
+   - Subtle styling: thin bar (h-1 or h-1.5), rounded, with the primary color indicator
+   - Optional small label like "3 of ~12" in muted text below
 
-### 1. Frontend: `src/components/employee/FocusedInterviewInterface.tsx`
+### Visual Design
 
-Add a `handleSkip` function that calls `handleSubmit("[SKIP_QUESTION]")` -- reusing the existing submit flow with a special signal (same pattern as `[START_CONVERSATION]` and `[REFLECTION_COMPLETE]`).
+- Thin horizontal bar at the top of the interview content area
+- Fills smoothly left-to-right as questions are answered
+- Uses the existing `Progress` component with `value` prop (0-100)
+- Animated via the built-in CSS transition (`transition-all`)
+- Minimal footprint — no text label needed, just the bar itself (the existing footer hint already says "Press Enter to continue")
 
-Add a "Skip" button in the input area (around line 490, near the AnswerInput/InteractiveInputRouter):
+### Progress Calculation
+
+The estimated total questions uses theme data when available:
 ```
-<Button variant="ghost" size="sm" onClick={handleSkip}>
-  Skip this question
-</Button>
+const estimatedTotal = themeProgress 
+  ? themeProgress.totalCount * 3   // ~3 exchanges per theme
+  : 12;                             // fallback
+const progressValue = Math.min((questionNumber / estimatedTotal) * 100, 100);
 ```
 
-Disable when `isLoading`, `questionNumber < 1`, or during transition.
-
-### 2. Frontend: `src/components/employee/AnswerInput.tsx`
-
-Add an optional `onSkip` prop and render a "Skip" link below the Continue button when provided. This keeps the skip action visually close to the input.
-
-### 3. Frontend: `src/components/employee/inputs/InteractiveInputRouter.tsx`
-
-Pass through an optional `onSkip` prop to all interactive input types so the skip button appears regardless of input mode (text, word cloud, slider, etc.).
-
-### 4. Backend: `supabase/functions/chat/index.ts`
-
-In the main message handler (around line 900-950 where `lastContent` is processed):
-
-- Detect `[SKIP_QUESTION]` signal
-- When detected:
-  - Save the skip as a response with `content: "[SKIPPED]"` and tag it with the current theme
-  - In `buildConversationContext`, add an instruction: "The user skipped the previous question. Move to a different theme immediately."
-  - Set `sentiment` to `"neutral"` for the skipped response
-- The existing theme transition logic will handle the rest since the context already tracks per-theme depth and uncovered themes
-
-### 5. Backend: `supabase/functions/chat/context-prompts.ts`
-
-Add a `SKIP_HANDLING` instruction to the shared constants:
-```
-When the user's last message is "[SKIPPED]", respond with a brief, warm 
-transition (e.g., "No problem, let's talk about something else.") and 
-immediately ask about an undiscussed theme. Keep empathy to 3-5 words max.
-```
+This means for a 4-theme survey (estimatedTotal = 12), answering 6 questions shows 50% progress.
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/employee/FocusedInterviewInterface.tsx` | Add `handleSkip` callback and pass `onSkip` to input components |
-| `src/components/employee/AnswerInput.tsx` | Add optional `onSkip` prop, render "Skip" link |
-| `src/components/employee/inputs/InteractiveInputRouter.tsx` | Pass `onSkip` through to all input types |
-| `supabase/functions/chat/index.ts` | Detect `[SKIP_QUESTION]`, save as skipped response, add skip context to AI |
-| `supabase/functions/chat/context-prompts.ts` | Add `SKIP_HANDLING` constant with transition instructions |
+| `src/components/employee/FocusedInterviewInterface.tsx` | Replace `AmbientArc` with `Progress` bar, add progress calculation |
+
