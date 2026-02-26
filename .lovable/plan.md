@@ -1,77 +1,58 @@
 
 
-# Fix: Give the AI Domain Knowledge About Each Theme
+# Fix: Add Hard Maximum and Improve Completion Reliability
 
 ## Problem
 
-The AI receives themes as a single line each:
-```
-- Work-Life Balance: Explore workload, flexibility, and boundaries between work and personal life
-```
+A 4-theme survey produced 24+ exchanges because:
 
-But the database already stores rich context per theme that is **never fetched**:
-- `suggested_questions`: 3 example questions per theme (e.g., "How do you feel about your current workload?")
-- `sentiment_keywords`: positive/negative keyword lists (e.g., positive: `flexible, balanced, manageable`; negative: `overwhelmed, burnout, stressed`)
-
-The query on line 986 of `index.ts` only selects `id, name, description` — discarding all domain knowledge. The AI has no sub-topics, no probing angles, and no vocabulary to work with, so it falls back to generic follow-ups.
+1. **No hard maximum exists.** If `shouldCompleteBasedOnThemes` never returns true, the conversation runs forever.
+2. **Theme detection is unreliable.** `detectTheme` uses a lightweight LLM that can return `null`, so responses don't get `theme_id` tags in the database. `shouldCompleteBasedOnThemes` checks those tags, sees "only 2/4 themes discussed," and keeps going.
+3. **The word cloud offering "I'm all good" also depends on `shouldCompleteBasedOnThemes`** (via `isNearCompletion` on line 278), so the exit ramp never appears either.
 
 ## Solution
 
-### 1. `supabase/functions/chat/index.ts` — Fetch full theme data
+### 1. Add a hard maximum exchange cap
 
-**Line 986**: Change the select query from:
-```sql
-select("id, name, description")
+In `shouldCompleteBasedOnThemes` (line 117), add a hard cap: if `turnCount >= themes.length * 4` (e.g., 16 for a 4-theme survey), return `true` regardless of theme coverage. This is a safety net — conversations should naturally end around 8-12 exchanges, but this prevents runaway sessions.
+
+```typescript
+// Hard cap: force completion after themes * 4 exchanges
+const hardMax = Math.max(16, themes.length * 4);
+if (turnCount >= hardMax) {
+  console.log(`[shouldCompleteBasedOnThemes] turnCount=${turnCount} >= hardMax=${hardMax} — FORCE COMPLETE`);
+  return true;
+}
+```
+
+### 2. Fix the adaptive context's completion detection
+
+In `buildConversationContext` (line 278), decouple `isNearCompletion` from the strict theme gate. Use a simpler check: if `turnCount >= themes.length * 2 + 2` (e.g., 10 for 4 themes), consider it "near completion" and let the adaptive instructions offer the word cloud. This ensures the "I'm all good" exit ramp appears even if theme detection missed some tags.
+
+Change line 278 from:
+```typescript
+const isNearCompletion = shouldCompleteBasedOnThemes(previousResponses, themes || [], previousResponses.length);
 ```
 To:
-```sql
-select("id, name, description, suggested_questions, sentiment_keywords")
-```
-
-Also update the preview-mode query on **line 804** the same way.
-
-### 2. `supabase/functions/chat/context-prompts.ts` — Pass rich theme context to the prompt
-
-Update the `themesText` construction in both `getEmployeeSatisfactionPrompt` and `getCourseEvaluationPrompt`.
-
-From:
 ```typescript
-const themesText = themes?.map(t => `- ${t.name}: ${t.description}`).join("\n")
+const isNearCompletion = previousResponses.length >= (themes?.length || 4) * 2 + 2 
+  || shouldCompleteBasedOnThemes(previousResponses, themes || [], previousResponses.length);
 ```
 
-To something like:
+### 3. Improve theme detection reliability
+
+In `detectTheme` (line 570), also check for partial name matches and common abbreviations. If the AI returns something close but not exact, still match it:
+
 ```typescript
-const themesText = themes?.map(t => {
-  let entry = `- ${t.name}: ${t.description}`;
-  if (t.suggested_questions?.length) {
-    entry += `\n  Example angles: ${t.suggested_questions.slice(0, 3).join("; ")}`;
-  }
-  if (t.sentiment_keywords) {
-    const pos = t.sentiment_keywords.positive?.slice(0, 3).join(", ");
-    const neg = t.sentiment_keywords.negative?.slice(0, 3).join(", ");
-    if (pos) entry += `\n  Positive signals: ${pos}`;
-    if (neg) entry += `\n  Concern signals: ${neg}`;
-  }
-  return entry;
-}).join("\n")
+const matchedTheme = themes.find(t => 
+  themeName.toLowerCase().includes(t.name.toLowerCase()) ||
+  t.name.toLowerCase().includes(themeName.trim().toLowerCase())
+);
 ```
-
-This gives the AI output like:
-```
-- Work-Life Balance: Explore workload, flexibility, and boundaries
-  Example angles: How do you feel about your current workload?; Do you have enough flexibility?; What helps you maintain healthy boundaries?
-  Positive signals: flexible, balanced, manageable
-  Concern signals: overwhelmed, burnout, stressed
-```
-
-### Token impact
-
-Adds ~30-40 tokens per theme. For a 4-theme survey, that's ~120-160 extra tokens in the system prompt — negligible compared to the conversation history.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/chat/index.ts` | Add `suggested_questions, sentiment_keywords` to both theme SELECT queries (lines 804, 986) |
-| `supabase/functions/chat/context-prompts.ts` | Expand `themesText` in both prompt functions to include example angles and sentiment keywords |
+| `supabase/functions/chat/index.ts` | Add hard max cap in `shouldCompleteBasedOnThemes`, decouple `isNearCompletion` in `buildConversationContext`, improve theme name matching in `detectTheme` |
 
