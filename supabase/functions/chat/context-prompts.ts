@@ -51,6 +51,25 @@ const QUESTION_QUALITY = `QUESTION QUALITY:
 - Don't repeat a question you already asked in a different form
 - Ask for specifics, examples, or root causes — not abstract opinions`;
 
+// ── Helper to build rich theme text with domain knowledge ──
+
+const buildThemesText = (themes: any[]): string => {
+  if (!themes?.length) return "";
+  return themes.map(t => {
+    let entry = `- ${t.name}: ${t.description}`;
+    if (t.suggested_questions?.length) {
+      entry += `\n  Example angles: ${t.suggested_questions.slice(0, 3).join("; ")}`;
+    }
+    if (t.sentiment_keywords) {
+      const pos = t.sentiment_keywords.positive?.slice(0, 3).join(", ");
+      const neg = t.sentiment_keywords.negative?.slice(0, 3).join(", ");
+      if (pos) entry += `\n  Positive signals: ${pos}`;
+      if (neg) entry += `\n  Concern signals: ${neg}`;
+    }
+    return entry;
+  }).join("\n");
+};
+
 // ── Survey-type-specific prompts ──
 
 export const getSystemPromptForSurveyType = (
@@ -65,7 +84,7 @@ export const getSystemPromptForSurveyType = (
 };
 
 const getCourseEvaluationPrompt = (themes: any[], conversationContext: string): string => {
-  const themesText = themes?.map(t => `- ${t.name}: ${t.description}`).join("\n") || "General course evaluation";
+  const themesText = buildThemesText(themes) || "General course evaluation";
 
   return `You are Spradley, a neutral research interviewer conducting course evaluation sessions.
 
@@ -118,7 +137,7 @@ Always respond with valid JSON. Maintain professional distance.`
 }
 
 const getEmployeeSatisfactionPrompt = (themes: any[], conversationContext: string): string => {
-  const themesText = themes?.map(t => `- ${t.name}: ${t.description}`).join("\n") || "General employee feedback";
+  const themesText = buildThemesText(themes) || "General employee feedback";
 
   return `You are Spradley, a neutral research interviewer conducting confidential employee feedback sessions.
 

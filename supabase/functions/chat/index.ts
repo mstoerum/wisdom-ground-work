@@ -801,7 +801,7 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
           
           const { data, error } = await supabase
             .from("survey_themes")
-            .select("id, name, description, survey_type")
+            .select("id, name, description, survey_type, suggested_questions, sentiment_keywords")
             .in("id", requestThemeIds);
           
           if (!error && data) {
@@ -983,7 +983,7 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
     const surveyFirstMessage = survey?.first_message;
     const { data: themes } = await supabase
       .from("survey_themes")
-      .select("id, name, description")
+      .select("id, name, description, suggested_questions, sentiment_keywords")
       .in("id", themeIds);
 
     // Fetch previous responses for conversational memory
