@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { AIResponseDisplay } from "./AIResponseDisplay";
-import { AmbientArc } from "./AmbientArc";
+import { Progress } from "@/components/ui/progress";
 import { InteractiveInputRouter, type InputType, type InputConfig } from "./inputs/InteractiveInputRouter";
 import { MoodSelector } from "./MoodSelector";
 import { MoodTransition } from "./MoodTransition";
@@ -458,10 +458,16 @@ export const FocusedInterviewInterface = ({
         {/* Main content - hidden during completion phase */}
         {isActive && (
           <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-8 relative">
-            {/* Apple-inspired progress arc */}
-            <div className="absolute top-0 left-0 right-0">
-              <AmbientArc themeProgress={themeProgress} questionNumber={questionNumber} />
-            </div>
+            {/* Linear progress bar */}
+            {(() => {
+              const estimatedTotal = themeProgress ? themeProgress.totalCount * 3 : 12;
+              const progressValue = Math.min((questionNumber / estimatedTotal) * 100, 100);
+              return (
+                <div className="absolute top-0 left-0 right-0 px-6">
+                  <Progress value={progressValue} className="h-1.5" />
+                </div>
+              );
+            })()}
 
             <AIResponseDisplay
               empathy={currentEmpathy || undefined}
