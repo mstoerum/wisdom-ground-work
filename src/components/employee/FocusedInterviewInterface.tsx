@@ -464,7 +464,7 @@ export const FocusedInterviewInterface = ({
               const progressValue = Math.min(((questionNumber + 1) / estimatedTotal) * 100, 100);
               return (
                 <div className="absolute top-0 left-0 right-0 px-6">
-                  <Progress value={progressValue} className="h-1.5" />
+                  <Progress value={progressValue} className="h-1.5 bg-white" indicatorClassName="bg-orange-500" />
                 </div>
               );
             })()}
