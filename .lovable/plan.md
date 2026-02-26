@@ -1,58 +1,68 @@
 
 
-# Fix: Add Hard Maximum and Improve Completion Reliability
+# Feature: Skip Question (Jump to Next Theme)
 
-## Problem
+## Overview
 
-A 4-theme survey produced 24+ exchanges because:
+Add a "Skip" button to the interview interface that lets the employee skip the current question. When skipped, the backend receives a `[SKIP_QUESTION]` signal and responds with a question from the next undiscussed theme instead of following up on the current one.
 
-1. **No hard maximum exists.** If `shouldCompleteBasedOnThemes` never returns true, the conversation runs forever.
-2. **Theme detection is unreliable.** `detectTheme` uses a lightweight LLM that can return `null`, so responses don't get `theme_id` tags in the database. `shouldCompleteBasedOnThemes` checks those tags, sees "only 2/4 themes discussed," and keeps going.
-3. **The word cloud offering "I'm all good" also depends on `shouldCompleteBasedOnThemes`** (via `isNearCompletion` on line 278), so the exit ramp never appears either.
+## User Experience
 
-## Solution
+- A subtle "Skip" link/button appears below the answer input area (next to "Continue")
+- Clicking it immediately transitions to the next question -- no confirmation dialog needed
+- The AI acknowledges the skip gracefully (e.g., "No worries, let's move on.") and asks about a different theme
+- Skips are tracked so analytics can see which themes employees chose to skip
+- The button is disabled while loading or on the very first question
 
-### 1. Add a hard maximum exchange cap
+## Technical Changes
 
-In `shouldCompleteBasedOnThemes` (line 117), add a hard cap: if `turnCount >= themes.length * 4` (e.g., 16 for a 4-theme survey), return `true` regardless of theme coverage. This is a safety net — conversations should naturally end around 8-12 exchanges, but this prevents runaway sessions.
+### 1. Frontend: `src/components/employee/FocusedInterviewInterface.tsx`
 
-```typescript
-// Hard cap: force completion after themes * 4 exchanges
-const hardMax = Math.max(16, themes.length * 4);
-if (turnCount >= hardMax) {
-  console.log(`[shouldCompleteBasedOnThemes] turnCount=${turnCount} >= hardMax=${hardMax} — FORCE COMPLETE`);
-  return true;
-}
+Add a `handleSkip` function that calls `handleSubmit("[SKIP_QUESTION]")` -- reusing the existing submit flow with a special signal (same pattern as `[START_CONVERSATION]` and `[REFLECTION_COMPLETE]`).
+
+Add a "Skip" button in the input area (around line 490, near the AnswerInput/InteractiveInputRouter):
+```
+<Button variant="ghost" size="sm" onClick={handleSkip}>
+  Skip this question
+</Button>
 ```
 
-### 2. Fix the adaptive context's completion detection
+Disable when `isLoading`, `questionNumber < 1`, or during transition.
 
-In `buildConversationContext` (line 278), decouple `isNearCompletion` from the strict theme gate. Use a simpler check: if `turnCount >= themes.length * 2 + 2` (e.g., 10 for 4 themes), consider it "near completion" and let the adaptive instructions offer the word cloud. This ensures the "I'm all good" exit ramp appears even if theme detection missed some tags.
+### 2. Frontend: `src/components/employee/AnswerInput.tsx`
 
-Change line 278 from:
-```typescript
-const isNearCompletion = shouldCompleteBasedOnThemes(previousResponses, themes || [], previousResponses.length);
+Add an optional `onSkip` prop and render a "Skip" link below the Continue button when provided. This keeps the skip action visually close to the input.
+
+### 3. Frontend: `src/components/employee/inputs/InteractiveInputRouter.tsx`
+
+Pass through an optional `onSkip` prop to all interactive input types so the skip button appears regardless of input mode (text, word cloud, slider, etc.).
+
+### 4. Backend: `supabase/functions/chat/index.ts`
+
+In the main message handler (around line 900-950 where `lastContent` is processed):
+
+- Detect `[SKIP_QUESTION]` signal
+- When detected:
+  - Save the skip as a response with `content: "[SKIPPED]"` and tag it with the current theme
+  - In `buildConversationContext`, add an instruction: "The user skipped the previous question. Move to a different theme immediately."
+  - Set `sentiment` to `"neutral"` for the skipped response
+- The existing theme transition logic will handle the rest since the context already tracks per-theme depth and uncovered themes
+
+### 5. Backend: `supabase/functions/chat/context-prompts.ts`
+
+Add a `SKIP_HANDLING` instruction to the shared constants:
 ```
-To:
-```typescript
-const isNearCompletion = previousResponses.length >= (themes?.length || 4) * 2 + 2 
-  || shouldCompleteBasedOnThemes(previousResponses, themes || [], previousResponses.length);
+When the user's last message is "[SKIPPED]", respond with a brief, warm 
+transition (e.g., "No problem, let's talk about something else.") and 
+immediately ask about an undiscussed theme. Keep empathy to 3-5 words max.
 ```
 
-### 3. Improve theme detection reliability
-
-In `detectTheme` (line 570), also check for partial name matches and common abbreviations. If the AI returns something close but not exact, still match it:
-
-```typescript
-const matchedTheme = themes.find(t => 
-  themeName.toLowerCase().includes(t.name.toLowerCase()) ||
-  t.name.toLowerCase().includes(themeName.trim().toLowerCase())
-);
-```
-
-## Files changed
+## Files Changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/chat/index.ts` | Add hard max cap in `shouldCompleteBasedOnThemes`, decouple `isNearCompletion` in `buildConversationContext`, improve theme name matching in `detectTheme` |
-
+| `src/components/employee/FocusedInterviewInterface.tsx` | Add `handleSkip` callback and pass `onSkip` to input components |
+| `src/components/employee/AnswerInput.tsx` | Add optional `onSkip` prop, render "Skip" link |
+| `src/components/employee/inputs/InteractiveInputRouter.tsx` | Pass `onSkip` through to all input types |
+| `supabase/functions/chat/index.ts` | Detect `[SKIP_QUESTION]`, save as skipped response, add skip context to AI |
+| `supabase/functions/chat/context-prompts.ts` | Add `SKIP_HANDLING` constant with transition instructions |
