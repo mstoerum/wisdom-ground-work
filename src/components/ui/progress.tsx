@@ -21,14 +21,20 @@ function Progress({
       )}
       {...props}
     >
-      <ProgressPrimitive.Indicator
-        data-slot="progress-indicator"
-        className={cn(
-          'bg-primary h-full w-full flex-1 transition-all',
-          indicatorClassName,
-        )}
-        style={{ transform: `translateX(-${100 - (value ?? 0)}%)` }}
-      />
+      {(() => {
+        const raw = value ?? 0;
+        const safe = Number.isFinite(raw) ? Math.max(0, Math.min(raw, 100)) : 0;
+        return (
+          <ProgressPrimitive.Indicator
+            data-slot="progress-indicator"
+            className={cn(
+              'bg-primary h-full w-full flex-1 transition-all',
+              indicatorClassName,
+            )}
+            style={{ transform: `translateX(-${100 - safe}%)` }}
+          />
+        );
+      })()}
     </ProgressPrimitive.Root>
   );
 }
