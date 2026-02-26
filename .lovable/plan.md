@@ -1,30 +1,28 @@
 
 
-# Fix: Ensure Progress Bar Advances Visibly Per Question
+# Fix: Progress Bar Always Showing Full (Orange)
 
 ## Problem
 
-The progress bar calculation uses `questionNumber` which starts at 0 and increments after each answer, but the estimated total may be too high (e.g., 12 for 4 themes), making each step feel tiny or invisible — especially at the start.
+The `Progress` component in `src/components/ui/progress.tsx` imports from `radix-ui` (the unified package), but the indicator always appears fully filled. The `translateX` transform that controls the fill amount isn't being applied correctly with this import.
 
-## Solution
+## Root Cause
 
-In `src/components/employee/FocusedInterviewInterface.tsx`, adjust the progress calculation:
+The component was rewritten to use `import { Progress as ProgressPrimitive } from 'radix-ui'` but the original `@radix-ui/react-progress` package (already installed) is what works with the `Root` / `Indicator` sub-components and their transform-based fill mechanism.
 
-1. **Start with a small initial value** (e.g., 5%) so the bar is visible from the very first question
-2. **Use a slightly lower estimated total** — `totalCount * 2.5` instead of `* 3` — so each answer creates a more noticeable jump
-3. **Count from 1** by using `questionNumber + 1` so the first answered question already shows progress
+## Fix
 
-Updated calculation (around line 463):
-```typescript
-const estimatedTotal = themeProgress ? themeProgress.totalCount * 2.5 : 10;
-const progressValue = Math.min(((questionNumber + 1) / estimatedTotal) * 100, 100);
-```
+In `src/components/ui/progress.tsx`, change line 5:
 
-For a 4-theme survey this gives ~10% per question answered (vs ~8% before), and the bar starts at 10% rather than 0%.
+**From:** `import { Progress as ProgressPrimitive } from 'radix-ui';`
+
+**To:** `import * as ProgressPrimitive from '@radix-ui/react-progress';`
+
+This restores the correct Radix primitive that supports `Root` and `Indicator` sub-components with proper transform behavior. The `ProgressCircle` and `ProgressRadial` components are pure SVG and unaffected.
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/employee/FocusedInterviewInterface.tsx` | Tweak progress formula to start visible and increment noticeably per answer |
+| `src/components/ui/progress.tsx` | Fix import to use `@radix-ui/react-progress` instead of `radix-ui` |
 
