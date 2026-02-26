@@ -124,6 +124,13 @@ const shouldCompleteBasedOnThemes = (
     return turnCount >= 8;
   }
 
+  // Hard cap: force completion after themes * 4 exchanges (safety net)
+  const hardMax = Math.max(16, themes.length * 4);
+  if (turnCount >= hardMax) {
+    console.log(`[shouldCompleteBasedOnThemes] turnCount=${turnCount} >= hardMax=${hardMax} — FORCE COMPLETE`);
+    return true;
+  }
+
   // Hard minimum: at least themes.length + 2 or MIN_EXCHANGES, whichever is larger
   const hardMinimum = Math.max(MIN_EXCHANGES, themes.length + 2);
   if (turnCount < hardMinimum) {
@@ -275,7 +282,8 @@ const buildConversationContext = (previousResponses: any[], themes: any[]): stri
     : 0;
 
   const uncoveredThemes = themes?.filter((t: any) => !discussedThemeIds.has(t.id)) || [];
-  const isNearCompletion = shouldCompleteBasedOnThemes(previousResponses, themes || [], previousResponses.length);
+  const isNearCompletion = previousResponses.length >= ((themes?.length || 4) * 2 + 2)
+    || shouldCompleteBasedOnThemes(previousResponses, themes || [], previousResponses.length);
   
   // Build per-theme depth info for the AI
   const perThemeDepth = themes?.map((t: any) => {
@@ -580,7 +588,8 @@ Reply with only the exact theme name.`;
   const themeName = await callAI(apiKey, AI_MODEL_LITE, [{ role: "user", content: themePrompt }], 0.2, 20);
   
   const matchedTheme = themes.find(t => 
-    themeName.toLowerCase().includes(t.name.toLowerCase())
+    themeName.toLowerCase().includes(t.name.toLowerCase()) ||
+    t.name.toLowerCase().includes(themeName.trim().toLowerCase())
   );
   
   return matchedTheme?.id || null;
