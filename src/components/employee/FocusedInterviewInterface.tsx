@@ -477,6 +477,7 @@ export const FocusedInterviewInterface = ({
               value={currentAnswer}
               onChange={setCurrentAnswer}
               onSubmit={handleSubmit}
+              onSkip={questionNumber >= 1 && !isLoading && !isTransitioning ? () => handleSubmit("[SKIP_QUESTION]") : undefined}
               isLoading={isLoading}
               placeholder="Share your thoughts..."
               disabled={isLoading || !isTypingComplete}

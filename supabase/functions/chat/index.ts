@@ -1301,6 +1301,71 @@ Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
     // Determine completion based on theme exploration, not just exchange count
     const shouldComplete = shouldCompleteBasedOnThemes(previousResponses || [], themes || [], turnCount);
     
+    // Handle skip question — save as skipped and let AI move to next theme
+    const isSkipQuestion = sanitizedContent === "[SKIP_QUESTION]";
+    if (isSkipQuestion && !isIntroductionTrigger) {
+      console.log(`[${conversationId}] User skipped question — saving and moving to next theme`);
+
+      // Determine current theme from the last AI question's context
+      const lastResponseWithTheme = [...(previousResponses || [])].reverse().find(r => r.theme_id);
+      const currentThemeId = lastResponseWithTheme?.theme_id || null;
+
+      // Save the skip as a response
+      await supabase.from("responses").insert({
+        conversation_session_id: conversationId,
+        survey_id: session?.survey_id,
+        content: "[SKIPPED]",
+        ai_response: null,
+        sentiment: "neutral",
+        sentiment_score: 0,
+        theme_id: currentThemeId,
+        created_at: new Date().toISOString(),
+      });
+
+      // Build context with skip instruction
+      const skipContext = buildConversationContext(previousResponses || [], themes || []);
+      const skipInstruction = `\nIMPORTANT: The user just skipped the previous question. Respond with a brief, warm transition (3-5 words like "No problem, let's move on.") and immediately ask about an undiscussed theme. Do NOT reference the skipped topic.\n`;
+      
+      const systemPromptWithSkip = getSystemPromptForSurveyType(
+        surveyType,
+        themes || [],
+        skipContext + skipInstruction
+      );
+
+      // Replace the skip signal with "[SKIPPED]" in messages sent to AI
+      const skippedMessages = messages.map((m: any) => ({
+        role: m.role,
+        content: m.content === "[SKIP_QUESTION]" ? "[SKIPPED]" : m.content,
+      }));
+
+      const aiMessageRaw = await callAI(
+        LOVABLE_API_KEY,
+        AI_MODEL,
+        [{ role: "system", content: systemPromptWithSkip }, ...skippedMessages],
+        0.8,
+        300
+      );
+
+      const { empathy, question, inputType, inputConfig } = parseStructuredResponse(aiMessageRaw);
+
+      // Update the saved response with the AI's reply
+      // (We already inserted above; update the last one)
+      // Build updated theme progress
+      const updatedResponses = [...(previousResponses || []), { content: "[SKIPPED]", theme_id: currentThemeId, sentiment: "neutral" }];
+      const themeProgress = buildThemeProgress(updatedResponses, themes || [], currentThemeId);
+
+      return new Response(
+        JSON.stringify({
+          message: question,
+          empathy: empathy,
+          shouldComplete: false,
+          themeProgress,
+          ...(inputType && inputType !== "text" ? { inputType, inputConfig } : {}),
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Check if user selected "I'm all good" from end-of-conversation word cloud
     const isAllGoodSelection = sanitizedContent.includes("[SELECTED: I'm all good]") || sanitizedContent.toLowerCase() === "i'm all good";
     
