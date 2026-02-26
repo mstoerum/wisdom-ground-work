@@ -27,14 +27,27 @@ export interface InputConfig {
 interface InteractiveInputRouterProps {
   inputType: InputType;
   inputConfig?: InputConfig;
-  // Text input props (forwarded when inputType === "text")
   value: string;
   onChange: (value: string) => void;
   onSubmit: (value?: string) => void;
+  onSkip?: () => void;
   isLoading?: boolean;
   placeholder?: string;
   disabled?: boolean;
 }
+
+const SkipButton = ({ onSkip, disabled }: { onSkip: () => void; disabled?: boolean }) => (
+  <div className="flex justify-center mt-3">
+    <button
+      type="button"
+      onClick={onSkip}
+      disabled={disabled}
+      className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-default"
+    >
+      Skip this question
+    </button>
+  </div>
+);
 
 export const InteractiveInputRouter = ({
   inputType,
@@ -42,6 +55,7 @@ export const InteractiveInputRouter = ({
   value,
   onChange,
   onSubmit,
+  onSkip,
   isLoading,
   placeholder,
   disabled,
@@ -50,61 +64,81 @@ export const InteractiveInputRouter = ({
     onSubmit(serialized);
   };
 
+  const showSkip = onSkip && !disabled && !isLoading;
+
   switch (inputType) {
     case "confidence_check":
       return (
-        <ConfidenceCheck
-          options={inputConfig?.options || ["Yes", "Maybe", "No"]}
-          onSubmit={handleInteractiveSubmit}
-          disabled={disabled || isLoading}
-        />
+        <>
+          <ConfidenceCheck
+            options={inputConfig?.options || ["Yes", "Maybe", "No"]}
+            onSubmit={handleInteractiveSubmit}
+            disabled={disabled || isLoading}
+          />
+          {showSkip && <SkipButton onSkip={onSkip} disabled={disabled || isLoading} />}
+        </>
       );
 
     case "word_cloud":
       return (
-        <WordCloudSelector
-          options={inputConfig?.options || []}
-          maxSelections={inputConfig?.maxSelections || 3}
-          allowOther={inputConfig?.allowOther ?? true}
-          onSubmit={handleInteractiveSubmit}
-          disabled={disabled || isLoading}
-        />
+        <>
+          <WordCloudSelector
+            options={inputConfig?.options || []}
+            maxSelections={inputConfig?.maxSelections || 3}
+            allowOther={inputConfig?.allowOther ?? true}
+            onSubmit={handleInteractiveSubmit}
+            disabled={disabled || isLoading}
+          />
+          {showSkip && <SkipButton onSkip={onSkip} disabled={disabled || isLoading} />}
+        </>
       );
 
     case "sentiment_pulse":
       return (
-        <SentimentPulse
-          onSubmit={handleInteractiveSubmit}
-          disabled={disabled || isLoading}
-        />
+        <>
+          <SentimentPulse
+            onSubmit={handleInteractiveSubmit}
+            disabled={disabled || isLoading}
+          />
+          {showSkip && <SkipButton onSkip={onSkip} disabled={disabled || isLoading} />}
+        </>
       );
 
     case "agreement_spectrum":
       return (
-        <AgreementSpectrum
-          labelLeft={inputConfig?.labelLeft}
-          labelRight={inputConfig?.labelRight}
-          onSubmit={handleInteractiveSubmit}
-          disabled={disabled || isLoading}
-        />
+        <>
+          <AgreementSpectrum
+            labelLeft={inputConfig?.labelLeft}
+            labelRight={inputConfig?.labelRight}
+            onSubmit={handleInteractiveSubmit}
+            disabled={disabled || isLoading}
+          />
+          {showSkip && <SkipButton onSkip={onSkip} disabled={disabled || isLoading} />}
+        </>
       );
 
     case "reflection":
       return (
-        <ReflectionMoment
-          message={inputConfig?.message}
-          onContinue={() => handleInteractiveSubmit("[REFLECTION_COMPLETE]")}
-          disabled={disabled || isLoading}
-        />
+        <>
+          <ReflectionMoment
+            message={inputConfig?.message}
+            onContinue={() => handleInteractiveSubmit("[REFLECTION_COMPLETE]")}
+            disabled={disabled || isLoading}
+          />
+          {showSkip && <SkipButton onSkip={onSkip} disabled={disabled || isLoading} />}
+        </>
       );
 
     case "priority_ranking":
       return (
-        <PriorityRanking
-          options={inputConfig?.options || []}
-          onSubmit={handleInteractiveSubmit}
-          disabled={disabled || isLoading}
-        />
+        <>
+          <PriorityRanking
+            options={inputConfig?.options || []}
+            onSubmit={handleInteractiveSubmit}
+            disabled={disabled || isLoading}
+          />
+          {showSkip && <SkipButton onSkip={onSkip} disabled={disabled || isLoading} />}
+        </>
       );
 
     case "text":
@@ -114,6 +148,7 @@ export const InteractiveInputRouter = ({
           value={value}
           onChange={onChange}
           onSubmit={() => onSubmit()}
+          onSkip={onSkip}
           isLoading={isLoading}
           placeholder={placeholder}
           disabled={disabled}

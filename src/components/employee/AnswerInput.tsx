@@ -11,6 +11,7 @@ interface AnswerInputProps {
   onChange: (value: string) => void;
   onSubmit: () => void;
   onTranscribe?: (audioBlob: Blob) => void;
+  onSkip?: () => void;
   isLoading?: boolean;
   placeholder?: string;
   disabled?: boolean;
@@ -21,6 +22,7 @@ export const AnswerInput = ({
   onChange,
   onSubmit,
   onTranscribe,
+  onSkip,
   isLoading = false,
   placeholder = "Share your thoughts...",
   disabled = false,
@@ -134,7 +136,7 @@ export const AnswerInput = ({
         )}
       </div>
 
-      <div className="flex justify-center">
+      <div className="flex flex-col items-center gap-2">
         <Button
           onClick={onSubmit}
           disabled={!canSubmit}
@@ -153,6 +155,16 @@ export const AnswerInput = ({
             </>
           )}
         </Button>
+        {onSkip && (
+          <button
+            type="button"
+            onClick={onSkip}
+            disabled={isLoading || disabled}
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-default"
+          >
+            Skip this question
+          </button>
+        )}
       </div>
     </motion.div>
   );

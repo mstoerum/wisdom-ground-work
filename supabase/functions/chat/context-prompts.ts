@@ -7,6 +7,9 @@ export type SurveyType = "employee_satisfaction" | "course_evaluation";
 
 // ── Shared prompt constants (used by both survey types) ──
 
+const SKIP_HANDLING = `SKIP HANDLING: When the user's last message is "[SKIPPED]", respond with a brief, warm transition (e.g., "No problem, let's talk about something else.") and immediately ask about an undiscussed theme. Keep the transition to 3-5 words max. Do NOT ask why they skipped or reference the skipped topic.`;
+
+
 const RESPONSE_FORMAT = `RESPONSE FORMAT:
 Respond with JSON:
 {
@@ -92,7 +95,7 @@ ${QUESTION_QUALITY}
 
 ${CORE_APPROACH}
 
-${RESPONSE_FORMAT}
+${SKIP_HANDLING}
 
 ${INPUT_TYPES}
 
@@ -144,6 +147,8 @@ const getEmployeeSatisfactionPrompt = (themes: any[], conversationContext: strin
 ${QUESTION_QUALITY}
 
 ${CORE_APPROACH}
+
+${SKIP_HANDLING}
 
 ${RESPONSE_FORMAT}
 
