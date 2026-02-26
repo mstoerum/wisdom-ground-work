@@ -801,28 +801,68 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
       // Force isFirstMessage=true for introduction trigger
       const isFirstMessage = isIntroductionTrigger || (turnCount === 1 && !messages.some((m: any) => m.role === "assistant"));
       
-      // Fetch themes if provided
+      // Fetch themes if provided — handle UUIDs, names, and objects
       if (requestThemeIds && Array.isArray(requestThemeIds) && requestThemeIds.length > 0) {
-        try {
-          const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-          const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-          const supabase = createClient(supabaseUrl, supabaseKey);
-          
-          const { data, error } = await supabase
-            .from("survey_themes")
-            .select("id, name, description, survey_type, suggested_questions, sentiment_keywords")
-            .in("id", requestThemeIds);
-          
-          if (!error && data) {
-            themes = data;
-            // Detect survey type from themes
-            if (themes.length > 0) {
-              surveyType = themes[0].survey_type || "employee_satisfaction";
-            }
+        // Detect format: UUID strings vs plain names vs objects
+        const isUUID = (s: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s);
+        const firstItem = requestThemeIds[0];
+
+        if (typeof firstItem === 'object' && firstItem !== null && firstItem.name) {
+          // Already objects with name — use directly
+          themes = requestThemeIds.map((t: any, idx: number) => ({
+            id: t.id || `preview-theme-${idx}`,
+            name: t.name,
+            description: t.description || t.name,
+            survey_type: t.survey_type || "employee_satisfaction",
+            suggested_questions: t.suggested_questions || null,
+            sentiment_keywords: t.sentiment_keywords || null,
+          }));
+          if (themes.length > 0) {
+            surveyType = themes[0].survey_type || "employee_satisfaction";
           }
-        } catch (error) {
-          console.error("Error fetching themes in preview mode:", error);
-          // Continue with empty themes - not critical for preview
+        } else if (typeof firstItem === 'string' && !isUUID(firstItem)) {
+          // Plain theme names — build lightweight in-memory theme objects
+          themes = requestThemeIds.map((name: string, idx: number) => ({
+            id: `preview-theme-${idx}`,
+            name,
+            description: name,
+            survey_type: "employee_satisfaction" as SurveyType,
+            suggested_questions: null,
+            sentiment_keywords: null,
+          }));
+          console.log(`[chat] Preview: built ${themes.length} themes from names`);
+        } else {
+          // UUID strings — fetch from database (existing behavior)
+          try {
+            const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+            const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+            const supabase = createClient(supabaseUrl, supabaseKey);
+            
+            const { data, error } = await supabase
+              .from("survey_themes")
+              .select("id, name, description, survey_type, suggested_questions, sentiment_keywords")
+              .in("id", requestThemeIds);
+            
+            if (!error && data && data.length > 0) {
+              themes = data;
+              if (themes.length > 0) {
+                surveyType = themes[0].survey_type || "employee_satisfaction";
+              }
+            } else {
+              // Fallback: UUIDs didn't match — treat as names
+              themes = requestThemeIds.map((name: string, idx: number) => ({
+                id: `preview-theme-${idx}`,
+                name,
+                description: name,
+                survey_type: "employee_satisfaction" as SurveyType,
+                suggested_questions: null,
+                sentiment_keywords: null,
+              }));
+              console.log(`[chat] Preview: UUID lookup returned 0 rows, falling back to name-based themes (${themes.length})`);
+            }
+          } catch (error) {
+            console.error("Error fetching themes in preview mode:", error);
+          }
         }
       }
 

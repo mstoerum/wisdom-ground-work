@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { AIResponseDisplay } from "./AIResponseDisplay";
-import { Progress } from "@/components/ui/progress";
+
 import { InteractiveInputRouter, type InputType, type InputConfig } from "./inputs/InteractiveInputRouter";
 import { MoodSelector } from "./MoodSelector";
 import { MoodTransition } from "./MoodTransition";
@@ -460,11 +460,20 @@ export const FocusedInterviewInterface = ({
           <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-8 relative">
             {/* Linear progress bar */}
             {(() => {
-              const estimatedTotal = themeProgress ? themeProgress.totalCount * 2.5 : 10;
-              const progressValue = Math.min(((questionNumber + 1) / estimatedTotal) * 100, 100);
+              // Safe denominator: prefer backend total, fallback to preview themes, then constant
+              const backendTotal = themeProgress && themeProgress.totalCount > 0 ? themeProgress.totalCount * 2.5 : 0;
+              const previewTotal = isPreviewMode && previewSurveyData?.themes?.length ? previewSurveyData.themes.length * 2.5 : 0;
+              const safeTotal = Math.max(1, backendTotal || previewTotal || 10);
+              const answeredCount = Math.max(0, questionNumber);
+              const progressValue = Math.min(100, Math.max(0, (answeredCount / safeTotal) * 100));
               return (
                 <div className="absolute top-0 left-0 right-0 px-6">
-                  <Progress value={progressValue} className="h-1.5" />
+                  <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all duration-500 ease-out"
+                      style={{ width: `${progressValue}%` }}
+                    />
+                  </div>
                 </div>
               );
             })()}
