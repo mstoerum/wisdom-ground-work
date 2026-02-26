@@ -1,28 +1,32 @@
 
 
-# Fix: Progress Bar Always Showing Full (Orange)
+# Simulate Progress Bar Advancement with White/Orange Styling
 
-## Problem
+## Overview
 
-The `Progress` component in `src/components/ui/progress.tsx` imports from `radix-ui` (the unified package), but the indicator always appears fully filled. The `translateX` transform that controls the fill amount isn't being applied correctly with this import.
+Make the progress bar visually advance one step each time a question is answered, and style it with a white track and orange fill indicator.
 
-## Root Cause
+## Changes
 
-The component was rewritten to use `import { Progress as ProgressPrimitive } from 'radix-ui'` but the original `@radix-ui/react-progress` package (already installed) is what works with the `Root` / `Indicator` sub-components and their transform-based fill mechanism.
+### `src/components/employee/FocusedInterviewInterface.tsx` (lines 462-469)
 
-## Fix
+Update the progress bar styling to use a white background track and orange indicator:
 
-In `src/components/ui/progress.tsx`, change line 5:
+```tsx
+<div className="absolute top-0 left-0 right-0 px-6">
+  <Progress 
+    value={progressValue} 
+    className="h-1.5 bg-white" 
+    indicatorClassName="bg-orange-500"
+  />
+</div>
+```
 
-**From:** `import { Progress as ProgressPrimitive } from 'radix-ui';`
+The existing calculation already increments `questionNumber` after each answer, so `progressValue` already advances per question. The formula `((questionNumber + 1) / estimatedTotal) * 100` ensures visible steps. No logic changes needed -- only the colors.
 
-**To:** `import * as ProgressPrimitive from '@radix-ui/react-progress';`
-
-This restores the correct Radix primitive that supports `Root` and `Indicator` sub-components with proper transform behavior. The `ProgressCircle` and `ProgressRadial` components are pure SVG and unaffected.
-
-## Files Changed
+### Summary
 
 | File | Change |
 |------|--------|
-| `src/components/ui/progress.tsx` | Fix import to use `@radix-ui/react-progress` instead of `radix-ui` |
+| `src/components/employee/FocusedInterviewInterface.tsx` | Add `bg-white` to Progress root, `bg-orange-500` to indicator via `indicatorClassName` prop |
 
