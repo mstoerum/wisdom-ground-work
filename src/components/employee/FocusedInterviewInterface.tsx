@@ -460,8 +460,8 @@ export const FocusedInterviewInterface = ({
           <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-8 relative">
             {/* Linear progress bar */}
             {(() => {
-              const estimatedTotal = themeProgress ? themeProgress.totalCount * 3 : 12;
-              const progressValue = Math.min((questionNumber / estimatedTotal) * 100, 100);
+              const estimatedTotal = themeProgress ? themeProgress.totalCount * 2.5 : 10;
+              const progressValue = Math.min(((questionNumber + 1) / estimatedTotal) * 100, 100);
               return (
                 <div className="absolute top-0 left-0 right-0 px-6">
                   <Progress value={progressValue} className="h-1.5" />
