@@ -277,22 +277,42 @@ const buildConversationContext = (previousResponses: any[], themes: any[]): stri
   const uncoveredThemes = themes?.filter((t: any) => !discussedThemeIds.has(t.id)) || [];
   const isNearCompletion = shouldCompleteBasedOnThemes(previousResponses, themes || [], previousResponses.length);
   
+  // Build per-theme depth info for the AI
+  const perThemeDepth = themes?.map((t: any) => {
+    const count = themeExchangeCounts.get(t.id) || 0;
+    return `${t.name} (${count} exchanges)`;
+  }).join(", ") || "None";
+
+  // Find the most recent theme and its exchange count
+  const lastResponseWithTheme = [...previousResponses].reverse().find(r => r.theme_id);
+  const currentThemeName = lastResponseWithTheme 
+    ? themes?.find((t: any) => t.id === lastResponseWithTheme.theme_id)?.name 
+    : null;
+  const currentThemeCount = lastResponseWithTheme 
+    ? themeExchangeCounts.get(lastResponseWithTheme.theme_id) || 0 
+    : 0;
+
+  const mustTransition = currentThemeCount >= 2 && uncoveredThemes.length > 0;
+
   return `
 CONVERSATION CONTEXT:
 - Topics already discussed: ${discussedThemes.size > 0 ? Array.from(discussedThemes).join(", ") : "None yet"}
 - Theme coverage: ${discussedThemeIds.size} of ${totalThemes} themes (${Math.round(coveragePercent)}%)
-- Average depth per theme: ${avgExchangesPerTheme.toFixed(1)} exchanges
+- Per-theme depth: ${perThemeDepth}
+${currentThemeName ? `- Current theme: "${currentThemeName}" has ${currentThemeCount} exchanges${mustTransition ? " — MUST transition now" : ""}` : ""}
 - Recent sentiment pattern: ${sentimentPattern.join(" → ")}
 - Exchange count: ${previousResponses.length}
 ${previousResponses.length > 0 ? `- Key points mentioned earlier: "${previousResponses.slice(0, 2).map(r => r.content.substring(0, 60)).join('"; "')}"` : ""}
 
 ADAPTIVE INSTRUCTIONS:
+${mustTransition ? 
+  `- CRITICAL: "${currentThemeName}" already has ${currentThemeCount} exchanges. You MUST transition to an undiscussed theme NOW.\n  Do NOT ask another follow-up on a theme you've already explored twice. Move to: ${uncoveredThemes.map((t: any) => t.name).join(", ")}` : ""}
 ${lastSentiment === "negative" ? 
   "- The employee is sharing challenges. Ask specific follow-up questions to understand what happened and what would help." : ""}
 ${lastSentiment === "positive" ? 
   "- The employee is positive. Great! Also explore if there are any areas for improvement to ensure balanced feedback." : ""}
-${uncoveredThemes.length > 0 ? 
-  `\nCRITICAL: These themes have NOT been discussed yet: ${uncoveredThemes.map((t: any) => t.name).join(", ")}.\nYou MUST transition to one of these themes in your next question.\nDo NOT wrap up or suggest completion until all themes are covered.\n` : ""}
+${uncoveredThemes.length > 0 && !mustTransition ? 
+  `\nCRITICAL: These themes have NOT been discussed yet: ${uncoveredThemes.map((t: any) => t.name).join(", ")}.\nYou MUST transition to one of these themes soon.\nDo NOT wrap up or suggest completion until all themes are covered.\n` : ""}
 ${isNearCompletion && uncoveredThemes.length === 0 ? 
   `- All themes covered. Offer a word_cloud with 3-4 NEW topics NOT in the survey themes. Infer from conversation hints (e.g. mentions of workload → "Work-Life Balance", mentions of skills → "Career Growth"). Always include "I'm all good" as last option. Set allowOther: true, maxSelections: 1. If user selected "[SELECTED: I'm all good]", proceed to thank them briefly and signal completion. If they selected a topic, explore with 1-2 questions then offer word_cloud again (minus explored topics).` : ""}
 ${previousResponses.length >= 3 ? "- Reference earlier points when relevant to build on what they've shared." : ""}
