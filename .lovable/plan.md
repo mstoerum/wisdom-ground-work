@@ -1,72 +1,77 @@
 
 
-# Fix: Repetitive Follow-ups and Unnatural Questioning
+# Fix: Give the AI Domain Knowledge About Each Theme
 
 ## Problem
 
-The current system prompt tells the AI "1-2 follow-ups per theme, then move on" but gives it **no data about how many exchanges have already happened on the current theme**. The `buildConversationContext` in `index.ts` only provides totals and averages — not per-theme counts. So the AI keeps asking within the same theme because it can't tell it's already done 3-4 exchanges there.
+The AI receives themes as a single line each:
+```
+- Work-Life Balance: Explore workload, flexibility, and boundaries between work and personal life
+```
 
-Additionally, the simplified prompt in `context-prompts.ts` lost several quality-control instructions from the old prompt (still present but unused at line 306 of `index.ts`):
-- De-escalation rules for heated responses
-- "Match the vibe" calibration
-- Explicit "never repeat or paraphrase what they said"
-- Structured option offering ("Was it workload, timeline, or something else?")
-- The detailed few-shot examples showing bad vs good responses
+But the database already stores rich context per theme that is **never fetched**:
+- `suggested_questions`: 3 example questions per theme (e.g., "How do you feel about your current workload?")
+- `sentiment_keywords`: positive/negative keyword lists (e.g., positive: `flexible, balanced, manageable`; negative: `overwhelmed, burnout, stressed`)
+
+The query on line 986 of `index.ts` only selects `id, name, description` — discarding all domain knowledge. The AI has no sub-topics, no probing angles, and no vocabulary to work with, so it falls back to generic follow-ups.
 
 ## Solution
 
-### 1. `supabase/functions/chat/index.ts` — Add per-theme exchange counts to context
+### 1. `supabase/functions/chat/index.ts` — Fetch full theme data
 
-Update `buildConversationContext` (line 237) to include:
-- Which theme was most recently discussed and how many exchanges it has had
-- A hard instruction: if the current theme already has 2+ exchanges, the AI **must** transition
-
-Add to the context output (around line 287):
+**Line 986**: Change the select query from:
+```sql
+select("id, name, description")
 ```
-- Per-theme depth: Theme A (2 exchanges), Theme B (1 exchange)
-- Current theme: "Management" has 3 exchanges — MUST transition now
-```
-
-And add to ADAPTIVE INSTRUCTIONS:
-```
-- If any theme already has 2+ exchanges, you MUST move to an undiscussed theme.
-  Do NOT ask another follow-up on a theme you've already explored twice.
+To:
+```sql
+select("id, name, description, suggested_questions, sentiment_keywords")
 ```
 
-### 2. `supabase/functions/chat/context-prompts.ts` — Restore quality instructions
+Also update the preview-mode query on **line 804** the same way.
 
-Bring back key instructions from the old prompt (line 306-408 in `index.ts`) into the shared constants:
+### 2. `supabase/functions/chat/context-prompts.ts` — Pass rich theme context to the prompt
 
-**Add to `CORE_APPROACH`:**
-```
-- Never repeat or paraphrase what they said
-- One question only — never ask two questions
-- Maximum 15 words per question, prefer under 12
-```
+Update the `themesText` construction in both `getEmployeeSatisfactionPrompt` and `getCourseEvaluationPrompt`.
 
-**Add a new `QUESTION_QUALITY` constant** with the old prompt's best rules:
-```
-QUESTION QUALITY:
-- Offer 2-3 structured options to narrow: "Was it workload, timeline, or something else?"
-- For negative feedback, always redirect: "What would make this better?"
-- Never ask the same angle twice — if you asked about causes, ask about solutions next
-- Never paraphrase their answer back as a question
+From:
+```typescript
+const themesText = themes?.map(t => `- ${t.name}: ${t.description}`).join("\n")
 ```
 
-**Add to `EMPATHY_RULES`** the de-escalation and vibe-matching from old prompt:
-```
-DE-ESCALATION (heated responses): Stay calm, shorter empathy (3-5 words), redirect quickly.
-MATCH THE VIBE: Positive → warm curious. Neutral → brief appreciative. Negative → acknowledge + redirect.
+To something like:
+```typescript
+const themesText = themes?.map(t => {
+  let entry = `- ${t.name}: ${t.description}`;
+  if (t.suggested_questions?.length) {
+    entry += `\n  Example angles: ${t.suggested_questions.slice(0, 3).join("; ")}`;
+  }
+  if (t.sentiment_keywords) {
+    const pos = t.sentiment_keywords.positive?.slice(0, 3).join(", ");
+    const neg = t.sentiment_keywords.negative?.slice(0, 3).join(", ");
+    if (pos) entry += `\n  Positive signals: ${pos}`;
+    if (neg) entry += `\n  Concern signals: ${neg}`;
+  }
+  return entry;
+}).join("\n")
 ```
 
-### 3. Keep old `getSystemPrompt` function
+This gives the AI output like:
+```
+- Work-Life Balance: Explore workload, flexibility, and boundaries
+  Example angles: How do you feel about your current workload?; Do you have enough flexibility?; What helps you maintain healthy boundaries?
+  Positive signals: flexible, balanced, manageable
+  Concern signals: overwhelmed, burnout, stressed
+```
 
-It's used in the preview flow (line 802). Don't delete it.
+### Token impact
+
+Adds ~30-40 tokens per theme. For a 4-theme survey, that's ~120-160 extra tokens in the system prompt — negligible compared to the conversation history.
 
 ## Files changed
 
 | File | Change |
 |------|--------|
-| `supabase/functions/chat/index.ts` | Add per-theme exchange counts and "must transition" instruction to `buildConversationContext` |
-| `supabase/functions/chat/context-prompts.ts` | Restore question quality rules, de-escalation, and vibe-matching from the old prompt into shared constants |
+| `supabase/functions/chat/index.ts` | Add `suggested_questions, sentiment_keywords` to both theme SELECT queries (lines 804, 986) |
+| `supabase/functions/chat/context-prompts.ts` | Expand `themesText` in both prompt functions to include example angles and sentiment keywords |
 
