@@ -136,7 +136,7 @@ export const AnswerInput = ({
         )}
       </div>
 
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex items-center justify-center gap-4">
         <Button
           onClick={onSubmit}
           disabled={!canSubmit}
@@ -155,7 +155,9 @@ export const AnswerInput = ({
             </>
           )}
         </Button>
-        {onSkip && (
+      </div>
+      {onSkip && (
+        <div className="flex justify-end pr-1">
           <button
             type="button"
             onClick={onSkip}
@@ -164,8 +166,8 @@ export const AnswerInput = ({
           >
             Skip this question
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </motion.div>
   );
 };
