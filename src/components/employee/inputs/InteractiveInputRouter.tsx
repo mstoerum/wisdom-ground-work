@@ -37,7 +37,7 @@ interface InteractiveInputRouterProps {
 }
 
 const SkipButton = ({ onSkip, disabled }: { onSkip: () => void; disabled?: boolean }) => (
-  <div className="flex justify-center mt-3">
+  <div className="flex justify-end mt-3 pr-1">
     <button
       type="button"
       onClick={onSkip}
