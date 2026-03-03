@@ -36,10 +36,9 @@ export const CompletionConfirmationButtons = ({
         </Button>
         <Button
           onClick={onComplete}
-          variant="coral"
           size="lg"
           disabled={isLoading}
-          className="min-w-[160px] shadow-md hover:shadow-lg transition-shadow"
+          className="min-w-[160px] bg-foreground text-background hover:bg-foreground/90 shadow-md hover:shadow-lg transition-shadow"
         >
           <CheckCircle2 className="h-4 w-4 mr-2" />
           End conversation

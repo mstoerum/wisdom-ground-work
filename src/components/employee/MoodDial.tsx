@@ -56,7 +56,7 @@ export const MoodDial = ({ onMoodSelect }: MoodDialProps) => {
           <span>Thriving</span>
         </div>
 
-        <Button onClick={handleContinue} size="lg" className="mt-4">
+        <Button onClick={handleContinue} size="lg" className="mt-4 bg-foreground text-background hover:bg-foreground/90">
           Continue
         </Button>
       </div>
