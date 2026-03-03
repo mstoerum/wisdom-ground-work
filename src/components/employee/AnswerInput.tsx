@@ -141,7 +141,7 @@ export const AnswerInput = ({
           onClick={onSubmit}
           disabled={!canSubmit}
           size="lg"
-          className="px-8 py-6 text-lg font-medium bg-[hsl(var(--terracotta-primary))] hover:bg-[hsl(var(--terracotta-primary))]/90 rounded-full transition-all duration-200 disabled:opacity-50"
+          className="px-8 py-6 text-lg font-medium bg-foreground text-background hover:bg-foreground/90 rounded-full transition-all duration-200 disabled:opacity-50"
         >
           {isLoading ? (
             <>

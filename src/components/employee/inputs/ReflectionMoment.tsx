@@ -38,8 +38,7 @@ export const ReflectionMoment = ({
         <Button
           onClick={onContinue}
           disabled={disabled}
-          variant="ghost"
-          className="text-muted-foreground hover:text-foreground"
+          className="bg-foreground text-background hover:bg-foreground/90"
         >
           I'm ready to continue
         </Button>
