@@ -25,7 +25,7 @@ export const AnswerInput = ({
   onSkip,
   isLoading = false,
   placeholder = "Share your thoughts...",
-  disabled = false,
+  disabled = false
 }: AnswerInputProps) => {
   const { toast } = useToast();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -67,7 +67,7 @@ export const AnswerInput = ({
         if (onTranscribe) {
           onTranscribe(audioBlob);
         }
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       };
 
       mediaRecorder.start();
@@ -78,7 +78,7 @@ export const AnswerInput = ({
       toast({
         title: "Microphone access denied",
         description: "Please allow microphone access to use voice input",
-        variant: "destructive",
+        variant: "destructive"
       });
     }
   };
@@ -98,8 +98,8 @@ export const AnswerInput = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.3, duration: 0.4 }}
-      className="w-full max-w-2xl mx-auto space-y-4"
-    >
+      className="w-full max-w-2xl mx-auto space-y-4">
+      
       <div className="relative">
         <Textarea
           ref={textareaRef}
@@ -108,33 +108,33 @@ export const AnswerInput = ({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={isLoading || disabled}
-          className="min-h-[120px] text-lg p-4 resize-none bg-background border rounded-xl focus:ring-2 focus:ring-[hsl(var(--terracotta-primary))]/20 focus:border-[hsl(var(--terracotta-primary))]"
+          className="min-h-[120px] text-lg p-4 resize-none bg-background border rounded-xl focus:ring-2 focus:ring-[hsl(var(--terracotta-primary))]/20 focus:border-[hsl(var(--terracotta-primary))] mx-0"
           style={{ borderColor: 'rgba(66, 49, 49, 0.03)' }}
-          aria-label="Your response"
-        />
+          aria-label="Your response" />
+        
         
         {/* Voice input button */}
-        {onTranscribe && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={isRecording ? stopRecording : startRecording}
-            disabled={isLoading || disabled}
-            className={`absolute bottom-3 right-3 h-8 w-8 rounded-full transition-colors ${
-              isRecording 
-                ? "bg-red-500/10 text-red-500 hover:bg-red-500/20" 
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-            aria-label={isRecording ? "Stop recording" : "Start voice input"}
-          >
-            {isRecording ? (
-              <MicOff className="h-4 w-4" />
-            ) : (
-              <Mic className="h-4 w-4" />
-            )}
+        {onTranscribe &&
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={isRecording ? stopRecording : startRecording}
+          disabled={isLoading || disabled}
+          className={`absolute bottom-3 right-3 h-8 w-8 rounded-full transition-colors ${
+          isRecording ?
+          "bg-red-500/10 text-red-500 hover:bg-red-500/20" :
+          "text-muted-foreground hover:text-foreground"}`
+          }
+          aria-label={isRecording ? "Stop recording" : "Start voice input"}>
+          
+            {isRecording ?
+          <MicOff className="h-4 w-4" /> :
+
+          <Mic className="h-4 w-4" />
+          }
           </Button>
-        )}
+        }
       </div>
 
       <div className="flex items-center justify-center gap-4">
@@ -142,33 +142,33 @@ export const AnswerInput = ({
           onClick={onSubmit}
           disabled={!canSubmit}
           size="lg"
-          className="px-8 py-6 text-lg font-medium bg-foreground text-background hover:bg-foreground/90 rounded-full transition-all duration-200 disabled:opacity-50"
-        >
-          {isLoading ? (
-            <>
+          className="px-8 py-6 text-lg font-medium bg-foreground text-background hover:bg-foreground/90 rounded-full transition-all duration-200 disabled:opacity-50">
+          
+          {isLoading ?
+          <>
               <Loader2 className="mr-2 h-5 w-5 animate-spin" />
               Processing...
-            </>
-          ) : (
-            <>
+            </> :
+
+          <>
               Continue
               <ArrowRight className="ml-2 h-5 w-5" />
             </>
-          )}
+          }
         </Button>
       </div>
-      {onSkip && (
-        <div className="flex justify-end pr-1">
+      {onSkip &&
+      <div className="flex justify-end pr-1">
           <button
-            type="button"
-            onClick={onSkip}
-            disabled={isLoading || disabled}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-default"
-          >
+          type="button"
+          onClick={onSkip}
+          disabled={isLoading || disabled}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-default">
+          
             Skip this question
           </button>
         </div>
-      )}
-    </motion.div>
-  );
+      }
+    </motion.div>);
+
 };
