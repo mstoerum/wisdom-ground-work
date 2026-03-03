@@ -108,7 +108,7 @@ export const AnswerInput = ({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={isLoading || disabled}
-          className="min-h-[120px] text-lg p-4 resize-none bg-background border rounded-xl focus:ring-2 focus:ring-[hsl(var(--terracotta-primary))]/20 focus:border-[hsl(var(--terracotta-primary))] mx-0"
+          className="min-h-[120px] text-lg p-4 resize-none bg-background border rounded-xl focus:ring-2 focus:ring-foreground/20 focus:border-foreground mx-0"
           style={{ borderColor: 'rgba(66, 49, 49, 0.03)' }}
           aria-label="Your response" />
         
