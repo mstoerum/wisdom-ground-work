@@ -14,8 +14,8 @@ export default {
   	},
   	extend: {
   		fontFamily: {
-			sans: [
-				'Plus Jakarta Sans',
+  			sans: [
+  				'Plus Jakarta Sans',
   				'ui-sans-serif',
   				'system-ui',
   				'sans-serif',
@@ -117,9 +117,13 @@ export default {
   					height: '0'
   				}
   			},
-  			'blink': {
-  				'0%, 100%': { opacity: '1' },
-  				'50%': { opacity: '0' }
+  			blink: {
+  				'0%, 100%': {
+  					opacity: '1'
+  				},
+  				'50%': {
+  					opacity: '0'
+  				}
   			}
   		},
   		animation: {
