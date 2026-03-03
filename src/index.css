@@ -7,6 +7,7 @@
 @import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Merriweather&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -59,7 +60,7 @@ All colors MUST be HSL.
     /* Borders & Inputs */
     --border: 30 10% 90%;
     --input: 30 10% 90%;
-    --ring: 12 45% 55%;
+    --ring: 216 12.1951% 83.9216%;
 
     /* Semantic Colors */
     --success: 152 50% 45%;
