@@ -170,6 +170,7 @@ Deno.serve(async (req) => {
         total: totalResponses,
       },
       themes,
+      narrativeReport: narrativeReport || null,
     };
 
     return new Response(JSON.stringify(result), {
