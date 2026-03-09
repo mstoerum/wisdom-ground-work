@@ -1,9 +1,22 @@
 
 
-Update the textarea in `AnswerInput.tsx` to replace the focus ring/border with a box-shadow effect on focus.
+## Fix: NaN Values in Public Analytics View
 
-**Change in `src/components/employee/AnswerInput.tsx`** (line ~111):
-- Remove `focus:ring-2 focus:ring-foreground/20 focus:border-foreground` classes
-- Add `focus:shadow-[0_0_0_4px_rgba(66,49,49,0.06)]` and `focus:outline-none` so clicking the box produces a soft shadow glow instead of a stroke
-- Keep the existing subtle border color via the inline style
+**Problem**: The edge function returns themes with fields `themeId`, `themeName`, `healthIndex` but `HybridInsightsView` expects `ThemeInsight` shape with `id`, `name`, `avgSentiment`. Similarly, sentiment uses `averageScore` instead of `avgScore`.
+
+**Single file change: `src/pages/PublicAnalytics.tsx`**
+
+Add mapping logic before passing data to `HybridInsightsView`:
+
+1. Map each theme from edge function format to `ThemeInsight`:
+   - `themeId` → `id`
+   - `themeName` → `name`  
+   - `healthIndex` → `avgSentiment` (fallback to 50)
+   - Add missing fields: `urgencyCount: 0`, `keySignals: { concerns: [], positives: [], other: [] }`
+
+2. Map sentiment:
+   - `averageScore` → `avgScore`
+   - Add `moodImprovement: 0`
+
+No database or edge function changes needed.
 
