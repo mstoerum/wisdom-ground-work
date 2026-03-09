@@ -131,8 +131,8 @@ const shouldCompleteBasedOnThemes = (
     return true;
   }
 
-  // Hard minimum: at least themes.length + 2 or MIN_EXCHANGES, whichever is larger
-  const hardMinimum = Math.max(MIN_EXCHANGES, themes.length + 2);
+  // Hard minimum: at least themes.length + 4 or MIN_EXCHANGES, whichever is larger
+  const hardMinimum = Math.max(MIN_EXCHANGES, themes.length + 4);
   if (turnCount < hardMinimum) {
     return false;
   }
