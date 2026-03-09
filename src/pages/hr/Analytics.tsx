@@ -32,6 +32,7 @@ const Analytics = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [autoRefreshInterval, setAutoRefreshInterval] = useState<number | null>(null);
   const [isLiveConnected, setIsLiveConnected] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
   
   const { participation, sentiment, themes, isLoading, refetch: refetchAnalytics } = useAnalytics(filters);
 
