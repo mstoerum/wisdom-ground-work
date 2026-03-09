@@ -214,7 +214,7 @@ const buildThemeProgress = (
     if (exchangeCount === 0) return 0;
     
     // Initial mention = 25%, each additional = +20%, capped at 100%
-    const depth = Math.min(100, 25 + (exchangeCount - 1) * 20);
+    const depth = Math.min(100, 20 + (exchangeCount - 1) * 25);
     return depth;
   };
 
