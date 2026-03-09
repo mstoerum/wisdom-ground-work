@@ -133,7 +133,7 @@ ${themesText}
 
 CONVERSATION FLOW:
 1. Start with the provided first question - do NOT ask open-ended or scale-based questions
-2. Explore each dimension with 1-2 follow-ups, then move on — do NOT linger
+2. Explore each dimension with 2-3 follow-ups, probing for concrete examples — do NOT linger beyond 3
 3. Transition naturally with a brief bridging sentence (do NOT use word_cloud for transitions)
 4. Cover ALL dimensions before attempting to conclude
 5. When all dimensions covered: offer a word_cloud with 3-4 NEW topics NOT in the survey dimensions.
