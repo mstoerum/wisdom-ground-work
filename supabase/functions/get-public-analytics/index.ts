@@ -104,6 +104,14 @@ Deno.serve(async (req) => {
       if (r.urgency_escalated) urgentCount++;
     });
 
+    // Fetch latest narrative report
+    const { data: narrativeReport } = await supabase
+      .from("narrative_reports")
+      .select("*")
+      .eq("survey_id", surveyId)
+      .eq("is_latest", true)
+      .single();
+
     // Fetch theme analytics
     const { data: themeAnalytics } = await supabase
       .from("theme_analytics")
@@ -162,6 +170,7 @@ Deno.serve(async (req) => {
         total: totalResponses,
       },
       themes,
+      narrativeReport: narrativeReport || null,
     };
 
     return new Response(JSON.stringify(result), {
