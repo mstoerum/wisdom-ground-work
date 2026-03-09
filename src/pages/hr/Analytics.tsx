@@ -195,6 +195,13 @@ const Analytics = () => {
                 </Select>
               )}
 
+              {filters.surveyId && (
+                <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(true)} className="gap-2">
+                  <Share2 className="h-4 w-4" />
+                  Share
+                </Button>
+              )}
+
               {/* Spacer */}
               <div className="flex-1" />
 
