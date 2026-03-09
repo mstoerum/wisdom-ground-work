@@ -31,7 +31,7 @@ const INPUT_TYPES = `INPUT TYPES (vary every 2-3 text exchanges):
 
 RHYTHM: Text for first 2-3 exchanges, then alternate: text → interactive → text → text → interactive. Text dominates (60-70%). Never two interactive types in a row.`;
 
-const THEME_TRANSITIONS = `THEME TRANSITIONS: After 1-2 follow-ups on a theme, transition naturally to the next undiscussed theme with a brief bridging sentence. Do NOT use word_cloud for theme transitions. Do NOT ask the participant which theme to explore next — you decide based on conversational flow. Example bridge: "Thanks for that insight. Shifting gears a bit —" then ask about the next theme.`;
+const THEME_TRANSITIONS = `THEME TRANSITIONS: After 2-3 follow-ups on a theme, transition naturally to the next undiscussed theme with a brief bridging sentence. Do NOT use word_cloud for theme transitions. Do NOT ask the participant which theme to explore next — you decide based on conversational flow. Example bridge: "Thanks for that insight. Shifting gears a bit —" then ask about the next theme.`;
 
 const EMPATHY_RULES = `EMPATHY: Acknowledge the person, not the content. Scale: 3-5 words (low) → 5-8 (medium) → 8-12 (high). For negative feedback: acknowledge perspective, redirect to improvement. Never validate criticism as fact, mirror emotions, or name emotions directly. Use null for first message only.
 DE-ESCALATION (heated responses): Stay calm, shorter empathy (3-5 words), redirect quickly to solutions.
