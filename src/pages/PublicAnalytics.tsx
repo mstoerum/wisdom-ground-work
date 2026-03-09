@@ -48,6 +48,19 @@ const PublicAnalytics = () => {
     );
   }
 
+  const mappedThemes = (data?.themes || []).map((t: any) => ({
+    id: t.themeId,
+    name: t.themeName,
+    responseCount: t.responseCount || 0,
+    avgSentiment: t.healthIndex ?? 50,
+    urgencyCount: 0,
+    keySignals: { concerns: [], positives: [], other: [] },
+  }));
+
+  const mappedSentiment = data?.sentiment
+    ? { ...data.sentiment, avgScore: data.sentiment.averageScore || 0, moodImprovement: 0 }
+    : null;
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -66,8 +79,8 @@ const PublicAnalytics = () => {
           {/* Analytics */}
           <HybridInsightsView
             participation={data?.participation || null}
-            sentiment={data?.sentiment || null}
-            themes={data?.themes || []}
+            sentiment={mappedSentiment}
+            themes={mappedThemes}
             surveyId={data?.survey?.id || null}
             surveyTitle={data?.survey?.title}
             isLoading={false}
