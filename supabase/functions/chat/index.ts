@@ -300,7 +300,7 @@ const buildConversationContext = (previousResponses: any[], themes: any[]): stri
     ? themeExchangeCounts.get(lastResponseWithTheme.theme_id) || 0 
     : 0;
 
-  const mustTransition = currentThemeCount >= 2 && uncoveredThemes.length > 0;
+  const mustTransition = currentThemeCount >= 3 && uncoveredThemes.length > 0;
 
   return `
 CONVERSATION CONTEXT:
