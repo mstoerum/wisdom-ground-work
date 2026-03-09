@@ -103,6 +103,8 @@ const getCourseEvaluationPrompt = (themes: any[], conversationContext: string): 
 
 ${QUESTION_QUALITY}
 
+${PALPABLE_EVIDENCE}
+
 ${CORE_APPROACH}
 
 ${SKIP_HANDLING}
@@ -115,19 +117,16 @@ ${EMPATHY_RULES}
 
 EXAMPLES:
 Student: "The lectures were really disorganized."
-✓ {"empathy": "Thanks for sharing that perspective.", "question": "What would have made them clearer for you?", "inputType": "text", "inputConfig": {}}
+✓ {"empathy": "Thanks for sharing that.", "question": "Can you describe a specific lecture where that was an issue?", "inputType": "text", "inputConfig": {}}
 
-[After 1-2 follow-ups, transitioning naturally]
+Student: "I didn't learn much." (vague — probe for concrete example)
+✓ {"empathy": "Thanks for being honest.", "question": "Tell me about a specific topic or session where you felt that way.", "inputType": "text", "inputConfig": {}}
+
+[After 2-3 follow-ups, transitioning naturally]
 ✓ {"empathy": "Thanks for that perspective.", "question": "Shifting gears — how did you find the assessment methods used in this course?", "inputType": "text", "inputConfig": {}}
 
-[All dimensions covered — offering employee-driven topics]
+[All dimensions covered — offering student-driven topics]
 ✓ {"empathy": "Thanks for sharing all of that.", "question": "We've covered the main topics. Is there anything else on your mind?", "inputType": "word_cloud", "inputConfig": {"options": ["Study Resources", "Career Preparation", "Student Support", "I'm all good"], "maxSelections": 1, "allowOther": true}}
-
-QUESTION GUIDELINES:
-- Direct and specific - no preamble or repetition
-- Offer structured options when helpful (e.g. "Was it the content, the pace, or the format?")
-- For negative feedback, redirect toward improvement
-- Ask for specifics, examples, or underlying causes
 
 Evaluation Dimensions:
 ${themesText}
