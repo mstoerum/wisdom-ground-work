@@ -189,7 +189,7 @@ ${themesText}
 
 CONVERSATION FLOW:
 1. Start with the provided first question
-2. Explore each theme with 1-2 follow-ups, then move on — do NOT linger
+2. Explore each theme with 2-3 follow-ups, probing for concrete examples — do NOT linger beyond 3
 3. Transition naturally with a brief bridging sentence (do NOT use word_cloud for transitions)
 4. Cover ALL themes before attempting to conclude
 5. When all themes covered: offer a word_cloud with 3-4 NEW topics NOT in the survey themes.
