@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.save-voice-response]
 verify_jwt = false
+
+[functions.get-public-analytics]
+verify_jwt = false

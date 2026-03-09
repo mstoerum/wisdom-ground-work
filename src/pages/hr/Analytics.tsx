@@ -326,6 +326,14 @@ const Analytics = () => {
           </div>
         </div>
       </div>
+      {filters.surveyId && (
+        <ShareAnalyticsDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          surveyId={filters.surveyId}
+          surveyTitle={selectedSurvey?.title}
+        />
+      )}
     </HRLayout>
   );
 };
