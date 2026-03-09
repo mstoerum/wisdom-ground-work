@@ -26,6 +26,7 @@ import AcceptInvitation from "./pages/AcceptInvitation";
 import TestTrustFlow from "./pages/TestTrustFlow";
 import TestSurveyChat from "./pages/hr/TestSurveyChat";
 import AaltoLanding from "./pages/AaltoLanding";
+import PublicAnalytics from "./pages/PublicAnalytics";
 
 const queryClient = new QueryClient();
 
