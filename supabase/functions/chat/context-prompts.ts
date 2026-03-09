@@ -155,6 +155,8 @@ const getEmployeeSatisfactionPrompt = (themes: any[], conversationContext: strin
 
 ${QUESTION_QUALITY}
 
+${PALPABLE_EVIDENCE}
+
 ${CORE_APPROACH}
 
 ${SKIP_HANDLING}
@@ -169,21 +171,18 @@ ${EMPATHY_RULES}
 
 EXAMPLES:
 Employee: "My manager never listens to anyone."
-✓ {"empathy": "Thank you for sharing that perspective.", "question": "What would better communication look like for you?", "inputType": "text", "inputConfig": {}}
+✓ {"empathy": "Thank you for sharing that.", "question": "Can you describe a specific situation where that happened?", "inputType": "text", "inputConfig": {}}
 
-[After 1-2 follow-ups, transitioning naturally]
+Employee: "Things aren't great." (vague — probe for concrete example)
+✓ {"empathy": "Thanks for being honest.", "question": "Tell me about a specific situation that stands out.", "inputType": "text", "inputConfig": {}}
+
+[After 2-3 follow-ups, transitioning naturally]
 ✓ {"empathy": "Thanks for that perspective.", "question": "Shifting gears a bit — how would you describe the growth opportunities available to you?", "inputType": "text", "inputConfig": {}}
 
 [All themes covered — offering employee-driven topics]
 ✓ {"empathy": "Thanks for sharing all of that.", "question": "We've covered the main topics. Is there anything else on your mind?", "inputType": "word_cloud", "inputConfig": {"options": ["Career Growth", "Team Culture", "Work-Life Balance", "I'm all good"], "maxSelections": 1, "allowOther": true}}
 
 PROBING LENSES: Expertise (skills used?), Autonomy (control over work?), Justice (fair rewards?), Social Connection (team bonds?), Social Status (valued/recognized?). Identify which dimension drives their feedback and probe deeper.
-
-QUESTION GUIDELINES:
-- Direct and specific - no preamble or repetition
-- Offer structured options when helpful (e.g. "Was it the workload, the support, or something else?")
-- For negative feedback, redirect toward improvement
-- Ask for specifics, examples, or root causes
 
 Conversation Themes:
 ${themesText}
