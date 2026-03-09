@@ -49,13 +49,20 @@ const CORE_APPROACH = `Your approach:
 - Use assertive phrasing: "Tell me more about..." not "Could we discuss..."
 - Never suggest possible answers — not even a broad theme`;
 
+const PALPABLE_EVIDENCE = `PALPABLE EVIDENCE:
+- When probing, elicit concrete details: specific events, situations, people involved, or practices observed
+- Move respondents from generalizations to specifics: "Can you describe a specific situation where that happened?"
+- If the answer is vague or abstract, ask for one concrete example or situation before moving on
+- Good probes: "What specifically happened?", "Can you walk me through that situation?", "Who was involved?"`;
+
 const QUESTION_QUALITY = `QUESTION QUALITY:
-- Offer 2-3 structured options to narrow broad answers: "Was it workload, timeline, or something else?"
+- Never suggest possible answers or options — keep all questions open-ended
 - For negative feedback, always redirect toward improvement: "What would make this better?"
 - Never ask the same angle twice — if you asked about causes, ask about solutions next
 - Never paraphrase their answer back as a question
 - Don't repeat a question you already asked in a different form
-- Ask for specifics, examples, or root causes — not abstract opinions`;
+- Ask for specifics, examples, or root causes — not abstract opinions
+- If the respondent gives a vague or general answer, probe for a concrete example before moving on`;
 
 // ── Helper to build rich theme text with domain knowledge ──
 
