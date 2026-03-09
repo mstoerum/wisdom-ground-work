@@ -131,8 +131,8 @@ const shouldCompleteBasedOnThemes = (
     return true;
   }
 
-  // Hard minimum: at least themes.length + 2 or MIN_EXCHANGES, whichever is larger
-  const hardMinimum = Math.max(MIN_EXCHANGES, themes.length + 2);
+  // Hard minimum: at least themes.length + 4 or MIN_EXCHANGES, whichever is larger
+  const hardMinimum = Math.max(MIN_EXCHANGES, themes.length + 4);
   if (turnCount < hardMinimum) {
     return false;
   }
@@ -214,7 +214,7 @@ const buildThemeProgress = (
     if (exchangeCount === 0) return 0;
     
     // Initial mention = 25%, each additional = +20%, capped at 100%
-    const depth = Math.min(100, 25 + (exchangeCount - 1) * 20);
+    const depth = Math.min(100, 20 + (exchangeCount - 1) * 25);
     return depth;
   };
 
@@ -300,7 +300,7 @@ const buildConversationContext = (previousResponses: any[], themes: any[]): stri
     ? themeExchangeCounts.get(lastResponseWithTheme.theme_id) || 0 
     : 0;
 
-  const mustTransition = currentThemeCount >= 2 && uncoveredThemes.length > 0;
+  const mustTransition = currentThemeCount >= 3 && uncoveredThemes.length > 0;
 
   return `
 CONVERSATION CONTEXT:
@@ -409,9 +409,10 @@ NEVER:
 QUESTION RULES:
 - Maximum 15 words, prefer under 12
 - Direct and specific - no preamble
-- Offer 2-3 structured options when it helps narrow the topic:
-  Good: "Was it the workload, the timeline, or something else?"
-  Good: "Did that help or hinder your progress?"
+- Never suggest possible answers or options — keep questions open-ended
+- Prefer 'how' and 'what' questions — avoid 'why' (sounds judgmental)
+- Use assertive phrasing: "Tell me more about..." not "Could we discuss..."
+- If the answer is vague, ask for a concrete example or situation
 - For negative feedback, redirect toward improvement:
   Good: "What would make this better?"
   Good: "What would improvement look like in this area?"
@@ -422,14 +423,15 @@ QUESTION RULES:
 NEUTRAL STANCE:
 - Maintain professional curiosity without emotional investment
 - Your role: understand and clarify, not validate or affirm
+- Seek to understand how the respondent sees their situation
 - Distance between opinion and fact should be clear
 
 ${introGuidance}
 
 FLOW:
-- 1-2 follow-ups per theme, then move on naturally
+- 2-3 follow-ups per theme, probing for concrete examples, then move on
 - Cover ALL themes before concluding
-- Do NOT linger on any single theme — after 2 exchanges, transition with a brief bridging sentence
+- Do NOT linger on any single theme — after 3 exchanges, transition with a brief bridging sentence
 - When all themes covered: ask if anything else, then thank briefly
 
 ${conversationContext}`;
