@@ -587,6 +587,44 @@ export type Database = {
         }
         Relationships: []
       }
+      public_analytics_links: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          share_token: string
+          survey_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          share_token: string
+          survey_id: string
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          share_token?: string
+          survey_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_analytics_links_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       public_survey_links: {
         Row: {
           created_at: string | null

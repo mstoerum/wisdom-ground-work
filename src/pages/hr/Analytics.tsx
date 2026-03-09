@@ -17,11 +17,12 @@ import { useNarrativeReports } from "@/hooks/useNarrativeReports";
 import { useThemeAnalytics } from "@/hooks/useThemeAnalytics";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, BookOpen, LayoutGrid, FileText, RefreshCw, Sparkles } from "lucide-react";
+import { BarChart3, BookOpen, LayoutGrid, FileText, RefreshCw, Sparkles, Share2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { exportStoryReport } from "@/lib/exportStoryReport";
+import { ShareAnalyticsDialog } from "@/components/hr/analytics/ShareAnalyticsDialog";
 
 const Analytics = () => {
   const [filters, setFilters] = useState<AnalyticsFilters>({});
@@ -31,6 +32,7 @@ const Analytics = () => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [autoRefreshInterval, setAutoRefreshInterval] = useState<number | null>(null);
   const [isLiveConnected, setIsLiveConnected] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
   
   const { participation, sentiment, themes, isLoading, refetch: refetchAnalytics } = useAnalytics(filters);
 
@@ -194,6 +196,13 @@ const Analytics = () => {
                 </Select>
               )}
 
+              {filters.surveyId && (
+                <Button variant="outline" size="sm" onClick={() => setShareDialogOpen(true)} className="gap-2">
+                  <Share2 className="h-4 w-4" />
+                  Share
+                </Button>
+              )}
+
               {/* Spacer */}
               <div className="flex-1" />
 
@@ -318,6 +327,14 @@ const Analytics = () => {
           </div>
         </div>
       </div>
+      {filters.surveyId && (
+        <ShareAnalyticsDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          surveyId={filters.surveyId}
+          surveyTitle={selectedSurvey?.title}
+        />
+      )}
     </HRLayout>
   );
 };

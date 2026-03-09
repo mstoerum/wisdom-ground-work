@@ -26,6 +26,7 @@ import AcceptInvitation from "./pages/AcceptInvitation";
 import TestTrustFlow from "./pages/TestTrustFlow";
 import TestSurveyChat from "./pages/hr/TestSurveyChat";
 import AaltoLanding from "./pages/AaltoLanding";
+import PublicAnalytics from "./pages/PublicAnalytics";
 
 const queryClient = new QueryClient();
 
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/admin-bootstrap" element={<AdminBootstrap />} />
             <Route path="/survey/:linkToken" element={<PublicSurvey />} />
             <Route path="/invite/:token" element={<AcceptInvitation />} />
+            <Route path="/analytics/:shareToken" element={<PublicAnalytics />} />
             
             {/* Demo Routes */}
             <Route path="/demo" element={<Demo />} />
