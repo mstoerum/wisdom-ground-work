@@ -550,7 +550,7 @@ const callAI = async (apiKey: string, model: string, messages: any[], temperatur
   }
 
   const data = await response.json();
-  return data.choices[0].message.content;
+  return data.choices[0].message.content || "";
 };
 
 /**
@@ -1030,7 +1030,7 @@ Be warm and appreciative. Keep it brief.`;
       );
 
       // Extract final question if present (look for question mark)
-      const sentences = summaryMessage.split(/[.!?]+/).filter(s => s.trim());
+      const sentences = (summaryMessage || "").split(/[.!?]+/).filter(s => s.trim());
       const questionSentence = sentences.find((s: string) => {
         const trimmed = s.trim();
         return trimmed.endsWith('?') && trimmed.length > 20;
@@ -1834,8 +1834,7 @@ Return ONLY valid JSON in this exact format:
                             description: "A specific follow-up question that could deepen understanding"
                           }
                         },
-                        required: ["urgency_score", "urgency_reason", "detected_themes", "key_sentiment_indicators", "suggested_followup"],
-                        additionalProperties: false
+                        required: ["urgency_score", "urgency_reason", "detected_themes", "key_sentiment_indicators", "suggested_followup"]
                       }
                     }
                   }

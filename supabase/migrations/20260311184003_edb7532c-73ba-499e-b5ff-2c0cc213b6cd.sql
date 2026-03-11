@@ -1,0 +1,2 @@
+ALTER TABLE public.escalation_log DROP CONSTRAINT IF EXISTS escalation_log_escalation_type_check;
+ALTER TABLE public.escalation_log ADD CONSTRAINT escalation_log_escalation_type_check CHECK (escalation_type IN ('harassment', 'safety', 'legal', 'other', 'ai_detected'));
