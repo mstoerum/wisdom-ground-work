@@ -1030,7 +1030,7 @@ Be warm and appreciative. Keep it brief.`;
       );
 
       // Extract final question if present (look for question mark)
-      const sentences = summaryMessage.split(/[.!?]+/).filter(s => s.trim());
+      const sentences = (summaryMessage || "").split(/[.!?]+/).filter(s => s.trim());
       const questionSentence = sentences.find((s: string) => {
         const trimmed = s.trim();
         return trimmed.endsWith('?') && trimmed.length > 20;
