@@ -1834,8 +1834,7 @@ Return ONLY valid JSON in this exact format:
                             description: "A specific follow-up question that could deepen understanding"
                           }
                         },
-                        required: ["urgency_score", "urgency_reason", "detected_themes", "key_sentiment_indicators", "suggested_followup"],
-                        additionalProperties: false
+                        required: ["urgency_score", "urgency_reason", "detected_themes", "key_sentiment_indicators", "suggested_followup"]
                       }
                     }
                   }
