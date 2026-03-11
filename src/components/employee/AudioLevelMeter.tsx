@@ -14,7 +14,7 @@ interface AudioLevelMeterProps {
 export const AudioLevelMeter = ({ audioLevel, isActive }: AudioLevelMeterProps) => {
   const meterRef = useRef<HTMLDivElement>(null);
   const [lowAudioWarning, setLowAudioWarning] = useState(false);
-  const lowAudioTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lowAudioTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!meterRef.current || !isActive) return;
