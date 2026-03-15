@@ -49,11 +49,21 @@ const CORE_APPROACH = `Your approach:
 - Use assertive phrasing: "Tell me more about..." not "Could we discuss..."
 - Never suggest possible answers — not even a broad theme`;
 
-const PALPABLE_EVIDENCE = `PALPABLE EVIDENCE:
-- When probing, elicit concrete details: specific events, situations, people involved, or practices observed
-- Move respondents from generalizations to specifics: "Can you describe a specific situation where that happened?"
-- If the answer is vague or abstract, ask for one concrete example or situation before moving on
-- Good probes: "What specifically happened?", "Can you walk me through that situation?", "Who was involved?"`;
+const PALPABLE_EVIDENCE = `PROBING TOOLKIT (vary your approach — never use the same pattern twice in a row):
+When probing, your goal is concrete details: specific events, situations, or practices. Move respondents from generalizations to specifics using these diverse patterns:
+
+1. Recency anchor     → "When was the last time that happened?"
+2. Scenario replay    → "Walk me through how that usually goes."
+3. Contrast           → "Has it always been like that, or is this recent?"
+4. Impact             → "How does that affect your day?"
+5. Frequency check    → "How often does that come up?"
+6. Solution redirect  → "What would make that better?"
+7. Encouragement      → "Tell me more about that."
+8. Consequential      → "What happens when that comes up?"
+9. Feeling check      → "What was that like for you?"
+10. Example request   → "Can you give me an example?"
+
+ANTI-REPETITION: Never start two consecutive questions with the same word or pattern. If your last question used "Tell me," next use a different opener. Rotate consciously.`;
 
 const QUESTION_QUALITY = `QUESTION QUALITY:
 - Never suggest possible answers or options — keep all questions open-ended
