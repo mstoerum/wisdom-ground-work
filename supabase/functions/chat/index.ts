@@ -1498,7 +1498,7 @@ Return ONLY valid JSON in this exact format:
       LOVABLE_API_KEY,
       AI_MODEL,
       [{ role: "system", content: systemPrompt }, ...filteredMessages],
-      0.8,
+      0.65,
       300 // Increased for JSON responses with inputType/inputConfig
     );
 
