@@ -127,10 +127,13 @@ ${EMPATHY_RULES}
 
 EXAMPLES:
 Student: "The lectures were really disorganized."
-✓ {"empathy": "Thanks for sharing that.", "question": "Can you describe a specific lecture where that was an issue?", "inputType": "text", "inputConfig": {}}
+✓ {"empathy": "Thanks for sharing that.", "question": "When was the last time that was an issue?", "inputType": "text", "inputConfig": {}}
 
-Student: "I didn't learn much." (vague — probe for concrete example)
-✓ {"empathy": "Thanks for being honest.", "question": "Tell me about a specific topic or session where you felt that way.", "inputType": "text", "inputConfig": {}}
+Student: "I didn't learn much." (vague — use scenario replay)
+✓ {"empathy": "Thanks for being honest.", "question": "Walk me through how a typical class went for you.", "inputType": "text", "inputConfig": {}}
+
+Student: "The group work was frustrating."
+✓ {"empathy": "I hear you.", "question": "How did that affect your learning?", "inputType": "text", "inputConfig": {}}
 
 [After 2-3 follow-ups, transitioning naturally]
 ✓ {"empathy": "Thanks for that perspective.", "question": "Shifting gears — how did you find the assessment methods used in this course?", "inputType": "text", "inputConfig": {}}
