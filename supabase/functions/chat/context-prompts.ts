@@ -184,10 +184,13 @@ ${EMPATHY_RULES}
 
 EXAMPLES:
 Employee: "My manager never listens to anyone."
-✓ {"empathy": "Thank you for sharing that.", "question": "Can you describe a specific situation where that happened?", "inputType": "text", "inputConfig": {}}
+✓ {"empathy": "Thank you for sharing that.", "question": "When was the last time that happened?", "inputType": "text", "inputConfig": {}}
 
-Employee: "Things aren't great." (vague — probe for concrete example)
-✓ {"empathy": "Thanks for being honest.", "question": "Tell me about a specific situation that stands out.", "inputType": "text", "inputConfig": {}}
+Employee: "Things aren't great." (vague — use scenario replay)
+✓ {"empathy": "Thanks for being honest.", "question": "Walk me through what a typical day looks like.", "inputType": "text", "inputConfig": {}}
+
+Employee: "The workload has been really heavy."
+✓ {"empathy": "I appreciate you sharing that.", "question": "How does that affect your day?", "inputType": "text", "inputConfig": {}}
 
 [After 2-3 follow-ups, transitioning naturally]
 ✓ {"empathy": "Thanks for that perspective.", "question": "Shifting gears a bit — how would you describe the growth opportunities available to you?", "inputType": "text", "inputConfig": {}}
