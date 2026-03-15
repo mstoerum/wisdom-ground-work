@@ -71,8 +71,8 @@ const QUESTION_QUALITY = `QUESTION QUALITY:
 - Never ask the same angle twice — if you asked about causes, ask about solutions next
 - Never paraphrase their answer back as a question
 - Don't repeat a question you already asked in a different form
-- Ask for specifics, examples, or root causes — not abstract opinions
-- If the respondent gives a vague or general answer, probe for a concrete example before moving on`;
+- Rotate between probing styles. If your last question asked for an example, try a contrast or impact probe next
+- If the respondent gives a vague or general answer, use a different probe style to draw out specifics`;
 
 // ── Helper to build rich theme text with domain knowledge ──
 
