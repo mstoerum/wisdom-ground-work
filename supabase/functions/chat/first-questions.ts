@@ -13,7 +13,11 @@ export type ThemeKey =
   | "compensation"
   | "communication"
   | "recognition"
-  | "workload";
+  | "workload"
+  | "contribution"
+  | "mindfulness"
+  | "optimism"
+  | "working-experience";
 
 // Employee satisfaction themes - feeling-focused questions
 export const THEME_FIRST_QUESTIONS: Record<ThemeKey, string[]> = {
@@ -66,6 +70,26 @@ export const THEME_FIRST_QUESTIONS: Record<ThemeKey, string[]> = {
     "How manageable does your workload feel right now?",
     "Do you feel like you have enough time to do your work well?",
     "What's your energy like by the end of most workdays?"
+  ],
+  "contribution": [
+    "What makes a good shift for you?",
+    "How does your work feel at the end of a shift?",
+    "Do you feel like your work here matters?"
+  ],
+  "mindfulness": [
+    "How's your stress level been at work lately?",
+    "When things get tricky at work, how does that feel?",
+    "How do you handle it when things get busy?"
+  ],
+  "optimism": [
+    "How do you feel about where things are heading here?",
+    "When you think about the next few months here, what comes up?",
+    "Do you see yourself here long-term?"
+  ],
+  "working-experience": [
+    "What's it like working here?",
+    "What stands out about working here?",
+    "How would you describe working here to a friend?"
   ]
 };
 
