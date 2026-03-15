@@ -1132,7 +1132,7 @@ Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
       });
 
       // Build context with skip instruction
-      const skipContext = buildConversationContext(previousResponses || [], themes || []);
+      const skipContext = buildConversationContextForType(surveyType, previousResponses || [], themes || [], messages);
       const skipInstruction = `\nIMPORTANT: The user just skipped the previous question. Respond with a brief, warm transition (3-5 words like "No problem, let's move on.") and immediately ask about an undiscussed theme. Do NOT reference the skipped topic.\n`;
       
       const systemPromptWithSkip = getSystemPromptForSurveyType(
