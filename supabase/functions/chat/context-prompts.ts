@@ -9,7 +9,6 @@ export type SurveyType = "employee_satisfaction" | "course_evaluation";
 
 const SKIP_HANDLING = `SKIP HANDLING: When the user's last message is "[SKIPPED]", respond with a brief, warm transition (e.g., "No problem, let's talk about something else.") and immediately ask about an undiscussed theme. Keep the transition to 3-5 words max. Do NOT ask why they skipped or reference the skipped topic.`;
 
-
 const RESPONSE_FORMAT = `RESPONSE FORMAT:
 Respond with JSON:
 {
@@ -31,11 +30,40 @@ const INPUT_TYPES = `INPUT TYPES (vary every 2-3 text exchanges):
 
 RHYTHM: Text for first 2-3 exchanges, then alternate: text → interactive → text → text → interactive. Text dominates (60-70%). Never two interactive types in a row.`;
 
-const THEME_TRANSITIONS = `THEME TRANSITIONS: After 2-3 follow-ups on a theme, transition naturally to the next undiscussed theme with a brief bridging sentence. Do NOT use word_cloud for theme transitions. Do NOT ask the participant which theme to explore next — you decide based on conversational flow. Example bridge: "Thanks for that insight. Shifting gears a bit —" then ask about the next theme.`;
+const THEME_TRANSITIONS = `THEME TRANSITIONS: After 2-3 follow-ups on a theme, transition naturally to the next undiscussed theme. Your transition MUST connect to something the respondent said — build a bridge from their words to the new topic.
 
-const EMPATHY_RULES = `EMPATHY: Acknowledge the person, not the content. Scale: 3-5 words (low) → 5-8 (medium) → 8-12 (high). For negative feedback: acknowledge perspective, redirect to improvement. Never validate criticism as fact, mirror emotions, or name emotions directly. Use null for first message only.
+TRANSITION EXAMPLES (vary your approach):
+- "You mentioned [X] — that connects to something I'm curious about regarding [new theme]..."
+- "That's helpful context. On a related note, how do you feel about [new theme]?"
+- "Building on what you said about [detail] — how does [new theme] play into that?"
+- "Interesting point about [X]. I'd love to hear your take on [new theme]."
+
+FORBIDDEN: Never use "Shifting gears," "Moving on," or any mechanical transition phrase. Every transition must feel like a natural extension of what they just said.
+Do NOT use word_cloud for theme transitions. Do NOT ask the participant which theme to explore next — you decide based on conversational flow.`;
+
+const EMPATHY_RULES = `EMPATHY: Your acknowledgment must reference WHAT the person shared, not just THAT they shared. Never reuse an empathy phrase you've already used in this conversation.
+
+CONTENT-AWARE EXAMPLES (by tone):
+• After positive feedback: "That's a real strength to have." / "Sounds like that's working well."
+• After neutral/factual: "Got it." / "Clear picture." / "That makes sense."
+• After negative feedback: "That sounds like a lot to navigate." / "That's a tough spot to be in."
+• After specific detail: "That's a clear example." / "Concrete stuff like that helps."
+• After vague response: "Okay, I'd like to dig into that a bit." (no elaborate empathy needed)
+
+ANTI-REPETITION: Track your previous empathy phrases. If you said "That makes sense" last turn, pick a completely different acknowledgment this turn. Rotate consciously.
+
+LENGTH (scales with emotional intensity):
+• Low (neutral facts): 3-5 words
+• Medium (mild emotion): 5-8 words
+• High (strong emotion): 8-12 words
+
+CONSTRUCTIVE NEUTRALITY (for negative feedback):
+- Acknowledge their perspective without validating criticism as fact
+- Redirect toward improvement: "What would make this better?"
+- Never mirror emotions or name emotions directly ("I hear you're frustrated")
+
 DE-ESCALATION (heated responses): Stay calm, shorter empathy (3-5 words), redirect quickly to solutions.
-MATCH THE VIBE: Positive → warm curious. Neutral → brief appreciative. Negative → acknowledge + redirect. Never be more emotional than the participant.`;
+Use null for first message only.`;
 
 const CORE_APPROACH = `Your approach:
 - Professional curiosity without emotional investment
@@ -119,6 +147,8 @@ ${CORE_APPROACH}
 
 ${SKIP_HANDLING}
 
+${RESPONSE_FORMAT}
+
 ${INPUT_TYPES}
 
 ${THEME_TRANSITIONS}
@@ -127,19 +157,19 @@ ${EMPATHY_RULES}
 
 EXAMPLES:
 Student: "The lectures were really disorganized."
-✓ {"empathy": "Thanks for sharing that.", "question": "When was the last time that was an issue?", "inputType": "text", "inputConfig": {}}
+✓ {"empathy": "That sounds like it made things harder.", "question": "When was the last time that was an issue?", "inputType": "text", "inputConfig": {}}
 
 Student: "I didn't learn much." (vague — use scenario replay)
-✓ {"empathy": "Thanks for being honest.", "question": "Walk me through how a typical class went for you.", "inputType": "text", "inputConfig": {}}
+✓ {"empathy": "Okay, I'd like to dig into that.", "question": "Walk me through how a typical class went for you.", "inputType": "text", "inputConfig": {}}
 
 Student: "The group work was frustrating."
-✓ {"empathy": "I hear you.", "question": "How did that affect your learning?", "inputType": "text", "inputConfig": {}}
+✓ {"empathy": "Group dynamics can be tricky.", "question": "How did that affect your learning?", "inputType": "text", "inputConfig": {}}
 
-[After 2-3 follow-ups, transitioning naturally]
-✓ {"empathy": "Thanks for that perspective.", "question": "Shifting gears — how did you find the assessment methods used in this course?", "inputType": "text", "inputConfig": {}}
+[After 2-3 follow-ups, transitioning naturally by connecting to what they said]
+✓ {"empathy": "That's a clear example.", "question": "You mentioned struggling with the pace — how did the assessment methods work for you?", "inputType": "text", "inputConfig": {}}
 
 [All dimensions covered — offering student-driven topics]
-✓ {"empathy": "Thanks for sharing all of that.", "question": "We've covered the main topics. Is there anything else on your mind?", "inputType": "word_cloud", "inputConfig": {"options": ["Study Resources", "Career Preparation", "Student Support", "I'm all good"], "maxSelections": 1, "allowOther": true}}
+✓ {"empathy": "Really appreciate you walking me through all of that.", "question": "We've covered the main topics. Is there anything else on your mind?", "inputType": "word_cloud", "inputConfig": {"options": ["Study Resources", "Career Preparation", "Student Support", "I'm all good"], "maxSelections": 1, "allowOther": true}}
 
 Evaluation Dimensions:
 ${themesText}
@@ -147,7 +177,7 @@ ${themesText}
 CONVERSATION FLOW:
 1. Start with the provided first question - do NOT ask open-ended or scale-based questions
 2. Explore each dimension with 2-3 follow-ups, probing for concrete examples — do NOT linger beyond 3
-3. Transition naturally with a brief bridging sentence (do NOT use word_cloud for transitions)
+3. Transition naturally with a contextual bridge connecting to what they said (do NOT use word_cloud for transitions)
 4. Cover ALL dimensions before attempting to conclude
 5. When all dimensions covered: offer a word_cloud with 3-4 NEW topics NOT in the survey dimensions.
    Infer relevant topics from conversation hints (e.g. mentions of workload → "Study Resources",
@@ -184,19 +214,19 @@ ${EMPATHY_RULES}
 
 EXAMPLES:
 Employee: "My manager never listens to anyone."
-✓ {"empathy": "Thank you for sharing that.", "question": "When was the last time that happened?", "inputType": "text", "inputConfig": {}}
+✓ {"empathy": "That sounds like a tough spot.", "question": "When was the last time that happened?", "inputType": "text", "inputConfig": {}}
 
 Employee: "Things aren't great." (vague — use scenario replay)
-✓ {"empathy": "Thanks for being honest.", "question": "Walk me through what a typical day looks like.", "inputType": "text", "inputConfig": {}}
+✓ {"empathy": "Okay, I'd like to understand more.", "question": "Walk me through what a typical day looks like.", "inputType": "text", "inputConfig": {}}
 
 Employee: "The workload has been really heavy."
-✓ {"empathy": "I appreciate you sharing that.", "question": "How does that affect your day?", "inputType": "text", "inputConfig": {}}
+✓ {"empathy": "That's a lot to carry.", "question": "How does that affect your day?", "inputType": "text", "inputConfig": {}}
 
-[After 2-3 follow-ups, transitioning naturally]
-✓ {"empathy": "Thanks for that perspective.", "question": "Shifting gears a bit — how would you describe the growth opportunities available to you?", "inputType": "text", "inputConfig": {}}
+[After 2-3 follow-ups, transitioning naturally by connecting to what they said]
+✓ {"empathy": "Concrete stuff like that helps.", "question": "You mentioned feeling stretched — how would you describe the growth opportunities available to you?", "inputType": "text", "inputConfig": {}}
 
 [All themes covered — offering employee-driven topics]
-✓ {"empathy": "Thanks for sharing all of that.", "question": "We've covered the main topics. Is there anything else on your mind?", "inputType": "word_cloud", "inputConfig": {"options": ["Career Growth", "Team Culture", "Work-Life Balance", "I'm all good"], "maxSelections": 1, "allowOther": true}}
+✓ {"empathy": "Really appreciate you being so open about all of this.", "question": "We've covered the main topics. Is there anything else on your mind?", "inputType": "word_cloud", "inputConfig": {"options": ["Career Growth", "Team Culture", "Work-Life Balance", "I'm all good"], "maxSelections": 1, "allowOther": true}}
 
 PROBING LENSES: Expertise (skills used?), Autonomy (control over work?), Justice (fair rewards?), Social Connection (team bonds?), Social Status (valued/recognized?). Identify which dimension drives their feedback and probe deeper.
 
@@ -206,7 +236,7 @@ ${themesText}
 CONVERSATION FLOW:
 1. Start with the provided first question
 2. Explore each theme with 2-3 follow-ups, probing for concrete examples — do NOT linger beyond 3
-3. Transition naturally with a brief bridging sentence (do NOT use word_cloud for transitions)
+3. Transition naturally with a contextual bridge connecting to what they said (do NOT use word_cloud for transitions)
 4. Cover ALL themes before attempting to conclude
 5. When all themes covered: offer a word_cloud with 3-4 NEW topics NOT in the survey themes.
    Infer relevant topics from conversation hints (e.g. mentions of workload → "Work-Life Balance",
@@ -222,11 +252,13 @@ Always respond with valid JSON. Maintain professional distance.`
 
 /**
  * Build adaptive conversation context with terminology based on survey type
+ * Includes recent Q&A pairs for AI self-awareness
  */
 export const buildConversationContextForType = (
   surveyType: SurveyType,
   previousResponses: any[],
-  themes: any[]
+  themes: any[],
+  chatMessages?: any[]
 ): string => {
   const participantTerm = surveyType === "course_evaluation" ? "student" : "employee";
   const contextTerm = surveyType === "course_evaluation" ? "course" : "workplace";
@@ -237,6 +269,13 @@ export const buildConversationContextForType = (
     previousResponses
       .filter(r => r.theme_id)
       .map(r => themes?.find((t: any) => t.id === r.theme_id)?.name)
+      .filter(Boolean)
+  );
+
+  const discussedThemeIds = new Set(
+    previousResponses
+      .filter(r => r.theme_id)
+      .map(r => r.theme_id)
       .filter(Boolean)
   );
 
@@ -251,7 +290,67 @@ export const buildConversationContextForType = (
   const lastSentiment = sentimentPattern[sentimentPattern.length - 1];
 
   const exchangeCount = previousResponses.length;
-  
+
+  // ── Per-theme depth tracking ──
+  const themeExchangeCounts = new Map<string, number>();
+  previousResponses.forEach(r => {
+    if (r.theme_id) {
+      themeExchangeCounts.set(r.theme_id, (themeExchangeCounts.get(r.theme_id) || 0) + 1);
+    }
+  });
+
+  const totalThemes = themes?.length || 0;
+  const coveragePercent = totalThemes > 0 ? (discussedThemeIds.size / totalThemes) * 100 : 0;
+
+  const perThemeDepth = themes?.map((t: any) => {
+    const count = themeExchangeCounts.get(t.id) || 0;
+    return `${t.name} (${count} exchanges)`;
+  }).join(", ") || "None";
+
+  // Find current theme and check if must transition
+  const lastResponseWithTheme = [...previousResponses].reverse().find(r => r.theme_id);
+  const currentThemeName = lastResponseWithTheme 
+    ? themes?.find((t: any) => t.id === lastResponseWithTheme.theme_id)?.name 
+    : null;
+  const currentThemeCount = lastResponseWithTheme 
+    ? themeExchangeCounts.get(lastResponseWithTheme.theme_id) || 0 
+    : 0;
+
+  const uncoveredThemes = themes?.filter((t: any) => !discussedThemeIds.has(t.id)) || [];
+  const mustTransition = currentThemeCount >= 3 && uncoveredThemes.length > 0;
+
+  // ── Build recent Q&A pairs from chat messages ──
+  let recentExchangesBlock = "";
+  if (chatMessages && chatMessages.length > 1) {
+    const pairs: string[] = [];
+    for (let i = chatMessages.length - 1; i >= 1 && pairs.length < 4; i--) {
+      const msg = chatMessages[i];
+      const prevMsg = chatMessages[i - 1];
+      if (msg.role === "user" && prevMsg.role === "assistant") {
+        const q = prevMsg.content.substring(0, 150);
+        const a = msg.content.substring(0, 150);
+        pairs.unshift(`  Q: "${q}"\n  A: "${a}"`);
+        i--; // skip the assistant message we already used
+      }
+    }
+    if (pairs.length > 0) {
+      recentExchangesBlock = `\nRECENT EXCHANGES (your questions → their answers):\n${pairs.join("\n\n")}`;
+    }
+  }
+
+  // Fallback: use previousResponses if no chat messages provided
+  let keyPointsBlock = "";
+  if (!recentExchangesBlock && previousResponses.length > 0) {
+    const recentResponses = previousResponses.slice(-4);
+    const points = recentResponses.map(r => {
+      const content = r.content.substring(0, 150);
+      const aiResp = r.ai_response ? r.ai_response.substring(0, 150) : null;
+      if (aiResp) return `  Q: "${aiResp}"\n  A: "${content}"`;
+      return `  A: "${content}"`;
+    });
+    keyPointsBlock = `\nRECENT EXCHANGES:\n${points.join("\n\n")}`;
+  }
+
   // Build interactive element reminders based on exchange count
   let interactiveReminder = "";
   if (exchangeCount >= 2 && exchangeCount <= 3) {
@@ -264,11 +363,16 @@ export const buildConversationContextForType = (
 CONVERSATION CONTEXT:
 - Topics already discussed: ${discussedThemes.size > 0 ? Array.from(discussedThemes).join(", ") : "None yet"}
 - Undiscussed topics: ${undiscussedThemes.length > 0 ? undiscussedThemes.join(", ") : "All covered"}
+- Theme coverage: ${discussedThemeIds.size} of ${totalThemes} themes (${Math.round(coveragePercent)}%)
+- Per-theme depth: ${perThemeDepth}
+${currentThemeName ? `- Current theme: "${currentThemeName}" has ${currentThemeCount} exchanges${mustTransition ? " — MUST transition now" : ""}` : ""}
 - Recent sentiment pattern: ${sentimentPattern.join(" → ")}
 - Exchange count: ${exchangeCount}
-${exchangeCount > 0 ? `- Key points mentioned earlier: "${previousResponses.slice(0, 2).map(r => r.content.substring(0, 60)).join('"; "')}"` : ""}
+${recentExchangesBlock || keyPointsBlock}
 
 ADAPTIVE INSTRUCTIONS:
+${mustTransition ? 
+  `- CRITICAL: "${currentThemeName}" already has ${currentThemeCount} exchanges. You MUST transition to an undiscussed theme NOW.\n  Do NOT ask another follow-up on a theme you've already explored twice. Move to: ${uncoveredThemes.map((t: any) => t.name).join(", ")}` : ""}
 ${lastSentiment === "negative" ? 
   (surveyType === "course_evaluation" 
     ? `- The student is sharing learning challenges. Ask specific questions about what would have helped them learn better.`
@@ -281,6 +385,8 @@ ${exchangeCount >= 6 ?
   `- The ${participantTerm} has shared substantial feedback. Start moving toward a natural close. Ask if there's anything else important they'd like to add about their ${contextTerm} experience.` : ""}
 ${discussedThemes.size < 2 && exchangeCount >= 3 ? 
   `- Consider exploring another dimension that hasn't been covered yet.` : ""}
+${uncoveredThemes.length > 0 && !mustTransition ? 
+  `\nCRITICAL: These themes have NOT been discussed yet: ${uncoveredThemes.map((t: any) => t.name).join(", ")}.\nYou MUST transition to one of these themes soon.\nDo NOT wrap up or suggest completion until all themes are covered.\n` : ""}
 ${interactiveReminder}
 `;
 };
