@@ -1476,7 +1476,7 @@ Return ONLY valid JSON in this exact format:
     }
 
     // Build conversation context
-    const conversationContext = buildConversationContext(previousResponses || [], themes || []);
+    const conversationContext = buildConversationContextForType(surveyType, previousResponses || [], themes || [], messages);
     const systemPromptWithContext = getSystemPromptForSurveyType(
       surveyType,
       themes || [],
