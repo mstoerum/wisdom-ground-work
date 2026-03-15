@@ -1151,7 +1151,7 @@ Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
         LOVABLE_API_KEY,
         AI_MODEL,
         [{ role: "system", content: systemPromptWithSkip }, ...skippedMessages],
-        0.8,
+        0.65,
         300
       );
 
