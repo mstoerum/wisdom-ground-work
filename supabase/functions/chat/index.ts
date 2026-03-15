@@ -20,7 +20,7 @@ const PREVIEW_RATE_LIMIT_MAX_REQUESTS = 5; // Stricter limit for unauthenticated
 const PREVIEW_RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
 const MAX_MESSAGE_LENGTH = 2000;
 const MIN_EXCHANGES = 6; // Minimum exchanges for meaningful conversation
-const AI_MODEL = "google/gemini-2.5-flash";
+const AI_MODEL = "google/gemini-3-flash-preview";
 const AI_MODEL_LITE = "google/gemini-2.5-flash-lite";
 
 // Rate limiting map (simple in-memory, production should use Redis)
