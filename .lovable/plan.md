@@ -1,8 +1,12 @@
+## Interview Intelligence Upgrade — IMPLEMENTED
 
+All changes from the plan have been implemented and deployed:
 
-Update the textarea in `AnswerInput.tsx` to replace the focus ring/border with a box-shadow effect on focus.
-
-**Change in `src/components/employee/AnswerInput.tsx`** (line ~111):
-- Remove `focus:ring-2 focus:ring-foreground/20 focus:border-foreground` classes
-- Add `focus:shadow-[0_0_0_4px_rgba(66,49,49,0.06)]` and `focus:outline-none` so clicking the box produces a soft shadow glow instead of a stroke
-- Keep the existing subtle border color via the inline style
+1. ✅ **EMPATHY_RULES** rewritten — content-aware, anti-repetition, diverse examples by tone
+2. ✅ **THEME_TRANSITIONS** rewritten — contextual bridges required, "Shifting gears" forbidden
+3. ✅ **Few-shot examples** diversified in both prompts (no two start with "Thanks")
+4. ✅ **RESPONSE_FORMAT** added to course evaluation prompt
+5. ✅ **buildConversationContextForType** upgraded with last 3-4 paired Q&A exchanges, 150-char snippets, per-theme depth tracking, mustTransition logic
+6. ✅ **Model** switched to `google/gemini-3-flash-preview`
+7. ✅ **Temperature** lowered to `0.65` (3 call sites)
+8. ✅ **Dead code removed** — `getSystemPrompt()` and `buildConversationContext()` deleted, all flows consolidated through shared `context-prompts.ts`
