@@ -13,7 +13,11 @@ export type ThemeKey =
   | "compensation"
   | "communication"
   | "recognition"
-  | "workload";
+  | "workload"
+  | "contribution"
+  | "mindfulness"
+  | "optimism"
+  | "working-experience";
 
 // Employee satisfaction themes - feeling-focused questions
 export const THEME_FIRST_QUESTIONS: Record<ThemeKey, string[]> = {
