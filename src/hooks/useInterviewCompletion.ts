@@ -224,8 +224,7 @@ export const useInterviewCompletion = ({
     handleFinishEarlyClick,
     handleCancelFinishEarly,
     handleConfirmFinishEarly,
-    handleAddMore,
     handleComplete,
-    enterReviewingPhase,
+    enterCompletionDirectly,
   };
 };

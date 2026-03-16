@@ -506,29 +506,6 @@ export const ChatInterface = ({
       
       <ScrollArea className="flex-1 p-4 overflow-y-auto">
         <div className="space-y-3">
-          {/* Summary Receipt - shown when in completion phase with structured summary */}
-          {isInCompletionPhase && structuredSummary && (
-            <SummaryReceipt
-              conversationId={conversationId}
-              structuredSummary={structuredSummary}
-              responseCount={userMessageCount}
-              startTime={conversationStartTime}
-              showCompletionFlow={true}
-              onComplete={handleCompleteFromButtons}
-              onAddMore={handleAddMoreFromButtons}
-              isLoading={isLoading}
-            />
-          )}
-          
-          {/* Fallback completion phase indicator - shown only when no structured summary */}
-          {!minimalUI && isInCompletionPhase && !structuredSummary && (
-            <Alert className="mx-4 mb-2 border-[hsl(var(--lime-green))] bg-[hsl(var(--lime-green))]/10">
-              <CheckCircle2 className="h-4 w-4 text-[hsl(var(--lime-green))]" />
-              <AlertDescription>
-                Almost done! Please review the summary and add any final thoughts.
-              </AlertDescription>
-            </Alert>
-          )}
           
           {/* Loading skeleton when AI is preparing introduction */}
           {isLoading && messages.length === 0 && (

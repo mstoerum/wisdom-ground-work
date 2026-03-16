@@ -432,29 +432,7 @@ export const FocusedInterviewInterface = ({
 
       {/* Main content area — full width */}
       <div className="flex-1 flex">
-        {/* Completion Phase - Show Enhanced Receipt with inline buttons */}
-        {isReviewing && structuredSummary && (
-          <motion.div 
-            className="flex-1 flex flex-col items-center justify-center px-6 py-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <SummaryReceipt
-              conversationId={conversationId}
-              structuredSummary={structuredSummary}
-              responseCount={questionNumber}
-              startTime={conversationStartTime}
-              showCompletionFlow={true}
-              surveyType={surveyType}
-              onComplete={handleComplete}
-              onAddMore={handleAddMore}
-              isLoading={isLoading || isProcessing}
-            />
-          </motion.div>
-        )}
-
-        {/* Main content - hidden during completion phase */}
+        {/* Main content */}
         {isActive && (
           <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-8 relative">
             {/* Linear progress bar */}
