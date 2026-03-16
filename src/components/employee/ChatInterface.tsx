@@ -359,22 +359,6 @@ export const ChatInterface = ({
     }
   }, [messages, trustFlowStep, isPreviewMode, previewSurveyData, themeProgress]);
 
-  // Fallback: Generate a basic structured summary from messages if we enter completion
-  // phase but don't have a structured summary from the backend
-  useEffect(() => {
-    if (isInCompletionPhase && !structuredSummary && messages.length > 0) {
-      console.log("[ChatInterface] Fallback: Generating structured summary from messages");
-      const userMessages = messages.filter(m => m.role === "user");
-      const fallbackSummary = {
-        opening: "Thank you for taking the time to share your thoughts today.",
-        keyPoints: userMessages.slice(-3).map(m => 
-          m.content.length > 100 ? m.content.substring(0, 97) + "..." : m.content
-        ),
-        sentiment: "mixed" as const
-      };
-      setStructuredSummary(fallbackSummary);
-    }
-  }, [isInCompletionPhase, structuredSummary, messages, setStructuredSummary]);
 
 
   // Handle finish early - trigger confirmation dialog (simplified state)
