@@ -161,9 +161,11 @@ When the user's last message is `[SKIPPED]`:
 
 ## Conversation Flow
 
+**Note:** The mood selector serves as the conversational entry point. The AI does not add a confidentiality preamble — it jumps straight into the first question.
+
 ### Steps (identical structure for both survey types)
 
-1. **Start** with the provided first question — do NOT ask open-ended or scale-based questions
+1. **Start** — the respondent has already selected their mood. Ask the provided first question directly.
 2. **Explore** each theme with 2–3 follow-ups, probing for concrete examples — do NOT linger beyond 3
 3. **Transition** naturally with a contextual bridge connecting to what they said (do NOT use `word_cloud` for transitions)
 4. **Cover ALL** themes before attempting to conclude

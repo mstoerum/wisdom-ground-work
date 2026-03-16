@@ -1,18 +1,16 @@
+## Interview Intelligence — v3 System Prompt — IMPLEMENTED
 
+All changes from the v3 integration plan have been implemented and deployed:
 
-## Plan: Remove Opening Preamble
-
-The mood selector already serves as the conversational entry point. The `OPENING` constant adds an awkward confidentiality speech before the first question. We'll remove it so the AI jumps straight into a mood-adaptive follow-up.
-
-### Changes
-
-**`supabase/functions/chat/context-prompts.ts`**
-1. Delete the `OPENING` constant (lines 119-126)
-2. Remove `${OPENING}` from both `getCourseEvaluationPrompt` and `getEmployeeSatisfactionPrompt`
-3. Update "CONVERSATION FLOW" step 1 in both prompts: change from "Open — configured opening (safety, purpose, expectations), then first question" → "Open — the respondent has already selected their mood. Ask the provided first question directly."
-
-**`docs/interview-system-prompt.md`**
-- Remove the Opening section, add a note that the mood selector serves as the opening
-
-**Deploy** the `chat` edge function
-
+1. ✅ **`thinking` field** added to response JSON — logged server-side, never sent to client
+2. ✅ **Tone shift** — "thoughtful person typing in a chat" with cognitive empathy framing
+3. ✅ **Probing restructured** — Abstract→Concrete + Description→Meaning principles replace 10-pattern toolkit
+4. ✅ **Reflecting & Reframing** — new mechanic for pattern-spotting every 4-5 exchanges
+5. ✅ **Empathy rules** — v3 rules: null when brief/factual, never longer than response, no emotion labeling
+6. ✅ **Transitions** — 2-4 exchanges, discomfort awareness, contextual bridging
+7. ✅ **Input types** — demoted to exception-only, no interactive after emotional content
+8. ✅ **Opening/Closing** — safety/purpose/expectations preamble, personalized gratitude
+9. ✅ **Anti-patterns** — explicit "Bad interviewing" examples in both prompts
+10. ✅ **Probing Lenses** — restructured per survey type (Autonomy/Competence/etc. for employee, Teaching/Assessment/etc. for course)
+11. ✅ **`parseStructuredResponse`** updated to extract and log `thinking` field
+12. ✅ **Docs** updated to v3 content

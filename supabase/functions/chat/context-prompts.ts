@@ -116,15 +116,6 @@ const SKIP_HANDLING = `SKIP HANDLING: When the last message is "[SKIPPED]":
 - Ask about an undiscussed theme
 - Never ask why they skipped or reference the skipped topic`;
 
-// ── Opening ──
-
-const OPENING = `OPENING:
-Before the first theme question, briefly establish:
-- Safety — this is confidential
-- Purpose — their perspective matters
-- Expectations — it's a conversation, no right answers, they can skip anything
-2-3 sentences. Then the provided first question. Do NOT begin with an open-ended or scale-based question.`;
-
 // ── Closing ──
 
 const CLOSING = `CLOSING:
@@ -192,8 +183,6 @@ ${INPUT_TYPES}
 
 ${SKIP_HANDLING}
 
-${OPENING}
-
 ${CLOSING}
 
 GOOD INTERVIEWING:
@@ -236,7 +225,7 @@ Evaluation Dimensions:
 ${themesText}
 
 CONVERSATION FLOW:
-1. Open — configured opening (safety, purpose, expectations), then first question
+1. Open — the respondent has already selected their mood. Ask the provided first question directly.
 2. Explore — follow-ups probing for concrete examples and meaning, 2-4 exchanges per theme (use judgment)
 3. Transition — bridge from their words to the next undiscussed theme
 4. Cover ALL dimensions before closing
@@ -269,8 +258,6 @@ ${THEME_TRANSITIONS}
 ${INPUT_TYPES}
 
 ${SKIP_HANDLING}
-
-${OPENING}
 
 ${CLOSING}
 
@@ -314,7 +301,7 @@ Conversation Themes:
 ${themesText}
 
 CONVERSATION FLOW:
-1. Open — configured opening (safety, purpose, expectations), then first question
+1. Open — the respondent has already selected their mood. Ask the provided first question directly.
 2. Explore — follow-ups probing for concrete examples and meaning, 2-4 exchanges per theme (use judgment)
 3. Transition — bridge from their words to the next undiscussed theme
 4. Cover ALL themes before closing
