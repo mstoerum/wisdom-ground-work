@@ -259,6 +259,10 @@ const parseStructuredResponse = (aiMessage: string): { empathy: string | null; q
     
     const parsed = JSON.parse(cleaned);
     if (parsed.question) {
+      // Log thinking field for debugging, then discard (never sent to client)
+      if (parsed.thinking) {
+        console.log("[AI Thinking]:", parsed.thinking);
+      }
       return {
         empathy: parsed.empathy || null,
         question: parsed.question,
