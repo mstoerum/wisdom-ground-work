@@ -419,23 +419,25 @@ CONVERSATION CONTEXT:
 - Undiscussed topics: ${undiscussedThemes.length > 0 ? undiscussedThemes.join(", ") : "All covered"}
 - Theme coverage: ${discussedThemeIds.size} of ${totalThemes} themes (${Math.round(coveragePercent)}%)
 - Per-theme depth: ${perThemeDepth}
-${currentThemeName ? `- Current theme: "${currentThemeName}" has ${currentThemeCount} exchanges${mustTransition ? " — MUST transition now" : ""}` : ""}
+${currentThemeName ? `- Current theme: "${currentThemeName}" has ${currentThemeCount} exchanges${shouldConsiderTransition ? ". Uncovered themes remain — look for a natural moment to transition, but only when the current thread has been explored sufficiently." : ""}` : ""}
 - Recent sentiment pattern: ${sentimentPattern.join(" → ")}
 - Exchange count: ${exchangeCount}
 ${recentExchangesBlock || keyPointsBlock}
 
 ADAPTIVE INSTRUCTIONS:
-${mustTransition ? 
-  `- CRITICAL: "${currentThemeName}" already has ${currentThemeCount} exchanges. You MUST transition to an undiscussed theme NOW.\n  Move to: ${uncoveredThemes.map((t: any) => t.name).join(", ")}` : ""}
+${shouldConsiderTransition ? 
+  `- You have had ${currentThemeCount} exchanges on "${currentThemeName}". Uncovered themes remain. Look for a natural moment to transition — but only when the current thread has been explored sufficiently.` : ""}
 ${lastSentiment === "negative" ? 
   (surveyType === "course_evaluation" 
     ? `- The student is sharing challenges. Ask specific follow-up questions to understand what happened and what would help.`
     : `- The employee is sharing challenges. Ask specific follow-up questions to understand what happened and what would help.`) : ""}
 ${lastSentiment === "positive" ? 
   `- The ${participantTerm} is positive. Also explore if there are any areas for improvement to ensure balanced feedback.` : ""}
-${exchangeCount >= 8 ? 
-  `- Substantial feedback shared. Start moving toward a natural close if themes are covered.` : ""}
-${uncoveredThemes.length > 0 && !mustTransition ? 
-  `\nThese themes have NOT been discussed yet: ${uncoveredThemes.map((t: any) => t.name).join(", ")}.\nYou MUST cover all themes before closing.\n` : ""}
+${uncoveredThemes.length === 0 ? 
+  `- All themes have been covered. You may now begin closing the conversation using the closing flow described in your instructions.` : ""}
+${exchangeCount >= 8 && uncoveredThemes.length > 0 ? 
+  `- You have discussed ${discussedThemeIds.size} of ${totalThemes} themes after ${exchangeCount} exchanges. ${uncoveredThemes.length} themes remain: ${uncoveredThemes.map((t: any) => t.name).join(", ")}. Prioritize transitioning to uncovered themes — use shorter follow-ups on the current theme if needed.` : ""}
+${uncoveredThemes.length > 0 && exchangeCount < 8 ? 
+  `- These themes have NOT been discussed yet: ${uncoveredThemes.map((t: any) => t.name).join(", ")}. You MUST cover all themes before closing.` : ""}
 `;
 };
