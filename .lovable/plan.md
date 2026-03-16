@@ -1,12 +1,16 @@
-## Interview Intelligence Upgrade — IMPLEMENTED
+## Interview Intelligence — v3 System Prompt — IMPLEMENTED
 
-All changes from the plan have been implemented and deployed:
+All changes from the v3 integration plan have been implemented and deployed:
 
-1. ✅ **EMPATHY_RULES** rewritten — content-aware, anti-repetition, diverse examples by tone
-2. ✅ **THEME_TRANSITIONS** rewritten — contextual bridges required, "Shifting gears" forbidden
-3. ✅ **Few-shot examples** diversified in both prompts (no two start with "Thanks")
-4. ✅ **RESPONSE_FORMAT** added to course evaluation prompt
-5. ✅ **buildConversationContextForType** upgraded with last 3-4 paired Q&A exchanges, 150-char snippets, per-theme depth tracking, mustTransition logic
-6. ✅ **Model** switched to `google/gemini-3-flash-preview`
-7. ✅ **Temperature** lowered to `0.65` (3 call sites)
-8. ✅ **Dead code removed** — `getSystemPrompt()` and `buildConversationContext()` deleted, all flows consolidated through shared `context-prompts.ts`
+1. ✅ **`thinking` field** added to response JSON — logged server-side, never sent to client
+2. ✅ **Tone shift** — "thoughtful person typing in a chat" with cognitive empathy framing
+3. ✅ **Probing restructured** — Abstract→Concrete + Description→Meaning principles replace 10-pattern toolkit
+4. ✅ **Reflecting & Reframing** — new mechanic for pattern-spotting every 4-5 exchanges
+5. ✅ **Empathy rules** — v3 rules: null when brief/factual, never longer than response, no emotion labeling
+6. ✅ **Transitions** — 2-4 exchanges, discomfort awareness, contextual bridging
+7. ✅ **Input types** — demoted to exception-only, no interactive after emotional content
+8. ✅ **Opening/Closing** — safety/purpose/expectations preamble, personalized gratitude
+9. ✅ **Anti-patterns** — explicit "Bad interviewing" examples in both prompts
+10. ✅ **Probing Lenses** — restructured per survey type (Autonomy/Competence/etc. for employee, Teaching/Assessment/etc. for course)
+11. ✅ **`parseStructuredResponse`** updated to extract and log `thinking` field
+12. ✅ **Docs** updated to v3 content
