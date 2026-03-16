@@ -301,7 +301,7 @@ Conversation Themes:
 ${themesText}
 
 CONVERSATION FLOW:
-1. Open — configured opening (safety, purpose, expectations), then first question
+1. Open — the respondent has already selected their mood. Ask the provided first question directly.
 2. Explore — follow-ups probing for concrete examples and meaning, 2-4 exchanges per theme (use judgment)
 3. Transition — bridge from their words to the next undiscussed theme
 4. Cover ALL themes before closing
