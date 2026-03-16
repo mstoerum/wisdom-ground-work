@@ -379,7 +379,7 @@ export const buildConversationContextForType = (
     : 0;
 
   const uncoveredThemes = themes?.filter((t: any) => !discussedThemeIds.has(t.id)) || [];
-  const mustTransition = currentThemeCount >= 4 && uncoveredThemes.length > 0;
+  const shouldConsiderTransition = currentThemeCount >= 3 && uncoveredThemes.length > 0;
 
   // ── Build recent Q&A pairs from chat messages ──
   let recentExchangesBlock = "";
