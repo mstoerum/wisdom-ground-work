@@ -1,22 +1,16 @@
+## Interview Intelligence — v3 System Prompt — IMPLEMENTED
 
+All changes from the v3 integration plan have been implemented and deployed:
 
-## Plan: Fix Interview Closing Logic — Gate on Theme Coverage
-
-The problem is on line 436-437: `exchangeCount >= 8` injects "Start moving toward a natural close if themes are covered" — but the AI interprets this as a closing signal even when themes remain. The phrasing is ambiguous and fires too early.
-
-### Changes in `supabase/functions/chat/context-prompts.ts`
-
-**Lines 436-439** — Replace the adaptive instructions block with theme-coverage-gated logic:
-
-1. **Remove** the `exchangeCount >= 8` closing signal (line 436-437)
-2. **Replace** with two distinct conditions:
-   - If `uncoveredThemes.length === 0`: inject "All themes have been covered. You may now begin closing the conversation using the closing flow described in your instructions."
-   - If `exchangeCount >= 8 AND uncoveredThemes.length > 0`: inject a low-coverage warning nudge: "You have discussed X of Y themes after Z exchanges. N themes remain: [names]. Prioritize transitioning to uncovered themes — use shorter follow-ups on the current theme if needed."
-3. **Remove** the separate uncovered-themes block (lines 438-439) since it's now folded into the new logic
-
-**Line 382** — Soften the per-theme transition from `mustTransition` (hard MUST at ≥4) to a suggestion:
-- Change `currentThemeCount >= 4` to `currentThemeCount >= 3`
-- Update the ADAPTIVE INSTRUCTIONS wording from "MUST transition NOW" to a softer nudge when uncovered themes remain
-
-**Deploy** the `chat` edge function after changes.
-
+1. ✅ **`thinking` field** added to response JSON — logged server-side, never sent to client
+2. ✅ **Tone shift** — "thoughtful person typing in a chat" with cognitive empathy framing
+3. ✅ **Probing restructured** — Abstract→Concrete + Description→Meaning principles replace 10-pattern toolkit
+4. ✅ **Reflecting & Reframing** — new mechanic for pattern-spotting every 4-5 exchanges
+5. ✅ **Empathy rules** — v3 rules: null when brief/factual, never longer than response, no emotion labeling
+6. ✅ **Transitions** — 2-4 exchanges, discomfort awareness, contextual bridging
+7. ✅ **Input types** — demoted to exception-only, no interactive after emotional content
+8. ✅ **Opening/Closing** — safety/purpose/expectations preamble, personalized gratitude
+9. ✅ **Anti-patterns** — explicit "Bad interviewing" examples in both prompts
+10. ✅ **Probing Lenses** — restructured per survey type (Autonomy/Competence/etc. for employee, Teaching/Assessment/etc. for course)
+11. ✅ **`parseStructuredResponse`** updated to extract and log `thinking` field
+12. ✅ **Docs** updated to v3 content
