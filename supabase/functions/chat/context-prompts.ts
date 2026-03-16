@@ -116,15 +116,6 @@ const SKIP_HANDLING = `SKIP HANDLING: When the last message is "[SKIPPED]":
 - Ask about an undiscussed theme
 - Never ask why they skipped or reference the skipped topic`;
 
-// ── Opening ──
-
-const OPENING = `OPENING:
-Before the first theme question, briefly establish:
-- Safety — this is confidential
-- Purpose — their perspective matters
-- Expectations — it's a conversation, no right answers, they can skip anything
-2-3 sentences. Then the provided first question. Do NOT begin with an open-ended or scale-based question.`;
-
 // ── Closing ──
 
 const CLOSING = `CLOSING:
