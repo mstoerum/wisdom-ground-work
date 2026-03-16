@@ -49,9 +49,8 @@ export const FocusedInterviewInterface = ({
     handleFinishEarlyClick,
     handleCancelFinishEarly,
     handleConfirmFinishEarly,
-    handleAddMore,
     handleComplete,
-    enterReviewingPhase,
+    enterCompletionDirectly,
     updateThemeProgress,
   } = useInterviewCompletion({
     conversationId,
