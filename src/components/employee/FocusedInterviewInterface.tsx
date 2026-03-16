@@ -357,8 +357,8 @@ export const FocusedInterviewInterface = ({
         setCurrentEmpathy(data.empathy || null);
         setConversationHistory([...updatedHistory, { role: "assistant", content: messageText }]);
         
-        // Enter reviewing phase via hook
-        enterReviewingPhase(data.structuredSummary || null, [...updatedHistory, { role: "assistant", content: messageText }]);
+        // Skip reviewing — go straight to complete
+        enterCompletionDirectly();
         return;
       }
 
