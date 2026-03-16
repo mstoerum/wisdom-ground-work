@@ -1,16 +1,24 @@
-## Interview Intelligence — v3 System Prompt — IMPLEMENTED
 
-All changes from the v3 integration plan have been implemented and deployed:
 
-1. ✅ **`thinking` field** added to response JSON — logged server-side, never sent to client
-2. ✅ **Tone shift** — "thoughtful person typing in a chat" with cognitive empathy framing
-3. ✅ **Probing restructured** — Abstract→Concrete + Description→Meaning principles replace 10-pattern toolkit
-4. ✅ **Reflecting & Reframing** — new mechanic for pattern-spotting every 4-5 exchanges
-5. ✅ **Empathy rules** — v3 rules: null when brief/factual, never longer than response, no emotion labeling
-6. ✅ **Transitions** — 2-4 exchanges, discomfort awareness, contextual bridging
-7. ✅ **Input types** — demoted to exception-only, no interactive after emotional content
-8. ✅ **Opening/Closing** — safety/purpose/expectations preamble, personalized gratitude
-9. ✅ **Anti-patterns** — explicit "Bad interviewing" examples in both prompts
-10. ✅ **Probing Lenses** — restructured per survey type (Autonomy/Competence/etc. for employee, Teaching/Assessment/etc. for course)
-11. ✅ **`parseStructuredResponse`** updated to extract and log `thinking` field
-12. ✅ **Docs** updated to v3 content
+## Plan: Remove Summary Receipt from Completion Flow
+
+Remove the `SummaryReceipt` rendering from both interview interfaces. When the backend signals completion, skip the reviewing phase entirely and go straight to completing the session.
+
+### Changes
+
+**1. `src/components/employee/FocusedInterviewInterface.tsx`**
+- Remove the `SummaryReceipt` import
+- Remove the `SummaryReceipt` rendering block (reviewing phase UI)
+- When backend signals completion (`isCompletionPrompt`), call `handleComplete` directly instead of entering the reviewing phase
+
+**2. `src/components/employee/ChatInterface.tsx`**
+- Remove the `SummaryReceipt` import
+- Remove the `SummaryReceipt` rendering block and the fallback completion alert
+- Same logic: skip reviewing, go straight to complete
+
+**3. `src/hooks/useInterviewCompletion.ts`**
+- Simplify `enterReviewingPhase` to just call `handleComplete` directly (or remove the reviewing phase entirely)
+- The `handleConfirmFinishEarly` flow should also skip reviewing and go to complete
+
+**4. No backend changes needed** — the `structuredSummary` data can still be generated and stored server-side for analytics, it just won't be displayed.
+
