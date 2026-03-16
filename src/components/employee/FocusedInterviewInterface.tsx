@@ -380,7 +380,7 @@ export const FocusedInterviewInterface = ({
       setIsLoading(false);
       setIsTransitioning(false);
     }
-  }, [currentAnswer, isLoading, conversationHistory, conversationId, isPreviewMode, previewSurveyData, getSession, toast, updateThemeProgress, enterReviewingPhase, chatFunctionName]);
+  }, [currentAnswer, isLoading, conversationHistory, conversationId, isPreviewMode, previewSurveyData, getSession, toast, updateThemeProgress, enterCompletionDirectly, chatFunctionName]);
 
   // Voice transcription disabled - kept for future re-enablement
   // const handleTranscribe = useCallback(async (audioBlob: Blob) => { ... }, [getSession, toast]);
