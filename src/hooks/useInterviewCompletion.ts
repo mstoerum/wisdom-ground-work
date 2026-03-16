@@ -88,91 +88,55 @@ export const useInterviewCompletion = ({
   }, []);
 
   /**
-   * Confirm finish early - call API and enter reviewing phase
+   * Confirm finish early - skip reviewing, go straight to complete
    */
-  const handleConfirmFinishEarly = useCallback(async (messages: Message[]) => {
+  const handleConfirmFinishEarly = useCallback(async (_messages: Message[]) => {
     setFinishDialogOpen(false);
     setIsProcessing(true);
 
     try {
-      const session = await getSession();
-      
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(session ? { Authorization: `Bearer ${session.access_token}` } : {}),
-          },
-          body: JSON.stringify({
-            conversationId,
-            messages: messages.map(m => ({ role: m.role, content: m.content })),
-            finishEarly: true,
-            testMode: isPreviewMode,
-            themes: isPreviewMode ? previewSurveyData?.themes : undefined,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to generate summary");
-      }
-
-      const data = await response.json();
-      
-      // Update theme progress if returned
-      if (data.themeProgress) {
-        setThemeProgress(data.themeProgress);
+      // Mark conversation as complete in database
+      if (!isPreviewMode && conversationId) {
+        await supabase
+          .from("conversation_sessions")
+          .update({ status: "completed", ended_at: new Date().toISOString() })
+          .eq("id", conversationId);
       }
       
-      // Set structured summary and enter reviewing phase
-      if (data.structuredSummary) {
-        setStructuredSummary(data.structuredSummary);
-      } else {
-        // Generate fallback summary from messages
-        const userMessages = messages.filter(m => m.role === "user").slice(-3);
-        setStructuredSummary({
-          opening: "Thank you for taking the time to share your thoughts today.",
-          keyPoints: userMessages.map(m => 
-            m.content.length > 100 ? m.content.substring(0, 97) + "..." : m.content
-          ),
-          sentiment: "mixed"
-        });
-      }
-      
-      setPhase('reviewing');
+      setPhase('complete');
+      onComplete();
     } catch (error) {
       console.error("Error finishing early:", error);
-      toast({
-        title: "Error",
-        description: "Failed to generate summary. Please try again.",
-        variant: "destructive",
-      });
+      // Complete anyway - don't block user
+      setPhase('complete');
+      onComplete();
     } finally {
       setIsProcessing(false);
     }
-  }, [conversationId, isPreviewMode, previewSurveyData, getSession, toast]);
+  }, [conversationId, isPreviewMode, onComplete]);
 
   /**
-   * Enter reviewing phase when backend signals completion
+   * Backend signals completion - skip reviewing, go straight to complete
    */
-  const enterReviewingPhase = useCallback((summary: StructuredSummary | null, messages: Message[]) => {
-    if (summary) {
-      setStructuredSummary(summary);
-    } else {
-      // Generate fallback from messages
-      const userMessages = messages.filter(m => m.role === "user").slice(-3);
-      setStructuredSummary({
-        opening: "Thank you for taking the time to share your thoughts today.",
-        keyPoints: userMessages.map(m => 
-          m.content.length > 100 ? m.content.substring(0, 97) + "..." : m.content
-        ),
-        sentiment: "mixed"
-      });
+  const enterCompletionDirectly = useCallback(async () => {
+    setIsProcessing(true);
+    try {
+      if (!isPreviewMode && conversationId) {
+        await supabase
+          .from("conversation_sessions")
+          .update({ status: "completed", ended_at: new Date().toISOString() })
+          .eq("id", conversationId);
+      }
+      setPhase('complete');
+      onComplete();
+    } catch (error) {
+      console.error("Error completing interview:", error);
+      setPhase('complete');
+      onComplete();
+    } finally {
+      setIsProcessing(false);
     }
-    setPhase('reviewing');
-  }, []);
+  }, [conversationId, isPreviewMode, onComplete]);
 
   /**
    * User clicked "Add More" - return to active phase
@@ -260,8 +224,7 @@ export const useInterviewCompletion = ({
     handleFinishEarlyClick,
     handleCancelFinishEarly,
     handleConfirmFinishEarly,
-    handleAddMore,
     handleComplete,
-    enterReviewingPhase,
+    enterCompletionDirectly,
   };
 };

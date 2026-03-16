@@ -6,7 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { InteractiveInputRouter, type InputType, type InputConfig } from "./inputs/InteractiveInputRouter";
 import { MoodSelector } from "./MoodSelector";
 import { MoodTransition } from "./MoodTransition";
-import { SummaryReceipt } from "./SummaryReceipt";
+
 import { useToast } from "@/hooks/use-toast";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,9 +49,8 @@ export const FocusedInterviewInterface = ({
     handleFinishEarlyClick,
     handleCancelFinishEarly,
     handleConfirmFinishEarly,
-    handleAddMore,
     handleComplete,
-    enterReviewingPhase,
+    enterCompletionDirectly,
     updateThemeProgress,
   } = useInterviewCompletion({
     conversationId,
@@ -358,8 +357,8 @@ export const FocusedInterviewInterface = ({
         setCurrentEmpathy(data.empathy || null);
         setConversationHistory([...updatedHistory, { role: "assistant", content: messageText }]);
         
-        // Enter reviewing phase via hook
-        enterReviewingPhase(data.structuredSummary || null, [...updatedHistory, { role: "assistant", content: messageText }]);
+        // Skip reviewing — go straight to complete
+        enterCompletionDirectly();
         return;
       }
 
@@ -381,7 +380,7 @@ export const FocusedInterviewInterface = ({
       setIsLoading(false);
       setIsTransitioning(false);
     }
-  }, [currentAnswer, isLoading, conversationHistory, conversationId, isPreviewMode, previewSurveyData, getSession, toast, updateThemeProgress, enterReviewingPhase, chatFunctionName]);
+  }, [currentAnswer, isLoading, conversationHistory, conversationId, isPreviewMode, previewSurveyData, getSession, toast, updateThemeProgress, enterCompletionDirectly, chatFunctionName]);
 
   // Voice transcription disabled - kept for future re-enablement
   // const handleTranscribe = useCallback(async (audioBlob: Blob) => { ... }, [getSession, toast]);
@@ -433,29 +432,7 @@ export const FocusedInterviewInterface = ({
 
       {/* Main content area — full width */}
       <div className="flex-1 flex">
-        {/* Completion Phase - Show Enhanced Receipt with inline buttons */}
-        {isReviewing && structuredSummary && (
-          <motion.div 
-            className="flex-1 flex flex-col items-center justify-center px-6 py-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-          >
-            <SummaryReceipt
-              conversationId={conversationId}
-              structuredSummary={structuredSummary}
-              responseCount={questionNumber}
-              startTime={conversationStartTime}
-              showCompletionFlow={true}
-              surveyType={surveyType}
-              onComplete={handleComplete}
-              onAddMore={handleAddMore}
-              isLoading={isLoading || isProcessing}
-            />
-          </motion.div>
-        )}
-
-        {/* Main content - hidden during completion phase */}
+        {/* Main content */}
         {isActive && (
           <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-8 relative">
             {/* Linear progress bar */}
