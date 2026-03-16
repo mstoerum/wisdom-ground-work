@@ -20,7 +20,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FinishEarlyConfirmationDialog } from "./FinishEarlyConfirmationDialog";
 import { CompletionConfirmationButtons } from "./CompletionConfirmationButtons";
-import { SummaryReceipt } from "./SummaryReceipt";
+
 import { useChatMessages } from "@/hooks/useChatMessages";
 import { useChatAPI } from "@/hooks/useChatAPI";
 import type { ThemeProgress, ThemeCoverage } from "@/types/interview";
