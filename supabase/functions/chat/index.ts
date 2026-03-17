@@ -904,9 +904,9 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
     // Check if user is confirming completion
     const userConfirmingCompletion = sanitizedContent.toLowerCase().match(/\b(yes|yeah|sure|ok|okay|done|finished|that'?s all|nothing else|no|nope)\b/);
     
-    // Handle "I'm all good" selection — trigger completion with structured summary
+    // Handle "I'm all good" selection — let AI generate personalized gratitude
     if (isAllGoodSelection && turnCount >= 4 && !isIntroductionTrigger) {
-      console.log(`[${conversationId}] User selected "I'm all good" — triggering completion`);
+      console.log(`[${conversationId}] User selected "I'm all good" — generating personalized gratitude`);
       
       // Save the selection as a response
       if (sanitizedContent.length > 3) {
@@ -915,55 +915,32 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
           conversation_session_id: conversationId,
           survey_id: session?.survey_id,
           content: sanitizedContent,
-          ai_response: "Thank you for your time and valuable insights.",
+          ai_response: null, // Will be set after AI generates gratitude
           sentiment,
           sentiment_score: sentimentScore,
           created_at: new Date().toISOString(),
         });
       }
 
-      // Generate structured summary
-      const conversationContext = previousResponses?.map(r => r.content).join("\n") || "";
-      let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
-      try {
-        const summaryResponse = await callAI(
-          LOVABLE_API_KEY,
-          AI_MODEL_LITE,
-          [
-            { role: "system", content: "You extract structured insights from conversations. Always return valid JSON only, no markdown." },
-            { role: "user", content: `Based on this conversation about ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'}, extract:
-1. KEY_POINTS: 2-4 bullet points summarizing what the participant shared (each under 15 words)
-2. SENTIMENT: overall tone (positive, mixed, or negative)
+      // Let AI generate personalized gratitude referencing what the user shared
+      const conversationContext = buildConversationContextForType(surveyType, previousResponses || [], themes || [], messages);
+      const gratitudePrompt = getSystemPromptForSurveyType(surveyType, themes || [], conversationContext + "\n\nIMPORTANT: The user has chosen to finish. Generate a warm, personalized closing that references something SPECIFIC they shared during the conversation. Do NOT offer more topics. This is the final message.");
+      
+      const gratitudeRaw = await callAI(
+        LOVABLE_API_KEY,
+        AI_MODEL,
+        [{ role: "system", content: gratitudePrompt }, ...messages.map((m: any) => ({ role: m.role, content: m.content }))],
+        0.7,
+        200
+      );
 
-Conversation content:
-${conversationContext}
-
-Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
-          ],
-          0.3,
-          250
-        );
-        let cleaned = summaryResponse.trim();
-        if (cleaned.startsWith('```json')) {
-          cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleaned.startsWith('```')) {
-          cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
-        }
-        const parsed = JSON.parse(cleaned);
-        if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
-          structuredSummary = {
-            keyPoints: parsed.keyPoints.slice(0, 4),
-            sentiment: parsed.sentiment || "mixed"
-          };
-        }
-      } catch (e) {
-        console.error("Failed to parse structured summary for 'I'm all good':", e);
-      }
+      const { empathy, question } = parseStructuredResponse(gratitudeRaw);
+      const gratitudeMessage = question || empathy || "Thank you for sharing your thoughts today. Your feedback will help create meaningful change.";
 
       return new Response(
         JSON.stringify({
-          message: "Thank you for your time and valuable insights. Your feedback will help create meaningful change.",
-          structuredSummary,
+          message: gratitudeMessage,
+          empathy: empathy || null,
           shouldComplete: true,
           isCompletionPrompt: true
         }),
