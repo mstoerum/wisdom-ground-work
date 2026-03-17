@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ConversationBubble } from "./ConversationBubble";
 // VoiceInterface disabled - kept for future re-enablement
 // import { VoiceInterface } from "./VoiceInterface";
-import { Send, Loader2, CheckCircle, CheckCircle2 } from "lucide-react";
+import { Send, Loader2, CheckCircle2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
