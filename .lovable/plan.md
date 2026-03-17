@@ -1,16 +1,21 @@
-## Interview Intelligence — v3 System Prompt — IMPLEMENTED
 
-All changes from the v3 integration plan have been implemented and deployed:
 
-1. ✅ **`thinking` field** added to response JSON — logged server-side, never sent to client
-2. ✅ **Tone shift** — "thoughtful person typing in a chat" with cognitive empathy framing
-3. ✅ **Probing restructured** — Abstract→Concrete + Description→Meaning principles replace 10-pattern toolkit
-4. ✅ **Reflecting & Reframing** — new mechanic for pattern-spotting every 4-5 exchanges
-5. ✅ **Empathy rules** — v3 rules: null when brief/factual, never longer than response, no emotion labeling
-6. ✅ **Transitions** — 2-4 exchanges, discomfort awareness, contextual bridging
-7. ✅ **Input types** — demoted to exception-only, no interactive after emotional content
-8. ✅ **Opening/Closing** — safety/purpose/expectations preamble, personalized gratitude
-9. ✅ **Anti-patterns** — explicit "Bad interviewing" examples in both prompts
-10. ✅ **Probing Lenses** — restructured per survey type (Autonomy/Competence/etc. for employee, Teaching/Assessment/etc. for course)
-11. ✅ **`parseStructuredResponse`** updated to extract and log `thinking` field
-12. ✅ **Docs** updated to v3 content
+## Plan: Remove Finish Early, Skip Question, and FinishEarlyConfirmationDialog
+
+### 1. `src/components/employee/FocusedInterviewInterface.tsx`
+- **Remove imports**: `CheckCircle`, `FinishEarlyConfirmationDialog`
+- **Remove unused hook destructures**: `isFinishDialogOpen`, `handleFinishEarlyClick`, `handleCancelFinishEarly`, `handleConfirmFinishEarly`
+- **Remove the header section** (lines 415-432) containing the "Finish Early" button — or simplify it to just the border div
+- **Remove `onSkip` prop** from `InteractiveInputRouter` (line 468)
+- **Remove the `FinishEarlyConfirmationDialog`** block at the bottom (lines 486-498)
+
+### 2. `src/components/employee/ChatInterface.tsx`
+- **Remove imports**: `FinishEarlyConfirmationDialog`, `CheckCircle` (if only used for Finish Early)
+- **Remove `handleFinishEarlyClick`** callback (lines 364-367)
+- **Remove `isFinishDialogOpen`/`setFinishDialogOpen` state** and related references
+- **Remove the Finish Early button** (lines 474-483)
+- **Remove the `FinishEarlyConfirmationDialog`** block (lines 613-621)
+
+### 3. No file deletion
+Keep `FinishEarlyConfirmationDialog.tsx` in the codebase as dead code for now (can be cleaned up later if desired).
+
