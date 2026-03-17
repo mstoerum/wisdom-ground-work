@@ -114,7 +114,7 @@ export const ChatInterface = ({
   // const [voiceSupported, setVoiceSupported] = useState(false);
   
   // Simplified state machine: use boolean for dialog + phase from isInCompletionPhase
-  const [isFinishDialogOpen, setFinishDialogOpen] = useState(false);
+  
   
   // Theme progress from backend (single source of truth)
   const [themeProgress, setThemeProgress] = useState<ThemeProgress | null>(null);
