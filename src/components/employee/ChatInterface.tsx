@@ -596,15 +596,6 @@ export const ChatInterface = ({
         </div>
       </div>
 
-      {/* Finish Early Confirmation Dialog */}
-      <FinishEarlyConfirmationDialog
-        open={isFinishDialogOpen}
-        onConfirm={handleConfirmFinishEarly}
-        onCancel={() => setFinishDialogOpen(false)}
-        themeCoverage={themeCoverage}
-        exchangeCount={userMessageCount}
-        minExchanges={4}
-      />
     </div>
   );
 };

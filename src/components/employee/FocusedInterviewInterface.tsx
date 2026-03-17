@@ -460,19 +460,6 @@ export const FocusedInterviewInterface = ({
         </div>
       )}
 
-      {/* Finish Early Dialog - uses hook's state and handlers */}
-      <FinishEarlyConfirmationDialog
-        open={isFinishDialogOpen}
-        themeCoverage={{ 
-          discussed: themeProgress?.discussedCount || questionNumber, 
-          total: themeProgress?.totalCount || 6, 
-          percentage: themeProgress?.coveragePercent || (questionNumber / 6) * 100 
-        }}
-        exchangeCount={questionNumber}
-        minExchanges={3}
-        onConfirm={() => handleConfirmFinishEarly(conversationHistory)}
-        onCancel={handleCancelFinishEarly}
-      />
     </div>
   );
 };
