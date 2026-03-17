@@ -361,10 +361,6 @@ export const ChatInterface = ({
 
 
 
-  // Handle finish early - trigger confirmation dialog (simplified state)
-  const handleFinishEarlyClick = useCallback(() => {
-    setFinishDialogOpen(true);
-  }, []);
 
   // Handle completion confirmation via buttons
   const handleCompleteFromButtons = useCallback(async () => {
