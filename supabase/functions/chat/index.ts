@@ -818,298 +818,17 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
 
     const turnCount = messages.filter((m: any) => m.role === "user").length;
     
-    // Handle finish early request
+    // Handle finish early request (legacy — now a no-op, kept for API compat)
     if (finishEarly) {
-      const coveragePercent = themeCoverage || 0;
-      const summaryPrompt = `You've been conducting a conversation with a participant. They want to finish early (${Math.round(coveragePercent)}% theme coverage, ${turnCount} exchanges).
-
-Summarize what they've shared so far in 2-3 sentences, then either:
-1. Ask ONE final important question that would help get a clearer picture of their experience (if coverage < 60%), OR
-2. Ask if there's anything else they'd like to add (if coverage >= 60%)
-
-Be warm and appreciative. Keep it brief.`;
-
-      const summaryMessage = await callAI(
-        LOVABLE_API_KEY,
-        AI_MODEL,
-        [
-          { role: "system", content: summaryPrompt },
-          ...messages.map((m: any) => ({ role: m.role, content: m.content }))
-        ],
-        0.7,
-        150
-      );
-
-      // Extract final question if present (look for question mark)
-      const sentences = (summaryMessage || "").split(/[.!?]+/).filter(s => s.trim());
-      const questionSentence = sentences.find((s: string) => {
-        const trimmed = s.trim();
-        return trimmed.endsWith('?') && trimmed.length > 20;
-      });
-      const finalQuestion = questionSentence ? questionSentence.trim() : null;
-
-      // Generate structured summary for the receipt
-      const conversationContext = messages.map((m: any) => m.role === "user" ? m.content : "").filter(Boolean).join("\n");
-      let structuredSummary = { opening: "Thank you for sharing your thoughts today.", keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
-      
-      try {
-        const summaryResponse = await callAI(
-          LOVABLE_API_KEY,
-          AI_MODEL_LITE,
-          [
-            { role: "system", content: "Extract structured insights from feedback conversations. Return valid JSON only." },
-            { role: "user", content: `Based on this conversation, create a rich summary:
-
-1. OPENING: A warm, personalized 1-sentence acknowledgment of what was shared (e.g., "Thank you for sharing openly about your experience with...")
-
-2. KEY_POINTS: 2-4 meaningful bullet points summarizing specific feedback (25-35 words each, capture the essence with context and nuance)
-
-3. SENTIMENT: overall emotional tone (positive, mixed, or constructive)
-
-Conversation content:
-${conversationContext || "User shared their thoughts and feedback."}
-
-Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sentiment": "..."}` }
-          ],
-          0.4,
-          350
-        );
-        
-        let cleaned = summaryResponse.trim();
-        if (cleaned.startsWith('```json')) {
-          cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleaned.startsWith('```')) {
-          cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
-        }
-        const parsed = JSON.parse(cleaned);
-        if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
-          structuredSummary = {
-            opening: parsed.opening || "Thank you for sharing your thoughts today.",
-            keyPoints: parsed.keyPoints.slice(0, 4),
-            sentiment: parsed.sentiment || "mixed"
-          };
-        }
-      } catch (e) {
-        console.error("Failed to parse structured summary in finishEarly:", e);
-      }
-
       return new Response(
-        JSON.stringify({ 
-          message: summaryMessage,
-          finalQuestion: finalQuestion || null,
-          structuredSummary,
-          shouldComplete: false,
-          isCompletionPrompt: true  // Triggers receipt UI with buttons
-        }),
+        JSON.stringify({ message: "Thank you for sharing.", shouldComplete: true, isCompletionPrompt: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Handle user responding to completion confirmation
-    if (isCompletionConfirmation) {
-      const userResponse = sanitizedContent.toLowerCase();
-      const wantsToAddMore = userResponse.match(/\b(yes|yeah|sure|actually|wait)\b/);
-      
-      if (wantsToAddMore) {
-        // User wants to add more - continue conversation
-        const continuePrompt = "Of course! What would you like to add?";
-        return new Response(
-          JSON.stringify({
-            message: continuePrompt,
-            shouldComplete: false,
-            isCompletionPrompt: false
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      } else {
-        // User says no/nothing OR clicked "Complete Survey" button (empty content)
-        // Save their final response only if it has meaningful content
-        if (sanitizedContent.length > 3 && !isIntroductionTrigger) {
-          const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, sanitizedContent);
-          const detectedThemeId = await detectTheme(LOVABLE_API_KEY, sanitizedContent, themes || []);
+    // isCompletionConfirmation handler removed — dead code for removed receipt UI
 
-          await supabase.from("responses").insert({
-            conversation_session_id: conversationId,
-            survey_id: session?.survey_id,
-            content: sanitizedContent,
-            ai_response: "Thank you for your time and insights.",
-            sentiment,
-            sentiment_score: sentimentScore,
-            theme_id: detectedThemeId,
-            created_at: new Date().toISOString(),
-          });
-        }
-
-        // Generate structured summary for the receipt
-        const conversationContext = previousResponses?.map(r => r.content).join("\n") || "";
-        const structuredSummaryPrompt = `Based on this conversation about ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'}, create a rich summary:
-
-1. OPENING: A warm, personalized 1-sentence acknowledgment of what was shared (e.g., "Thank you for sharing openly about your experience with...")
-
-2. KEY_POINTS: 2-4 meaningful bullet points summarizing specific feedback (25-35 words each, capture the essence with context and nuance)
-
-3. SENTIMENT: overall emotional tone (positive, mixed, or constructive)
-
-Conversation content:
-${conversationContext}
-
-Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sentiment": "..."}`;
-        
-        let structuredSummary = { opening: "Thank you for sharing your thoughts today.", keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
-        try {
-          const summaryResponse = await callAI(
-            LOVABLE_API_KEY,
-            AI_MODEL_LITE,
-            [
-              { role: "system", content: "You extract structured insights from conversations. Always return valid JSON only, no markdown." },
-              { role: "user", content: structuredSummaryPrompt }
-            ],
-            0.3,
-            250
-          );
-          
-          let cleaned = summaryResponse.trim();
-          if (cleaned.startsWith('```json')) {
-            cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-          } else if (cleaned.startsWith('```')) {
-            cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
-          }
-          const parsed = JSON.parse(cleaned);
-          if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
-            structuredSummary = {
-              opening: parsed.opening || "Thank you for sharing your thoughts today.",
-              keyPoints: parsed.keyPoints.slice(0, 4),
-              sentiment: parsed.sentiment || "mixed"
-            };
-          }
-        } catch (e) {
-          console.error("Failed to parse structured summary:", e);
-          structuredSummary = {
-            opening: "Thank you for sharing your thoughts today.",
-            keyPoints: previousResponses?.slice(-3).map(r => 
-              r.content.length > 100 ? r.content.substring(0, 97) + "..." : r.content
-            ) || ["Thank you for sharing your feedback"],
-            sentiment: "mixed"
-          };
-        }
-
-        // Return with structured summary for receipt display
-        return new Response(
-          JSON.stringify({
-            message: "Thank you for your time and valuable insights. Your feedback will help create meaningful change.",
-            structuredSummary,
-            shouldComplete: true,
-            isCompletionPrompt: true
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-    }
-
-    // Handle final response - MUST return structured summary for receipt UI
-    if (isFinalResponse) {
-      console.log(`[${conversationId}] isFinalResponse triggered - generating structured summary`);
-      
-      const finalResponsePrompt = `The participant has finished sharing. Acknowledge their final response warmly and thank them for their time. Keep it brief (1-2 sentences).`;
-
-      const finalMessage = await callAI(
-        LOVABLE_API_KEY,
-        AI_MODEL,
-        [
-          { role: "system", content: finalResponsePrompt },
-          ...messages.map((m: any) => ({ role: m.role, content: m.content }))
-        ],
-        0.7,
-        100
-      );
-
-      // Save final response if not introduction trigger
-      if (!isIntroductionTrigger && sanitizedContent) {
-        const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, sanitizedContent);
-        const detectedThemeId = await detectTheme(LOVABLE_API_KEY, sanitizedContent, themes || []);
-
-        console.log(`[${conversationId}] Saving final response...`);
-        const { error: insertError } = await supabase.from("responses").insert({
-          conversation_session_id: conversationId,
-          survey_id: session?.survey_id,
-          content: sanitizedContent,
-          ai_response: finalMessage,
-          sentiment,
-          sentiment_score: sentimentScore,
-          theme_id: detectedThemeId,
-          created_at: new Date().toISOString(),
-        });
-
-        if (insertError) {
-          console.error(`[${conversationId}] Warning: Failed to save final response:`, insertError);
-        }
-      }
-
-      // Generate structured summary for receipt UI
-      const conversationContext = (previousResponses || [])
-        .map((r: any) => r.content)
-        .filter(Boolean)
-        .join("\n");
-
-      let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" as const };
-      
-      try {
-        const summaryResponse = await callAI(
-          LOVABLE_API_KEY,
-          AI_MODEL_LITE,
-          [
-            { role: "system", content: "Extract structured insights. Return valid JSON only." },
-            { role: "user", content: `Based on this ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'} conversation, extract:
-1. KEY_POINTS: 2-4 bullet points summarizing what the participant shared (each under 15 words)
-2. SENTIMENT: overall tone (positive, mixed, or negative)
-
-Conversation content:
-${conversationContext || "User shared their thoughts and feedback."}
-
-Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
-          ],
-          0.3,
-          250
-        );
-        
-        let cleaned = summaryResponse.trim();
-        if (cleaned.startsWith('```json')) {
-          cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleaned.startsWith('```')) {
-          cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
-        }
-        const parsed = JSON.parse(cleaned);
-        if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
-          structuredSummary = {
-            keyPoints: parsed.keyPoints.slice(0, 4),
-            sentiment: parsed.sentiment || "mixed"
-          };
-        }
-        console.log(`[${conversationId}] Generated structured summary:`, structuredSummary);
-      } catch (e) {
-        console.error(`[${conversationId}] Failed to parse structured summary in final response:`, e);
-        // Fallback to recent responses as key points
-        structuredSummary = {
-          keyPoints: (previousResponses || []).slice(-3).map((r: any) => 
-            r.content.length > 60 ? r.content.substring(0, 60) + "..." : r.content
-          ).filter(Boolean),
-          sentiment: "mixed"
-        };
-        if (structuredSummary.keyPoints.length === 0) {
-          structuredSummary.keyPoints = ["Thank you for sharing your feedback"];
-        }
-      }
-
-      return new Response(
-        JSON.stringify({ 
-          message: finalMessage,
-          structuredSummary,
-          shouldComplete: false,  // Let user review before completing
-          isCompletionPrompt: true  // Triggers receipt UI
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // isFinalResponse handler removed — dead code for removed receipt UI
     
     // Determine completion based on theme exploration, not just exchange count
     const shouldComplete = shouldCompleteBasedOnThemes(previousResponses || [], themes || [], turnCount);
@@ -1185,9 +904,9 @@ Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
     // Check if user is confirming completion
     const userConfirmingCompletion = sanitizedContent.toLowerCase().match(/\b(yes|yeah|sure|ok|okay|done|finished|that'?s all|nothing else|no|nope)\b/);
     
-    // Handle "I'm all good" selection — trigger completion with structured summary
+    // Handle "I'm all good" selection — let AI generate personalized gratitude
     if (isAllGoodSelection && turnCount >= 4 && !isIntroductionTrigger) {
-      console.log(`[${conversationId}] User selected "I'm all good" — triggering completion`);
+      console.log(`[${conversationId}] User selected "I'm all good" — generating personalized gratitude`);
       
       // Save the selection as a response
       if (sanitizedContent.length > 3) {
@@ -1196,235 +915,44 @@ Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
           conversation_session_id: conversationId,
           survey_id: session?.survey_id,
           content: sanitizedContent,
-          ai_response: "Thank you for your time and valuable insights.",
+          ai_response: null, // Will be set after AI generates gratitude
           sentiment,
           sentiment_score: sentimentScore,
           created_at: new Date().toISOString(),
         });
       }
 
-      // Generate structured summary
-      const conversationContext = previousResponses?.map(r => r.content).join("\n") || "";
-      let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
-      try {
-        const summaryResponse = await callAI(
-          LOVABLE_API_KEY,
-          AI_MODEL_LITE,
-          [
-            { role: "system", content: "You extract structured insights from conversations. Always return valid JSON only, no markdown." },
-            { role: "user", content: `Based on this conversation about ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'}, extract:
-1. KEY_POINTS: 2-4 bullet points summarizing what the participant shared (each under 15 words)
-2. SENTIMENT: overall tone (positive, mixed, or negative)
-
-Conversation content:
-${conversationContext}
-
-Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}` }
-          ],
-          0.3,
-          250
-        );
-        let cleaned = summaryResponse.trim();
-        if (cleaned.startsWith('```json')) {
-          cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleaned.startsWith('```')) {
-          cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
-        }
-        const parsed = JSON.parse(cleaned);
-        if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
-          structuredSummary = {
-            keyPoints: parsed.keyPoints.slice(0, 4),
-            sentiment: parsed.sentiment || "mixed"
-          };
-        }
-      } catch (e) {
-        console.error("Failed to parse structured summary for 'I'm all good':", e);
-      }
-
-      return new Response(
-        JSON.stringify({
-          message: "Thank you for your time and valuable insights. Your feedback will help create meaningful change.",
-          structuredSummary,
-          shouldComplete: true,
-          isCompletionPrompt: true
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Natural completion flow: AI detected completion + user confirms
-    if (shouldComplete && !isFinalResponse && !isIntroductionTrigger) {
-      // Generate structured summary with key points
-      const conversationContext = previousResponses?.map(r => r.content).join("\n") || "";
-      const structuredSummaryPrompt = `Based on this conversation about ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'}, extract:
-
-1. KEY_POINTS: 2-4 bullet points summarizing what the participant shared (each under 15 words, focus on specific feedback given)
-2. SENTIMENT: overall tone of the conversation (positive, mixed, or negative)
-
-Conversation content:
-${conversationContext}
-
-Return ONLY valid JSON in this exact format:
-{"keyPoints": ["point 1", "point 2", "point 3"], "sentiment": "mixed"}`;
+      // Let AI generate personalized gratitude referencing what the user shared
+      const conversationContext = buildConversationContextForType(surveyType, previousResponses || [], themes || [], messages);
+      const gratitudePrompt = getSystemPromptForSurveyType(surveyType, themes || [], conversationContext + "\n\nIMPORTANT: The user has chosen to finish. Generate a warm, personalized closing that references something SPECIFIC they shared during the conversation. Do NOT offer more topics. This is the final message.");
       
-      const summaryResponse = await callAI(
+      const gratitudeRaw = await callAI(
         LOVABLE_API_KEY,
-        AI_MODEL_LITE,
-        [
-          { role: "system", content: "You extract structured insights from conversations. Always return valid JSON only, no markdown." },
-          { role: "user", content: structuredSummaryPrompt }
-        ],
-        0.3,
-        250
+        AI_MODEL,
+        [{ role: "system", content: gratitudePrompt }, ...messages.map((m: any) => ({ role: m.role, content: m.content }))],
+        0.7,
+        200
       );
-      
-      // Parse the structured summary
-      let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
-      try {
-        let cleaned = summaryResponse.trim();
-        if (cleaned.startsWith('```json')) {
-          cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleaned.startsWith('```')) {
-          cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
-        }
-        const parsed = JSON.parse(cleaned);
-        if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
-          structuredSummary = {
-            keyPoints: parsed.keyPoints.slice(0, 4), // Max 4 points
-            sentiment: parsed.sentiment || "mixed"
-          };
-        }
-      } catch (e) {
-        console.error("Failed to parse structured summary:", e, summaryResponse);
-        // Fallback: create basic summary from conversation
-        structuredSummary = {
-          keyPoints: previousResponses?.slice(-3).map(r => 
-            r.content.length > 60 ? r.content.substring(0, 60) + "..." : r.content
-          ) || ["Thank you for sharing your feedback"],
-          sentiment: "mixed"
-        };
-      }
-      
-      return new Response(
-        JSON.stringify({
-          message: "Thank you for sharing your thoughts.",
-          structuredSummary,
-          shouldComplete: false,
-          isCompletionPrompt: true
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-    
-    // User responds to completion prompt with confirmation
-    if (messages.some((m: any) => m.content?.includes("Is there anything you'd like to add or clarify")) && userConfirmingCompletion) {
-      // Save final confirmation response if has content
-      if (sanitizedContent && !isIntroductionTrigger) {
-        const { sentiment, score: sentimentScore } = await analyzeSentiment(LOVABLE_API_KEY, sanitizedContent);
-        const detectedThemeId = await detectTheme(LOVABLE_API_KEY, sanitizedContent, themes || []);
 
-        console.log("Attempting to insert final completion response:", {
-          conversationId,
-          surveyId: session?.survey_id,
-          content: sanitizedContent
-        });
-
-        console.log(`[${conversationId}] Saving final completion response...`);
-        const { data: finalInserted, error: finalInsertError } = await supabase.from("responses").insert({
-          conversation_session_id: conversationId,
-          survey_id: session?.survey_id,
-          content: sanitizedContent,
-          ai_response: "Thank you for your time and insights.",
-          sentiment,
-          sentiment_score: sentimentScore,
-          theme_id: detectedThemeId,
-          created_at: new Date().toISOString(),
-        })
-        .select();
-
-        if (finalInsertError) {
-          console.error(`[${conversationId}] CRITICAL: Failed to save final response:`, {
-            error: finalInsertError,
-            code: finalInsertError.code,
-            message: finalInsertError.message,
-          });
-          
-          // Return error to frontend
-          return new Response(
-            JSON.stringify({ 
-              error: "Failed to save final response. Please try again.",
-              details: finalInsertError.message 
-            }),
-            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-          );
-        }
-
-        console.log(`[${conversationId}] ✅ Final response saved successfully:`, {
-          responseId: finalInserted?.[0]?.id,
-        });
-      }
-
-      // Generate structured summary for the receipt
-      const conversationContext = previousResponses?.map(r => r.content).join("\n") || "";
-      const structuredSummaryPrompt = `Based on this conversation about ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'}, extract:
-
-1. KEY_POINTS: 2-4 bullet points summarizing what the participant shared (each under 15 words, focus on specific feedback given)
-2. SENTIMENT: overall tone of the conversation (positive, mixed, or negative)
-
-Conversation content:
-${conversationContext}
-
-Return ONLY valid JSON in this exact format:
-{"keyPoints": ["point 1", "point 2", "point 3"], "sentiment": "mixed"}`;
-      
-      let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
-      try {
-        const summaryResponse = await callAI(
-          LOVABLE_API_KEY,
-          AI_MODEL_LITE,
-          [
-            { role: "system", content: "You extract structured insights from conversations. Always return valid JSON only, no markdown." },
-            { role: "user", content: structuredSummaryPrompt }
-          ],
-          0.3,
-          250
-        );
-        
-        let cleaned = summaryResponse.trim();
-        if (cleaned.startsWith('```json')) {
-          cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleaned.startsWith('```')) {
-          cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
-        }
-        const parsed = JSON.parse(cleaned);
-        if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
-          structuredSummary = {
-            keyPoints: parsed.keyPoints.slice(0, 4),
-            sentiment: parsed.sentiment || "mixed"
-          };
-        }
-      } catch (e) {
-        console.error("Failed to parse structured summary:", e);
-        structuredSummary = {
-          keyPoints: previousResponses?.slice(-3).map(r => 
-            r.content.length > 60 ? r.content.substring(0, 60) + "..." : r.content
-          ) || ["Thank you for sharing your feedback"],
-          sentiment: "mixed"
-        };
-      }
-
-      console.log(`[${conversationId}] ✅ Returning completion with structuredSummary:`, structuredSummary);
+      const { empathy, question } = parseStructuredResponse(gratitudeRaw);
+      const gratitudeMessage = question || empathy || "Thank you for sharing your thoughts today. Your feedback will help create meaningful change.";
 
       return new Response(
         JSON.stringify({
-          message: "Thank you for your time and valuable insights. Your feedback will help create meaningful change.",
-          structuredSummary,
+          message: gratitudeMessage,
+          empathy: empathy || null,
           shouldComplete: true,
           isCompletionPrompt: true
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // shouldComplete interceptor removed — let the AI naturally handle closing flow
+    // The conversation context already injects "All themes covered" hint,
+    // so the AI will offer the word_cloud exploration topics + "I'm all good"
+    
+    // "User responds to completion prompt" handler removed — dead code for removed receipt UI
     
     // Force isFirstMessage=true for introduction trigger
     const hasExistingAssistantMessages = messages.some((m: any) => m.role === "assistant");
@@ -1750,71 +1278,7 @@ Return ONLY valid JSON in this exact format:
       null // theme_id for current response not yet available (background classification)
     );
 
-    // If shouldComplete is true, ALWAYS generate structured summary and proper completion flags
-    if (shouldComplete && !isIntroductionTrigger) {
-      console.log("[chat] Final return with shouldComplete=true - generating structured summary");
-      
-      // Build conversation context from responses
-      const conversationContext = (updatedResponses || previousResponses || [])
-        .map((r: any) => r.content)
-        .filter(Boolean)
-        .join("\n");
-      
-      // Generate structured summary
-      const structuredSummaryPrompt = `Based on this conversation about ${surveyType === 'course_evaluation' ? 'course evaluation' : 'workplace feedback'}, extract:
-
-1. KEY_POINTS: 2-4 bullet points summarizing what the participant shared (each under 15 words)
-2. SENTIMENT: overall tone (positive, mixed, or negative)
-
-Conversation content:
-${conversationContext || "User shared their thoughts and feedback."}
-
-Return ONLY valid JSON: {"keyPoints": [...], "sentiment": "..."}`;
-
-      let structuredSummary = { keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
-      
-      try {
-        const summaryResponse = await callAI(
-          LOVABLE_API_KEY,
-          AI_MODEL_LITE,
-          [
-            { role: "system", content: "Extract structured insights. Return valid JSON only." },
-            { role: "user", content: structuredSummaryPrompt }
-          ],
-          0.3,
-          250
-        );
-        
-        let cleaned = summaryResponse.trim();
-        if (cleaned.startsWith('```json')) {
-          cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleaned.startsWith('```')) {
-          cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
-        }
-        const parsed = JSON.parse(cleaned);
-        if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
-          structuredSummary = {
-            keyPoints: parsed.keyPoints.slice(0, 4),
-            sentiment: parsed.sentiment || "mixed"
-          };
-        }
-        console.log("[chat] Generated structured summary:", structuredSummary);
-      } catch (e) {
-        console.error("[chat] Failed to parse structured summary in final return:", e);
-      }
-
-      return new Response(
-        JSON.stringify({
-          message: aiMessage,
-          empathy,
-          structuredSummary,
-          shouldComplete: false,  // Set to false so user can review before submitting
-          isCompletionPrompt: true,  // This triggers the receipt UI
-          themeProgress
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    // shouldComplete final interceptor removed — AI handles closing naturally via system prompt
 
     // Normal response (no completion)
     return new Response(
