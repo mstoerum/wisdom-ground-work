@@ -10,8 +10,6 @@ import { MoodTransition } from "./MoodTransition";
 import { useToast } from "@/hooks/use-toast";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle } from "lucide-react";
-import { FinishEarlyConfirmationDialog } from "./FinishEarlyConfirmationDialog";
 import { DurationSelector } from "./DurationSelector";
 import { useInterviewCompletion } from "@/hooks/useInterviewCompletion";
 import type { Message, ThemeProgress } from "@/types/interview";
