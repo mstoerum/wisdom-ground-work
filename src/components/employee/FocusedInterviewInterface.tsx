@@ -10,8 +10,6 @@ import { MoodTransition } from "./MoodTransition";
 import { useToast } from "@/hooks/use-toast";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle } from "lucide-react";
-import { FinishEarlyConfirmationDialog } from "./FinishEarlyConfirmationDialog";
 import { DurationSelector } from "./DurationSelector";
 import { useInterviewCompletion } from "@/hooks/useInterviewCompletion";
 import type { Message, ThemeProgress } from "@/types/interview";
@@ -44,11 +42,7 @@ export const FocusedInterviewInterface = ({
     isReviewing,
     structuredSummary,
     themeProgress: hookThemeProgress,
-    isFinishDialogOpen,
     isProcessing,
-    handleFinishEarlyClick,
-    handleCancelFinishEarly,
-    handleConfirmFinishEarly,
     handleComplete,
     enterCompletionDirectly,
     updateThemeProgress,
@@ -412,23 +406,6 @@ export const FocusedInterviewInterface = ({
 
   return (
     <div className="min-h-[70vh] flex flex-col">
-      {/* Header with actions */}
-      <div className="flex items-center justify-end px-4 py-4 border-b border-border/30">
-        {!minimalUI && isActive && (
-          <div className="flex items-center gap-2 ml-auto">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleFinishEarlyClick}
-              disabled={isLoading || questionNumber < 1}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <CheckCircle className="h-4 w-4 mr-1" />
-              Finish Early
-            </Button>
-          </div>
-        )}
-      </div>
 
       {/* Main content area — full width */}
       <div className="flex-1 flex">
@@ -465,7 +442,7 @@ export const FocusedInterviewInterface = ({
               value={currentAnswer}
               onChange={setCurrentAnswer}
               onSubmit={handleSubmit}
-              onSkip={questionNumber >= 1 && !isLoading && !isTransitioning ? () => handleSubmit("[SKIP_QUESTION]") : undefined}
+              onSkip={undefined}
               isLoading={isLoading}
               placeholder="Share your thoughts..."
               disabled={isLoading || !isTypingComplete}
@@ -483,19 +460,6 @@ export const FocusedInterviewInterface = ({
         </div>
       )}
 
-      {/* Finish Early Dialog - uses hook's state and handlers */}
-      <FinishEarlyConfirmationDialog
-        open={isFinishDialogOpen}
-        themeCoverage={{ 
-          discussed: themeProgress?.discussedCount || questionNumber, 
-          total: themeProgress?.totalCount || 6, 
-          percentage: themeProgress?.coveragePercent || (questionNumber / 6) * 100 
-        }}
-        exchangeCount={questionNumber}
-        minExchanges={3}
-        onConfirm={() => handleConfirmFinishEarly(conversationHistory)}
-        onCancel={handleCancelFinishEarly}
-      />
     </div>
   );
 };

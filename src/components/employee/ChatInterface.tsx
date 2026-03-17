@@ -4,7 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ConversationBubble } from "./ConversationBubble";
 // VoiceInterface disabled - kept for future re-enablement
 // import { VoiceInterface } from "./VoiceInterface";
-import { Send, Loader2, CheckCircle, CheckCircle2 } from "lucide-react";
+import { Send, Loader2, CheckCircle2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,7 +18,7 @@ import { trackTrustMetrics } from "@/lib/trustAnalytics";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FinishEarlyConfirmationDialog } from "./FinishEarlyConfirmationDialog";
+
 import { CompletionConfirmationButtons } from "./CompletionConfirmationButtons";
 
 import { useChatMessages } from "@/hooks/useChatMessages";
@@ -114,7 +114,7 @@ export const ChatInterface = ({
   // const [voiceSupported, setVoiceSupported] = useState(false);
   
   // Simplified state machine: use boolean for dialog + phase from isInCompletionPhase
-  const [isFinishDialogOpen, setFinishDialogOpen] = useState(false);
+  
   
   // Theme progress from backend (single source of truth)
   const [themeProgress, setThemeProgress] = useState<ThemeProgress | null>(null);
@@ -166,7 +166,7 @@ export const ChatInterface = ({
     messages,
     input,
     isLoading,
-    finishEarlyStep: isFinishDialogOpen ? "confirming" : "none", // Map to legacy format
+    finishEarlyStep: "none",
     themeCoverage,
     setIsLoading,
     addMessage,
@@ -361,10 +361,6 @@ export const ChatInterface = ({
 
 
 
-  // Handle finish early - trigger confirmation dialog (simplified state)
-  const handleFinishEarlyClick = useCallback(() => {
-    setFinishDialogOpen(true);
-  }, []);
 
   // Handle completion confirmation via buttons
   const handleCompleteFromButtons = useCallback(async () => {
@@ -471,16 +467,6 @@ export const ChatInterface = ({
               <div className="flex items-center gap-2">
                 {/* Voice Mode Toggle - Disabled for now */}
                 <span className="text-sm font-medium">{Math.round(progressPercent)}%</span>
-                <Button
-                  onClick={handleFinishEarlyClick}
-                  variant="ghost"
-                  size="sm"
-                  className="h-7"
-                  disabled={isFinishDialogOpen || isLoading}
-                >
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Finish Early
-                </Button>
               </div>
             </div>
             <Progress value={progressPercent} className="h-1.5" />
@@ -610,15 +596,6 @@ export const ChatInterface = ({
         </div>
       </div>
 
-      {/* Finish Early Confirmation Dialog */}
-      <FinishEarlyConfirmationDialog
-        open={isFinishDialogOpen}
-        onConfirm={handleConfirmFinishEarly}
-        onCancel={() => setFinishDialogOpen(false)}
-        themeCoverage={themeCoverage}
-        exchangeCount={userMessageCount}
-        minExchanges={4}
-      />
     </div>
   );
 };
