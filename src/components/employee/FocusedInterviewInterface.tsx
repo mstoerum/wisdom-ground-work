@@ -345,14 +345,16 @@ export const FocusedInterviewInterface = ({
         setCurrentInputConfig(undefined);
       }
 
-      // Handle completion - use hook's enterReviewingPhase
-      if (data.shouldComplete || data.isCompletionPrompt) {
+      // Handle completion — show the AI's final message before completing
+      if (data.isCompletionPrompt) {
         setCurrentQuestion(messageText);
         setCurrentEmpathy(data.empathy || null);
         setConversationHistory([...updatedHistory, { role: "assistant", content: messageText }]);
         
-        // Skip reviewing — go straight to complete
-        enterCompletionDirectly();
+        // Show the final message for 4 seconds, then complete
+        setTimeout(() => {
+          enterCompletionDirectly();
+        }, 4000);
         return;
       }
 
