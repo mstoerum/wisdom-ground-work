@@ -406,23 +406,6 @@ export const FocusedInterviewInterface = ({
 
   return (
     <div className="min-h-[70vh] flex flex-col">
-      {/* Header with actions */}
-      <div className="flex items-center justify-end px-4 py-4 border-b border-border/30">
-        {!minimalUI && isActive && (
-          <div className="flex items-center gap-2 ml-auto">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleFinishEarlyClick}
-              disabled={isLoading || questionNumber < 1}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              <CheckCircle className="h-4 w-4 mr-1" />
-              Finish Early
-            </Button>
-          </div>
-        )}
-      </div>
 
       {/* Main content area — full width */}
       <div className="flex-1 flex">
