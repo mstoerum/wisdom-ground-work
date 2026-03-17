@@ -18,7 +18,7 @@ import { trackTrustMetrics } from "@/lib/trustAnalytics";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FinishEarlyConfirmationDialog } from "./FinishEarlyConfirmationDialog";
+
 import { CompletionConfirmationButtons } from "./CompletionConfirmationButtons";
 
 import { useChatMessages } from "@/hooks/useChatMessages";
