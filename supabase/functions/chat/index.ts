@@ -818,89 +818,10 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
 
     const turnCount = messages.filter((m: any) => m.role === "user").length;
     
-    // Handle finish early request
+    // Handle finish early request (legacy — now a no-op, kept for API compat)
     if (finishEarly) {
-      const coveragePercent = themeCoverage || 0;
-      const summaryPrompt = `You've been conducting a conversation with a participant. They want to finish early (${Math.round(coveragePercent)}% theme coverage, ${turnCount} exchanges).
-
-Summarize what they've shared so far in 2-3 sentences, then either:
-1. Ask ONE final important question that would help get a clearer picture of their experience (if coverage < 60%), OR
-2. Ask if there's anything else they'd like to add (if coverage >= 60%)
-
-Be warm and appreciative. Keep it brief.`;
-
-      const summaryMessage = await callAI(
-        LOVABLE_API_KEY,
-        AI_MODEL,
-        [
-          { role: "system", content: summaryPrompt },
-          ...messages.map((m: any) => ({ role: m.role, content: m.content }))
-        ],
-        0.7,
-        150
-      );
-
-      // Extract final question if present (look for question mark)
-      const sentences = (summaryMessage || "").split(/[.!?]+/).filter(s => s.trim());
-      const questionSentence = sentences.find((s: string) => {
-        const trimmed = s.trim();
-        return trimmed.endsWith('?') && trimmed.length > 20;
-      });
-      const finalQuestion = questionSentence ? questionSentence.trim() : null;
-
-      // Generate structured summary for the receipt
-      const conversationContext = messages.map((m: any) => m.role === "user" ? m.content : "").filter(Boolean).join("\n");
-      let structuredSummary = { opening: "Thank you for sharing your thoughts today.", keyPoints: ["Thank you for sharing your feedback"], sentiment: "mixed" };
-      
-      try {
-        const summaryResponse = await callAI(
-          LOVABLE_API_KEY,
-          AI_MODEL_LITE,
-          [
-            { role: "system", content: "Extract structured insights from feedback conversations. Return valid JSON only." },
-            { role: "user", content: `Based on this conversation, create a rich summary:
-
-1. OPENING: A warm, personalized 1-sentence acknowledgment of what was shared (e.g., "Thank you for sharing openly about your experience with...")
-
-2. KEY_POINTS: 2-4 meaningful bullet points summarizing specific feedback (25-35 words each, capture the essence with context and nuance)
-
-3. SENTIMENT: overall emotional tone (positive, mixed, or constructive)
-
-Conversation content:
-${conversationContext || "User shared their thoughts and feedback."}
-
-Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sentiment": "..."}` }
-          ],
-          0.4,
-          350
-        );
-        
-        let cleaned = summaryResponse.trim();
-        if (cleaned.startsWith('```json')) {
-          cleaned = cleaned.replace(/^```json\s*/, '').replace(/\s*```$/, '');
-        } else if (cleaned.startsWith('```')) {
-          cleaned = cleaned.replace(/^```\s*/, '').replace(/\s*```$/, '');
-        }
-        const parsed = JSON.parse(cleaned);
-        if (parsed.keyPoints && Array.isArray(parsed.keyPoints)) {
-          structuredSummary = {
-            opening: parsed.opening || "Thank you for sharing your thoughts today.",
-            keyPoints: parsed.keyPoints.slice(0, 4),
-            sentiment: parsed.sentiment || "mixed"
-          };
-        }
-      } catch (e) {
-        console.error("Failed to parse structured summary in finishEarly:", e);
-      }
-
       return new Response(
-        JSON.stringify({ 
-          message: summaryMessage,
-          finalQuestion: finalQuestion || null,
-          structuredSummary,
-          shouldComplete: false,
-          isCompletionPrompt: true  // Triggers receipt UI with buttons
-        }),
+        JSON.stringify({ message: "Thank you for sharing.", shouldComplete: true, isCompletionPrompt: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
