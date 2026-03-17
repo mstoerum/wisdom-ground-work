@@ -467,16 +467,6 @@ export const ChatInterface = ({
               <div className="flex items-center gap-2">
                 {/* Voice Mode Toggle - Disabled for now */}
                 <span className="text-sm font-medium">{Math.round(progressPercent)}%</span>
-                <Button
-                  onClick={handleFinishEarlyClick}
-                  variant="ghost"
-                  size="sm"
-                  className="h-7"
-                  disabled={isFinishDialogOpen || isLoading}
-                >
-                  <CheckCircle className="h-3 w-3 mr-1" />
-                  Finish Early
-                </Button>
               </div>
             </div>
             <Progress value={progressPercent} className="h-1.5" />
