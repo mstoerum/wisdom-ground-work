@@ -166,7 +166,7 @@ export const ChatInterface = ({
     messages,
     input,
     isLoading,
-    finishEarlyStep: isFinishDialogOpen ? "confirming" : "none", // Map to legacy format
+    finishEarlyStep: "none",
     themeCoverage,
     setIsLoading,
     addMessage,
