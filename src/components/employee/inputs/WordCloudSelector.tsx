@@ -148,7 +148,7 @@ export const WordCloudSelector = ({
           <button
             onClick={handleCompletionClick}
             disabled={disabled}
-            className="inline-flex items-center gap-2 text-base text-muted-foreground hover:text-[hsl(var(--terracotta-primary))] hover:underline underline-offset-4 transition-colors disabled:opacity-40 disabled:cursor-default"
+            className="inline-flex items-center gap-2 text-base text-[hsl(var(--terracotta-primary))] hover:underline underline-offset-4 transition-colors disabled:opacity-40 disabled:cursor-default"
           >
             <CheckCircle2 className="h-5 w-5 text-[hsl(var(--terracotta-primary))]" />
             I'm done — wrap up the interview
