@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, CheckCircle2 } from "lucide-react";
 
 interface WordCloudSelectorProps {
   options: string[];
@@ -22,6 +22,12 @@ export const WordCloudSelector = ({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [showOther, setShowOther] = useState(false);
   const [otherText, setOtherText] = useState("");
+
+  // Separate "I'm all good" from topic chips
+  const completionOption = options.find((o) =>
+    o.toLowerCase().includes("all good")
+  );
+  const topicOptions = options.filter((o) => o !== completionOption);
 
   const toggleOption = (option: string) => {
     if (disabled) return;
@@ -43,6 +49,11 @@ export const WordCloudSelector = ({
     onSubmit(`[SELECTED: ${tags.join(", ")}]`);
   };
 
+  const handleCompletionClick = () => {
+    if (disabled || !completionOption) return;
+    onSubmit(`[SELECTED: ${completionOption}]`);
+  };
+
   const canSubmit = selected.size > 0 || (showOther && otherText.trim());
 
   return (
@@ -53,7 +64,7 @@ export const WordCloudSelector = ({
       className="w-full max-w-2xl mx-auto space-y-4"
     >
       <div className="flex flex-wrap gap-2 justify-center">
-        {options.map((option, i) => {
+        {topicOptions.map((option, i) => {
           const isActive = selected.has(option);
           return (
             <motion.button
@@ -84,7 +95,7 @@ export const WordCloudSelector = ({
             disabled={disabled}
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: options.length * 0.05 }}
+            transition={{ delay: topicOptions.length * 0.05 }}
             whileHover={{ scale: 1.05 }}
             className="px-4 py-2.5 rounded-full text-sm font-medium bg-transparent border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
           >
@@ -124,6 +135,24 @@ export const WordCloudSelector = ({
             Continue
             <ArrowRight className="ml-2 h-5 w-5" />
           </Button>
+        </motion.div>
+      )}
+
+      {completionOption && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: topicOptions.length * 0.05 + 0.3, duration: 0.5 }}
+          className="flex justify-center pt-2"
+        >
+          <button
+            onClick={handleCompletionClick}
+            disabled={disabled}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-default"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            {completionOption}
+          </button>
         </motion.div>
       )}
     </motion.div>
