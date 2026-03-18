@@ -143,15 +143,15 @@ export const WordCloudSelector = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: topicOptions.length * 0.05 + 0.3, duration: 0.5 }}
-          className="flex justify-center pt-2"
+          className="flex justify-center pt-4"
         >
           <button
             onClick={handleCompletionClick}
             disabled={disabled}
-            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40 disabled:cursor-default"
+            className="inline-flex items-center gap-2 text-base text-muted-foreground hover:text-foreground hover:underline underline-offset-4 transition-colors disabled:opacity-40 disabled:cursor-default"
           >
-            <CheckCircle2 className="h-4 w-4" />
-            {completionOption}
+            <CheckCircle2 className="h-5 w-5" />
+            I'm done — wrap up the interview
           </button>
         </motion.div>
       )}
