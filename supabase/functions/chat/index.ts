@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { getSystemPromptForSurveyType, buildConversationContextForType, type SurveyType } from "./context-prompts.ts";
-import { selectFirstQuestion, getMoodAdaptiveResponse } from "./first-questions.ts";
+import { selectFirstQuestion, getMoodAdaptiveResponse, buildWarmIntroduction } from "./first-questions.ts";
 
 // Declare EdgeRuntime for background task support
 declare const EdgeRuntime: {
@@ -649,6 +649,20 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
         // Build initial theme progress for preview mode
         const initialThemeProgress = buildThemeProgress([], themes, null);
         
+        // Villager interviews skip mood entirely — go straight to warm intro + first theme question
+        if (surveyType === "villager_interview") {
+          const firstQuestion = selectFirstQuestion(themes || [], surveyType);
+          const warmIntro = buildWarmIntroduction(firstQuestion, surveyType);
+          return new Response(
+            JSON.stringify({ 
+              message: warmIntro,
+              shouldComplete: false,
+              themeProgress: initialThemeProgress
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        
         // Check if we have an initial mood from the mood selector
         if (typeof initialMood === 'number' && initialMood >= 1 && initialMood <= 5) {
           // Use mood-adaptive response
@@ -675,8 +689,7 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
         } else {
           // Generate warm first message with feeling-focused question based on themes
           const firstQuestion = selectFirstQuestion(themes || [], surveyType);
-          const context = surveyType === "course_evaluation" ? "your learning experience" : "how things are going at work";
-          const warmFirstMessage = `Hi, I'm Spradley. Thanks for taking a few minutes to chat about ${context}.\n\n${firstQuestion}`;
+          const warmFirstMessage = buildWarmIntroduction(firstQuestion, surveyType);
           return new Response(
             JSON.stringify({ 
               message: warmFirstMessage,
@@ -963,6 +976,20 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
       // Build initial theme progress
       const initialThemeProgress = buildThemeProgress([], themes || [], null);
       
+      // Villager interviews skip mood entirely — go straight to warm intro + first theme question
+      if (surveyType === "villager_interview") {
+        const firstQuestion = selectFirstQuestion(themes || [], surveyType);
+        const warmIntro = buildWarmIntroduction(firstQuestion, surveyType);
+        return new Response(
+          JSON.stringify({ 
+            message: warmIntro,
+            shouldComplete: false,
+            themeProgress: initialThemeProgress
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       // Check if we have an initial mood from the mood selector
       if (typeof initialMood === 'number' && initialMood >= 1 && initialMood <= 5) {
         // Use mood-adaptive response
@@ -993,8 +1020,7 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
       } else {
         // Generate warm first message with feeling-focused question based on themes
         const firstQuestion = selectFirstQuestion(themes || [], surveyType);
-        const context = surveyType === "course_evaluation" ? "your learning experience" : "how things are going at work";
-        const warmFirstMessage = `Hi, I'm Spradley. Thanks for taking a few minutes to chat about ${context}.\n\n${firstQuestion}`;
+        const warmFirstMessage = buildWarmIntroduction(firstQuestion, surveyType);
         
         return new Response(
           JSON.stringify({ 
