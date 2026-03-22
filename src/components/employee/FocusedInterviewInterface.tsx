@@ -273,7 +273,27 @@ export const FocusedInterviewInterface = ({
     }
   }, [updateThemeProgress]);
 
-  // Auto-initialize removed: MoodSelector now always shows first
+  // Auto-initialize for villager interviews (skip mood selector)
+  useEffect(() => {
+    if (isVillager && !isInitialized) {
+      setIsInitialized(true);
+      setIsLoading(true);
+      initializeConversation(3).then(() => {
+        // Apply pending question directly (no transition screen)
+        if (pendingQuestionRef.current) {
+          setCurrentQuestion(pendingQuestionRef.current.question);
+          setCurrentEmpathy(pendingQuestionRef.current.empathy);
+          setConversationHistory(pendingQuestionRef.current.history);
+          if (pendingQuestionRef.current.themeProgress) {
+            setLocalThemeProgress(pendingQuestionRef.current.themeProgress);
+            updateThemeProgress(pendingQuestionRef.current.themeProgress);
+          }
+          pendingQuestionRef.current = null;
+        }
+        setIsLoading(false);
+      });
+    }
+  }, [isVillager, isInitialized, initializeConversation, updateThemeProgress]);
 
   // Submit answer and get next question — accepts an optional override for interactive inputs
   const handleSubmit = useCallback(async (interactiveValue?: string) => {

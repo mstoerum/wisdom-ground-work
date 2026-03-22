@@ -301,9 +301,7 @@ export function buildWarmIntroduction(
   surveyType: "employee_satisfaction" | "course_evaluation" | "villager_interview" = "employee_satisfaction"
 ): string {
   if (surveyType === "villager_interview") {
-    return `Hey! Welcome — this is a short conversation to get a better understanding of your experience as a villager. We're curious to hear about what life is like here and any ideas you might have.
-
-${firstQuestion}`;
+    return `Hey! Welcome — this is a short conversation to get a better understanding of your experience as a villager. We're curious to hear about what life is like here and any ideas you might have.\n\n${firstQuestion}`;
   }
 
   const context = surveyType === "course_evaluation" 
