@@ -272,9 +272,25 @@ export const FocusedInterviewInterface = ({
   const handleVillagerProceed = useCallback(() => {
     setShowVillagerWelcome(false);
     setIsInitialized(true);
+    setIsLoading(true);
     // Start conversation with neutral mood (no mood check for villagers)
     initializeConversation(3);
   }, [initializeConversation]);
+
+  // Auto-apply pending question for villager interviews (no mood transition to trigger it)
+  useEffect(() => {
+    if (isVillagerInterview && isApiReady && !showVillagerWelcome && pendingQuestionRef.current) {
+      setCurrentQuestion(pendingQuestionRef.current.question);
+      setCurrentEmpathy(pendingQuestionRef.current.empathy);
+      setConversationHistory(pendingQuestionRef.current.history);
+      if (pendingQuestionRef.current.themeProgress) {
+        setLocalThemeProgress(pendingQuestionRef.current.themeProgress);
+        updateThemeProgress(pendingQuestionRef.current.themeProgress);
+      }
+      pendingQuestionRef.current = null;
+      setIsLoading(false);
+    }
+  }, [isVillagerInterview, isApiReady, showVillagerWelcome, updateThemeProgress]);
 
   // Submit answer and get next question — accepts an optional override for interactive inputs
   const handleSubmit = useCallback(async (interactiveValue?: string) => {
