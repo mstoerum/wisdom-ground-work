@@ -435,7 +435,7 @@ const CreateSurvey = () => {
           {currentStep < 7 && (
             <Button variant="outline" onClick={() => setShowPreview(true)}>
               <Eye className="h-4 w-4 mr-2" />
-              Preview as {form.watch("survey_type") === 'course_evaluation' ? 'Student' : 'Employee'}
+              Preview as {form.watch("survey_type") === 'course_evaluation' ? 'Student' : form.watch("survey_type") === 'villager_interview' ? 'Villager' : 'Employee'}
             </Button>
           )}
         </div>

@@ -123,6 +123,53 @@ export const SurveyTypeSelector = ({ form }: SurveyTypeSelectorProps) => {
                     </Card>
                   </FormLabel>
                 </FormItem>
+
+                {/* Villager Interview */}
+                <FormItem>
+                  <FormControl>
+                    <RadioGroupItem value="villager_interview" id="villager_interview" className="sr-only peer" />
+                  </FormControl>
+                  <FormLabel htmlFor="villager_interview" className="cursor-pointer">
+                    <Card className="peer-data-[state=checked]:border-primary peer-data-[state=checked]:ring-2 peer-data-[state=checked]:ring-primary/20 transition-all hover:border-primary/50">
+                      <CardHeader>
+                        <div className="flex items-center gap-3">
+                          <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <Home className="h-6 w-6 text-primary" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-lg">Villager Interview</CardTitle>
+                            <CardDescription className="text-xs">Community feedback</CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                          Have personal conversations with residents about community life, shared spaces, and ideas for the village.
+                        </p>
+                        <div className="space-y-2">
+                          <p className="text-xs font-medium">Conversation themes:</p>
+                          <div className="flex flex-wrap gap-2">
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs">
+                              <MessageCircle className="h-3 w-3" />
+                              Shared Spaces
+                            </span>
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs">
+                              <MessageCircle className="h-3 w-3" />
+                              Community & Belonging
+                            </span>
+                            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-muted text-xs">
+                              <MessageCircle className="h-3 w-3" />
+                              Aspirations & Ideas
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          <strong>Best for:</strong> Community managers, residence coordinators
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </FormLabel>
+                </FormItem>
               </RadioGroup>
             </FormControl>
             <FormDescription>

@@ -14,7 +14,7 @@ interface SummaryReceiptProps {
   startTime?: Date;
   // Enhanced completion flow props
   showCompletionFlow?: boolean;
-  surveyType?: 'employee_satisfaction' | 'course_evaluation';
+  surveyType?: 'employee_satisfaction' | 'course_evaluation' | 'villager_interview';
   onComplete?: () => void;
   onAddMore?: () => void;
   isLoading?: boolean;

@@ -61,6 +61,8 @@ export const SurveyDetails = ({ form }: SurveyDetailsProps) => {
               The AI will automatically introduce itself based on the themes you select. 
               {surveyType === 'course_evaluation' 
                 ? " For course evaluations, it uses a student-friendly, conversational approach."
+                : surveyType === 'villager_interview'
+                ? " For villager interviews, it uses a personal, relaxed conversational tone."
                 : " For employee surveys, it uses a professional, empathetic tone."}
             </p>
           </div>
