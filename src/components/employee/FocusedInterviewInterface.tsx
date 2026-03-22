@@ -162,23 +162,21 @@ export const FocusedInterviewInterface = ({
       setIsApiReady(true);
     } catch (error) {
       console.error("Error initializing interview:", error);
-      // Fallback question based on mood
-      const villagerFallbacks: Record<number, string> = {
-        1: "That sounds rough. What's been the most annoying thing this week?",
-        2: "I get that. Anything specific bugging you about life here?",
-        3: "Fair enough. What's one thing you'd tweak about the village?",
-        4: "Nice! Got a favorite spot around here?",
-        5: "Love it! What's making village life feel good right now?"
-      };
-      const defaultFallbacks: Record<number, string> = {
-        1: "I hear that. What's been the biggest challenge this week?",
-        2: "Thanks for being honest. What's been weighing on you?",
-        3: "Got it. Is there anything that could make things better right now?",
-        4: "Nice! What's been going well for you lately?",
-        5: "Love to hear it! What's making things feel good right now?"
-      };
-      const fallbackQuestions = surveyType === 'villager_interview' ? villagerFallbacks : defaultFallbacks;
-      const fallback = fallbackQuestions[mood] || (surveyType === 'villager_interview' ? "What's it like living here?" : "How have things been feeling at work lately?");
+      // Fallback question
+      let fallback: string;
+      if (surveyType === 'villager_interview') {
+        // Villager: warm intro + theme question (no mood reference)
+        fallback = "Hey! Welcome — this is a short conversation to get a better understanding of your experience as a villager. We're curious to hear about what life is like here and any ideas you might have.\n\nHow do you use the common areas around here — do you have a go-to spot?";
+      } else {
+        const defaultFallbacks: Record<number, string> = {
+          1: "I hear that. What's been the biggest challenge this week?",
+          2: "Thanks for being honest. What's been weighing on you?",
+          3: "Got it. Is there anything that could make things better right now?",
+          4: "Nice! What's been going well for you lately?",
+          5: "Love to hear it! What's making things feel good right now?"
+        };
+        fallback = defaultFallbacks[mood ?? 3] || "How have things been feeling at work lately?";
+      }
       
       pendingQuestionRef.current = {
         question: fallback,
