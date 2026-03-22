@@ -6,7 +6,7 @@ import { motion } from "framer-motion";
 interface ClosingRitualProps {
   conversationId: string;
   onComplete: () => void;
-  surveyType?: 'employee_satisfaction' | 'course_evaluation';
+  surveyType?: 'employee_satisfaction' | 'course_evaluation' | 'villager_interview';
 }
 
 export const ClosingRitual = ({ conversationId, onComplete, surveyType = 'employee_satisfaction' }: ClosingRitualProps) => {
