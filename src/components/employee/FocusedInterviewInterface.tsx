@@ -396,7 +396,12 @@ export const FocusedInterviewInterface = ({
     return <DurationSelector onSelect={handleDurationSelect} />;
   }
 
-  // Show mood selector first (only in minimalUI/demo mode)
+  // Show villager welcome screen (villager interviews only)
+  if (showVillagerWelcome) {
+    return <VillagerWelcomeScreen onProceed={handleVillagerProceed} />;
+  }
+
+  // Show mood selector first (non-villager interviews)
   if (showMoodSelector) {
     return (
       <div className="min-h-[70vh] flex flex-col">
