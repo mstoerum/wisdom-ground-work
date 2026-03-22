@@ -23,7 +23,9 @@ export const SurveyDetails = ({ form }: SurveyDetailsProps) => {
     : "Hello! I'm here to listen and learn from your experience.";
 
   const getPlaceholderTitle = () => {
-    return surveyType === "course_evaluation" ? "PSYCH 101 Fall 2024 Evaluation" : "Q1 2025 Employee Feedback";
+    if (surveyType === "course_evaluation") return "PSYCH 101 Fall 2024 Evaluation";
+    if (surveyType === "villager_interview") return "Spring 2025 Village Check-in";
+    return "Q1 2025 Employee Feedback";
   };
 
   return (
