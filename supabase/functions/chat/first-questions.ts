@@ -122,6 +122,30 @@ export const COURSE_FIRST_QUESTIONS: Record<string, string[]> = {
   ]
 };
 
+// Villager interview themes - personal, community-focused questions
+export const VILLAGER_FIRST_QUESTIONS: Record<string, string[]> = {
+  "shared-spaces": [
+    "How do you use the common areas around here — do you have a go-to spot?",
+    "What's the vibe like in the shared spaces on a typical evening?",
+    "When you walk into the common kitchen or lounge, how does it feel?"
+  ],
+  "aspirations-&-ideas": [
+    "If you could add one thing to the village that doesn't exist yet, what would it be?",
+    "What's something you've wished for here that you haven't seen happen?",
+    "Any ideas you've been sitting on about how this place could be better?"
+  ],
+  "community-&-belonging": [
+    "How well do you know the people around you here?",
+    "Does this place feel like home, or more like just where you sleep?",
+    "What brings people together in the village — or what's missing?"
+  ],
+  "communication-&-involvement": [
+    "When something changes around here, how do you usually find out?",
+    "Do you feel like your voice matters in how things run here?",
+    "How clear is it to you how decisions get made about the village?"
+  ]
+};
+
 // Default fallback questions when no theme match
 export const DEFAULT_FIRST_QUESTIONS = [
   "How have things been feeling at work lately?",
@@ -133,6 +157,12 @@ export const DEFAULT_COURSE_QUESTIONS = [
   "How has your learning experience been in this course?",
   "What stands out most about this course so far?",
   "How would you describe your experience as a student here?"
+];
+
+export const DEFAULT_VILLAGER_QUESTIONS = [
+  "What's it like living here?",
+  "How would you describe village life to someone thinking about moving in?",
+  "What's been on your mind about the village lately?"
 ];
 
 /**
