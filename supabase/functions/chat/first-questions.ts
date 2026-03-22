@@ -242,7 +242,7 @@ export function getMoodAdaptiveResponse(
         question: isCourse 
           ? "I hear that. What's been the hardest part of this course?"
           : isVillager
-          ? "I hear that. What's been the toughest part about living here?"
+          ? "That sounds rough. What's been the most annoying thing this week?"
           : "I hear that. What's been the biggest challenge this week?"
       };
     case 2: // Not great
@@ -251,7 +251,7 @@ export function getMoodAdaptiveResponse(
         question: isCourse
           ? "Thanks for being honest. What's been weighing on you about the course?"
           : isVillager
-          ? "Thanks for being honest. What's been bugging you about the village?"
+          ? "I get that. Anything specific bugging you about life here?"
           : "Thanks for being honest. What's been weighing on you?"
       };
     case 3: // Okay
@@ -260,7 +260,7 @@ export function getMoodAdaptiveResponse(
         question: isCourse
           ? "Got it. Is there anything about the course that could be better?"
           : isVillager
-          ? "Got it. Is there anything about life here that could be better?"
+          ? "Fair enough. What's one thing you'd tweak about the village?"
           : "Got it. Is there anything that could make things better right now?"
       };
     case 4: // Good
@@ -269,7 +269,7 @@ export function getMoodAdaptiveResponse(
         question: isCourse
           ? "Nice! What's been working well for you in this course?"
           : isVillager
-          ? "Nice! What do you enjoy most about living here?"
+          ? "Nice! Got a favorite spot around here?"
           : "Nice! What's been going well for you lately?"
       };
     case 5: // Great!
@@ -278,7 +278,7 @@ export function getMoodAdaptiveResponse(
         question: isCourse
           ? "Love to hear it! What's making this course work so well for you?"
           : isVillager
-          ? "Love to hear it! What makes this place feel good to you?"
+          ? "Love it! What's making village life feel good right now?"
           : "Love to hear it! What's making things feel good right now?"
       };
     default:

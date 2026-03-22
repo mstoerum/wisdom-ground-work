@@ -412,6 +412,7 @@ export const FocusedInterviewInterface = ({
       <MoodTransition
         mood={transitionMood}
         onComplete={handleTransitionComplete}
+        surveyType={surveyType}
         isApiReady={isApiReady}
       />
     );
