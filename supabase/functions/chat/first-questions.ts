@@ -298,8 +298,14 @@ export function getMoodAdaptiveResponse(
  */
 export function buildWarmIntroduction(
   firstQuestion: string,
-  surveyType: "employee_satisfaction" | "course_evaluation" = "employee_satisfaction"
+  surveyType: "employee_satisfaction" | "course_evaluation" | "villager_interview" = "employee_satisfaction"
 ): string {
+  if (surveyType === "villager_interview") {
+    return `Hey! Welcome — this is a short conversation to get a better understanding of your experience as a villager. We're curious to hear about what life is like here and any ideas you might have.
+
+${firstQuestion}`;
+  }
+
   const context = surveyType === "course_evaluation" 
     ? "your learning experience"
     : "how things are going at work";
