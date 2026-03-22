@@ -99,7 +99,7 @@ export const FocusedInterviewInterface = ({
   }, [isPreviewMode, publicLinkId]);
 
   // Initialize conversation API call (runs in background during transition)
-  const initializeConversation = useCallback(async (mood: number) => {
+  const initializeConversation = useCallback(async (mood?: number) => {
     try {
       const session = await getSession();
       
@@ -107,8 +107,12 @@ export const FocusedInterviewInterface = ({
         conversationId,
         messages: [{ role: "user", content: "[START_CONVERSATION]" }],
         testMode: isPreviewMode,
-        initialMood: mood,
       };
+      
+      // Only send initialMood for non-villager surveys (villager skips mood entirely)
+      if (typeof mood === 'number' && !isVillager) {
+        requestBody.initialMood = mood;
+      }
 
       if (isPreviewMode && previewSurveyData) {
         requestBody.themes = previewSurveyData.themes;
