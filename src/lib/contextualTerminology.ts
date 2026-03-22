@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-export type SurveyType = "employee_satisfaction" | "course_evaluation";
+export type SurveyType = "employee_satisfaction" | "course_evaluation" | "villager_interview";
 
 export interface ContextualTerms {
   participant: string;
