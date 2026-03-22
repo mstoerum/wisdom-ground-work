@@ -49,7 +49,7 @@ export const SurveyDetails = ({ form }: SurveyDetailsProps) => {
           <FormField control={form.control} name="description" render={({ field }) => (
             <FormItem>
               <FormLabel>Description (Optional)</FormLabel>
-              <FormControl><Textarea placeholder={surveyType === "course_evaluation" ? "This evaluation focuses on learning outcomes..." : "This survey focuses on employee wellbeing..."} {...field} rows={3} /></FormControl>
+              <FormControl><Textarea placeholder={surveyType === "course_evaluation" ? "This evaluation focuses on learning outcomes..." : surveyType === "villager_interview" ? "This conversation explores community life..." : "This survey focuses on employee wellbeing..."} {...field} rows={3} /></FormControl>
               <FormDescription>Internal notes about this survey's purpose</FormDescription>
               <FormMessage />
             </FormItem>
