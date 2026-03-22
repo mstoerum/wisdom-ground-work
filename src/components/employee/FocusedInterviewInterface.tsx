@@ -54,12 +54,13 @@ export const FocusedInterviewInterface = ({
     onComplete,
   });
   
-  // Mood was already selected in WelcomeScreen, so skip mood selector unless minimalUI (demo mode)
-  const [showMoodSelector, setShowMoodSelector] = useState(true);
+  // Skip mood selector entirely for villager interviews
+  const isVillager = surveyType === 'villager_interview';
+  const [showMoodSelector, setShowMoodSelector] = useState(!isVillager);
   const [showMoodTransition, setShowMoodTransition] = useState(false);
   const [transitionMood, setTransitionMood] = useState<number>(3);
   const [isApiReady, setIsApiReady] = useState(false);
-  const [initialMood, setInitialMood] = useState<number | null>(null);
+  const [initialMood, setInitialMood] = useState<number | null>(isVillager ? 3 : null);
   
   const [currentQuestion, setCurrentQuestion] = useState("");
   const [currentEmpathy, setCurrentEmpathy] = useState<string | null>(null);
@@ -272,7 +273,27 @@ export const FocusedInterviewInterface = ({
     }
   }, [updateThemeProgress]);
 
-  // Auto-initialize removed: MoodSelector now always shows first
+  // Auto-initialize for villager interviews (skip mood selector)
+  useEffect(() => {
+    if (isVillager && !isInitialized) {
+      setIsInitialized(true);
+      setIsLoading(true);
+      initializeConversation(3).then(() => {
+        // Apply pending question directly (no transition screen)
+        if (pendingQuestionRef.current) {
+          setCurrentQuestion(pendingQuestionRef.current.question);
+          setCurrentEmpathy(pendingQuestionRef.current.empathy);
+          setConversationHistory(pendingQuestionRef.current.history);
+          if (pendingQuestionRef.current.themeProgress) {
+            setLocalThemeProgress(pendingQuestionRef.current.themeProgress);
+            updateThemeProgress(pendingQuestionRef.current.themeProgress);
+          }
+          pendingQuestionRef.current = null;
+        }
+        setIsLoading(false);
+      });
+    }
+  }, [isVillager, isInitialized, initializeConversation, updateThemeProgress]);
 
   // Submit answer and get next question — accepts an optional override for interactive inputs
   const handleSubmit = useCallback(async (interactiveValue?: string) => {
