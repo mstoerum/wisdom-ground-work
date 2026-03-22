@@ -325,8 +325,8 @@ export const buildConversationContextForType = (
   themes: any[],
   chatMessages?: any[]
 ): string => {
-  const participantTerm = surveyType === "course_evaluation" ? "student" : "employee";
-  const contextTerm = surveyType === "course_evaluation" ? "course" : "workplace";
+  const participantTerm = surveyType === "course_evaluation" ? "student" : surveyType === "villager_interview" ? "villager" : "employee";
+  const contextTerm = surveyType === "course_evaluation" ? "course" : surveyType === "villager_interview" ? "village" : "workplace";
 
   if (!previousResponses || previousResponses.length === 0) return "";
 

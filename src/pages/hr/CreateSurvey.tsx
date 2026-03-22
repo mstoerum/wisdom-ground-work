@@ -111,7 +111,7 @@ const CreateSurvey = () => {
       const safeConsentMessage = (draftData.consent_config as any)?.consent_message || defaults.consent_message;
       
       form.reset({
-        survey_type: surveyType,
+        survey_type: surveyType as 'employee_satisfaction' | 'course_evaluation' | 'villager_interview',
         title: draftData.title,
         description: draftData.description || "",
         themes: (draftData.themes as string[]) || [],
