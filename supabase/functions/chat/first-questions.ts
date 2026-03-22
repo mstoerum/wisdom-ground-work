@@ -238,9 +238,11 @@ export function getMoodAdaptiveResponse(
   switch(mood) {
     case 1: // Tough
       return {
-        empathy: null, // First message after mood, no empathy needed
+        empathy: null,
         question: isCourse 
           ? "I hear that. What's been the hardest part of this course?"
+          : isVillager
+          ? "I hear that. What's been the toughest part about living here?"
           : "I hear that. What's been the biggest challenge this week?"
       };
     case 2: // Not great
@@ -248,6 +250,8 @@ export function getMoodAdaptiveResponse(
         empathy: null,
         question: isCourse
           ? "Thanks for being honest. What's been weighing on you about the course?"
+          : isVillager
+          ? "Thanks for being honest. What's been bugging you about the village?"
           : "Thanks for being honest. What's been weighing on you?"
       };
     case 3: // Okay
@@ -255,6 +259,8 @@ export function getMoodAdaptiveResponse(
         empathy: null,
         question: isCourse
           ? "Got it. Is there anything about the course that could be better?"
+          : isVillager
+          ? "Got it. Is there anything about life here that could be better?"
           : "Got it. Is there anything that could make things better right now?"
       };
     case 4: // Good
@@ -262,6 +268,8 @@ export function getMoodAdaptiveResponse(
         empathy: null,
         question: isCourse
           ? "Nice! What's been working well for you in this course?"
+          : isVillager
+          ? "Nice! What do you enjoy most about living here?"
           : "Nice! What's been going well for you lately?"
       };
     case 5: // Great!
@@ -269,6 +277,8 @@ export function getMoodAdaptiveResponse(
         empathy: null,
         question: isCourse
           ? "Love to hear it! What's making this course work so well for you?"
+          : isVillager
+          ? "Love to hear it! What makes this place feel good to you?"
           : "Love to hear it! What's making things feel good right now?"
       };
     default:
@@ -276,6 +286,8 @@ export function getMoodAdaptiveResponse(
         empathy: null,
         question: isCourse
           ? "How has your learning experience been in this course?"
+          : isVillager
+          ? "What's it like living here?"
           : "How have things been feeling at work lately?"
       };
   }
