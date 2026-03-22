@@ -42,7 +42,7 @@ export const surveyFormSchema = z.object({
 
 export type SurveyFormData = z.infer<typeof surveyFormSchema>;
 
-export const getDefaultSurveyValues = (defaults?: any, surveyType: 'employee_satisfaction' | 'course_evaluation' = 'employee_satisfaction'): SurveyFormData => ({
+export const getDefaultSurveyValues = (defaults?: any, surveyType: 'employee_satisfaction' | 'course_evaluation' | 'villager_interview' = 'employee_satisfaction'): SurveyFormData => ({
   survey_type: surveyType,
   title: "",
   description: "",
