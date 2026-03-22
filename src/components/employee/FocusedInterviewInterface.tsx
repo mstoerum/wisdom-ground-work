@@ -158,14 +158,22 @@ export const FocusedInterviewInterface = ({
     } catch (error) {
       console.error("Error initializing interview:", error);
       // Fallback question based on mood
-      const fallbackQuestions: Record<number, string> = {
+      const villagerFallbacks: Record<number, string> = {
+        1: "That sounds rough. What's been the most annoying thing this week?",
+        2: "I get that. Anything specific bugging you about life here?",
+        3: "Fair enough. What's one thing you'd tweak about the village?",
+        4: "Nice! Got a favorite spot around here?",
+        5: "Love it! What's making village life feel good right now?"
+      };
+      const defaultFallbacks: Record<number, string> = {
         1: "I hear that. What's been the biggest challenge this week?",
         2: "Thanks for being honest. What's been weighing on you?",
         3: "Got it. Is there anything that could make things better right now?",
         4: "Nice! What's been going well for you lately?",
         5: "Love to hear it! What's making things feel good right now?"
       };
-      const fallback = fallbackQuestions[mood] || "How have things been feeling at work lately?";
+      const fallbackQuestions = surveyType === 'villager_interview' ? villagerFallbacks : defaultFallbacks;
+      const fallback = fallbackQuestions[mood] || (surveyType === 'villager_interview' ? "What's it like living here?" : "How have things been feeling at work lately?");
       
       pendingQuestionRef.current = {
         question: fallback,
@@ -390,7 +398,10 @@ export const FocusedInterviewInterface = ({
   if (showMoodSelector) {
     return (
       <div className="min-h-[70vh] flex flex-col">
-        <MoodSelector onMoodSelect={handleMoodSelect} />
+        <MoodSelector
+          onMoodSelect={handleMoodSelect}
+          question={surveyType === 'villager_interview' ? "How has your week in the village been?" : undefined}
+        />
       </div>
     );
   }
@@ -401,6 +412,7 @@ export const FocusedInterviewInterface = ({
       <MoodTransition
         mood={transitionMood}
         onComplete={handleTransitionComplete}
+        surveyType={surveyType}
         isApiReady={isApiReady}
       />
     );

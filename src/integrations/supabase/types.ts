@@ -1362,6 +1362,7 @@ export type Database = {
           survey_first_message: string
           survey_id: string
           survey_title: string
+          survey_type: string
         }[]
       }
       has_any_admin: { Args: never; Returns: boolean }

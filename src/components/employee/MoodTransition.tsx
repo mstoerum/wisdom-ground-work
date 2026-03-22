@@ -5,6 +5,7 @@ interface MoodTransitionProps {
   mood: number;
   onComplete: () => void;
   isApiReady?: boolean;
+  surveyType?: 'employee_satisfaction' | 'course_evaluation' | 'villager_interview';
 }
 
 const moodData: Record<number, { emoji: string; label: string; acknowledgment: string }> = {
@@ -35,11 +36,20 @@ const moodData: Record<number, { emoji: string; label: string; acknowledgment: s
   }
 };
 
-export const MoodTransition = ({ mood, onComplete, isApiReady = false }: MoodTransitionProps) => {
+const villagerMoodData: Record<number, { emoji: string; label: string; acknowledgment: string }> = {
+  1: { emoji: "😔", label: "Tough", acknowledgment: "I hear you. Let's talk about what's going on." },
+  2: { emoji: "😟", label: "Not great", acknowledgment: "Thanks for sharing. Let's dig into that." },
+  3: { emoji: "😐", label: "Okay", acknowledgment: "Got it. Let's chat about village life." },
+  4: { emoji: "🙂", label: "Good", acknowledgment: "Nice! Let's hear more about what's working." },
+  5: { emoji: "😊", label: "Great!", acknowledgment: "Awesome! Let's talk about what makes it great." }
+};
+
+export const MoodTransition = ({ mood, onComplete, isApiReady = false, surveyType = 'employee_satisfaction' }: MoodTransitionProps) => {
   const [showDots, setShowDots] = useState(false);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
   
-  const data = moodData[mood] || moodData[3]; // Fallback to "okay"
+  const source = surveyType === 'villager_interview' ? villagerMoodData : moodData;
+  const data = source[mood] || source[3]; // Fallback to "okay"
 
   // Minimum display time for the acknowledgment (2 seconds)
   useEffect(() => {
