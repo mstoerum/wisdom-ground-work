@@ -227,9 +227,10 @@ export function selectFirstQuestion(
 export function getMoodAdaptiveResponse(
   mood: number, 
   themes: { name: string; description?: string }[] = [],
-  surveyType: "employee_satisfaction" | "course_evaluation" = "employee_satisfaction"
+  surveyType: "employee_satisfaction" | "course_evaluation" | "villager_interview" = "employee_satisfaction"
 ): { empathy: string | null; question: string } {
   const isCourse = surveyType === "course_evaluation";
+  const isVillager = surveyType === "villager_interview";
   
   // Get theme context for more relevant questions
   const primaryTheme = themes[0]?.name?.toLowerCase() || "";
