@@ -390,7 +390,10 @@ export const FocusedInterviewInterface = ({
   if (showMoodSelector) {
     return (
       <div className="min-h-[70vh] flex flex-col">
-        <MoodSelector onMoodSelect={handleMoodSelect} />
+        <MoodSelector
+          onMoodSelect={handleMoodSelect}
+          question={surveyType === 'villager_interview' ? "How has your week in the village been?" : undefined}
+        />
       </div>
     );
   }
