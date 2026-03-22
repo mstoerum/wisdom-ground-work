@@ -3,7 +3,7 @@ import { SurveyFormData } from "@/lib/surveySchema";
 import { FormControl, FormDescription, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Users, GraduationCap, Building2, BookOpen } from "lucide-react";
+import { Users, GraduationCap, Building2, BookOpen, Home, MessageCircle } from "lucide-react";
 
 interface SurveyTypeSelectorProps {
   form: UseFormReturn<SurveyFormData>;
