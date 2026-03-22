@@ -3,7 +3,7 @@
  * Single source of truth for all interview logic, persona, and response formatting
  */
 
-export type SurveyType = "employee_satisfaction" | "course_evaluation";
+export type SurveyType = "employee_satisfaction" | "course_evaluation" | "villager_interview";
 
 // ── Response format (includes private thinking field) ──
 
