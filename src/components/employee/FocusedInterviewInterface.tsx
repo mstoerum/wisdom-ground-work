@@ -280,7 +280,7 @@ export const FocusedInterviewInterface = ({
     if (isVillager && !isInitialized) {
       setIsInitialized(true);
       setIsLoading(true);
-      initializeConversation(3).then(() => {
+      initializeConversation().then(() => {
         // Apply pending question directly (no transition screen)
         if (pendingQuestionRef.current) {
           setCurrentQuestion(pendingQuestionRef.current.question);
