@@ -157,6 +157,9 @@ export const getSystemPromptForSurveyType = (
   if (surveyType === "course_evaluation") {
     return getCourseEvaluationPrompt(themes, conversationContext);
   }
+  if (surveyType === "villager_interview") {
+    return getVillagerInterviewPrompt(themes, conversationContext);
+  }
   return getEmployeeSatisfactionPrompt(themes, conversationContext);
 };
 
