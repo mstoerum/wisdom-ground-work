@@ -5,6 +5,7 @@ interface MoodTransitionProps {
   mood: number;
   onComplete: () => void;
   isApiReady?: boolean;
+  surveyType?: 'employee_satisfaction' | 'course_evaluation' | 'villager_interview';
 }
 
 const moodData: Record<number, { emoji: string; label: string; acknowledgment: string }> = {
