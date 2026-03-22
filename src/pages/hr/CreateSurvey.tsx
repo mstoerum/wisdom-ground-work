@@ -104,7 +104,7 @@ const CreateSurvey = () => {
   useEffect(() => {
     if (draftData) {
       const schedule = draftData.schedule as any;
-      const surveyType = draftData.survey_type || 'employee_satisfaction';
+      const surveyType = draftData.survey_type as 'employee_satisfaction' | 'course_evaluation' | 'villager_interview' || 'employee_satisfaction';
       const defaults = getDefaultSurveyValues(surveyDefaults, surveyType);
       
       // Ensure fallback consent message
