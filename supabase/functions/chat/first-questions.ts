@@ -170,12 +170,12 @@ export const DEFAULT_VILLAGER_QUESTIONS = [
  */
 export function selectFirstQuestion(
   themes: { name: string; description?: string }[],
-  surveyType: "employee_satisfaction" | "course_evaluation" = "employee_satisfaction"
+  surveyType: "employee_satisfaction" | "course_evaluation" | "villager_interview" = "employee_satisfaction"
 ): string {
   if (!themes || themes.length === 0) {
-    return surveyType === "course_evaluation" 
-      ? DEFAULT_COURSE_QUESTIONS[0] 
-      : DEFAULT_FIRST_QUESTIONS[0];
+    if (surveyType === "course_evaluation") return DEFAULT_COURSE_QUESTIONS[0];
+    if (surveyType === "villager_interview") return DEFAULT_VILLAGER_QUESTIONS[0];
+    return DEFAULT_FIRST_QUESTIONS[0];
   }
 
   const primaryTheme = themes[0];
@@ -188,6 +188,20 @@ export function selectFirstQuestion(
       return questions[Math.floor(Math.random() * questions.length)];
     }
     return DEFAULT_COURSE_QUESTIONS[0];
+  }
+
+  if (surveyType === "villager_interview") {
+    const questions = VILLAGER_FIRST_QUESTIONS[themeName];
+    if (questions && questions.length > 0) {
+      return questions[Math.floor(Math.random() * questions.length)];
+    }
+    // Try partial matching for villager themes
+    for (const [key, qs] of Object.entries(VILLAGER_FIRST_QUESTIONS)) {
+      if (themeName.includes(key) || key.includes(themeName)) {
+        return qs[Math.floor(Math.random() * qs.length)];
+      }
+    }
+    return DEFAULT_VILLAGER_QUESTIONS[0];
   }
 
   // Employee satisfaction
