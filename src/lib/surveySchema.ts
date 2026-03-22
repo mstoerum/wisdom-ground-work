@@ -59,6 +59,8 @@ export const getDefaultSurveyValues = (defaults?: any, surveyType: 'employee_sat
   anonymization_level: defaults?.anonymization_level || "identified",
   consent_message: defaults?.consent_message || (surveyType === 'course_evaluation'
     ? "Your course evaluation will be kept confidential and used to improve the learning experience. Your feedback is valuable for enhancing teaching quality and course design."
+    : surveyType === 'villager_interview'
+    ? "Your responses will be kept confidential and used to improve the village community. We value your perspective as a resident and take your privacy seriously."
     : "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines."),
   data_retention_days: defaults?.data_retention_days?.toString() || "60",
   enable_spradley_evaluation: false,
