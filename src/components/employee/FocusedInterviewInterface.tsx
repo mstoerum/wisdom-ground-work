@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { InteractiveInputRouter, type InputType, type InputConfig } from "./inputs/InteractiveInputRouter";
 import { MoodSelector } from "./MoodSelector";
 import { MoodTransition } from "./MoodTransition";
+import { VillagerWelcomeScreen } from "./VillagerWelcomeScreen";
 
 import { useToast } from "@/hooks/use-toast";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
