@@ -268,7 +268,13 @@ export const FocusedInterviewInterface = ({
     }
   }, [updateThemeProgress]);
 
-  // Auto-initialize removed: MoodSelector now always shows first
+  // Handle villager welcome proceed — skip mood, go straight to conversation
+  const handleVillagerProceed = useCallback(() => {
+    setShowVillagerWelcome(false);
+    setIsInitialized(true);
+    // Start conversation with neutral mood (no mood check for villagers)
+    initializeConversation(3);
+  }, [initializeConversation]);
 
   // Submit answer and get next question — accepts an optional override for interactive inputs
   const handleSubmit = useCallback(async (interactiveValue?: string) => {
