@@ -11,6 +11,7 @@ interface ClosingRitualProps {
 
 export const ClosingRitual = ({ conversationId, onComplete, surveyType = 'employee_satisfaction' }: ClosingRitualProps) => {
   const isCourseEvaluation = surveyType === 'course_evaluation';
+  const isVillagerInterview = surveyType === 'villager_interview';
 
   return (
     <motion.div
