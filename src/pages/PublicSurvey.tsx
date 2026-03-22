@@ -65,7 +65,6 @@ export default function PublicSurvey() {
         description: row.survey_description,
         first_message: row.survey_first_message,
         consent_config: row.survey_consent_config,
-        survey_type: row.survey_type || 'employee_satisfaction',
       };
 
       // Additional validation (though the function already checks these)
