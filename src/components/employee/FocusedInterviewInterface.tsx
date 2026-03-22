@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { InteractiveInputRouter, type InputType, type InputConfig } from "./inputs/InteractiveInputRouter";
 import { MoodSelector } from "./MoodSelector";
 import { MoodTransition } from "./MoodTransition";
+import { VillagerWelcomeScreen } from "./VillagerWelcomeScreen";
 
 import { useToast } from "@/hooks/use-toast";
 import { usePreviewMode } from "@/contexts/PreviewModeContext";
@@ -54,8 +55,11 @@ export const FocusedInterviewInterface = ({
     onComplete,
   });
   
-  // Mood was already selected in WelcomeScreen, so skip mood selector unless minimalUI (demo mode)
-  const [showMoodSelector, setShowMoodSelector] = useState(true);
+  const isVillagerInterview = surveyType === 'villager_interview';
+  
+  // Villager interviews skip mood selector and show their own welcome
+  const [showMoodSelector, setShowMoodSelector] = useState(!isVillagerInterview);
+  const [showVillagerWelcome, setShowVillagerWelcome] = useState(isVillagerInterview);
   const [showMoodTransition, setShowMoodTransition] = useState(false);
   const [transitionMood, setTransitionMood] = useState<number>(3);
   const [isApiReady, setIsApiReady] = useState(false);
@@ -264,7 +268,29 @@ export const FocusedInterviewInterface = ({
     }
   }, [updateThemeProgress]);
 
-  // Auto-initialize removed: MoodSelector now always shows first
+  // Handle villager welcome proceed — skip mood, go straight to conversation
+  const handleVillagerProceed = useCallback(() => {
+    setShowVillagerWelcome(false);
+    setIsInitialized(true);
+    setIsLoading(true);
+    // Start conversation with neutral mood (no mood check for villagers)
+    initializeConversation(3);
+  }, [initializeConversation]);
+
+  // Auto-apply pending question for villager interviews (no mood transition to trigger it)
+  useEffect(() => {
+    if (isVillagerInterview && isApiReady && !showVillagerWelcome && pendingQuestionRef.current) {
+      setCurrentQuestion(pendingQuestionRef.current.question);
+      setCurrentEmpathy(pendingQuestionRef.current.empathy);
+      setConversationHistory(pendingQuestionRef.current.history);
+      if (pendingQuestionRef.current.themeProgress) {
+        setLocalThemeProgress(pendingQuestionRef.current.themeProgress);
+        updateThemeProgress(pendingQuestionRef.current.themeProgress);
+      }
+      pendingQuestionRef.current = null;
+      setIsLoading(false);
+    }
+  }, [isVillagerInterview, isApiReady, showVillagerWelcome, updateThemeProgress]);
 
   // Submit answer and get next question — accepts an optional override for interactive inputs
   const handleSubmit = useCallback(async (interactiveValue?: string) => {
@@ -386,7 +412,12 @@ export const FocusedInterviewInterface = ({
     return <DurationSelector onSelect={handleDurationSelect} />;
   }
 
-  // Show mood selector first (only in minimalUI/demo mode)
+  // Show villager welcome screen (villager interviews only)
+  if (showVillagerWelcome) {
+    return <VillagerWelcomeScreen onProceed={handleVillagerProceed} />;
+  }
+
+  // Show mood selector first (non-villager interviews)
   if (showMoodSelector) {
     return (
       <div className="min-h-[70vh] flex flex-col">
