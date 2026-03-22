@@ -55,8 +55,11 @@ export const FocusedInterviewInterface = ({
     onComplete,
   });
   
-  // Mood was already selected in WelcomeScreen, so skip mood selector unless minimalUI (demo mode)
-  const [showMoodSelector, setShowMoodSelector] = useState(true);
+  const isVillagerInterview = surveyType === 'villager_interview';
+  
+  // Villager interviews skip mood selector and show their own welcome
+  const [showMoodSelector, setShowMoodSelector] = useState(!isVillagerInterview);
+  const [showVillagerWelcome, setShowVillagerWelcome] = useState(isVillagerInterview);
   const [showMoodTransition, setShowMoodTransition] = useState(false);
   const [transitionMood, setTransitionMood] = useState<number>(3);
   const [isApiReady, setIsApiReady] = useState(false);
