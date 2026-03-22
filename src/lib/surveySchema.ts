@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const surveyFormSchema = z.object({
-  survey_type: z.enum(['employee_satisfaction', 'course_evaluation']),
+  survey_type: z.enum(['employee_satisfaction', 'course_evaluation', 'villager_interview']),
   title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters"),
   description: z.string().max(500, "Description must be less than 500 characters").optional(),
   themes: z.array(z.string()).min(1, "At least one theme must be selected"),
