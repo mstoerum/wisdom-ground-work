@@ -18,6 +18,8 @@ export const SurveyDetails = ({ form }: SurveyDetailsProps) => {
   // Auto-generate first message based on survey type
   const firstMessage = surveyType === 'course_evaluation'
     ? "Hi, I'm Spradley, an AI here to learn about your course experience."
+    : surveyType === 'villager_interview'
+    ? "Hey! Welcome — this is a short conversation to get a better understanding of your experience as a villager."
     : "Hello! I'm here to listen and learn from your experience.";
 
   const getPlaceholderTitle = () => {
