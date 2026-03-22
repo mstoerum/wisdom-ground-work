@@ -18,10 +18,14 @@ export const SurveyDetails = ({ form }: SurveyDetailsProps) => {
   // Auto-generate first message based on survey type
   const firstMessage = surveyType === 'course_evaluation'
     ? "Hi, I'm Spradley, an AI here to learn about your course experience."
+    : surveyType === 'villager_interview'
+    ? "Hey! Welcome — this is a short conversation to get a better understanding of your experience as a villager."
     : "Hello! I'm here to listen and learn from your experience.";
 
   const getPlaceholderTitle = () => {
-    return surveyType === "course_evaluation" ? "PSYCH 101 Fall 2024 Evaluation" : "Q1 2025 Employee Feedback";
+    if (surveyType === "course_evaluation") return "PSYCH 101 Fall 2024 Evaluation";
+    if (surveyType === "villager_interview") return "Spring 2025 Village Check-in";
+    return "Q1 2025 Employee Feedback";
   };
 
   return (
@@ -45,7 +49,7 @@ export const SurveyDetails = ({ form }: SurveyDetailsProps) => {
           <FormField control={form.control} name="description" render={({ field }) => (
             <FormItem>
               <FormLabel>Description (Optional)</FormLabel>
-              <FormControl><Textarea placeholder={surveyType === "course_evaluation" ? "This evaluation focuses on learning outcomes..." : "This survey focuses on employee wellbeing..."} {...field} rows={3} /></FormControl>
+              <FormControl><Textarea placeholder={surveyType === "course_evaluation" ? "This evaluation focuses on learning outcomes..." : surveyType === "villager_interview" ? "This conversation explores community life..." : "This survey focuses on employee wellbeing..."} {...field} rows={3} /></FormControl>
               <FormDescription>Internal notes about this survey's purpose</FormDescription>
               <FormMessage />
             </FormItem>
@@ -57,6 +61,8 @@ export const SurveyDetails = ({ form }: SurveyDetailsProps) => {
               The AI will automatically introduce itself based on the themes you select. 
               {surveyType === 'course_evaluation' 
                 ? " For course evaluations, it uses a student-friendly, conversational approach."
+                : surveyType === 'villager_interview'
+                ? " For villager interviews, it uses a personal, relaxed conversational tone."
                 : " For employee surveys, it uses a professional, empathetic tone."}
             </p>
           </div>

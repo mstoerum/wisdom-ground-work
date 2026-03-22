@@ -104,14 +104,14 @@ const CreateSurvey = () => {
   useEffect(() => {
     if (draftData) {
       const schedule = draftData.schedule as any;
-      const surveyType = draftData.survey_type || 'employee_satisfaction';
+      const surveyType = draftData.survey_type as 'employee_satisfaction' | 'course_evaluation' | 'villager_interview' || 'employee_satisfaction';
       const defaults = getDefaultSurveyValues(surveyDefaults, surveyType);
       
       // Ensure fallback consent message
       const safeConsentMessage = (draftData.consent_config as any)?.consent_message || defaults.consent_message;
       
       form.reset({
-        survey_type: surveyType,
+        survey_type: surveyType as 'employee_satisfaction' | 'course_evaluation' | 'villager_interview',
         title: draftData.title,
         description: draftData.description || "",
         themes: (draftData.themes as string[]) || [],
@@ -435,7 +435,7 @@ const CreateSurvey = () => {
           {currentStep < 7 && (
             <Button variant="outline" onClick={() => setShowPreview(true)}>
               <Eye className="h-4 w-4 mr-2" />
-              Preview as {form.watch("survey_type") === 'course_evaluation' ? 'Student' : 'Employee'}
+              Preview as {form.watch("survey_type") === 'course_evaluation' ? 'Student' : form.watch("survey_type") === 'villager_interview' ? 'Villager' : 'Employee'}
             </Button>
           )}
         </div>

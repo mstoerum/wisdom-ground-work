@@ -20,7 +20,7 @@ interface FocusedInterviewInterfaceProps {
   onSaveAndExit: () => void;
   publicLinkId?: string;
   minimalUI?: boolean;
-  surveyType?: 'employee_satisfaction' | 'course_evaluation';
+  surveyType?: 'employee_satisfaction' | 'course_evaluation' | 'villager_interview';
   chatEngine?: 'standard' | 'adaptive';
 }
 

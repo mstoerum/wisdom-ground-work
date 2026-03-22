@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const surveyFormSchema = z.object({
-  survey_type: z.enum(['employee_satisfaction', 'course_evaluation']),
+  survey_type: z.enum(['employee_satisfaction', 'course_evaluation', 'villager_interview']),
   title: z.string().min(1, "Title is required").max(100, "Title must be less than 100 characters"),
   description: z.string().max(500, "Description must be less than 500 characters").optional(),
   themes: z.array(z.string()).min(1, "At least one theme must be selected"),
@@ -42,7 +42,7 @@ export const surveyFormSchema = z.object({
 
 export type SurveyFormData = z.infer<typeof surveyFormSchema>;
 
-export const getDefaultSurveyValues = (defaults?: any, surveyType: 'employee_satisfaction' | 'course_evaluation' = 'employee_satisfaction'): SurveyFormData => ({
+export const getDefaultSurveyValues = (defaults?: any, surveyType: 'employee_satisfaction' | 'course_evaluation' | 'villager_interview' = 'employee_satisfaction'): SurveyFormData => ({
   survey_type: surveyType,
   title: "",
   description: "",
@@ -59,6 +59,8 @@ export const getDefaultSurveyValues = (defaults?: any, surveyType: 'employee_sat
   anonymization_level: defaults?.anonymization_level || "identified",
   consent_message: defaults?.consent_message || (surveyType === 'course_evaluation'
     ? "Your course evaluation will be kept confidential and used to improve the learning experience. Your feedback is valuable for enhancing teaching quality and course design."
+    : surveyType === 'villager_interview'
+    ? "Your responses will be kept confidential and used to improve the village community. We value your perspective as a resident and take your privacy seriously."
     : "Your responses will be kept confidential and used to improve our workplace. We take your privacy seriously and follow strict data protection guidelines."),
   data_retention_days: defaults?.data_retention_days?.toString() || "60",
   enable_spradley_evaluation: false,

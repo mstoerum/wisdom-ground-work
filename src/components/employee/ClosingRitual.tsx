@@ -6,11 +6,12 @@ import { motion } from "framer-motion";
 interface ClosingRitualProps {
   conversationId: string;
   onComplete: () => void;
-  surveyType?: 'employee_satisfaction' | 'course_evaluation';
+  surveyType?: 'employee_satisfaction' | 'course_evaluation' | 'villager_interview';
 }
 
 export const ClosingRitual = ({ conversationId, onComplete, surveyType = 'employee_satisfaction' }: ClosingRitualProps) => {
   const isCourseEvaluation = surveyType === 'course_evaluation';
+  const isVillagerInterview = surveyType === 'villager_interview';
 
   return (
     <motion.div
@@ -35,7 +36,13 @@ export const ClosingRitual = ({ conversationId, onComplete, surveyType = 'employ
             <Heart className="h-5 w-5 text-primary mt-0.5" />
             <div>
               <p className="font-medium mb-2">What happens next?</p>
-              {isCourseEvaluation ? (
+              {isVillagerInterview ? (
+                <ul className="text-sm text-muted-foreground space-y-1.5">
+                  <li>• Your input is combined with other villagers' perspectives</li>
+                  <li>• The community team reviews themes and ideas</li>
+                  <li>• Your feedback shapes future village improvements</li>
+                </ul>
+              ) : isCourseEvaluation ? (
                 <ul className="text-sm text-muted-foreground space-y-1.5">
                   <li>• Your feedback is analyzed with other responses</li>
                   <li>• Instructors review insights to improve the course</li>

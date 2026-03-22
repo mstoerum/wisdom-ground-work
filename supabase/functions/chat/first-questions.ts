@@ -122,6 +122,30 @@ export const COURSE_FIRST_QUESTIONS: Record<string, string[]> = {
   ]
 };
 
+// Villager interview themes - personal, community-focused questions
+export const VILLAGER_FIRST_QUESTIONS: Record<string, string[]> = {
+  "shared-spaces": [
+    "How do you use the common areas around here — do you have a go-to spot?",
+    "What's the vibe like in the shared spaces on a typical evening?",
+    "When you walk into the common kitchen or lounge, how does it feel?"
+  ],
+  "aspirations-&-ideas": [
+    "If you could add one thing to the village that doesn't exist yet, what would it be?",
+    "What's something you've wished for here that you haven't seen happen?",
+    "Any ideas you've been sitting on about how this place could be better?"
+  ],
+  "community-&-belonging": [
+    "How well do you know the people around you here?",
+    "Does this place feel like home, or more like just where you sleep?",
+    "What brings people together in the village — or what's missing?"
+  ],
+  "communication-&-involvement": [
+    "When something changes around here, how do you usually find out?",
+    "Do you feel like your voice matters in how things run here?",
+    "How clear is it to you how decisions get made about the village?"
+  ]
+};
+
 // Default fallback questions when no theme match
 export const DEFAULT_FIRST_QUESTIONS = [
   "How have things been feeling at work lately?",
@@ -135,17 +159,23 @@ export const DEFAULT_COURSE_QUESTIONS = [
   "How would you describe your experience as a student here?"
 ];
 
+export const DEFAULT_VILLAGER_QUESTIONS = [
+  "What's it like living here?",
+  "How would you describe village life to someone thinking about moving in?",
+  "What's been on your mind about the village lately?"
+];
+
 /**
  * Select a first question based on the primary theme
  */
 export function selectFirstQuestion(
   themes: { name: string; description?: string }[],
-  surveyType: "employee_satisfaction" | "course_evaluation" = "employee_satisfaction"
+  surveyType: "employee_satisfaction" | "course_evaluation" | "villager_interview" = "employee_satisfaction"
 ): string {
   if (!themes || themes.length === 0) {
-    return surveyType === "course_evaluation" 
-      ? DEFAULT_COURSE_QUESTIONS[0] 
-      : DEFAULT_FIRST_QUESTIONS[0];
+    if (surveyType === "course_evaluation") return DEFAULT_COURSE_QUESTIONS[0];
+    if (surveyType === "villager_interview") return DEFAULT_VILLAGER_QUESTIONS[0];
+    return DEFAULT_FIRST_QUESTIONS[0];
   }
 
   const primaryTheme = themes[0];
@@ -158,6 +188,20 @@ export function selectFirstQuestion(
       return questions[Math.floor(Math.random() * questions.length)];
     }
     return DEFAULT_COURSE_QUESTIONS[0];
+  }
+
+  if (surveyType === "villager_interview") {
+    const questions = VILLAGER_FIRST_QUESTIONS[themeName];
+    if (questions && questions.length > 0) {
+      return questions[Math.floor(Math.random() * questions.length)];
+    }
+    // Try partial matching for villager themes
+    for (const [key, qs] of Object.entries(VILLAGER_FIRST_QUESTIONS)) {
+      if (themeName.includes(key) || key.includes(themeName)) {
+        return qs[Math.floor(Math.random() * qs.length)];
+      }
+    }
+    return DEFAULT_VILLAGER_QUESTIONS[0];
   }
 
   // Employee satisfaction
@@ -183,9 +227,10 @@ export function selectFirstQuestion(
 export function getMoodAdaptiveResponse(
   mood: number, 
   themes: { name: string; description?: string }[] = [],
-  surveyType: "employee_satisfaction" | "course_evaluation" = "employee_satisfaction"
+  surveyType: "employee_satisfaction" | "course_evaluation" | "villager_interview" = "employee_satisfaction"
 ): { empathy: string | null; question: string } {
   const isCourse = surveyType === "course_evaluation";
+  const isVillager = surveyType === "villager_interview";
   
   // Get theme context for more relevant questions
   const primaryTheme = themes[0]?.name?.toLowerCase() || "";
@@ -193,9 +238,11 @@ export function getMoodAdaptiveResponse(
   switch(mood) {
     case 1: // Tough
       return {
-        empathy: null, // First message after mood, no empathy needed
+        empathy: null,
         question: isCourse 
           ? "I hear that. What's been the hardest part of this course?"
+          : isVillager
+          ? "I hear that. What's been the toughest part about living here?"
           : "I hear that. What's been the biggest challenge this week?"
       };
     case 2: // Not great
@@ -203,6 +250,8 @@ export function getMoodAdaptiveResponse(
         empathy: null,
         question: isCourse
           ? "Thanks for being honest. What's been weighing on you about the course?"
+          : isVillager
+          ? "Thanks for being honest. What's been bugging you about the village?"
           : "Thanks for being honest. What's been weighing on you?"
       };
     case 3: // Okay
@@ -210,6 +259,8 @@ export function getMoodAdaptiveResponse(
         empathy: null,
         question: isCourse
           ? "Got it. Is there anything about the course that could be better?"
+          : isVillager
+          ? "Got it. Is there anything about life here that could be better?"
           : "Got it. Is there anything that could make things better right now?"
       };
     case 4: // Good
@@ -217,6 +268,8 @@ export function getMoodAdaptiveResponse(
         empathy: null,
         question: isCourse
           ? "Nice! What's been working well for you in this course?"
+          : isVillager
+          ? "Nice! What do you enjoy most about living here?"
           : "Nice! What's been going well for you lately?"
       };
     case 5: // Great!
@@ -224,6 +277,8 @@ export function getMoodAdaptiveResponse(
         empathy: null,
         question: isCourse
           ? "Love to hear it! What's making this course work so well for you?"
+          : isVillager
+          ? "Love to hear it! What makes this place feel good to you?"
           : "Love to hear it! What's making things feel good right now?"
       };
     default:
@@ -231,6 +286,8 @@ export function getMoodAdaptiveResponse(
         empathy: null,
         question: isCourse
           ? "How has your learning experience been in this course?"
+          : isVillager
+          ? "What's it like living here?"
           : "How have things been feeling at work lately?"
       };
   }
@@ -241,8 +298,14 @@ export function getMoodAdaptiveResponse(
  */
 export function buildWarmIntroduction(
   firstQuestion: string,
-  surveyType: "employee_satisfaction" | "course_evaluation" = "employee_satisfaction"
+  surveyType: "employee_satisfaction" | "course_evaluation" | "villager_interview" = "employee_satisfaction"
 ): string {
+  if (surveyType === "villager_interview") {
+    return `Hey! Welcome — this is a short conversation to get a better understanding of your experience as a villager. We're curious to hear about what life is like here and any ideas you might have.
+
+${firstQuestion}`;
+  }
+
   const context = surveyType === "course_evaluation" 
     ? "your learning experience"
     : "how things are going at work";

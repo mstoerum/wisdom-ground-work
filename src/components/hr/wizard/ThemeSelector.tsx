@@ -15,7 +15,7 @@ interface ThemeSelectorProps {
 }
 
 export const ThemeSelector = ({ form }: ThemeSelectorProps) => {
-  const surveyType = form.watch("survey_type") as 'employee_satisfaction' | 'course_evaluation';
+  const surveyType = form.watch("survey_type") as 'employee_satisfaction' | 'course_evaluation' | 'villager_interview';
   
   const { data: themes, isLoading } = useQuery({
     queryKey: ['survey-themes', surveyType],
