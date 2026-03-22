@@ -1,72 +1,47 @@
 
 
-## Add "Villager Interview" Survey Type
+## Change the villager interview check-in question and add a light follow-up
 
-A new survey type for student residence communities, with its own themes, terminology, tone, and opening message — without touching existing employee satisfaction or course evaluation flows.
+The user wants the villager interview mood check-in to ask "How has your week in the village been?" instead of "How's work been this week?", and then show one light follow-up before diving into themes. This only affects villager interviews.
 
-### Summary of Changes
+### Changes
 
-**1. Database Migration — Add enum value + seed themes**
+**1. `src/components/employee/FocusedInterviewInterface.tsx`**
 
-Add `'villager_interview'` to the `survey_type` enum in Postgres, then insert 4 new themes into `survey_themes`:
+- Pass a villager-specific question prop to `MoodSelector` when `surveyType === 'villager_interview'`:
+  ```
+  <MoodSelector
+    onMoodSelect={handleMoodSelect}
+    question={surveyType === 'villager_interview'
+      ? "How has your week in the village been?"
+      : undefined}
+  />
+  ```
 
-- Shared Space Usage & Satisfaction
-- Aspirations & Ideas
-- Community Belonging & Connection
-- Communication & Involvement
+- Update the fallback questions (lines 161-168) to include villager-specific versions when `surveyType === 'villager_interview'`:
+  ```
+  // Villager fallbacks use lighter, community-focused follow-ups
+  1: "That sounds rough. What's been the most annoying thing this week?"
+  2: "I get that. Anything specific bugging you about life here?"
+  3: "Fair enough. What's one thing you'd tweak about the village?"
+  4: "Nice! Got a favorite spot around here?"
+  5: "Love it! What's making village life feel good right now?"
+  ```
 
-Each theme gets relevant `suggested_questions` and `sentiment_keywords`.
+**2. `src/components/employee/MoodTransition.tsx`**
 
-**2. Frontend Schema — `src/lib/surveySchema.ts`**
+- Accept an optional `surveyType` prop
+- When `surveyType === 'villager_interview'`, show lighter, village-specific acknowledgment messages instead of the work-focused defaults (e.g., mood 3: "Got it. Let's chat about village life." instead of "Sometimes 'okay' says a lot.")
 
-- Add `'villager_interview'` to the `survey_type` z.enum
-- Add `'villager_interview'` case in `getDefaultSurveyValues` with a tailored consent message (e.g., "Your responses will be kept confidential and used to improve the village community...")
+**3. `supabase/functions/chat/first-questions.ts`**
 
-**3. Contextual Terminology — `src/lib/contextualTerminology.ts`**
+- Update `getMoodAdaptiveResponse` villager cases to use lighter, more personal follow-up questions that feel casual (these are what the AI actually sends as the first real question after mood selection)
 
-- Add `'villager_interview'` to the `SurveyType` union
-- Add a full `ContextualTerms` entry for `villager_interview` (participant: "villager", context: "village", feedback: "conversation", etc.)
+**4. `supabase/functions/chat/context-prompts.ts`**
 
-**4. Survey Type Selector — `src/components/hr/wizard/SurveyTypeSelector.tsx`**
-
-- Add a third card (icon: `Home` or `Users`) for "Villager Interview" with description and sample themes
-- Switch layout to 3-column on larger screens
-
-**5. Survey Details & Theme Selector**
-
-- `SurveyDetails.tsx` — add villager-specific placeholder title, description hint, and first message preview
-- `ThemeSelector.tsx` — widen the `surveyType` cast to include `'villager_interview'`; participant/conversation labels already flow from the terminology map
-
-**6. AI Interview Prompt — `supabase/functions/chat/context-prompts.ts`**
-
-- Add `'villager_interview'` to the `SurveyType` union
-- Add `getVillagerInterviewPrompt()` — same structure as the other two but with:
-  - Slightly less formal, more personal tone ("friendly community researcher")
-  - Probing lenses: Belonging, Shared spaces, Communication, Aspirations
-  - Villager-specific good/bad examples
-- Update `getSystemPromptForSurveyType()` to route to the new prompt
-- Update `buildConversationContextForType()` participant/context terms
-
-**7. First Questions — `supabase/functions/chat/first-questions.ts`**
-
-- Add villager-specific theme first questions (e.g., "How does it feel coming home to the village after a long day?")
-- Add `DEFAULT_VILLAGER_QUESTIONS` fallback
-- Add villager case in `selectFirstQuestion`, `getMoodAdaptiveResponse`, and `buildWarmIntroduction`
-- Opening intro: *"Hey! Welcome — this is a short conversation to get a better understanding of your experience as a villager. We're curious to hear about what life is like here and any ideas you might have."*
-
-**8. Other Components (minimal changes)**
-
-- `ClosingRitual.tsx` — add `'villager_interview'` to the `surveyType` prop union and a villager-specific "what happens next" list
-- `FocusedInterviewInterface.tsx`, `SummaryReceipt.tsx` — widen type unions (no logic changes needed since they delegate to terminology)
-- `CreateSurvey.tsx` — update the preview button label ternary to handle villager type
+- No changes needed — the villager prompt already sets the casual tone for subsequent questions
 
 ### What stays untouched
 
-All existing employee satisfaction and course evaluation logic, prompts, themes, and UI remain identical. The new type is additive only — new enum value, new themes, new prompt function, new terminology entry.
-
-### Technical Details
-
-- The DB enum alter is safe: `ALTER TYPE survey_type ADD VALUE 'villager_interview'`
-- The `types.ts` file auto-regenerates after migration
-- Edge functions (`chat`, `chat-v2`) route via `getSystemPromptForSurveyType()` which already dispatches by type — adding the new case is sufficient
+Employee satisfaction and course evaluation flows remain identical — all changes are gated behind `surveyType === 'villager_interview'` checks.
 
