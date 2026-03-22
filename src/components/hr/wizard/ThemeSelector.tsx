@@ -71,7 +71,7 @@ export const ThemeSelector = ({ form }: ThemeSelectorProps) => {
   const maxMinutes = Math.min(estimatedMinutes + 3, 18);
   const showRange = selectedThemes.length >= 1;
 
-  const participantLabel = surveyType === 'course_evaluation' ? 'students' : 'employees';
+  const participantLabel = surveyType === 'course_evaluation' ? 'students' : surveyType === 'villager_interview' ? 'villagers' : 'employees';
   const conversationLabel = surveyType === 'course_evaluation' ? 'evaluation' : 'conversation';
 
   return (
