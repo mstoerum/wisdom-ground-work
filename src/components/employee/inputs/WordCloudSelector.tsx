@@ -61,7 +61,7 @@ export const WordCloudSelector = ({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      className="w-full max-w-2xl mx-auto space-y-4"
+      className="w-full max-w-[95vw] sm:max-w-2xl mx-auto space-y-4"
     >
       <div className="flex flex-wrap gap-2 justify-center">
         {topicOptions.map((option, i) => {
