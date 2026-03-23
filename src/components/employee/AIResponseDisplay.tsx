@@ -67,7 +67,7 @@ export const AIResponseDisplay = ({ empathy, question, isLoading, isTransitionin
 
       <motion.div
         key={question}
-        className="flex items-center justify-center px-4 max-w-2xl w-full"
+        className="flex items-center justify-center px-2 sm:px-4 max-w-2xl w-full"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -6, transition: { duration: 0.12 } }}
