@@ -108,7 +108,7 @@ export const AnswerInput = ({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={isLoading || disabled}
-          className="min-h-[120px] text-lg p-4 resize-none bg-background border rounded-xl focus:outline-none focus:ring-0 focus:shadow-[0_0_0_4px_rgba(66,49,49,0.06)] mx-0"
+          className="min-h-[100px] sm:min-h-[120px] text-base sm:text-lg p-3 sm:p-4 resize-none bg-background border rounded-xl focus:outline-none focus:ring-0 focus:shadow-[0_0_0_4px_rgba(66,49,49,0.06)] mx-0"
           style={{ borderColor: 'rgba(66, 49, 49, 0.03)' }}
           aria-label="Your response" />
         
@@ -142,7 +142,7 @@ export const AnswerInput = ({
           onClick={onSubmit}
           disabled={!canSubmit}
           size="lg"
-          className="px-8 py-6 text-lg font-medium bg-foreground text-background hover:bg-foreground/90 rounded-full transition-all duration-200 disabled:opacity-50">
+          className="px-6 py-4 text-base sm:px-8 sm:py-6 sm:text-lg font-medium bg-foreground text-background hover:bg-foreground/90 rounded-full transition-all duration-200 disabled:opacity-50">
           
           {isLoading ?
           <>

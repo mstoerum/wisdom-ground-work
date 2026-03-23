@@ -67,7 +67,7 @@ export const AIResponseDisplay = ({ empathy, question, isLoading, isTransitionin
 
       <motion.div
         key={question}
-        className="flex items-center justify-center px-4 max-w-2xl w-full"
+        className="flex items-center justify-center px-2 sm:px-4 max-w-2xl w-full"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -6, transition: { duration: 0.12 } }}
@@ -75,7 +75,7 @@ export const AIResponseDisplay = ({ empathy, question, isLoading, isTransitionin
         
           <div className="relative w-full">
             {/* Hidden ghost text to reserve full dimensions */}
-            <p className="text-xl md:text-2xl font-medium leading-relaxed text-left invisible" aria-hidden="true">
+            <p className="text-base sm:text-lg md:text-2xl font-medium leading-relaxed text-left invisible" aria-hidden="true">
               {empathy &&
             <>
                   <span>{empathy}</span>
@@ -85,7 +85,7 @@ export const AIResponseDisplay = ({ empathy, question, isLoading, isTransitionin
               <span>{question}</span>
             </p>
             {/* Visible typewriter text overlaid on top */}
-            <p className="text-xl md:text-2xl font-medium leading-relaxed text-left absolute inset-0">
+            <p className="text-base sm:text-lg md:text-2xl font-medium leading-relaxed text-left absolute inset-0">
               {empathy &&
             <>
                   <span className="text-muted-foreground">
@@ -96,7 +96,7 @@ export const AIResponseDisplay = ({ empathy, question, isLoading, isTransitionin
               }
                 </>
             }
-              <span className="text-foreground text-2xl font-normal">
+              <span className="text-foreground text-base sm:text-lg md:text-2xl font-normal">
                 {questionTypewriter.displayText}
               </span>
               {isAnyTyping &&

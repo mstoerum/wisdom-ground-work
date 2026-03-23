@@ -448,7 +448,7 @@ export const FocusedInterviewInterface = ({
       <div className="flex-1 flex">
         {/* Main content */}
         {isActive && (
-          <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-8 relative">
+          <div className="flex-1 flex flex-col items-center justify-center px-3 py-4 gap-4 sm:px-6 sm:py-8 sm:gap-8 relative">
             {/* Linear progress bar */}
             {(() => {
               const safeThemeCount =
@@ -459,7 +459,7 @@ export const FocusedInterviewInterface = ({
               const rawProgress = ((questionNumber + 1) / estimatedTotal) * 100;
               const progressValue = Number.isFinite(rawProgress) ? Math.max(0, Math.min(rawProgress, 100)) : 0;
               return (
-                <div className="absolute top-0 left-0 right-0 px-6">
+                <div className="absolute top-0 left-0 right-0 px-3 sm:px-6">
                   <Progress value={progressValue} className="h-1.5 bg-white" indicatorClassName="bg-orange-500" />
                 </div>
               );

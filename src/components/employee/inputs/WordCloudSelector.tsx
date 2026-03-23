@@ -61,7 +61,7 @@ export const WordCloudSelector = ({
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-      className="w-full max-w-2xl mx-auto space-y-4"
+      className="w-full max-w-[95vw] sm:max-w-2xl mx-auto space-y-4"
     >
       <div className="flex flex-wrap gap-2 justify-center">
         {topicOptions.map((option, i) => {
@@ -77,7 +77,7 @@ export const WordCloudSelector = ({
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className={`
-                px-4 py-2.5 rounded-full text-sm font-medium transition-colors
+                px-3 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full font-medium transition-colors
                 ${isActive
                   ? "bg-[hsl(var(--terracotta-primary))] text-primary-foreground shadow-sm"
                   : "bg-muted hover:bg-muted/70 text-foreground border border-border/40"
@@ -97,7 +97,7 @@ export const WordCloudSelector = ({
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: topicOptions.length * 0.05 }}
             whileHover={{ scale: 1.05 }}
-            className="px-4 py-2.5 rounded-full text-sm font-medium bg-transparent border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
+            className="px-3 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full font-medium bg-transparent border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
           >
             Something else…
           </motion.button>
