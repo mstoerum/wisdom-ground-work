@@ -448,7 +448,7 @@ export const FocusedInterviewInterface = ({
       <div className="flex-1 flex">
         {/* Main content */}
         {isActive && (
-          <div className="flex-1 flex flex-col items-center justify-center px-6 py-8 gap-8 relative">
+          <div className="flex-1 flex flex-col items-center justify-center px-3 py-4 gap-4 sm:px-6 sm:py-8 sm:gap-8 relative">
             {/* Linear progress bar */}
             {(() => {
               const safeThemeCount =
