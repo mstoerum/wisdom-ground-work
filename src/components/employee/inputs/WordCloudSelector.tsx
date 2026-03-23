@@ -97,7 +97,7 @@ export const WordCloudSelector = ({
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: topicOptions.length * 0.05 }}
             whileHover={{ scale: 1.05 }}
-            className="px-4 py-2.5 rounded-full text-sm font-medium bg-transparent border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
+            className="px-3 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full font-medium bg-transparent border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
           >
             Something else…
           </motion.button>

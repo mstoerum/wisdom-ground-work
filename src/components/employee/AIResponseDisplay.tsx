@@ -96,7 +96,7 @@ export const AIResponseDisplay = ({ empathy, question, isLoading, isTransitionin
               }
                 </>
             }
-              <span className="text-foreground text-2xl font-normal">
+              <span className="text-foreground text-base sm:text-lg md:text-2xl font-normal">
                 {questionTypewriter.displayText}
               </span>
               {isAnyTyping &&
