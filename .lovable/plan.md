@@ -1,67 +1,30 @@
 
-## Deep analysis: what is going wrong now
 
-The current villager start flow is still accidentally using the **mood-first backend branch**, even though the UI skips mood selection.
+## Fix mobile overflow for long AI messages and chips
 
-1. In `FocusedInterviewInterface`, villager auto-start calls:
-   - `initializeConversation(3)`
-   - request includes `initialMood: 3`
+The problem: on mobile, the `AIResponseDisplay` text uses `text-xl md:text-2xl` which is still too large for long intro/closing messages, and the `WordCloudSelector` chips don't wrap well on narrow screens. The container also uses fixed `px-6` padding and `max-w-2xl` which doesn't adapt.
 
-2. In `supabase/functions/chat/index.ts`, intro handling does:
-   - `if (initialMood is set) -> getMoodAdaptiveResponse(...)`
-   - so villager gets a mood follow-up like “Fair enough. What’s one thing you’d tweak…”
-   - this is **not a direct first-theme kickoff**
+### Changes
 
-3. There is a second issue in the intro fallback:
-   - warm intro text in `chat/index.ts` still uses `course ? learning : work`
-   - villager can fall into work wording if mood is removed and this fallback is hit
+**1. `src/components/employee/AIResponseDisplay.tsx`**
 
-4. Intro logic is duplicated (preview + live branches), so behavior can drift.
+- Scale font sizes down on mobile: change from `text-xl md:text-2xl` to `text-base sm:text-lg md:text-2xl` on both the ghost text (line 78) and the visible overlay (line 88)
+- Same for the question span (line 99): `text-base sm:text-lg md:text-2xl` instead of hard `text-2xl`
+- Change container `px-4` to `px-2 sm:px-4` for tighter mobile margins
 
----
+**2. `src/components/employee/inputs/WordCloudSelector.tsx`**
 
-## Plan to make villager start immediately with a smooth theme kickoff
+- Reduce chip text and padding on mobile: change `px-4 py-2.5 text-sm` to `px-3 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm` (lines 80, 100)
+- Reduce container max-width on mobile: `max-w-[95vw] sm:max-w-2xl`
 
-### 1) Fix intro routing in backend (main root fix)
-**File:** `supabase/functions/chat/index.ts`
+**3. `src/components/employee/FocusedInterviewInterface.tsx`**
 
-- Create one shared intro builder (used in both preview and live intro branches).
-- For `surveyType === 'villager_interview'`, **ignore `initialMood` for intro generation**.
-- Generate first message as:
-  - short villager welcome line
-  - immediate first theme question (from `selectFirstQuestion`)
-- Keep existing mood logic unchanged for employee/course surveys.
+- Reduce main content padding on mobile: change `px-6 py-8 gap-8` (line 451) to `px-3 py-4 gap-4 sm:px-6 sm:py-8 sm:gap-8`
+- Same for progress bar container `px-6` (line 462) → `px-3 sm:px-6`
 
-### 2) Use the dedicated warm-intro helper instead of hardcoded context string
-**Files:** `supabase/functions/chat/index.ts`, `supabase/functions/chat/first-questions.ts`
+**4. `src/components/employee/AnswerInput.tsx`**
 
-- Replace manual `Hi... work/learning` string in intro branches with `buildWarmIntroduction(...)`.
-- Ensure villager intro is always villager-specific and never falls back to work phrasing.
-- Keep employee/course intro text exactly as-is.
+- Reduce textarea and button sizing on mobile: change `text-lg` → `text-base sm:text-lg`, button `text-lg px-8 py-6` → `text-base px-6 py-4 sm:text-lg sm:px-8 sm:py-6`
 
-### 3) Stop sending neutral mood for villager auto-start
-**File:** `src/components/employee/FocusedInterviewInterface.tsx`
+These are all class-only changes — no logic modifications. Existing desktop styling stays identical via the `sm:` / `md:` breakpoints.
 
-- In villager auto-init path, call intro initialization without `initialMood`.
-- This prevents triggering mood-adaptive responses accidentally.
-- Keep mood payload behavior untouched for employee/course where mood check-in still exists.
-
-### 4) Align villager fallback behavior with “start with theme”
-**File:** `src/components/employee/FocusedInterviewInterface.tsx`
-
-- If intro request fails, use villager fallback that is theme-oriented (not mood-oriented).
-- Example fallback style: short welcome + first village-theme prompt.
-
-### 5) Verify no regressions
-- Villager public flow: consent → immediate warm intro + first theme question.
-- Employee and course: existing mood check-in and follow-up behavior unchanged.
-- Preview mode and live mode both verified (since intro logic is shared).
-
----
-
-## Technical details (implementation constraints)
-
-- No DB migration required.
-- No changes to role/auth/data policies required.
-- Scope is additive and gated by `surveyType === 'villager_interview'`.
-- Keep all existing employee/course logic paths untouched except for shared helper extraction where behavior is preserved.
