@@ -77,7 +77,7 @@ export const WordCloudSelector = ({
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               className={`
-                px-4 py-2.5 rounded-full text-sm font-medium transition-colors
+                px-3 py-2 text-xs sm:px-4 sm:py-2.5 sm:text-sm rounded-full font-medium transition-colors
                 ${isActive
                   ? "bg-[hsl(var(--terracotta-primary))] text-primary-foreground shadow-sm"
                   : "bg-muted hover:bg-muted/70 text-foreground border border-border/40"
