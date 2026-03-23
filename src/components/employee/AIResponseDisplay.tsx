@@ -85,7 +85,7 @@ export const AIResponseDisplay = ({ empathy, question, isLoading, isTransitionin
               <span>{question}</span>
             </p>
             {/* Visible typewriter text overlaid on top */}
-            <p className="text-xl md:text-2xl font-medium leading-relaxed text-left absolute inset-0">
+            <p className="text-base sm:text-lg md:text-2xl font-medium leading-relaxed text-left absolute inset-0">
               {empathy &&
             <>
                   <span className="text-muted-foreground">
