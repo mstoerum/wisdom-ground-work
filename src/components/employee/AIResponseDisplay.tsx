@@ -75,7 +75,7 @@ export const AIResponseDisplay = ({ empathy, question, isLoading, isTransitionin
         
           <div className="relative w-full">
             {/* Hidden ghost text to reserve full dimensions */}
-            <p className="text-xl md:text-2xl font-medium leading-relaxed text-left invisible" aria-hidden="true">
+            <p className="text-base sm:text-lg md:text-2xl font-medium leading-relaxed text-left invisible" aria-hidden="true">
               {empathy &&
             <>
                   <span>{empathy}</span>
