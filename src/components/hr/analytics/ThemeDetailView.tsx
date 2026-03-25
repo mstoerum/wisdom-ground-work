@@ -195,35 +195,13 @@ export function ThemeDetailView({ theme, enrichedData, onBack }: ThemeDetailView
                   }
                 `}
               >
-                <div className="flex items-start gap-2">
-                  <span className="italic flex-1">"{quote.text}"</span>
-                  {quote.question && (
-                    <button
-                      onClick={() => setExpandedQuote(expandedQuote === i ? null : i)}
-                      className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-semibold shrink-0 mt-0.5 transition-colors ${
-                        expandedQuote === i
-                          ? 'bg-primary text-primary-foreground'
-                          : 'bg-muted text-muted-foreground hover:bg-muted-foreground/20'
-                      }`}
-                      aria-label="Show question context"
-                    >
-                      Q
-                    </button>
-                  )}
-                </div>
-                <AnimatePresence>
-                  {expandedQuote === i && quote.question && (
-                    <motion.p
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="text-xs text-muted-foreground mt-2 pl-1 overflow-hidden"
-                    >
-                      Asked: "{quote.question}"
-                    </motion.p>
-                  )}
-                </AnimatePresence>
+                {/* Show the AI question that prompted this response */}
+                {quote.question && (
+                  <p className="text-xs text-muted-foreground mb-1.5 italic">
+                    Asked: "{quote.question}"
+                  </p>
+                )}
+                <span className="italic">"{quote.text}"</span>
               </div>
             ))}
           </div>
