@@ -974,6 +974,23 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
       const { empathy, question } = parseStructuredResponse(gratitudeRaw);
       const gratitudeMessage = question || empathy || "Thank you for sharing your thoughts today. Your feedback will help create meaningful change.";
 
+      // Server-side session completion — ensures DB trigger fires even if user closes browser
+      try {
+        await supabase
+          .from("conversation_sessions")
+          .update({ status: "completed", ended_at: new Date().toISOString() })
+          .eq("id", conversationId);
+        console.log(`[${conversationId}] ✅ Session marked completed server-side (all-good flow)`);
+        
+        // Increment public link response counter if applicable
+        if (isPublicLinkSession && sessionCheck?.public_link_id) {
+          await supabase.rpc("increment_link_responses", { link_id: sessionCheck.public_link_id });
+          console.log(`[${conversationId}] ✅ Public link response counter incremented`);
+        }
+      } catch (completeErr) {
+        console.error(`[${conversationId}] Failed to complete session server-side:`, completeErr);
+      }
+
       return new Response(
         JSON.stringify({
           message: gratitudeMessage,
