@@ -380,7 +380,28 @@ const analyzeSentiment = async (apiKey: string, userMessage: string): Promise<{ 
   );
 
   const sentiment = sentimentResponse.toLowerCase().trim();
-  const score = sentiment === "positive" ? 75 : sentiment === "negative" ? 25 : 50;
+  
+  // Use continuous scale instead of fixed buckets for more granular analytics
+  // Run a second lightweight call to get a numeric score
+  let score = sentiment === "positive" ? 70 : sentiment === "negative" ? 30 : 50;
+  try {
+    const scoreResponse = await callAI(
+      apiKey,
+      AI_MODEL_LITE,
+      [
+        { role: "system", content: "Rate the sentiment of this message on a scale from 0 (extremely negative) to 100 (extremely positive). Reply with ONLY a number." },
+        { role: "user", content: userMessage }
+      ],
+      0.1,
+      5
+    );
+    const parsed = parseInt(scoreResponse.trim(), 10);
+    if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
+      score = parsed;
+    }
+  } catch (e) {
+    console.log("Failed to get granular sentiment score, using bucket fallback");
+  }
   
   return { sentiment, score };
 };
@@ -391,12 +412,14 @@ const analyzeSentiment = async (apiKey: string, userMessage: string): Promise<{ 
 const detectTheme = async (apiKey: string, userMessage: string, themes: any[]): Promise<string | null> => {
   if (!themes || themes.length === 0) return null;
 
-  const themePrompt = `Classify this employee feedback into ONE of these themes:
-${themes.map(t => `- ${t.name}: ${t.description}`).join('\n')}
+  const themePrompt = `Classify this employee feedback into the SINGLE MOST SPECIFIC theme. Choose the theme whose description best matches the core topic of the feedback. If multiple themes could apply, pick the one that is MOST specific (narrowest scope).
+
+Themes:
+${themes.map(t => `- "${t.name}": ${t.description || 'No description'}`).join('\n')}
 
 Employee feedback: "${userMessage}"
 
-Reply with only the exact theme name.`;
+Reply with ONLY the exact theme name, nothing else.`;
 
   const themeName = await callAI(apiKey, AI_MODEL_LITE, [{ role: "user", content: themePrompt }], 0.2, 20);
   
@@ -421,7 +444,8 @@ Reply with only: urgent OR not-urgent`;
 
   const urgencyResponse = await callAI(apiKey, AI_MODEL_LITE, [{ role: "user", content: urgencyPrompt }], 0.1, 10); // Use lite model for faster classification
   
-  return urgencyResponse.toLowerCase().includes('urgent');
+  const cleaned = urgencyResponse.toLowerCase().trim();
+  return cleaned === 'urgent' || (cleaned.includes('urgent') && !cleaned.includes('not-urgent') && !cleaned.includes('not urgent'));
 };
 
 serve(async (req) => {
@@ -831,8 +855,21 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
 
     const turnCount = messages.filter((m: any) => m.role === "user").length;
     
-    // Handle finish early request (legacy — now a no-op, kept for API compat)
+    // Handle finish early request — complete session server-side
     if (finishEarly) {
+      try {
+        await supabase
+          .from("conversation_sessions")
+          .update({ status: "completed", ended_at: new Date().toISOString() })
+          .eq("id", conversationId);
+        console.log(`[${conversationId}] ✅ Session marked completed server-side (finish-early flow)`);
+        
+        if (isPublicLinkSession && sessionCheck?.public_link_id) {
+          await supabase.rpc("increment_link_responses", { link_id: sessionCheck.public_link_id });
+        }
+      } catch (e) {
+        console.error(`[${conversationId}] Failed to complete session:`, e);
+      }
       return new Response(
         JSON.stringify({ message: "Thank you for sharing.", shouldComplete: true, isCompletionPrompt: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -949,6 +986,23 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
 
       const { empathy, question } = parseStructuredResponse(gratitudeRaw);
       const gratitudeMessage = question || empathy || "Thank you for sharing your thoughts today. Your feedback will help create meaningful change.";
+
+      // Server-side session completion — ensures DB trigger fires even if user closes browser
+      try {
+        await supabase
+          .from("conversation_sessions")
+          .update({ status: "completed", ended_at: new Date().toISOString() })
+          .eq("id", conversationId);
+        console.log(`[${conversationId}] ✅ Session marked completed server-side (all-good flow)`);
+        
+        // Increment public link response counter if applicable
+        if (isPublicLinkSession && sessionCheck?.public_link_id) {
+          await supabase.rpc("increment_link_responses", { link_id: sessionCheck.public_link_id });
+          console.log(`[${conversationId}] ✅ Public link response counter incremented`);
+        }
+      } catch (completeErr) {
+        console.error(`[${conversationId}] Failed to complete session server-side:`, completeErr);
+      }
 
       return new Response(
         JSON.stringify({
