@@ -421,7 +421,8 @@ Reply with only: urgent OR not-urgent`;
 
   const urgencyResponse = await callAI(apiKey, AI_MODEL_LITE, [{ role: "user", content: urgencyPrompt }], 0.1, 10); // Use lite model for faster classification
   
-  return urgencyResponse.toLowerCase().includes('urgent');
+  const cleaned = urgencyResponse.toLowerCase().trim();
+  return cleaned === 'urgent' || (cleaned.includes('urgent') && !cleaned.includes('not-urgent') && !cleaned.includes('not urgent'));
 };
 
 serve(async (req) => {
