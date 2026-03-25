@@ -82,16 +82,29 @@ export function InsightCard({ insight, colorClass, accentColor, surveyId, chapte
         {/* Main content: horizontal layout when agreement data exists */}
         {hasAgreementData ? (
           <div className="flex gap-5">
-            {/* Agreement % - primary visual */}
+            {/* Agreement metric - voice counts for small samples, % for large */}
             <div className="flex-shrink-0 flex flex-col items-center justify-center min-w-[64px]">
-              <span className={cn("text-2xl font-bold tabular-nums", getAgreementColor(agreementPercentage!))}>
-                {agreementPercentage}%
-              </span>
-              <span className="text-xs text-muted-foreground">agree</span>
-              {sampleSize && (
-                <span className="text-xs text-muted-foreground/60 mt-0.5">
-                  n={sampleSize}
-                </span>
+              {isSmallSample && sampleSize ? (
+                <>
+                  <span className={cn("text-2xl font-bold tabular-nums", getAgreementColor(agreementPercentage!))}>
+                    {sampleSize}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    voice{sampleSize !== 1 ? 's' : ''}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className={cn("text-2xl font-bold tabular-nums", getAgreementColor(agreementPercentage!))}>
+                    {agreementPercentage}%
+                  </span>
+                  <span className="text-xs text-muted-foreground">agree</span>
+                  {sampleSize && (
+                    <span className="text-xs text-muted-foreground/60 mt-0.5">
+                      n={sampleSize}
+                    </span>
+                  )}
+                </>
               )}
             </div>
 
