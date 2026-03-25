@@ -46,6 +46,9 @@ export function InsightCard({ insight, colorClass, accentColor, surveyId, chapte
   const sampleSize = insight.sample_size;
   const hasAgreementData = typeof agreementPercentage === 'number' && agreementPercentage > 0;
   const hasEvidence = insight.evidence_ids && insight.evidence_ids.length > 0;
+  
+  // Small-sample mode: show voice counts instead of percentages when n < 10
+  const isSmallSample = typeof sampleSize === 'number' && sampleSize < 10;
 
   const getAgreementColor = (pct: number) => {
     if (pct >= 70) return "text-emerald-600 dark:text-emerald-400";
