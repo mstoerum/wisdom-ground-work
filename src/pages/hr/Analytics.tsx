@@ -17,12 +17,13 @@ import { useNarrativeReports } from "@/hooks/useNarrativeReports";
 import { useThemeAnalytics } from "@/hooks/useThemeAnalytics";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, BookOpen, LayoutGrid, FileText, RefreshCw, Sparkles, Share2 } from "lucide-react";
+import { BarChart3, BookOpen, LayoutGrid, FileText, RefreshCw, Sparkles, Share2, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { exportStoryReport } from "@/lib/exportStoryReport";
 import { ShareAnalyticsDialog } from "@/components/hr/analytics/ShareAnalyticsDialog";
+import { SessionExplorer } from "@/components/hr/analytics/SessionExplorer";
 
 const Analytics = () => {
   const [filters, setFilters] = useState<AnalyticsFilters>({});
@@ -227,6 +228,10 @@ const Analytics = () => {
                   <LayoutGrid className="h-4 w-4" />
                   Overview
                 </TabsTrigger>
+                <TabsTrigger value="sessions" className="gap-2">
+                  <Users className="h-4 w-4" />
+                  Sessions
+                </TabsTrigger>
                 <TabsTrigger value="story" className="gap-2">
                   <BookOpen className="h-4 w-4" />
                   Story Report
@@ -250,6 +255,11 @@ const Analytics = () => {
                   onRefresh={refreshAllAnalytics}
                   isRefreshing={isRefreshing}
                 />
+              </TabsContent>
+
+              {/* Sessions Tab */}
+              <TabsContent value="sessions" className="mt-6">
+                <SessionExplorer surveyId={filters.surveyId || null} />
               </TabsContent>
 
               {/* Story Report Tab - Immersive Reading Experience */}
