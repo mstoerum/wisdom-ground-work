@@ -1,45 +1,78 @@
 
 
-# Data Migration & Deep Analytics Trigger
+# Session Explorer — Admin Deep-Dive View
 
-## Current State (Verified)
+## What This Adds
 
-**Correct survey (26304bb2 — Soundboks Survey Pilot):**
-- 49 responses with false `urgency_escalated = true`
-- 49 entries in `escalation_log`
-- 5 sessions stuck at `active` with no `ended_at`
-- Public link counter at 0 (should be 5)
+A new "Sessions" tab in the Analytics dashboard that lets HR admins browse individual conversation sessions, see full Q&A transcripts, session metadata (duration, mood shift, sentiment trajectory), and per-session AI insights — all in one place.
 
-**Wrong survey (f92618e1 — Soundboks test):**
-- 28 sessions marked `completed` with `ended_at` set — these appear to have timestamps consistent with the previous erroneous migration (set to last response time)
-- Public link counter at 30 — unclear if this was inflated by the migration
+## Design
 
-## Implementation Steps
+```text
+Analytics Tabs:  [Overview]  [Sessions ←NEW]  [Story Report]  [Compare]
 
-### Step 1: Fix Soundboks Survey Pilot data
+Sessions Tab Layout:
+┌──────────────────────────────────────────────────────┐
+│ Session List (left/top)                              │
+│ ┌──────────────────────────────────────────────────┐ │
+│ │ 🟢 Session #1 · Mar 25 · 12 responses · 8min    │ │
+│ │    Mood: 3→4  ·  Trajectory: improving           │ │
+│ │ 🟡 Session #2 · Mar 25 · 14 responses · 11min   │ │
+│ │    Mood: 4→4  ·  Trajectory: stable              │ │
+│ │ ...                                               │ │
+│ └──────────────────────────────────────────────────┘ │
+│                                                      │
+│ Session Detail (expands below / panel)               │
+│ ┌──────────────────────────────────────────────────┐ │
+│ │ METADATA BAR                                     │ │
+│ │ Duration: 11m · Responses: 14 · Mood: 3→4       │ │
+│ │ Themes touched: Working Experience, Contribution │ │
+│ ├──────────────────────────────────────────────────┤ │
+│ │ AI INSIGHTS (from session_insights)              │ │
+│ │ Root Cause: ...                                  │ │
+│ │ Key Quotes: ...                                  │ │
+│ │ Recommended Actions: ...                         │ │
+│ ├──────────────────────────────────────────────────┤ │
+│ │ FULL TRANSCRIPT                                  │ │
+│ │ Q: How would you describe your daily...          │ │
+│ │ A: It's quite varied, we have a lot of...        │ │
+│ │ Q: What aspects of that variety...               │ │
+│ │ A: The collaboration mostly...                   │ │
+│ │ ...                                              │ │
+│ └──────────────────────────────────────────────────┘ │
+└──────────────────────────────────────────────────────┘
+```
 
-Five data operations using the insert/update tool:
+## Implementation Plan
 
-1. **Clear false urgency flags** — `UPDATE responses SET urgency_escalated = false WHERE survey_id = '26304bb2-...' AND urgency_escalated = true`
-2. **Delete false escalation entries** — `DELETE FROM escalation_log WHERE response_id IN (SELECT id FROM responses WHERE survey_id = '26304bb2-...')`
-3. **Mark 5 sessions as completed** — Set `status = 'completed'` and `ended_at` to each session's last response timestamp:
-   - `6abc1e3b` → `2026-03-23 15:44:51.772+00`
-   - `bc434cbe` → `2026-03-25 09:08:13.696+00`
-   - `86206459` → `2026-03-25 07:54:38.427+00`
-   - `857cc662` → `2026-03-25 08:36:53.13+00`
-   - `f2e9c94a` → `2026-03-25 09:25:55.377+00`
-4. **Fix public link counter** — `UPDATE public_survey_links SET current_responses = 5 WHERE id = '364969a6-...'`
+### 1. Create `SessionExplorer.tsx` component
+- Fetches `conversation_sessions` for the selected survey (with status, moods, timestamps)
+- Fetches `session_insights` joined to those sessions
+- Displays a list of session cards with key metrics (duration, response count, mood shift, sentiment trajectory)
+- Clicking a session expands/opens a detail panel
 
-### Step 2: Revert wrong survey changes
+### 2. Create `SessionDetailPanel.tsx` component
+- **Metadata bar**: duration, response count, mood shift, themes touched
+- **AI Insights section**: root cause, key quotes, recommended actions (reuses the existing `SessionInsightsPanel` card styling)
+- **Full transcript**: fetches all `responses` for that session ordered by `created_at`, displayed as Q&A pairs (ai_response = question, content = answer), filtering out `[SELECTED:]` signals
 
-1. **Reset sessions** — `UPDATE conversation_sessions SET status = 'active', ended_at = NULL WHERE survey_id = 'f92618e1-...' AND status = 'completed'`
-2. **Reset link counter** — `UPDATE public_survey_links SET current_responses = 0 WHERE survey_id = 'f92618e1-...'`
+### 3. Add "Sessions" tab to Analytics page
+- Insert a new tab between Overview and Story Report in `src/pages/hr/Analytics.tsx`
+- Pass `filters.surveyId` to the SessionExplorer
 
-### Step 3: Trigger deep-analytics
+### Technical Details
 
-Call the `deep-analytics` edge function via `curl_edge_functions` with `{ "survey_id": "26304bb2-5157-462d-b44f-b9373ae6e862" }` to populate `survey_analytics` and `aggregated_signals`.
+**Data queries:**
+- Sessions: `conversation_sessions` filtered by `survey_id`, ordered by `started_at desc`
+- Insights: `session_insights` joined via `session_id`
+- Transcript: `responses` filtered by `conversation_session_id`, joined with `survey_themes(name)`, ordered by `created_at asc`
+- Duration calculated from `started_at` / `ended_at`
+- Themes touched: distinct `theme_id` from responses, resolved to theme names
 
-### Step 4: Verify results
+**Files to create:**
+- `src/components/hr/analytics/SessionExplorer.tsx` — list + detail orchestrator
+- `src/components/hr/analytics/SessionDetailPanel.tsx` — expanded session view
 
-Query `survey_analytics`, `session_insights`, and `theme_analytics` to confirm data was populated correctly after the triggers fire (session completion triggers `analyze-session` and `analyze-theme` automatically).
+**Files to modify:**
+- `src/pages/hr/Analytics.tsx` — add Sessions tab
 
