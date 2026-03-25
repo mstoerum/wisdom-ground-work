@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { exportStoryReport } from "@/lib/exportStoryReport";
 import { ShareAnalyticsDialog } from "@/components/hr/analytics/ShareAnalyticsDialog";
+import { SessionExplorer } from "@/components/hr/analytics/SessionExplorer";
 
 const Analytics = () => {
   const [filters, setFilters] = useState<AnalyticsFilters>({});
