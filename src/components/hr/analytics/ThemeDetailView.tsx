@@ -23,7 +23,6 @@ function getConfidenceLevel(score: number): 'high' | 'medium' | 'low' {
 }
 
 export function ThemeDetailView({ theme, enrichedData, onBack }: ThemeDetailViewProps) {
-  const [expandedQuote, setExpandedQuote] = useState<number | null>(null);
   const healthScore = enrichedData?.healthIndex ?? theme.avgSentiment;
   const healthStatus = enrichedData?.healthStatus;
   const config = getHealthConfig(healthScore, healthStatus);
