@@ -412,12 +412,14 @@ const analyzeSentiment = async (apiKey: string, userMessage: string): Promise<{ 
 const detectTheme = async (apiKey: string, userMessage: string, themes: any[]): Promise<string | null> => {
   if (!themes || themes.length === 0) return null;
 
-  const themePrompt = `Classify this employee feedback into ONE of these themes:
-${themes.map(t => `- ${t.name}: ${t.description}`).join('\n')}
+  const themePrompt = `Classify this employee feedback into the SINGLE MOST SPECIFIC theme. Choose the theme whose description best matches the core topic of the feedback. If multiple themes could apply, pick the one that is MOST specific (narrowest scope).
+
+Themes:
+${themes.map(t => `- "${t.name}": ${t.description || 'No description'}`).join('\n')}
 
 Employee feedback: "${userMessage}"
 
-Reply with only the exact theme name.`;
+Reply with ONLY the exact theme name, nothing else.`;
 
   const themeName = await callAI(apiKey, AI_MODEL_LITE, [{ role: "user", content: themePrompt }], 0.2, 20);
   
