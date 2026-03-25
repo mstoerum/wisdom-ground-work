@@ -257,6 +257,11 @@ const Analytics = () => {
                 />
               </TabsContent>
 
+              {/* Sessions Tab */}
+              <TabsContent value="sessions" className="mt-6">
+                <SessionExplorer surveyId={filters.surveyId || null} />
+              </TabsContent>
+
               {/* Story Report Tab - Immersive Reading Experience */}
               <TabsContent value="story" className="mt-6">
                 {latestReport ? (
