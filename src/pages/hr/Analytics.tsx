@@ -228,6 +228,10 @@ const Analytics = () => {
                   <LayoutGrid className="h-4 w-4" />
                   Overview
                 </TabsTrigger>
+                <TabsTrigger value="sessions" className="gap-2">
+                  <Users className="h-4 w-4" />
+                  Sessions
+                </TabsTrigger>
                 <TabsTrigger value="story" className="gap-2">
                   <BookOpen className="h-4 w-4" />
                   Story Report
