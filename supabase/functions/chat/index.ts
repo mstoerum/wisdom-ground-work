@@ -855,8 +855,21 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
 
     const turnCount = messages.filter((m: any) => m.role === "user").length;
     
-    // Handle finish early request (legacy — now a no-op, kept for API compat)
+    // Handle finish early request — complete session server-side
     if (finishEarly) {
+      try {
+        await supabase
+          .from("conversation_sessions")
+          .update({ status: "completed", ended_at: new Date().toISOString() })
+          .eq("id", conversationId);
+        console.log(`[${conversationId}] ✅ Session marked completed server-side (finish-early flow)`);
+        
+        if (isPublicLinkSession && sessionCheck?.public_link_id) {
+          await supabase.rpc("increment_link_responses", { link_id: sessionCheck.public_link_id });
+        }
+      } catch (e) {
+        console.error(`[${conversationId}] Failed to complete session:`, e);
+      }
       return new Response(
         JSON.stringify({ message: "Thank you for sharing.", shouldComplete: true, isCompletionPrompt: true }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
