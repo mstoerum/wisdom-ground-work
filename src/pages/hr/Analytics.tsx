@@ -17,7 +17,7 @@ import { useNarrativeReports } from "@/hooks/useNarrativeReports";
 import { useThemeAnalytics } from "@/hooks/useThemeAnalytics";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BarChart3, BookOpen, LayoutGrid, FileText, RefreshCw, Sparkles, Share2 } from "lucide-react";
+import { BarChart3, BookOpen, LayoutGrid, FileText, RefreshCw, Sparkles, Share2, Users } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
