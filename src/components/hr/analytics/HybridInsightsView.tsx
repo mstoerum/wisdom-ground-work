@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { RefreshCw, Wand2 } from "lucide-react";
 import { PulseSummary } from "./PulseSummary";
 import { ThemeGrid } from "./ThemeGrid";
 import { AnalyticsEmptyState, getEmptyStateType } from "./AnalyticsEmptyState";
