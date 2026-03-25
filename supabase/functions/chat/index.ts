@@ -380,7 +380,28 @@ const analyzeSentiment = async (apiKey: string, userMessage: string): Promise<{ 
   );
 
   const sentiment = sentimentResponse.toLowerCase().trim();
-  const score = sentiment === "positive" ? 75 : sentiment === "negative" ? 25 : 50;
+  
+  // Use continuous scale instead of fixed buckets for more granular analytics
+  // Run a second lightweight call to get a numeric score
+  let score = sentiment === "positive" ? 70 : sentiment === "negative" ? 30 : 50;
+  try {
+    const scoreResponse = await callAI(
+      apiKey,
+      AI_MODEL_LITE,
+      [
+        { role: "system", content: "Rate the sentiment of this message on a scale from 0 (extremely negative) to 100 (extremely positive). Reply with ONLY a number." },
+        { role: "user", content: userMessage }
+      ],
+      0.1,
+      5
+    );
+    const parsed = parseInt(scoreResponse.trim(), 10);
+    if (!isNaN(parsed) && parsed >= 0 && parsed <= 100) {
+      score = parsed;
+    }
+  } catch (e) {
+    console.log("Failed to get granular sentiment score, using bucket fallback");
+  }
   
   return { sentiment, score };
 };
