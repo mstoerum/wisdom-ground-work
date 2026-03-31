@@ -1,100 +1,92 @@
 
 
-# Assessment: Proposed Analytics Pipeline v2
+# Phase 2: Synthesize-Session Edge Function & Session Syntheses Table
 
-## Verdict: Beneficial, correct direction, implementable — with caveats
+## What This Does
 
-The diagnosis is accurate and the architecture is well-designed. Here is my assessment across the three dimensions you asked about.
+Replaces the current `analyze-session` edge function (which writes to `session_insights`) with a richer `synthesize-session` function that consumes **opinion units from Phase 1** instead of raw response text. This produces deeper per-session narratives including emotional arc, theme coverage analysis, and participant engagement quality — all stored in a new `session_syntheses` table.
 
----
+The existing `session_insights` table and UI code continue working (backward-compatible writes).
 
-## 1. Is It Possible?
+## Implementation
 
-**Yes, with two infrastructure constraints to work around:**
+### 1. Database Migration
 
-| Component | Feasibility | Constraint |
-|-----------|------------|------------|
-| Opinion Units extraction (Stage 2) | Straightforward | None — replaces existing `analyzeSentiment` + `detectTheme` + `detectUrgency` with one call |
-| Session Synthesis (Stage 3) | Straightforward | None — similar to current `analyze-session` |
-| Inductive Clustering (Stage 4) | Feasible at current scale | LLM-based grouping works for 50-500 opinion units. Embedding + HDBSCAN path requires Python runtime (not available in Deno edge functions) — so the LLM approach is the right call for now |
-| Interpretive Analysis (Stage 5) | Straightforward | None |
-| DB Triggers via `pg_net` | **Not available** in Lovable Cloud | Must use `EdgeRuntime.waitUntil()` in chat function + client-side triggers. Claude's code assumes `pg_net` and `net.http_post` which we already know don't work here |
-| `pgvector` extension | **Needs verification** | The migration enables `vector` extension — may or may not be available in Lovable Cloud |
-| FK references to `themes` table | **Table doesn't exist** | The code references `themes(id)` but our schema uses `survey_themes`. All FKs and queries referencing `themes` need to be changed to `survey_themes` |
-| `session_id` column on `responses` | **Doesn't exist** | Our schema uses `conversation_session_id`, not `session_id`. The edge functions reference the wrong column name |
-| Gemini API direct calls | Works but unnecessary | The code calls `generativelanguage.googleapis.com` directly using `GEMINI_API_KEY`. We should use `ai.gateway.lovable.dev` with `LOVABLE_API_KEY` instead — it's already configured and supports all the same models |
+Create `session_syntheses` table:
 
-**Bottom line:** The architecture is sound but the implementation has 4-5 schema mismatches with our actual database that need fixing before deployment.
+```sql
+CREATE TABLE public.session_syntheses (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  session_id uuid NOT NULL UNIQUE,
+  survey_id uuid NOT NULL,
+  narrative_summary text NOT NULL,        -- 2-3 sentence human-readable summary
+  emotional_arc jsonb DEFAULT '[]',       -- [{position: 0.0-1.0, sentiment: -1..1, label: "opening"}]
+  themes_explored jsonb DEFAULT '[]',     -- [{theme_id, theme_name, opinion_count, avg_sentiment}]
+  key_quotes jsonb DEFAULT '[]',          -- verbatim quotes with context
+  root_causes jsonb DEFAULT '[]',         -- [{cause, evidence_count, severity}]
+  recommended_actions jsonb DEFAULT '[]', -- [{action, priority, timeframe, evidence}]
+  engagement_quality jsonb DEFAULT '{}',  -- {depth_score, openness_score, avg_response_length}
+  escalation_summary jsonb DEFAULT '{}',  -- {flag_count, urgent_count, top_concerns}
+  sentiment_trajectory text DEFAULT 'stable', -- improving/declining/stable/mixed
+  confidence_score integer,
+  opinion_units_analyzed integer DEFAULT 0,
+  created_at timestamptz DEFAULT now()
+);
 
----
+ALTER TABLE public.session_syntheses ENABLE ROW LEVEL SECURITY;
 
-## 2. Is It Beneficial?
+-- HR access
+CREATE POLICY "HR access to session syntheses"
+  ON public.session_syntheses FOR ALL
+  TO authenticated
+  USING (has_role(auth.uid(), 'hr_admin') OR has_role(auth.uid(), 'hr_analyst'));
 
-**Strongly yes.** The three biggest wins:
+-- Service role insert
+CREATE POLICY "Service role manage session syntheses"
+  ON public.session_syntheses FOR ALL
+  TO public
+  WITH CHECK (true);
+```
 
-### a) 5 LLM calls → 1 per response
-The current `chat/index.ts` fires `analyzeSentiment` (1 call using flash-lite), `detectTheme` (1 call using flash-lite), and `detectUrgency` (1 call using flash-lite) in parallel via `EdgeRuntime.waitUntil()`. The new pipeline replaces all three with a single `extract-signals` call using `gemini-2.5-flash` that produces richer output (opinion units with aspect-level sentiment). This is both cheaper and better.
+### 2. Create `supabase/functions/synthesize-session/index.ts`
 
-### b) Opinion Units solve the mono-classification problem
-The diagnosis is correct: forcing one theme and one sentiment per message loses signal. The Soundboks pilot data confirms this — responses like "I really enjoy working with the team but the workload is sometimes overwhelming" get classified as either positive OR negative, losing the nuance. Opinion units fix this.
+Key differences from current `analyze-session`:
+- **Inputs opinion units** (from Phase 1) instead of raw response text — richer, pre-classified data
+- **Computes emotional arc** by ordering opinion units chronologically and mapping sentiment trajectory
+- **Theme coverage analysis** — counts opinion units per theme, calculates per-theme sentiment
+- **Engagement quality metrics** — average response length, depth indicators, openness signals
+- **Escalation summary** — aggregates flag/urgent counts from opinion units
+- **Backward-compatible write** to `session_insights` table so existing SessionDetailPanel keeps working
 
-### c) Linear data flow eliminates the diamond dependency
-Currently Stage 4 (`deep-analytics`) ignores Stage 3 (`analyze-theme`) output and re-analyzes raw data. The new pipeline has each stage consume the previous stage's output. This means insights build coherently rather than potentially contradicting each other.
+LLM call uses `gemini-2.5-flash` with a tool-calling schema for structured output. The prompt receives:
+- Session metadata (moods, duration)
+- All opinion units for the session (aspect, sentiment, intensity, escalation)
+- Response count and theme distribution
 
-### Additional benefits
-- Three-level escalation (`none`/`flag`/`urgent`) replaces the broken binary urgency detection that produced 49 false positives in the Soundboks pilot
-- `pipeline_runs` table gives HR visibility into analysis progress
-- Backward-compatible writes to `survey_analytics` and `theme_analytics` mean existing UI keeps working during migration
+### 3. Wire Session Completion Trigger
 
----
+Update `src/hooks/useConversation.ts` → `endConversation()`:
+- After marking session as `completed`, fire `synthesize-session` via `supabase.functions.invoke()` in background
+- Non-blocking — don't await the result
 
-## 3. Is It the Right Move?
+### 4. Update SessionDetailPanel to Show Richer Data
 
-**Yes, but I recommend a phased approach rather than big-bang replacement.**
+Update `src/components/hr/analytics/SessionDetailPanel.tsx`:
+- Query `session_syntheses` (falling back to `session_insights` if not yet synthesized)
+- Display narrative summary, emotional arc, engagement quality, escalation summary
+- Show theme coverage breakdown
 
-### What to implement now (high impact, low risk)
-1. **Stage 2 (extract-signals)** — Replace the 3 background calls in `chat/index.ts` with one. This is the single highest-impact change. Create the `opinion_units` table. Keep existing `responses` metadata updates for backward compatibility.
-2. **Stage 3 (synthesize-session)** — Replace current `analyze-session`. Trigger via `EdgeRuntime.waitUntil()` from the chat function when session completes, not via DB trigger.
-3. **Fix the trigger chain** — Wire Stage 2 → Stage 3 → Stage 4 via edge function cascade calls, not `pg_net`.
+### 5. Update Pipeline Runs Status
 
-### What to defer
-1. **Embedding + HDBSCAN clustering** — The LLM-based clustering in Stage 4 is fine for current scale. Adding ONNX runtime or Python cloud functions is premature.
-2. **`pgvector` and embedding columns** — Not needed if using LLM clustering. Add the columns later when scale demands it.
-3. **Cross-survey longitudinal analysis** — Great differentiator but not needed for the pilot.
-4. **`survey_interpretations` as a separate table** — Can be deferred; writing to existing `survey_analytics` is sufficient initially.
+The `synthesize-session` function updates `pipeline_runs.synthesis_completed_at` when done.
 
-### What needs adaptation for our environment
-- Replace all `generativelanguage.googleapis.com` direct calls with `ai.gateway.lovable.dev` using `LOVABLE_API_KEY`
-- Replace all `themes` references with `survey_themes`
-- Replace `session_id` with `conversation_session_id` on responses queries
-- Replace DB triggers with `EdgeRuntime.waitUntil()` cascade in edge functions
-- Remove `pg_net` dependency from migration
-- Remove `vector(384)` columns if `pgvector` isn't available (test first)
-- Add RLS policies to all new tables
+## Files
 
----
-
-## Recommended Implementation Sequence
-
-**Phase 1 (can do now):** Create `opinion_units` and `pipeline_runs` tables. Deploy `extract-signals` edge function (adapted for our schema + Lovable AI gateway). Wire it into `chat/index.ts` replacing the 3 background calls.
-
-**Phase 2:** Deploy `synthesize-session` (replacing `analyze-session`). Create `session_syntheses` table. Wire session completion trigger.
-
-**Phase 3:** Deploy `discover-themes` (Stage 4, LLM-based clustering). Create `discovered_clusters` table. Wire auto-cascade from Stage 3.
-
-**Phase 4:** Deploy `interpret-survey` (Stage 5). Wire auto-cascade from Stage 4. Update dashboard to show pipeline status and cluster drill-downs.
-
-Each phase is independently deployable and the existing UI keeps working throughout because of backward-compatible writes.
-
----
-
-## Summary
-
-| Dimension | Assessment |
-|-----------|-----------|
-| Possible? | Yes — with schema fixes and Lovable Cloud adaptations |
-| Beneficial? | Strongly yes — fixes every diagnosed problem in the current pipeline |
-| Right move? | Yes — phased rollout recommended, starting with Stage 2 (opinion units) |
-| Risk | Low if phased — backward compatibility maintained throughout |
-| Effort | Phase 1: ~1 session. Full pipeline: ~3-4 sessions |
+| Action | File |
+|--------|------|
+| Create | `supabase/functions/synthesize-session/index.ts` |
+| Create | Migration for `session_syntheses` table |
+| Modify | `src/hooks/useConversation.ts` — add synthesis trigger on session end |
+| Modify | `src/components/hr/analytics/SessionDetailPanel.tsx` — display richer synthesis data |
+| Modify | `src/components/hr/analytics/SessionExplorer.tsx` — read from `session_syntheses` for trajectory |
 
