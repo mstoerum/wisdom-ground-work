@@ -1,11 +1,16 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Wand2 } from "lucide-react";
+import { RefreshCw, Wand2, Sparkles } from "lucide-react";
 import { PulseSummary } from "./PulseSummary";
 import { ThemeGrid } from "./ThemeGrid";
 import { AnalyticsEmptyState, getEmptyStateType } from "./AnalyticsEmptyState";
 import { useThemeAnalytics } from "@/hooks/useThemeAnalytics";
+import { useSurveyAnalytics } from "@/hooks/useSurveyAnalytics";
+import { SurveyAnalyticsDashboard } from "./SurveyAnalyticsDashboard";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import type { ParticipationMetrics, SentimentMetrics, ThemeInsight } from "@/hooks/useAnalytics";
 
 interface HybridInsightsViewProps {
