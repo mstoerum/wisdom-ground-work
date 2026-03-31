@@ -29,7 +29,7 @@ export function NarrativeReportViewer({
 }: NarrativeReportViewerProps) {
   const [activeChapter, setActiveChapter] = useState(0);
   const [direction, setDirection] = useState(0); // -1 for prev, 1 for next
-  const [audience, setAudience] = useState<'executive' | 'manager'>(
+  const [audience, setAudience] = useState<'executive' | 'manager' | 'hr_leadership' | 'detailed'>(
     report.audience_config.audience
   );
   const [visitedChapters, setVisitedChapters] = useState<number[]>([0]);
