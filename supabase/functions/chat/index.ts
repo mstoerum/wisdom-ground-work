@@ -1167,158 +1167,50 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
         responseId: insertedResponse?.id,
       });
 
-      // PERF: Background task handles ALL classification + analysis (not blocking response)
+      // PERF: Background task — single extract-signals call replaces 5 separate LLM calls
+      // (analyzeSentiment, sentimentScore, detectTheme, detectUrgency, analyze_response)
       if (insertedResponse?.id) {
         const backgroundTask = async () => {
           try {
-            // Step 1: Run classification (sentiment, theme, urgency) in parallel
-            console.log(`[${conversationId}] [BACKGROUND] Starting classification...`);
-            const [sentimentResult, detectedThemeId, isUrgent] = await Promise.all([
-              analyzeSentiment(LOVABLE_API_KEY, sanitizedContent),
-              detectTheme(LOVABLE_API_KEY, sanitizedContent, themes || []),
-              detectUrgency(LOVABLE_API_KEY, sanitizedContent)
-            ]);
-            const { sentiment, score: sentimentScore } = sentimentResult;
-
-            console.log(`[${conversationId}] [BACKGROUND] Classification complete:`, {
-              sentiment, sentimentScore, detectedThemeId, isUrgent
-            });
-
-            // Step 2: Update response with classification results
-            const { error: classifyError } = await supabase
-              .from("responses")
-              .update({
-                sentiment,
-                sentiment_score: sentimentScore,
-                theme_id: detectedThemeId,
-                urgency_escalated: isUrgent,
-              })
-              .eq("id", insertedResponse.id);
-
-            if (classifyError) {
-              console.error(`[${conversationId}] [BACKGROUND] Failed to update classification:`, classifyError);
-            }
-
-            // Step 3: LLM deep analysis (existing behavior)
-            console.log(`[${conversationId}] [BACKGROUND] Starting LLM analysis...`);
+            console.log(`[${conversationId}] [BACKGROUND] Calling extract-signals (Pipeline v2)...`);
             
-            const analysisResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${LOVABLE_API_KEY}`,
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                model: AI_MODEL_LITE,
-                messages: [
-                  {
-                    role: "system",
-                    content: "You analyze employee feedback to extract urgency, themes, and sentiment indicators."
-                  },
-                  {
-                    role: "user",
-                    content: `Analyze this feedback: "${sanitizedContent}"\n\nAvailable themes: ${themes?.map((t: any) => `${t.id}:${t.name}`).join(", ")}`
-                  }
-                ],
-                tools: [
-                  {
-                    type: "function",
-                    function: {
-                      name: "analyze_response",
-                      description: "Extract urgency score, themes, and sentiment from employee feedback",
-                      parameters: {
-                        type: "object",
-                        properties: {
-                          urgency_score: {
-                            type: "integer",
-                            description: "Urgency level from 1-5 where 1=routine, 2=minor concern, 3=notable issue, 4=serious problem, 5=critical/urgent",
-                            enum: [1, 2, 3, 4, 5]
-                          },
-                          urgency_reason: {
-                            type: "string",
-                            description: "Brief explanation of why this urgency level was assigned"
-                          },
-                          detected_themes: {
-                            type: "array",
-                            items: { type: "string" },
-                            description: "Array of theme IDs that are relevant to this response"
-                          },
-                          key_sentiment_indicators: {
-                            type: "array",
-                            items: { type: "string" },
-                            description: "Phrases or words that reveal the person's sentiment"
-                          },
-                          suggested_followup: {
-                            type: "string",
-                            description: "A specific follow-up question that could deepen understanding"
-                          }
-                        },
-                        required: ["urgency_score", "urgency_reason", "detected_themes", "key_sentiment_indicators", "suggested_followup"]
-                      }
-                    }
-                  }
-                ],
-                tool_choice: { type: "function", function: { name: "analyze_response" } }
-              }),
-            });
-
-            if (analysisResponse.ok) {
-              const analysisData = await analysisResponse.json();
-              const toolCall = analysisData.choices[0]?.message?.tool_calls?.[0];
-              
-              if (toolCall?.function?.arguments) {
-                const analysis = JSON.parse(toolCall.function.arguments);
-                
-                console.log(`[${conversationId}] [BACKGROUND] LLM analysis complete:`, {
-                  urgency_score: analysis.urgency_score,
-                  urgency_reason: analysis.urgency_reason
-                });
-
-                const { error: updateError } = await supabase
-                  .from("responses")
-                  .update({
-                    urgency_score: analysis.urgency_score,
-                    ai_analysis: analysis
-                  })
-                  .eq("id", insertedResponse.id);
-
-                if (updateError) {
-                  console.error(`[${conversationId}] [BACKGROUND] Failed to update response with analysis:`, updateError);
-                } else {
-                  console.log(`[${conversationId}] [BACKGROUND] ✅ Response enriched with LLM analysis`);
-                }
+            const extractResponse = await fetch(
+              `${supabaseUrl}/functions/v1/extract-signals`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${supabaseKey}`,
+                },
+                body: JSON.stringify({
+                  response_id: insertedResponse.id,
+                  session_id: conversationId,
+                  survey_id: session?.survey_id,
+                  content: sanitizedContent,
+                  ai_question: aiMessage,
+                  themes: (themes || []).map((t: any) => ({
+                    id: t.id,
+                    name: t.name,
+                    description: t.description,
+                  })),
+                }),
               }
+            );
+
+            if (extractResponse.ok) {
+              const result = await extractResponse.json();
+              console.log(`[${conversationId}] [BACKGROUND] ✅ extract-signals complete:`, {
+                opinion_units: result.opinion_units_count,
+                sentiment: result.sentiment,
+                urgency: result.urgency_score,
+                is_urgent: result.is_urgent,
+              });
             } else {
-              console.error(`[${conversationId}] [BACKGROUND] LLM analysis failed:`, await analysisResponse.text());
+              const errorText = await extractResponse.text();
+              console.error(`[${conversationId}] [BACKGROUND] extract-signals failed:`, extractResponse.status, errorText);
             }
           } catch (analysisError) {
-            console.error(`[${conversationId}] [BACKGROUND] Error during background tasks:`, analysisError);
-          }
-
-          // If urgent, create escalation log entry (use fresh check since isUrgent is in closure)
-          try {
-            const { data: freshResponse } = await supabase
-              .from("responses")
-              .select("urgency_escalated")
-              .eq("id", insertedResponse.id)
-              .single();
-            
-            if (freshResponse?.urgency_escalated) {
-              console.log(`[${conversationId}] [BACKGROUND] Urgent issue detected, logging escalation...`);
-              const { error: escalationError } = await supabase.from("escalation_log").insert({
-                response_id: insertedResponse.id,
-                escalation_type: 'ai_detected',
-                escalated_at: new Date().toISOString(),
-              });
-
-              if (escalationError) {
-                console.error(`[${conversationId}] [BACKGROUND] Failed to log escalation:`, escalationError);
-              } else {
-                console.log(`[${conversationId}] [BACKGROUND] ✅ Escalation logged successfully`);
-              }
-            }
-          } catch (escError) {
-            console.error(`[${conversationId}] [BACKGROUND] Escalation check error:`, escError);
+            console.error(`[${conversationId}] [BACKGROUND] Error during extract-signals:`, analysisError);
           }
 
           // Log to audit logs (only for authenticated users)
@@ -1339,7 +1231,7 @@ Return ONLY valid JSON: {"opening": "Thank you for...", "keyPoints": [...], "sen
 
         // Fire and forget - don't block the response
         EdgeRuntime.waitUntil(backgroundTask());
-        console.log(`[${conversationId}] Background task queued (classification + analysis), returning response immediately`);
+        console.log(`[${conversationId}] Background task queued (extract-signals v2), returning response immediately`);
       }
     }
 

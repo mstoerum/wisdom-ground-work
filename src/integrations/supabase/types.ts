@@ -557,6 +557,136 @@ export type Database = {
           },
         ]
       }
+      opinion_units: {
+        Row: {
+          aspect: string
+          cluster_id: string | null
+          created_at: string | null
+          escalation_level: string | null
+          escalation_reason: string | null
+          id: string
+          intensity: number | null
+          is_actionable: boolean | null
+          response_id: string
+          sentiment: number | null
+          session_id: string
+          survey_id: string
+          text: string
+        }
+        Insert: {
+          aspect: string
+          cluster_id?: string | null
+          created_at?: string | null
+          escalation_level?: string | null
+          escalation_reason?: string | null
+          id?: string
+          intensity?: number | null
+          is_actionable?: boolean | null
+          response_id: string
+          sentiment?: number | null
+          session_id: string
+          survey_id: string
+          text: string
+        }
+        Update: {
+          aspect?: string
+          cluster_id?: string | null
+          created_at?: string | null
+          escalation_level?: string | null
+          escalation_reason?: string | null
+          id?: string
+          intensity?: number | null
+          is_actionable?: boolean | null
+          response_id?: string
+          sentiment?: number | null
+          session_id?: string
+          survey_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opinion_units_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "anonymized_responses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opinion_units_response_id_fkey"
+            columns: ["response_id"]
+            isOneToOne: false
+            referencedRelation: "responses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opinion_units_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "conversation_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opinion_units_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pipeline_runs: {
+        Row: {
+          auto_trigger: boolean | null
+          clustering_completed_at: string | null
+          created_at: string | null
+          error_message: string | null
+          extraction_completed_at: string | null
+          id: string
+          interpretation_completed_at: string | null
+          report_generated_at: string | null
+          status: string | null
+          survey_id: string
+          synthesis_completed_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          auto_trigger?: boolean | null
+          clustering_completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          extraction_completed_at?: string | null
+          id?: string
+          interpretation_completed_at?: string | null
+          report_generated_at?: string | null
+          status?: string | null
+          survey_id: string
+          synthesis_completed_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          auto_trigger?: boolean | null
+          clustering_completed_at?: string | null
+          created_at?: string | null
+          error_message?: string | null
+          extraction_completed_at?: string | null
+          id?: string
+          interpretation_completed_at?: string | null
+          report_generated_at?: string | null
+          status?: string | null
+          survey_id?: string
+          synthesis_completed_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pipeline_runs_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: true
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -739,8 +869,10 @@ export type Database = {
           created_at: string | null
           id: string
           is_paraphrased: boolean | null
+          opinion_unit_count: number | null
           sentiment: string | null
           sentiment_score: number | null
+          signals_extracted: boolean | null
           survey_id: string
           theme_id: string | null
           urgency_escalated: boolean | null
@@ -754,8 +886,10 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_paraphrased?: boolean | null
+          opinion_unit_count?: number | null
           sentiment?: string | null
           sentiment_score?: number | null
+          signals_extracted?: boolean | null
           survey_id: string
           theme_id?: string | null
           urgency_escalated?: boolean | null
@@ -769,8 +903,10 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_paraphrased?: boolean | null
+          opinion_unit_count?: number | null
           sentiment?: string | null
           sentiment_score?: number | null
+          signals_extracted?: boolean | null
           survey_id?: string
           theme_id?: string | null
           urgency_escalated?: boolean | null
