@@ -6,13 +6,63 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-/**
- * Filter out UI completion signals like [SELECTED: I'm all good]
- */
-function isSubstantiveResponse(content: string): boolean {
-  if (!content || !content.trim()) return false;
-  if (content.trim().startsWith('[SELECTED:')) return false;
-  return true;
+// --- K-Anonymity Helpers ---
+
+function getKThreshold(totalParticipants: number): number {
+  return totalParticipants <= 10 ? 3 : 5;
+}
+
+function isKAnonymous(sampleSize: number, totalParticipants: number): boolean {
+  return sampleSize >= getKThreshold(totalParticipants);
+}
+
+function selectSafeQuotes(
+  quotes: Array<{ text: string; session_id?: string }>,
+  totalParticipants: number
+): Array<{ text: string }> {
+  const k = getKThreshold(totalParticipants);
+  if (quotes.length < k) return []; // Not enough quotes to be safe
+  // Return quotes without session_id to prevent linkage
+  return quotes.slice(0, 5).map(q => ({ text: q.text }));
+}
+
+// --- Evidence Enrichment ---
+
+function enrichInsights(
+  chapters: any[],
+  clusterMap: Map<string, any>,
+  totalParticipants: number
+): any[] {
+  return chapters.map(chapter => ({
+    ...chapter,
+    insights: (chapter.insights || []).map((insight: any) => {
+      // Cap sample_size at totalParticipants
+      const rawSampleSize = insight.sample_size || 0;
+      const correctedSampleSize = Math.min(rawSampleSize, totalParticipants);
+
+      // Correct agreement_percentage based on actual sample
+      const correctedAgreement = totalParticipants > 0
+        ? Math.round((correctedSampleSize / totalParticipants) * 100)
+        : 0;
+
+      // If cluster_id provided, validate and enrich evidence
+      let evidenceIds = insight.evidence_ids || [];
+      if (insight.cluster_id && clusterMap.has(insight.cluster_id)) {
+        const cluster = clusterMap.get(insight.cluster_id);
+        if (evidenceIds.length === 0) {
+          evidenceIds = (cluster.opinion_unit_ids || []).slice(0, 5);
+        }
+      }
+
+      return {
+        ...insight,
+        sample_size: correctedSampleSize,
+        agreement_percentage: correctedAgreement,
+        evidence_ids: evidenceIds,
+        is_k_anonymous: isKAnonymous(correctedSampleSize, totalParticipants),
+      };
+    }),
+  }));
 }
 
 serve(async (req) => {
@@ -33,10 +83,9 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const lovableApiKey = Deno.env.get('LOVABLE_API_KEY')!;
-    
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get authorization header for generated_by
+    // Get user ID from auth header
     const authHeader = req.headers.get('authorization');
     let userId = null;
     if (authHeader) {
@@ -45,45 +94,38 @@ serve(async (req) => {
       userId = user?.id;
     }
 
-    console.log(`Generating narrative report for survey: ${survey_id}`);
+    console.log(`Generating narrative report v2 for survey: ${survey_id}, audience: ${audience}`);
 
-    // Fetch all relevant data INCLUDING theme_analytics
+    // Fetch all pipeline data in parallel
     const [
-      { data: surveyAnalytics },
-      { data: allResponses },
-      { data: sessionInsights },
-      { data: sessions },
       { data: survey },
-      { data: themeAnalytics }
+      { data: clusters },
+      { data: syntheses },
+      { data: surveyAnalytics },
+      { data: sessions },
+      { data: opinionUnitStats },
+      { data: commitments }
     ] = await Promise.all([
-      supabase
-        .from('survey_analytics')
+      supabase.from('surveys').select('*').eq('id', survey_id).single(),
+      supabase.from('discovered_clusters')
+        .select('*, survey_themes!discovered_clusters_related_theme_id_fkey(name)')
+        .eq('survey_id', survey_id)
+        .order('unit_count', { ascending: false }),
+      supabase.from('session_syntheses')
+        .select('*')
+        .eq('survey_id', survey_id),
+      supabase.from('survey_analytics')
         .select('*')
         .eq('survey_id', survey_id)
         .order('analyzed_at', { ascending: false })
         .limit(1)
         .maybeSingle(),
-      supabase
-        .from('responses')
-        .select('*, survey_themes(name)')
-        .eq('survey_id', survey_id)
-        .order('created_at', { ascending: true }),
-      supabase
-        .from('session_insights')
-        .select('*, conversation_sessions!inner(survey_id)')
-        .eq('conversation_sessions.survey_id', survey_id),
-      supabase
-        .from('conversation_sessions')
-        .select('*')
+      supabase.from('conversation_sessions')
+        .select('id, status, started_at, ended_at')
         .eq('survey_id', survey_id),
-      supabase
-        .from('surveys')
+      supabase.rpc('', {}).then(() => null).catch(() => null), // placeholder
+      supabase.from('action_commitments')
         .select('*')
-        .eq('id', survey_id)
-        .single(),
-      supabase
-        .from('theme_analytics')
-        .select('*, survey_themes!inner(name, description)')
         .eq('survey_id', survey_id)
     ]);
 
@@ -94,96 +136,120 @@ serve(async (req) => {
       );
     }
 
-    // Filter substantive responses and count accurately
-    const substantiveResponses = (allResponses || []).filter((r: any) => isSubstantiveResponse(r.content));
-    const completedSessions = (sessions || []).filter((s: any) => s.status === 'completed');
-    const totalSessions = sessions?.length || 0;
-    const totalParticipants = totalSessions; // Each session = 1 participant
+    // Compute aggregate stats from opinion_units directly
+    const { data: ouAggRaw } = await supabase
+      .from('opinion_units')
+      .select('id, sentiment, intensity, is_actionable, escalation_level')
+      .eq('survey_id', survey_id);
 
-    // Build theme analytics summary for the prompt
-    const themeInsightsSummary = (themeAnalytics || []).map((ta: any) => ({
-      theme_name: ta.survey_themes?.name || 'Unknown',
-      theme_description: ta.survey_themes?.description || '',
-      health_index: ta.health_index,
-      health_status: ta.health_status,
-      response_count: ta.response_count,
-      polarization_level: ta.polarization_level,
-      frictions: ta.insights?.frictions || [],
-      strengths: ta.insights?.strengths || [],
-      patterns: ta.insights?.patterns || [],
-      root_causes: ta.root_causes || []
+    const opinionUnits = ouAggRaw || [];
+    const totalUnits = opinionUnits.length;
+    const actionableCount = opinionUnits.filter(u => u.is_actionable).length;
+    const escalationBreakdown = {
+      high: opinionUnits.filter(u => u.escalation_level === 'high').length,
+      medium: opinionUnits.filter(u => u.escalation_level === 'medium').length,
+      none: opinionUnits.filter(u => u.escalation_level === 'none').length,
+    };
+    const avgSentiment = totalUnits > 0
+      ? opinionUnits.reduce((s, u) => s + (u.sentiment || 0), 0) / totalUnits
+      : 0;
+
+    const totalSessions = sessions?.length || 0;
+    const completedSessions = (sessions || []).filter(s => s.status === 'completed').length;
+    const totalParticipants = totalSessions;
+    const k = getKThreshold(totalParticipants);
+
+    // Build cluster map for evidence enrichment
+    const clusterMap = new Map<string, any>();
+    for (const c of (clusters || [])) {
+      clusterMap.set(c.id, c);
+    }
+
+    // Build structured context for the LLM (NO raw employee text)
+    const clusterContext = (clusters || []).map(c => ({
+      id: c.id,
+      label: c.cluster_label,
+      summary: c.cluster_summary,
+      unit_count: c.unit_count,
+      avg_sentiment: c.avg_sentiment,
+      sentiment_spread: c.sentiment_spread,
+      escalation_count: c.escalation_count,
+      is_emerging: c.is_emerging,
+      related_theme: c.survey_themes?.name || null,
+      safe_quotes: selectSafeQuotes(
+        (c.representative_quotes || []) as Array<{ text: string; session_id?: string }>,
+        totalParticipants
+      ),
     }));
 
-    // Build Q&A paired response data grouped by session
-    const sessionResponseMap = new Map<string, any[]>();
-    for (const r of substantiveResponses) {
-      const sessionId = r.conversation_session_id || 'unknown';
-      const list = sessionResponseMap.get(sessionId) || [];
-      list.push(r);
-      sessionResponseMap.set(sessionId, list);
-    }
+    const synthesisContext = (syntheses || []).map(s => ({
+      narrative: s.narrative_summary,
+      trajectory: s.sentiment_trajectory,
+      themes_explored: s.themes_explored,
+      engagement: s.engagement_quality,
+      escalation: s.escalation_summary,
+      root_causes: s.root_causes,
+      recommended_actions: s.recommended_actions,
+      confidence: s.confidence_score,
+    }));
 
-    const sessionSummaries: string[] = [];
-    let sessionIdx = 0;
-    for (const [, resps] of sessionResponseMap) {
-      sessionIdx++;
-      const pairs = resps.map((r: any) => {
-        const q = r.ai_response ? `Q: "${r.ai_response}"` : '';
-        const themeName = r.survey_themes?.name || 'Unassigned';
-        return `${q}\nA: "${r.content}" [ID:${r.id}] (theme: ${themeName}, sentiment: ${r.sentiment})`;
-      }).join('\n');
-      sessionSummaries.push(`--- Participant ${sessionIdx} (${resps.length} exchanges) ---\n${pairs}`);
-    }
+    const interpretationContext = surveyAnalytics ? {
+      executive_summary: surveyAnalytics.executive_summary,
+      top_themes: surveyAnalytics.top_themes,
+      risk_factors: surveyAnalytics.risk_factors,
+      opportunities: surveyAnalytics.opportunities,
+      strategic_recommendations: surveyAnalytics.strategic_recommendations,
+      cultural_insights: surveyAnalytics.cultural_insights,
+      participation_analysis: surveyAnalytics.participation_analysis,
+      confidence: surveyAnalytics.confidence_score,
+    } : null;
 
-    // Build the prompt with all available data
-    const hasThemeAnalytics = themeInsightsSummary.length > 0;
-    
-    const prompt = `You are an expert organizational analyst creating a narrative report for HR leadership.
+    const commitmentContext = (commitments || []).map(c => ({
+      action: c.action_description,
+      status: c.status,
+      due_date: c.due_date,
+      visible: c.visible_to_employees,
+    }));
 
-SURVEY CONTEXT:
-- Title: "${survey.title}"
-- Type: ${survey.survey_type}
-- Total participants (unique conversations): ${totalParticipants}
-- Substantive response exchanges: ${substantiveResponses.length}
-- Completed sessions: ${completedSessions.length} of ${totalSessions}
+    // Audience-specific instructions
+    const audienceInstructions: Record<string, string> = {
+      executive: 'Write for C-suite / VP level. Strategic, concise, focused on organizational impact and ROI. 2-3 key takeaways per chapter.',
+      hr_leadership: 'Write for HR directors and people analytics leads. Balance strategic insight with operational detail. Include specific team/department patterns.',
+      detailed: 'Write for HR managers who will act on findings. Maximum detail, specific recommendations with timelines, direct quotes where k-anonymous.',
+    };
 
-${hasThemeAnalytics ? `
-THEME ANALYSIS (pre-computed, use as foundation):
-${JSON.stringify(themeInsightsSummary, null, 2)}
-` : ''}
+    const prompt = `You are an expert organizational narrative writer. ALL ANALYSIS IS ALREADY DONE — your job is to WRITE compelling prose that synthesizes the pre-analyzed data below into a readable narrative report.
 
-${surveyAnalytics ? `
-DEEP ANALYTICS:
-${JSON.stringify(surveyAnalytics, null, 2)}
-` : ''}
+DO NOT re-analyze or contradict the findings. Transform structured data into human-readable narrative.
 
-SESSION INSIGHTS:
-${(sessionInsights || []).length > 0 ? JSON.stringify(sessionInsights?.map((si: any) => ({
-  root_cause: si.root_cause,
-  sentiment_trajectory: si.sentiment_trajectory,
-  key_quotes: si.key_quotes,
-  recommended_actions: si.recommended_actions
-})), null, 2) : 'No session-level insights available'}
+SURVEY: "${survey.title}" (${survey.survey_type})
+PARTICIPANTS: ${totalParticipants} people, ${completedSessions} completed sessions
+OPINION UNITS: ${totalUnits} extracted (${actionableCount} actionable, ${escalationBreakdown.high} high-escalation)
+AVG SENTIMENT: ${avgSentiment.toFixed(2)} (-1 to 1 scale)
+K-ANONYMITY THRESHOLD: ${k} (suppress any finding with fewer than ${k} supporting voices)
 
-CONVERSATION DATA (Q&A pairs grouped by participant):
-${sessionSummaries.join('\n\n')}
+AUDIENCE: ${audience}
+${audienceInstructions[audience] || audienceInstructions.executive}
+
+--- DISCOVERED CLUSTERS (grouped patterns from employee feedback) ---
+${JSON.stringify(clusterContext, null, 2)}
+
+--- SESSION NARRATIVES (per-participant synthesis) ---
+${JSON.stringify(synthesisContext, null, 2)}
+
+${interpretationContext ? `--- STRATEGIC INTERPRETATION (survey-level analysis) ---
+${JSON.stringify(interpretationContext, null, 2)}` : ''}
+
+--- EXISTING COMMITMENTS (actions HR has already pledged) ---
+${JSON.stringify(commitmentContext, null, 2)}
 
 CRITICAL RULES:
-1. There are ${totalParticipants} participants, NOT ${substantiveResponses.length}. Each participant had a multi-turn conversation.
-2. Use ACTUAL voice counts: "3 of ${totalParticipants} participants" not fabricated percentages.
-3. sample_size must reflect the actual number of responses supporting each insight.
-4. agreement_percentage should be (sample_size / total_relevant_responses) * 100, based on actual data.
-5. Reference specific response IDs (evidence_ids) for drill-down.
-6. ${hasThemeAnalytics ? 'Build on the pre-computed theme analysis above — don\'t contradict its findings, extend them into a narrative.' : 'Analyze the raw conversation data to extract insights.'}
-
-Create a 5-chapter narrative report:
-1. "The Voices" (key: voices) - Who participated and the quality of dialogue. ${totalParticipants} people shared ${substantiveResponses.length} substantive exchanges.
-2. "The Landscape" (key: landscape) - The organizational terrain across themes. Show what's working and where energy is.
-3. "Frictions" (key: frictions) - Points of tension. Be specific about what people actually said.
-4. "Root Causes" (key: root_causes) - Why patterns exist. ${hasThemeAnalytics ? 'Use the pre-computed root causes as starting points.' : 'Infer from the conversation data.'}
-5. "The Path Forward" (key: forward) - Concrete, actionable recommendations prioritized by impact.
-
-${audience === 'executive' ? 'Keep it concise and strategic. Executives want the big picture and key actions.' : 'Provide detailed analysis. Managers need specifics they can act on with their teams.'}`;
+1. There are exactly ${totalParticipants} participants. Use exact counts: "${3} of ${totalParticipants}" not percentages.
+2. Every insight MUST reference a cluster_id from the clusters above.
+3. sample_size must equal the cluster's unit_count (or sum of clusters if spanning multiple).
+4. If sample_size < ${k}, mark the insight but DO NOT include direct quotes.
+5. The "commitment" chapter should reference existing commitments and suggest new ones based on findings.
+6. Generate a report_summary: 2-3 sentences capturing the most important finding for a busy executive.`;
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -194,7 +260,7 @@ ${audience === 'executive' ? 'Keep it concise and strategic. Executives want the
       body: JSON.stringify({
         model: 'google/gemini-2.5-pro',
         messages: [
-          { role: 'system', content: 'You are an expert organizational analyst. Create narrative reports that are insightful, evidence-based, and actionable. Always use actual voice counts from the data, never fabricate statistics.' },
+          { role: 'system', content: 'You are an expert organizational narrative writer. You transform structured analytics data into compelling, evidence-based narrative reports. Never fabricate statistics — use only the data provided.' },
           { role: 'user', content: prompt }
         ],
         tools: [
@@ -202,18 +268,22 @@ ${audience === 'executive' ? 'Keep it concise and strategic. Executives want the
             type: 'function',
             function: {
               name: 'create_narrative_report',
-              description: 'Generate a structured narrative report with chapters and insights',
+              description: 'Generate a structured narrative report with chapters, insights, and executive summary',
               parameters: {
                 type: 'object',
                 properties: {
+                  report_summary: {
+                    type: 'string',
+                    description: '2-3 sentence executive summary of the most critical finding'
+                  },
                   chapters: {
                     type: 'array',
                     items: {
                       type: 'object',
                       properties: {
                         title: { type: 'string' },
-                        key: { type: 'string', enum: ['voices', 'landscape', 'frictions', 'root_causes', 'forward'] },
-                        narrative: { type: 'string', description: 'The main story prose' },
+                        key: { type: 'string', enum: ['voices', 'landscape', 'frictions', 'root_causes', 'forward', 'commitment'] },
+                        narrative: { type: 'string', description: 'The main story prose for this chapter' },
                         insights: {
                           type: 'array',
                           items: {
@@ -221,25 +291,24 @@ ${audience === 'executive' ? 'Keep it concise and strategic. Executives want the
                             properties: {
                               text: { type: 'string' },
                               confidence: { type: 'integer', minimum: 1, maximum: 5 },
-                              evidence_ids: { 
-                                type: 'array', 
+                              evidence_ids: {
+                                type: 'array',
                                 items: { type: 'string' },
-                                description: 'Response IDs that support this insight'
+                                description: 'Opinion unit IDs or cluster IDs supporting this insight'
+                              },
+                              cluster_id: {
+                                type: 'string',
+                                description: 'The discovered_cluster ID this insight is grounded in'
                               },
                               category: { type: 'string' },
-                              agreement_percentage: { 
-                                type: 'integer', 
-                                minimum: 0, 
-                                maximum: 100,
-                                description: 'Actual percentage based on real voice counts'
+                              agreement_percentage: {
+                                type: 'integer', minimum: 0, maximum: 100
                               },
-                              sample_size: { 
-                                type: 'integer',
-                                minimum: 0,
-                                description: 'Actual number of responses supporting this insight'
+                              sample_size: {
+                                type: 'integer', minimum: 0
                               }
                             },
-                            required: ['text', 'confidence', 'evidence_ids', 'agreement_percentage', 'sample_size']
+                            required: ['text', 'confidence', 'evidence_ids', 'sample_size']
                           }
                         }
                       },
@@ -248,7 +317,7 @@ ${audience === 'executive' ? 'Keep it concise and strategic. Executives want the
                   },
                   overall_confidence: { type: 'integer', minimum: 1, maximum: 5 }
                 },
-                required: ['chapters', 'overall_confidence']
+                required: ['report_summary', 'chapters', 'overall_confidence']
               }
             }
           }
@@ -260,17 +329,34 @@ ${audience === 'executive' ? 'Keep it concise and strategic. Executives want the
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
       console.error('Lovable AI error:', aiResponse.status, errorText);
-      throw new Error(`Lovable AI request failed: ${errorText}`);
+      if (aiResponse.status === 429) {
+        return new Response(JSON.stringify({ error: 'Rate limit exceeded, please try again later.' }), {
+          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      if (aiResponse.status === 402) {
+        return new Response(JSON.stringify({ error: 'Payment required, please add credits.' }), {
+          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+      throw new Error(`AI request failed: ${errorText}`);
     }
 
     const aiData = await aiResponse.json();
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    
+
     if (!toolCall) {
       throw new Error('No tool call in AI response');
     }
 
     const narrativeData = JSON.parse(toolCall.function.arguments);
+
+    // Post-LLM evidence enrichment and k-anonymity enforcement
+    const enrichedChapters = enrichInsights(
+      narrativeData.chapters,
+      clusterMap,
+      totalParticipants
+    );
 
     // Mark previous reports as not latest
     await supabase
@@ -284,18 +370,25 @@ ${audience === 'executive' ? 'Keep it concise and strategic. Executives want the
       .insert({
         survey_id,
         generated_by: userId || '00000000-0000-0000-0000-000000000000',
-        chapters: narrativeData.chapters,
+        chapters: enrichedChapters,
+        report_summary: narrativeData.report_summary || null,
         audience_config: { audience },
         data_snapshot: {
           total_sessions: totalSessions,
           total_participants: totalParticipants,
-          total_responses: substantiveResponses.length,
-          generated_from_analytics: !!surveyAnalytics,
-          has_theme_analytics: hasThemeAnalytics,
-          themes_analyzed: themeInsightsSummary.length
+          completed_sessions: completedSessions,
+          total_opinion_units: totalUnits,
+          actionable_units: actionableCount,
+          escalation_breakdown: escalationBreakdown,
+          avg_sentiment: avgSentiment,
+          clusters_analyzed: (clusters || []).length,
+          syntheses_analyzed: (syntheses || []).length,
+          has_interpretation: !!surveyAnalytics,
+          k_threshold: k,
+          pipeline_version: 2,
         },
         confidence_score: narrativeData.overall_confidence,
-        is_latest: true
+        is_latest: true,
       })
       .select()
       .single();
@@ -305,11 +398,17 @@ ${audience === 'executive' ? 'Keep it concise and strategic. Executives want the
       throw saveError;
     }
 
-    console.log('Narrative report generated successfully:', savedReport.id);
+    // Update pipeline_runs if exists
+    await supabase
+      .from('pipeline_runs')
+      .update({ report_generated_at: new Date().toISOString() })
+      .eq('survey_id', survey_id);
+
+    console.log('Narrative report v2 generated:', savedReport.id);
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         report: savedReport,
         message: 'Narrative report generated successfully'
       }),
@@ -319,13 +418,13 @@ ${audience === 'executive' ? 'Keep it concise and strategic. Executives want the
   } catch (error) {
     console.error('Error in generate-narrative-report:', error);
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: error instanceof Error ? error.message : 'Unknown error',
         details: error instanceof Error ? error.stack : undefined
       }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     );
   }

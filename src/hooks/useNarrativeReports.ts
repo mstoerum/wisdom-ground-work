@@ -25,12 +25,20 @@ export interface NarrativeReport {
   generated_by: string;
   report_version: number;
   chapters: NarrativeChapter[];
-  audience_config: { audience: 'executive' | 'manager' };
+  audience_config: { audience: 'executive' | 'manager' | 'hr_leadership' | 'detailed' };
   data_snapshot: {
     total_sessions: number;
-    total_responses: number;
-    generated_from_analytics: boolean;
+    total_participants: number;
+    total_opinion_units?: number;
+    actionable_units?: number;
+    clusters_analyzed?: number;
+    k_threshold?: number;
+    pipeline_version?: number;
+    // Legacy fields
+    total_responses?: number;
+    generated_from_analytics?: boolean;
   };
+  report_summary?: string;
   confidence_score: number;
   is_latest: boolean;
 }
