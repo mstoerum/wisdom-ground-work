@@ -39,6 +39,7 @@ export function HybridInsightsView({
   isLoading,
   onShareLink,
 }: HybridInsightsViewProps) {
+  const [isRunningPipeline, setIsRunningPipeline] = useState(false);
   const responseCount = participation?.responseCount || participation?.completed || 0;
   const sessionCount = participation?.sessionCount || participation?.totalAssigned || 0;
   const activeSessionCount = participation?.activeSessionCount || participation?.pending || 0;
@@ -52,7 +53,28 @@ export function HybridInsightsView({
     responseCount,
     autoAnalyze: true 
   });
-  
+
+  const { data: surveyAnalytics, isLoading: isAnalyticsLoading, refetch: refetchSurveyAnalytics } = useSurveyAnalytics(surveyId || undefined);
+
+  const runFullPipeline = async () => {
+    if (!surveyId) return;
+    setIsRunningPipeline(true);
+    try {
+      const { error } = await supabase.functions.invoke("interpret-survey", {
+        body: { survey_id: surveyId },
+      });
+      if (error) throw error;
+      toast.success("Full pipeline analysis complete");
+      refetchSurveyAnalytics();
+    } catch (err) {
+      console.error("Pipeline error:", err);
+      toast.error("Failed to run pipeline analysis");
+    } finally {
+      setIsRunningPipeline(false);
+    }
+  };
+
+
   const emptyStateType = getEmptyStateType(surveyId, responseCount, sessionCount, activeSessionCount);
   
   if (emptyStateType === 'no-survey' || emptyStateType === 'no-responses') {
