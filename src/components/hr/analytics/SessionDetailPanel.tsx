@@ -76,6 +76,20 @@ export const SessionDetailPanel = ({
     enabled: !synthesis, // Only fetch if no synthesis
   });
 
+  // Fetch survey first_message for transcript opener
+  const { data: survey } = useQuery({
+    queryKey: ["survey-first-message", surveyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("surveys")
+        .select("first_message")
+        .eq("id", surveyId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Fetch theme names
   const themeIds = [...new Set((responses || []).map(r => r.theme_id).filter(Boolean))] as string[];
   const { data: themes } = useQuery({
@@ -391,14 +405,19 @@ export const SessionDetailPanel = ({
             <p className="text-sm text-muted-foreground text-center py-4">No messages in this session.</p>
           ) : (
             <div className="space-y-3">
+              {/* Opening welcome message from survey */}
+              {survey?.first_message && (
+                <>
+                  <div className="flex gap-2">
+                    <Bot className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+                    <p className="text-sm leading-relaxed">{survey.first_message}</p>
+                  </div>
+                  <hr className="border-border/50" />
+                </>
+              )}
               {transcript.map((msg, i) => (
                 <div key={msg.id} className="space-y-1.5">
-                  {msg.ai_response && (
-                    <div className="flex gap-2">
-                      <Bot className="h-4 w-4 mt-0.5 text-primary shrink-0" />
-                      <p className="text-sm leading-relaxed">{msg.ai_response}</p>
-                    </div>
-                  )}
+                  {/* User's message first (chronologically what they said) */}
                   <div className="flex gap-2">
                     <User className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                     <div>
@@ -417,6 +436,13 @@ export const SessionDetailPanel = ({
                       </div>
                     </div>
                   </div>
+                  {/* AI's follow-up response (what came after) */}
+                  {msg.ai_response && (
+                    <div className="flex gap-2">
+                      <Bot className="h-4 w-4 mt-0.5 text-primary shrink-0" />
+                      <p className="text-sm leading-relaxed">{msg.ai_response}</p>
+                    </div>
+                  )}
                   {i < transcript.length - 1 && <hr className="border-border/50" />}
                 </div>
               ))}
