@@ -103,12 +103,12 @@ serve(async (req) => {
       { data: syntheses },
       { data: surveyAnalytics },
       { data: sessions },
-      { data: opinionUnitStats },
-      { data: commitments }
+      { data: commitments },
+      { data: themeRows }
     ] = await Promise.all([
       supabase.from('surveys').select('*').eq('id', survey_id).single(),
       supabase.from('discovered_clusters')
-        .select('*, survey_themes!discovered_clusters_related_theme_id_fkey(name)')
+        .select('*')
         .eq('survey_id', survey_id)
         .order('unit_count', { ascending: false }),
       supabase.from('session_syntheses')
@@ -123,11 +123,18 @@ serve(async (req) => {
       supabase.from('conversation_sessions')
         .select('id, status, started_at, ended_at')
         .eq('survey_id', survey_id),
-      supabase.rpc('', {}).then(() => null).catch(() => null), // placeholder
       supabase.from('action_commitments')
         .select('*')
-        .eq('survey_id', survey_id)
+        .eq('survey_id', survey_id),
+      supabase.from('survey_themes')
+        .select('id, name')
     ]);
+
+    // Build theme name lookup
+    const themeNameMap = new Map<string, string>();
+    for (const t of (themeRows || [])) {
+      themeNameMap.set(t.id, t.name);
+    }
 
     if (!survey) {
       return new Response(
