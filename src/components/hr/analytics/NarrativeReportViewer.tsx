@@ -15,7 +15,7 @@ import { format } from "date-fns";
 interface NarrativeReportViewerProps {
   report: NarrativeReport;
   surveyId: string;
-  onRegenerateWithAudience?: (audience: 'executive' | 'manager') => void;
+  onRegenerateWithAudience?: (audience: 'executive' | 'manager' | 'hr_leadership' | 'detailed') => void;
   isGenerating?: boolean;
   onExport?: () => void;
 }
