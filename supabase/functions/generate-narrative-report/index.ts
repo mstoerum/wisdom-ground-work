@@ -89,9 +89,16 @@ serve(async (req) => {
     const authHeader = req.headers.get('authorization');
     let userId = null;
     if (authHeader) {
-      const { data: { user } } = await createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!)
-        .auth.getUser(authHeader.replace('Bearer ', ''));
-      userId = user?.id;
+      try {
+        const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY');
+        if (anonKey) {
+          const authResult = await createClient(supabaseUrl, anonKey)
+            .auth.getUser(authHeader.replace('Bearer ', ''));
+          userId = authResult?.data?.user?.id || null;
+        }
+      } catch (e) {
+        console.warn('Could not extract user from auth header:', e);
+      }
     }
 
     console.log(`Generating narrative report v2 for survey: ${survey_id}, audience: ${audience}`);
@@ -103,12 +110,12 @@ serve(async (req) => {
       { data: syntheses },
       { data: surveyAnalytics },
       { data: sessions },
-      { data: opinionUnitStats },
-      { data: commitments }
+      { data: commitments },
+      { data: themeRows }
     ] = await Promise.all([
       supabase.from('surveys').select('*').eq('id', survey_id).single(),
       supabase.from('discovered_clusters')
-        .select('*, survey_themes!discovered_clusters_related_theme_id_fkey(name)')
+        .select('*')
         .eq('survey_id', survey_id)
         .order('unit_count', { ascending: false }),
       supabase.from('session_syntheses')
@@ -123,11 +130,18 @@ serve(async (req) => {
       supabase.from('conversation_sessions')
         .select('id, status, started_at, ended_at')
         .eq('survey_id', survey_id),
-      supabase.rpc('', {}).then(() => null).catch(() => null), // placeholder
       supabase.from('action_commitments')
         .select('*')
-        .eq('survey_id', survey_id)
+        .eq('survey_id', survey_id),
+      supabase.from('survey_themes')
+        .select('id, name')
     ]);
+
+    // Build theme name lookup
+    const themeNameMap = new Map<string, string>();
+    for (const t of (themeRows || [])) {
+      themeNameMap.set(t.id, t.name);
+    }
 
     if (!survey) {
       return new Response(
@@ -175,7 +189,7 @@ serve(async (req) => {
       sentiment_spread: c.sentiment_spread,
       escalation_count: c.escalation_count,
       is_emerging: c.is_emerging,
-      related_theme: c.survey_themes?.name || null,
+      related_theme: c.related_theme_id ? themeNameMap.get(c.related_theme_id) || null : null,
       safe_quotes: selectSafeQuotes(
         (c.representative_quotes || []) as Array<{ text: string; session_id?: string }>,
         totalParticipants
