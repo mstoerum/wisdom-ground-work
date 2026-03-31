@@ -1,92 +1,68 @@
 
 
-# Phase 2: Synthesize-Session Edge Function & Session Syntheses Table
+# Phase 3: Discover-Themes (Inductive Clustering)
 
 ## What This Does
 
-Replaces the current `analyze-session` edge function (which writes to `session_insights`) with a richer `synthesize-session` function that consumes **opinion units from Phase 1** instead of raw response text. This produces deeper per-session narratives including emotional arc, theme coverage analysis, and participant engagement quality — all stored in a new `session_syntheses` table.
+Replaces the current static theme assignment (each response mapped to one pre-defined `survey_theme`) with LLM-based clustering that groups opinion units into **discovered clusters** — patterns that emerge from the data rather than being pre-defined. This surfaces themes HR didn't think to ask about.
 
-The existing `session_insights` table and UI code continue working (backward-compatible writes).
+## Current Problem
+
+Right now, `extract-signals` assigns each opinion unit to the closest `survey_theme`. If employees talk about something that doesn't map to a configured theme (e.g., "onboarding confusion" when no onboarding theme exists), it gets force-fitted into the nearest theme, losing signal.
 
 ## Implementation
 
 ### 1. Database Migration
 
-Create `session_syntheses` table:
+Create `discovered_clusters` table:
 
 ```sql
-CREATE TABLE public.session_syntheses (
+CREATE TABLE public.discovered_clusters (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  session_id uuid NOT NULL UNIQUE,
   survey_id uuid NOT NULL,
-  narrative_summary text NOT NULL,        -- 2-3 sentence human-readable summary
-  emotional_arc jsonb DEFAULT '[]',       -- [{position: 0.0-1.0, sentiment: -1..1, label: "opening"}]
-  themes_explored jsonb DEFAULT '[]',     -- [{theme_id, theme_name, opinion_count, avg_sentiment}]
-  key_quotes jsonb DEFAULT '[]',          -- verbatim quotes with context
-  root_causes jsonb DEFAULT '[]',         -- [{cause, evidence_count, severity}]
-  recommended_actions jsonb DEFAULT '[]', -- [{action, priority, timeframe, evidence}]
-  engagement_quality jsonb DEFAULT '{}',  -- {depth_score, openness_score, avg_response_length}
-  escalation_summary jsonb DEFAULT '{}',  -- {flag_count, urgent_count, top_concerns}
-  sentiment_trajectory text DEFAULT 'stable', -- improving/declining/stable/mixed
-  confidence_score integer,
-  opinion_units_analyzed integer DEFAULT 0,
+  pipeline_run_id uuid REFERENCES pipeline_runs(id),
+  cluster_label text NOT NULL,           -- LLM-generated name
+  cluster_summary text,                  -- 1-2 sentence description
+  opinion_unit_ids uuid[] DEFAULT '{}',  -- which units belong
+  unit_count integer DEFAULT 0,
+  avg_sentiment numeric,
+  sentiment_spread numeric,              -- polarization indicator
+  escalation_count integer DEFAULT 0,
+  representative_quotes jsonb DEFAULT '[]',
+  related_theme_id uuid REFERENCES survey_themes(id), -- nearest configured theme, if any
+  is_emerging boolean DEFAULT false,     -- true if no matching survey_theme
   created_at timestamptz DEFAULT now()
 );
-
-ALTER TABLE public.session_syntheses ENABLE ROW LEVEL SECURITY;
-
--- HR access
-CREATE POLICY "HR access to session syntheses"
-  ON public.session_syntheses FOR ALL
-  TO authenticated
-  USING (has_role(auth.uid(), 'hr_admin') OR has_role(auth.uid(), 'hr_analyst'));
-
--- Service role insert
-CREATE POLICY "Service role manage session syntheses"
-  ON public.session_syntheses FOR ALL
-  TO public
-  WITH CHECK (true);
 ```
 
-### 2. Create `supabase/functions/synthesize-session/index.ts`
+### 2. Edge Function: `discover-themes`
 
-Key differences from current `analyze-session`:
-- **Inputs opinion units** (from Phase 1) instead of raw response text — richer, pre-classified data
-- **Computes emotional arc** by ordering opinion units chronologically and mapping sentiment trajectory
-- **Theme coverage analysis** — counts opinion units per theme, calculates per-theme sentiment
-- **Engagement quality metrics** — average response length, depth indicators, openness signals
-- **Escalation summary** — aggregates flag/urgent counts from opinion units
-- **Backward-compatible write** to `session_insights` table so existing SessionDetailPanel keeps working
+- Fetches all opinion units for the survey
+- Sends them to `gemini-2.5-flash` with a clustering prompt: "Group these opinion units into coherent clusters by shared concern/topic"
+- LLM returns cluster assignments with labels and summaries
+- Writes to `discovered_clusters` table
+- Marks clusters as `is_emerging = true` when they don't map to any existing `survey_theme`
+- Updates `pipeline_runs.clustering_completed_at`
 
-LLM call uses `gemini-2.5-flash` with a tool-calling schema for structured output. The prompt receives:
-- Session metadata (moods, duration)
-- All opinion units for the session (aspect, sentiment, intensity, escalation)
-- Response count and theme distribution
+### 3. Cascade Trigger
 
-### 3. Wire Session Completion Trigger
+`synthesize-session` already runs per-session. After all sessions for a survey are synthesized, trigger `discover-themes` once for the whole survey. This can be wired via a check in the synthesize function: "if all sessions are done, invoke discover-themes."
 
-Update `src/hooks/useConversation.ts` → `endConversation()`:
-- After marking session as `completed`, fire `synthesize-session` via `supabase.functions.invoke()` in background
-- Non-blocking — don't await the result
+### 4. UI: Theme Grid Enhancement
 
-### 4. Update SessionDetailPanel to Show Richer Data
-
-Update `src/components/hr/analytics/SessionDetailPanel.tsx`:
-- Query `session_syntheses` (falling back to `session_insights` if not yet synthesized)
-- Display narrative summary, emotional arc, engagement quality, escalation summary
-- Show theme coverage breakdown
-
-### 5. Update Pipeline Runs Status
-
-The `synthesize-session` function updates `pipeline_runs.synthesis_completed_at` when done.
+Update the existing `ThemeGrid` component to show discovered clusters alongside configured themes, with emerging clusters highlighted with a badge.
 
 ## Files
 
 | Action | File |
 |--------|------|
-| Create | `supabase/functions/synthesize-session/index.ts` |
-| Create | Migration for `session_syntheses` table |
-| Modify | `src/hooks/useConversation.ts` — add synthesis trigger on session end |
-| Modify | `src/components/hr/analytics/SessionDetailPanel.tsx` — display richer synthesis data |
-| Modify | `src/components/hr/analytics/SessionExplorer.tsx` — read from `session_syntheses` for trajectory |
+| Create | `supabase/functions/discover-themes/index.ts` |
+| Create | Migration for `discovered_clusters` table |
+| Modify | `supabase/functions/synthesize-session/index.ts` — add cascade trigger |
+| Modify | `src/components/hr/analytics/ThemeGrid.tsx` — show discovered clusters |
+| Modify | `src/components/hr/analytics/ThemeCard.tsx` — emerging cluster badge |
+
+## Effort
+
+Roughly one implementation session. The LLM clustering prompt is the core work; the rest is table creation and UI wiring.
 
