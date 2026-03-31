@@ -1,32 +1,33 @@
 
 
-# Fix: Transcript Q&A Display Order
+# Export Pilot Survey Transcripts as CSV
 
-## Problem
+## What This Does
 
-Each `responses` row stores:
-- `content` — the user's message (what they said)
-- `ai_response` — the AI's reply to that message (the follow-up question)
+Query the pilot survey's conversation sessions and responses, then export a CSV with one row per message showing the chronological conversation flow (survey welcome → user answer → AI follow-up → user answer → …).
 
-The current transcript renders `ai_response` before `content` in each row, making it appear as if the AI asked a question and the user answered it in the same row. In reality, the `ai_response` is what came **after** the user's `content`.
+## Steps
 
-This is especially visible with the mood check: the user's mood answer appears below the AI's first question, but chronologically the mood answer came first (in response to a welcome prompt not stored in this row).
+1. **Query data**: Use `psql` to join `conversation_sessions` and `responses` for survey `f92618e1-...`, ordered by session then timestamp
+2. **Include metadata**: Session ID, timestamp, speaker (Bot/User), message content, sentiment, mood scores
+3. **Prepend first_message**: Include the survey's welcome message as the opening Bot row for each session
+4. **Export**: Write to `/mnt/documents/pilot_transcripts.csv`
 
-## Fix
+## Output Columns
 
-### Modify `src/components/hr/analytics/SessionDetailPanel.tsx`
+| Column | Description |
+|--------|-------------|
+| `session_id` | Conversation session UUID |
+| `turn_number` | Sequential message number within session |
+| `speaker` | "Bot" or "User" |
+| `message` | The message text |
+| `sentiment` | Sentiment label (if user message) |
+| `sentiment_score` | Numeric sentiment score |
+| `timestamp` | Message timestamp |
+| `initial_mood` | Session opening mood (1-5) |
+| `final_mood` | Session closing mood (1-5) |
 
-Reverse the render order within each transcript row: show **User content first**, then **AI response second**.
+## Files
 
-For the first row, the AI's initial welcome/mood prompt isn't stored in the responses table — it was the survey's `first_message`. To provide full context, prepend the survey's `first_message` as the opening Bot message before the first user response.
-
-Changes:
-1. Fetch the survey's `first_message` field alongside the existing queries
-2. Render an opening Bot bubble with the `first_message` before the first transcript row
-3. In each transcript row, flip the order: render `content` (User) first, then `ai_response` (Bot) second
-4. This makes the flow read naturally: welcome → mood answer → AI question → user answer → AI question → ...
-
-| Action | File |
-|--------|------|
-| Modify | `src/components/hr/analytics/SessionDetailPanel.tsx` — flip Q&A order, add first_message opener |
+No codebase changes — this is a direct data export via `psql` to `/mnt/documents/`.
 
