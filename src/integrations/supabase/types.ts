@@ -417,6 +417,79 @@ export type Database = {
           },
         ]
       }
+      discovered_clusters: {
+        Row: {
+          avg_sentiment: number | null
+          cluster_label: string
+          cluster_summary: string | null
+          created_at: string | null
+          escalation_count: number | null
+          id: string
+          is_emerging: boolean | null
+          opinion_unit_ids: string[] | null
+          pipeline_run_id: string | null
+          related_theme_id: string | null
+          representative_quotes: Json | null
+          sentiment_spread: number | null
+          survey_id: string
+          unit_count: number | null
+        }
+        Insert: {
+          avg_sentiment?: number | null
+          cluster_label: string
+          cluster_summary?: string | null
+          created_at?: string | null
+          escalation_count?: number | null
+          id?: string
+          is_emerging?: boolean | null
+          opinion_unit_ids?: string[] | null
+          pipeline_run_id?: string | null
+          related_theme_id?: string | null
+          representative_quotes?: Json | null
+          sentiment_spread?: number | null
+          survey_id: string
+          unit_count?: number | null
+        }
+        Update: {
+          avg_sentiment?: number | null
+          cluster_label?: string
+          cluster_summary?: string | null
+          created_at?: string | null
+          escalation_count?: number | null
+          id?: string
+          is_emerging?: boolean | null
+          opinion_unit_ids?: string[] | null
+          pipeline_run_id?: string | null
+          related_theme_id?: string | null
+          representative_quotes?: Json | null
+          sentiment_spread?: number | null
+          survey_id?: string
+          unit_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discovered_clusters_pipeline_run_id_fkey"
+            columns: ["pipeline_run_id"]
+            isOneToOne: false
+            referencedRelation: "pipeline_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discovered_clusters_related_theme_id_fkey"
+            columns: ["related_theme_id"]
+            isOneToOne: false
+            referencedRelation: "survey_themes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discovered_clusters_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_invitations: {
         Row: {
           accepted_at: string | null
