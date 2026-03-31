@@ -211,7 +211,36 @@ export function HybridInsightsView({
             )}
           </Button>
         )}
+
+        {/* Full Pipeline Analysis button */}
+        {responseCount >= 3 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={runFullPipeline}
+            disabled={isRunningPipeline}
+            className="mt-2 gap-2"
+          >
+            {isRunningPipeline ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Running full analysis...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                {surveyAnalytics ? "Re-run Full Analysis" : "Run Full Analysis"}
+              </>
+            )}
+          </Button>
+        )}
       </div>
+
+      {/* Section 3: Survey-Level AI Insights */}
+      <SurveyAnalyticsDashboard 
+        analytics={surveyAnalytics as any} 
+        isLoading={isAnalyticsLoading || isRunningPipeline} 
+      />
     </div>
   );
 }
