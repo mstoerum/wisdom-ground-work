@@ -76,6 +76,20 @@ export const SessionDetailPanel = ({
     enabled: !synthesis, // Only fetch if no synthesis
   });
 
+  // Fetch survey first_message for transcript opener
+  const { data: survey } = useQuery({
+    queryKey: ["survey-first-message", surveyId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("surveys")
+        .select("first_message")
+        .eq("id", surveyId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
   // Fetch theme names
   const themeIds = [...new Set((responses || []).map(r => r.theme_id).filter(Boolean))] as string[];
   const { data: themes } = useQuery({
