@@ -1,0 +1,1 @@
+ALTER TABLE public.narrative_reports ADD COLUMN report_summary text;
