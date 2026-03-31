@@ -294,6 +294,23 @@ Group these into 3-10 clusters. For each cluster, identify whether it maps to a 
 
     console.log(`[${survey_id}] ✅ Theme discovery complete: ${clusters.length} clusters stored`);
 
+    // Cascade: trigger interpret-survey (Phase 4) — fire-and-forget
+    try {
+      const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+      const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      console.log(`[${survey_id}] Cascading to interpret-survey...`);
+      fetch(`${SUPABASE_URL}/functions/v1/interpret-survey`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+        },
+        body: JSON.stringify({ survey_id }),
+      }).catch(err => console.error(`[${survey_id}] Cascade to interpret-survey failed:`, err));
+    } catch (cascadeErr) {
+      console.error(`[${survey_id}] Cascade setup error:`, cascadeErr);
+    }
+
     return new Response(
       JSON.stringify({
         message: "Theme discovery complete",
