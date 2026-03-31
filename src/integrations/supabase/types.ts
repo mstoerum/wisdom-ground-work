@@ -593,6 +593,7 @@ export type Database = {
           generated_by: string
           id: string
           is_latest: boolean
+          report_summary: string | null
           report_version: number
           survey_id: string
         }
@@ -605,6 +606,7 @@ export type Database = {
           generated_by: string
           id?: string
           is_latest?: boolean
+          report_summary?: string | null
           report_version?: number
           survey_id: string
         }
@@ -617,6 +619,7 @@ export type Database = {
           generated_by?: string
           id?: string
           is_latest?: boolean
+          report_summary?: string | null
           report_version?: number
           survey_id?: string
         }
