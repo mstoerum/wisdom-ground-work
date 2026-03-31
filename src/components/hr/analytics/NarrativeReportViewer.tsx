@@ -92,7 +92,7 @@ export function NarrativeReportViewer({
     );
   }
 
-  const handleAudienceChange = (newAudience: 'executive' | 'manager') => {
+  const handleAudienceChange = (newAudience: 'executive' | 'manager' | 'hr_leadership' | 'detailed') => {
     setAudience(newAudience);
     if (onRegenerateWithAudience && newAudience !== report.audience_config.audience) {
       onRegenerateWithAudience(newAudience);
