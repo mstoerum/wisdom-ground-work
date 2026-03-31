@@ -1,29 +1,46 @@
 
 
-# Fix & Test: Generate Narrative Report v2
+# Fix: Analytics Crash When Selecting Pilot Survey
 
-## Bugs Found
+## Root Cause
 
-1. **Line 126**: `supabase.rpc('', {}).then(() => null).catch(() => null)` returns `null`, and destructuring `{ data: opinionUnitStats }` from `null` crashes with "Cannot read properties of null (reading 'data')"
-2. **Line 111**: `survey_themes!discovered_clusters_related_theme_id_fkey(name)` — no FK exists on `discovered_clusters.related_theme_id`, so this join will fail silently or error
+The `SurveyAnalyticsDashboard` component crashes because the `interpret-survey` edge function (Phase 4) produces data with different field names than the component expects. When accessing properties like `theme.importance`, `risk.likelihood`, or `rec.key_stakeholders` on objects that don't have those fields, the code crashes on `undefined.color` or similar property access.
+
+### Specific mismatches in `survey_analytics` data:
+
+| Field | Dashboard expects | Pipeline produces |
+|-------|------------------|-------------------|
+| `top_themes[].importance` | `'critical'\|'high'\|'medium'\|'low'` | Missing (has `intensity` instead) |
+| `top_themes[].key_finding` | string | Missing (has `summary` instead) |
+| `risk_factors[].likelihood` | `'high'\|'medium'\|'low'` | Missing (has `evidence` instead) |
+| `risk_factors[].impact_area` | string | Missing (has `mitigation` instead) |
+| `opportunities[].potential_impact` | `'high'\|'medium'\|'low'` | `impact` (different name) |
+| `opportunities[].effort_required` | `'low'\|'medium'\|'high'` | `effort` (different name) |
+| `strategic_recommendations[].priority` | `'short-term'` (hyphen) | `'short_term'` (underscore) |
+| `strategic_recommendations[].expected_outcome` | string | `expected_impact` (different name) |
+| `strategic_recommendations[].key_stakeholders` | string[] | Missing (has `rationale`) |
+| `sentiment_trends.overall_direction` | string | `trajectory` (different name) |
+| `sentiment_trends.momentum` | string | Missing |
+| `sentiment_trends.inflection_points` | string[] | `notable_shifts` (different name) |
 
 ## Fix
 
-### Modify `supabase/functions/generate-narrative-report/index.ts`
+### Modify `src/components/hr/analytics/SurveyAnalyticsDashboard.tsx`
 
-1. Remove the broken placeholder RPC call (line 126) and its destructured variable
-2. Replace the FK join on `discovered_clusters` with a separate `survey_themes` query, then manually map theme names onto clusters
-3. Adjust the Promise.all destructuring to match (6 items instead of 7)
+Make all property accesses defensive with fallbacks to handle both the old expected format and the new pipeline format:
 
-After fixing, invoke the function for the pilot survey (`f92618e1`) and verify:
-- `report_summary` is populated
-- Each insight has `is_k_anonymous` flag
-- `cluster_id` references match real `discovered_clusters` IDs
-- `evidence_ids` are populated from cluster opinion units
+1. **Top themes**: Use `theme.importance || deriveImportance(theme.intensity)` and `theme.key_finding || theme.summary`
+2. **Risk factors**: Use `risk.likelihood || 'medium'` and `risk.impact_area || risk.mitigation || ''`
+3. **Opportunities**: Use `opp.potential_impact || opp.impact || 'medium'` and `opp.effort_required || opp.effort || 'medium'`
+4. **Recommendations**: Normalize priority underscores to hyphens, use `rec.expected_outcome || rec.expected_impact`, use `rec.key_stakeholders || []`
+5. **Sentiment trends**: Use `?.overall_direction || ?.trajectory` and `?.inflection_points || ?.notable_shifts`
+6. Add null guards on all config lookups (e.g., `importanceConfig[x]?.color || ''`)
+
+This is a UI-only fix — no edge function or schema changes needed. The component should handle any shape of data gracefully.
 
 ## Files
 
 | Action | File |
 |--------|------|
-| Modify | `supabase/functions/generate-narrative-report/index.ts` — fix 2 bugs |
+| Modify | `src/components/hr/analytics/SurveyAnalyticsDashboard.tsx` — add defensive fallbacks for all field accesses |
 
