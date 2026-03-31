@@ -1,11 +1,16 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { RefreshCw, Wand2 } from "lucide-react";
+import { RefreshCw, Wand2, Sparkles } from "lucide-react";
 import { PulseSummary } from "./PulseSummary";
 import { ThemeGrid } from "./ThemeGrid";
 import { AnalyticsEmptyState, getEmptyStateType } from "./AnalyticsEmptyState";
 import { useThemeAnalytics } from "@/hooks/useThemeAnalytics";
+import { useSurveyAnalytics } from "@/hooks/useSurveyAnalytics";
+import { SurveyAnalyticsDashboard } from "./SurveyAnalyticsDashboard";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import type { ParticipationMetrics, SentimentMetrics, ThemeInsight } from "@/hooks/useAnalytics";
 
 interface HybridInsightsViewProps {
@@ -34,6 +39,7 @@ export function HybridInsightsView({
   isLoading,
   onShareLink,
 }: HybridInsightsViewProps) {
+  const [isRunningPipeline, setIsRunningPipeline] = useState(false);
   const responseCount = participation?.responseCount || participation?.completed || 0;
   const sessionCount = participation?.sessionCount || participation?.totalAssigned || 0;
   const activeSessionCount = participation?.activeSessionCount || participation?.pending || 0;
@@ -47,7 +53,28 @@ export function HybridInsightsView({
     responseCount,
     autoAnalyze: true 
   });
-  
+
+  const { data: surveyAnalytics, isLoading: isAnalyticsLoading, refetch: refetchSurveyAnalytics } = useSurveyAnalytics(surveyId || undefined);
+
+  const runFullPipeline = async () => {
+    if (!surveyId) return;
+    setIsRunningPipeline(true);
+    try {
+      const { error } = await supabase.functions.invoke("interpret-survey", {
+        body: { survey_id: surveyId },
+      });
+      if (error) throw error;
+      toast.success("Full pipeline analysis complete");
+      refetchSurveyAnalytics();
+    } catch (err) {
+      console.error("Pipeline error:", err);
+      toast.error("Failed to run pipeline analysis");
+    } finally {
+      setIsRunningPipeline(false);
+    }
+  };
+
+
   const emptyStateType = getEmptyStateType(surveyId, responseCount, sessionCount, activeSessionCount);
   
   if (emptyStateType === 'no-survey' || emptyStateType === 'no-responses') {
@@ -184,7 +211,36 @@ export function HybridInsightsView({
             )}
           </Button>
         )}
+
+        {/* Full Pipeline Analysis button */}
+        {responseCount >= 3 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={runFullPipeline}
+            disabled={isRunningPipeline}
+            className="mt-2 gap-2"
+          >
+            {isRunningPipeline ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                Running full analysis...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                {surveyAnalytics ? "Re-run Full Analysis" : "Run Full Analysis"}
+              </>
+            )}
+          </Button>
+        )}
       </div>
+
+      {/* Section 3: Survey-Level AI Insights */}
+      <SurveyAnalyticsDashboard 
+        analytics={surveyAnalytics as any} 
+        isLoading={isAnalyticsLoading || isRunningPipeline} 
+      />
     </div>
   );
 }

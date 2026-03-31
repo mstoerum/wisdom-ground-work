@@ -48,5 +48,11 @@ verify_jwt = false
 [functions.get-public-analytics]
 verify_jwt = false
 
+[functions.interpret-survey]
+verify_jwt = false
+
+[functions.discover-themes]
+verify_jwt = false
+
 [functions.extract-signals]
 verify_jwt = false
