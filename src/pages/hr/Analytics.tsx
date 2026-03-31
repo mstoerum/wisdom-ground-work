@@ -68,7 +68,7 @@ const Analytics = () => {
   const surveyType = selectedSurvey?.survey_type || 'employee_satisfaction';
   const terminology = getTerminology(surveyType as Database['public']['Enums']['survey_type']);
 
-  const handleGenerateReport = (audience?: 'executive' | 'manager') => {
+  const handleGenerateReport = (audience?: 'executive' | 'manager' | 'hr_leadership' | 'detailed') => {
     if (!filters.surveyId) {
       toast.error("Please select a survey first");
       return;
