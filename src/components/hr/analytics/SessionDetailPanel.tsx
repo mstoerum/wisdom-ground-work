@@ -365,8 +365,8 @@ export const SessionDetailPanel = ({
                           <p className="text-xs text-muted-foreground mt-0.5">
                             <Clock className="h-3 w-3 inline mr-1" />{a.timeframe}
                           </p>
-                          {a.evidence && (
-                            <p className="text-xs text-muted-foreground/70 mt-0.5 italic">{a.evidence}</p>
+                          {'evidence' in a && (a as any).evidence && (
+                            <p className="text-xs text-muted-foreground/70 mt-0.5 italic">{(a as any).evidence}</p>
                           )}
                         </div>
                         <Badge variant="secondary" className={priorityColors[a.priority] || ""}>
