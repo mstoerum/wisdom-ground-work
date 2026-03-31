@@ -83,7 +83,7 @@ export const useNarrativeReports = (surveyId: string | null) => {
       audience = 'executive' 
     }: { 
       surveyId: string; 
-      audience?: 'executive' | 'manager' 
+      audience?: 'executive' | 'manager' | 'hr_leadership' | 'detailed'
     }) => {
       const { data: functionData, error: functionError } = await supabase.functions.invoke(
         'generate-narrative-report',
