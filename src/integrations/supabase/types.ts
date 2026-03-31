@@ -977,6 +977,75 @@ export type Database = {
           },
         ]
       }
+      session_syntheses: {
+        Row: {
+          confidence_score: number | null
+          created_at: string | null
+          emotional_arc: Json | null
+          engagement_quality: Json | null
+          escalation_summary: Json | null
+          id: string
+          key_quotes: Json | null
+          narrative_summary: string
+          opinion_units_analyzed: number | null
+          recommended_actions: Json | null
+          root_causes: Json | null
+          sentiment_trajectory: string | null
+          session_id: string
+          survey_id: string
+          themes_explored: Json | null
+        }
+        Insert: {
+          confidence_score?: number | null
+          created_at?: string | null
+          emotional_arc?: Json | null
+          engagement_quality?: Json | null
+          escalation_summary?: Json | null
+          id?: string
+          key_quotes?: Json | null
+          narrative_summary: string
+          opinion_units_analyzed?: number | null
+          recommended_actions?: Json | null
+          root_causes?: Json | null
+          sentiment_trajectory?: string | null
+          session_id: string
+          survey_id: string
+          themes_explored?: Json | null
+        }
+        Update: {
+          confidence_score?: number | null
+          created_at?: string | null
+          emotional_arc?: Json | null
+          engagement_quality?: Json | null
+          escalation_summary?: Json | null
+          id?: string
+          key_quotes?: Json | null
+          narrative_summary?: string
+          opinion_units_analyzed?: number | null
+          recommended_actions?: Json | null
+          root_causes?: Json | null
+          sentiment_trajectory?: string | null
+          session_id?: string
+          survey_id?: string
+          themes_explored?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "session_syntheses_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "conversation_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "session_syntheses_survey_id_fkey"
+            columns: ["survey_id"]
+            isOneToOne: false
+            referencedRelation: "surveys"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       spradley_analytics: {
         Row: {
           actionable_recommendations: Json | null
