@@ -89,9 +89,16 @@ serve(async (req) => {
     const authHeader = req.headers.get('authorization');
     let userId = null;
     if (authHeader) {
-      const { data: { user } } = await createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!)
-        .auth.getUser(authHeader.replace('Bearer ', ''));
-      userId = user?.id;
+      try {
+        const anonKey = Deno.env.get('SUPABASE_ANON_KEY') || Deno.env.get('SUPABASE_PUBLISHABLE_KEY');
+        if (anonKey) {
+          const authResult = await createClient(supabaseUrl, anonKey)
+            .auth.getUser(authHeader.replace('Bearer ', ''));
+          userId = authResult?.data?.user?.id || null;
+        }
+      } catch (e) {
+        console.warn('Could not extract user from auth header:', e);
+      }
     }
 
     console.log(`Generating narrative report v2 for survey: ${survey_id}, audience: ${audience}`);
