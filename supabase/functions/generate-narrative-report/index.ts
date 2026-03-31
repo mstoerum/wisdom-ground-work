@@ -182,7 +182,7 @@ serve(async (req) => {
       sentiment_spread: c.sentiment_spread,
       escalation_count: c.escalation_count,
       is_emerging: c.is_emerging,
-      related_theme: c.survey_themes?.name || null,
+      related_theme: c.related_theme_id ? themeNameMap.get(c.related_theme_id) || null : null,
       safe_quotes: selectSafeQuotes(
         (c.representative_quotes || []) as Array<{ text: string; session_id?: string }>,
         totalParticipants
