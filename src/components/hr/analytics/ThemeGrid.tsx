@@ -1,19 +1,50 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { AnimatePresence, LayoutGroup } from "framer-motion";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Zap } from "lucide-react";
 import { ThemeCard } from "./ThemeCard";
 import { ThemeDetailView } from "./ThemeDetailView";
 import type { ThemeInsight } from "@/hooks/useAnalytics";
 import type { ThemeAnalyticsData } from "@/hooks/useThemeAnalytics";
+import { supabase } from "@/integrations/supabase/client";
+
+interface DiscoveredCluster {
+  id: string;
+  cluster_label: string;
+  cluster_summary: string | null;
+  unit_count: number;
+  avg_sentiment: number | null;
+  sentiment_spread: number | null;
+  escalation_count: number;
+  representative_quotes: string[];
+  related_theme_id: string | null;
+  is_emerging: boolean;
+}
 
 interface ThemeGridProps {
   themes: ThemeInsight[];
   enrichedThemes?: ThemeAnalyticsData[];
   isLoading?: boolean;
+  surveyId?: string;
 }
 
-export function ThemeGrid({ themes, enrichedThemes, isLoading }: ThemeGridProps) {
+export function ThemeGrid({ themes, enrichedThemes, isLoading, surveyId }: ThemeGridProps) {
   const [selectedThemeId, setSelectedThemeId] = useState<string | null>(null);
+  const [emergingClusters, setEmergingClusters] = useState<DiscoveredCluster[]>([]);
+
+  // Fetch emerging clusters (those not mapped to existing themes)
+  useEffect(() => {
+    if (!surveyId) return;
+    const fetchClusters = async () => {
+      const { data } = await supabase
+        .from("discovered_clusters")
+        .select("id, cluster_label, cluster_summary, unit_count, avg_sentiment, sentiment_spread, escalation_count, representative_quotes, related_theme_id, is_emerging")
+        .eq("survey_id", surveyId)
+        .eq("is_emerging", true)
+        .order("unit_count", { ascending: false });
+      setEmergingClusters((data as DiscoveredCluster[]) || []);
+    };
+    fetchClusters();
+  }, [surveyId]);
 
   const mergedThemes = themes.map(theme => {
     const enriched = enrichedThemes?.find(e => e.themeId === theme.id);
