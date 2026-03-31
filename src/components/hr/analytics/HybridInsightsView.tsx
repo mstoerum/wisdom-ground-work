@@ -154,7 +154,8 @@ export function HybridInsightsView({
         <ThemeGrid 
           themes={themes} 
           enrichedThemes={enrichedThemes}
-          isLoading={isLoading || isAnalyzing} 
+          isLoading={isLoading || isAnalyzing}
+          surveyId={surveyId || undefined}
         />
         
         {themes.length > 0 && responseCount >= 3 && (

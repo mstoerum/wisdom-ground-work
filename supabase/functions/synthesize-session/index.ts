@@ -379,6 +379,34 @@ Provide a comprehensive synthesis.`
 
     console.log(`[${session_id}] ✅ Session synthesis stored successfully`);
 
+    // 12. Cascade: check if all sessions for this survey are synthesized
+    const { count: activeSessions } = await supabase
+      .from("conversation_sessions")
+      .select("id", { count: "exact", head: true })
+      .eq("survey_id", session.survey_id)
+      .eq("status", "completed");
+
+    const { count: synthesizedSessions } = await supabase
+      .from("session_syntheses")
+      .select("id", { count: "exact", head: true })
+      .eq("survey_id", session.survey_id);
+
+    if (activeSessions && synthesizedSessions && synthesizedSessions >= activeSessions) {
+      console.log(`[${session_id}] All ${activeSessions} sessions synthesized — triggering discover-themes`);
+      try {
+        await fetch(`${SUPABASE_URL}/functions/v1/discover-themes`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ survey_id: session.survey_id }),
+        });
+      } catch (cascadeErr) {
+        console.warn(`[${session_id}] discover-themes cascade failed (non-critical):`, cascadeErr);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         message: "Session synthesis complete",
