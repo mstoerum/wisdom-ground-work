@@ -65,12 +65,8 @@ export const useNarrativeReports = (surveyId: string | null) => {
       return data?.map(report => ({
         ...report,
         chapters: report.chapters as unknown as NarrativeChapter[],
-        audience_config: report.audience_config as unknown as { audience: 'executive' | 'manager' },
-        data_snapshot: report.data_snapshot as unknown as {
-          total_sessions: number;
-          total_responses: number;
-          generated_from_analytics: boolean;
-        },
+        audience_config: report.audience_config as unknown as NarrativeReport['audience_config'],
+        data_snapshot: report.data_snapshot as unknown as NarrativeReport['data_snapshot'],
         confidence_score: report.confidence_score ?? 3,
       })) as NarrativeReport[];
     },
