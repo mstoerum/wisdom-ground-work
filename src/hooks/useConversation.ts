@@ -337,6 +337,8 @@ export const useConversation = (publicLinkId?: string) => {
     }
 
     try {
+      const sessionIdToEnd = conversationId;
+
       await supabase
         .from("conversation_sessions")
         .update({
@@ -344,7 +346,15 @@ export const useConversation = (publicLinkId?: string) => {
           final_mood: finalMood ?? null,
           ended_at: new Date().toISOString(),
         })
-        .eq("id", conversationId);
+        .eq("id", sessionIdToEnd);
+
+      // Trigger session synthesis in background (non-blocking)
+      supabase.functions.invoke("synthesize-session", {
+        body: { session_id: sessionIdToEnd },
+      }).then(({ error }) => {
+        if (error) console.warn("Background synthesis trigger failed:", error);
+        else console.log("Session synthesis triggered for:", sessionIdToEnd);
+      }).catch(err => console.warn("Synthesis invoke error:", err));
 
       // Clear localStorage for public links
       if (publicLinkId) {

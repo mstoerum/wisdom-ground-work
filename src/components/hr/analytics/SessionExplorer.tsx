@@ -63,18 +63,25 @@ export const SessionExplorer = ({ surveyId }: SessionExplorerProps) => {
     enabled: sessionIds.length > 0,
   });
 
-  // Fetch insights for all sessions
+  // Fetch syntheses (Phase 2), fallback to session_insights
   const { data: insights } = useQuery({
-    queryKey: ["session-explorer-insights", sessionIds],
+    queryKey: ["session-explorer-syntheses", sessionIds],
     queryFn: async () => {
       if (sessionIds.length === 0) return {};
-      const { data, error } = await supabase
+      // Try session_syntheses first
+      const { data: syntheses } = await supabase
+        .from("session_syntheses")
+        .select("session_id, sentiment_trajectory, confidence_score, opinion_units_analyzed")
+        .in("session_id", sessionIds);
+      // Also fetch legacy insights for sessions without syntheses
+      const { data: legacyInsights } = await supabase
         .from("session_insights")
         .select("session_id, sentiment_trajectory, confidence_score")
         .in("session_id", sessionIds);
-      if (error) throw error;
-      const map: Record<string, { sentiment_trajectory: string | null; confidence_score: number | null }> = {};
-      (data || []).forEach(i => { map[i.session_id] = i; });
+      const map: Record<string, { sentiment_trajectory: string | null; confidence_score: number | null; opinion_units_analyzed?: number }> = {};
+      // Legacy first, then syntheses override
+      (legacyInsights || []).forEach(i => { map[i.session_id] = i; });
+      (syntheses || []).forEach(s => { map[s.session_id] = s; });
       return map;
     },
     enabled: sessionIds.length > 0,
