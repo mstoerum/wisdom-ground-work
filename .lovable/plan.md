@@ -1,40 +1,51 @@
 
 
-# New Theme: "Changes & Recommendations" for Employee Interviews
+# Analysis: Why "Monta test" Ended Too Early
 
-## What This Does
+## What Happened
 
-Adds a new optional theme called **"Changes & Recommendations"** to the employee satisfaction theme catalog. When selected by HR, the AI will explore what employees would like to change in their workplace, gently steering them toward constructive, actionable suggestions. The theme is stored and collected like any other — no new UI needed yet.
+The survey had **3 themes**: Changes & Recommendations, Recognition & Appreciation, and Optimism. The session lasted only **8 exchanges** before ending.
 
-## Design
+Looking at the transcript:
+- **Turns 1-4**: All tagged to "Changes & Recommendations" — but the conversation was about meetings/workload/stress. The theme *name* "Changes & Recommendations" was never actually explored (no questions about what the employee would *change* or *recommend*).
+- **Turn 5**: Tagged to "Recognition & Appreciation" (1 exchange)
+- **Turn 6**: Tagged to "Optimism" (1 exchange)
+- **Turn 7**: Tagged to "Recognition & Appreciation" — AI then offered "Is there anything else on your mind?" with an expansion word cloud
+- **Turn 8**: User selected "I'm all good" → session completed
 
-The AI's probing style will be **open exploration**: let employees share freely what they'd change, with gentle steering toward constructive framing when responses are purely negative. The theme's sentiment keywords and suggested questions will guide the AI to eventually draw out specific, feasible ideas.
+**The AI raced through themes 2 and 3 with just 1 exchange each**, then jumped to closing because the context told it "All themes covered." The "Changes & Recommendations" theme was never truly explored for its intended purpose.
 
-The theme will be positioned like any other in the catalog. To ensure it comes **near the end of the interview**, the system prompt's conversation flow already covers themes in order — HR can place it last, and the closing flow (expansion word cloud + gratitude) happens only after all themes including this one are covered.
+## Root Causes
 
-## Steps
+### 1. Theme detection misattribution
+The first 3-4 responses about meetings/workload were tagged to "Changes & Recommendations" by the lightweight sentiment matcher, even though the employee was venting about workload — not providing constructive change suggestions. This made the system think the theme was deeply explored (3 exchanges) when it wasn't.
 
-### 1. Add theme to database via migration
+### 2. Minimum depth too low
+The `shouldCompleteBasedOnThemes` function requires only **avg ≥ 1 exchange per theme** before allowing completion. With 3 themes at counts of [3, 2, 1], the average was ~2, which passed easily.
 
-Insert a new row into `survey_themes` for `employee_satisfaction`:
+### 3. No minimum per-theme depth enforcement
+There's no check that *each individual theme* has at least 2 exchanges. Theme "Optimism" had just 1, and "Changes & Recommendations" had 0 true exchanges despite being tagged.
 
-| Field | Value |
-|-------|-------|
-| `name` | Changes & Recommendations |
-| `description` | Explore what the employee would like to change in their workplace and collect constructive, actionable suggestions for improvement. |
-| `survey_type` | employee_satisfaction |
-| `suggested_questions` | ["If you could change one thing about how things work here, what would it be?", "What's a small change that would make a big difference for you?", "What recommendation would you give to leadership if they were listening right now?"] |
-| `sentiment_keywords` | `{"positive": ["improve", "suggest", "idea", "opportunity", "better"], "negative": ["stuck", "blocked", "nothing changes", "ignored", "pointless"]}` |
-| `is_active` | true |
+### 4. Context prompt allows closing too eagerly
+Once all themes are "touched" (even with 1 exchange), the context injects: `"All themes have been covered. You may now begin closing..."` — this signals the AI to jump to the word cloud immediately.
 
-### 2. No code changes needed
+## Fix Plan
 
-- The theme selector already pulls from `survey_themes` filtered by `survey_type` — it will appear automatically.
-- The AI prompt system (`context-prompts.ts`) already injects theme descriptions, suggested questions, and sentiment keywords into the system prompt dynamically via `buildThemesText()`.
-- The AI's open exploration style is already supported by the existing probing principles ("follow their lead, non-directive").
-- The closing flow (expansion word cloud → gratitude) already triggers only after all selected themes are covered.
+### Step 1: Raise minimum per-theme depth in `shouldCompleteBasedOnThemes`
+**File**: `supabase/functions/chat/index.ts`
 
-## What HR Sees
+- Require **every theme** to have at least **2 exchanges** (not just average ≥ 1)
+- Raise hard minimum from `themes.length + 4` to `themes.length * 3 + 2` (for 3 themes: 11 minimum exchanges)
+- Raise hard cap from `themes.length * 4` to `themes.length * 6` (for 3 themes: 18 max)
 
-A new selectable theme "Changes & Recommendations" in the theme picker when creating an employee satisfaction survey. When selected, the AI will naturally explore it during the interview, collecting constructive suggestions that appear in analytics alongside other response data.
+### Step 2: Gate the "all covered" context signal on depth
+**File**: `supabase/functions/chat/context-prompts.ts`
+
+Change the adaptive instruction from triggering when `uncoveredThemes.length === 0` to also checking that each theme has at least 2 exchanges. If themes are touched but shallow, inject: `"Some themes have only been briefly touched. Explore [theme names] more deeply before closing."`
+
+### Step 3: Strengthen the "must cover deeply" instruction
+In the context builder, when a theme has only 1 exchange, flag it explicitly: `"[Theme X] has only 1 exchange — explore it further before moving on."`
+
+## Expected Outcome
+With 3 themes, the minimum exchanges would be 11 (up from 7), each theme would need at least 2 exchanges, and the AI would receive clear instructions not to close until depth is sufficient. This ensures the "Changes & Recommendations" theme gets genuine exploration.
 
