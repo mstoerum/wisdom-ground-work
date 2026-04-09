@@ -511,8 +511,16 @@ ${lastSentiment === "negative" ?
     : `- The employee is sharing challenges. Ask specific follow-up questions to understand what happened and what would help.`) : ""}
 ${lastSentiment === "positive" ? 
   `- The ${participantTerm} is positive. Also explore if there are any areas for improvement to ensure balanced feedback.` : ""}
-${uncoveredThemes.length === 0 ? 
-  `- All themes have been covered. You may now begin closing the conversation using the closing flow described in your instructions.` : ""}
+${(() => {
+  // Check per-theme depth: each theme needs ≥2 exchanges before closing is allowed
+  const shallowThemes = themes?.filter((t: any) => (themeExchangeCounts.get(t.id) || 0) < 2) || [];
+  if (uncoveredThemes.length === 0 && shallowThemes.length === 0) {
+    return `- All themes have been covered with sufficient depth. You may now begin closing the conversation using the closing flow described in your instructions.`;
+  } else if (uncoveredThemes.length === 0 && shallowThemes.length > 0) {
+    return `- All themes have been touched, but some need more depth. Explore these more deeply before closing: ${shallowThemes.map((t: any) => `"${t.name}" (${themeExchangeCounts.get(t.id) || 0} exchange${(themeExchangeCounts.get(t.id) || 0) === 1 ? '' : 's'})`).join(", ")}. Each theme needs at least 2 meaningful exchanges.`;
+  }
+  return "";
+})()}
 ${exchangeCount >= 8 && uncoveredThemes.length > 0 ? 
   `- You have discussed ${discussedThemeIds.size} of ${totalThemes} themes after ${exchangeCount} exchanges. ${uncoveredThemes.length} themes remain: ${uncoveredThemes.map((t: any) => t.name).join(", ")}. Prioritize transitioning to uncovered themes — use shorter follow-ups on the current theme if needed.` : ""}
 ${uncoveredThemes.length > 0 && exchangeCount < 8 ? 
