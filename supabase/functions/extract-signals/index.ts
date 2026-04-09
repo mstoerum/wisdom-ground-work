@@ -73,7 +73,7 @@ For each opinion unit, extract:
 
 Also classify the overall response:
 - Overall sentiment label and granular score (0-100)
-- Best matching theme ID from the available themes
+- Best matching theme ID from the available themes, OR null if the response doesn't substantively discuss any theme. Set theme_id to null when the response is: a general mood check-in, an icebreaker/rapport-building reply, a vague emotional statement without specific workplace content, or simply doesn't clearly relate to any of the listed themes. Only assign a theme when the response contains concrete content about that theme's topic.
 - Urgency score (1-5): 1=routine, 2=minor concern, 3=notable, 4=serious, 5=critical`
           },
           {
@@ -122,7 +122,7 @@ ${themeContext ? `Available Themes:\n${themeContext}` : "No predefined themes av
                   },
                   theme_id: {
                     type: "string",
-                    description: "Best matching theme ID from available themes, or null if none match"
+                    description: "Best matching theme ID from available themes. Set to null if the response is a general mood check-in, icebreaker, or doesn't substantively discuss any specific theme."
                   },
                   urgency_score: {
                     type: "integer",
