@@ -521,9 +521,11 @@ ${(() => {
   }
   return "";
 })()}
+${exchangeCount <= 2 && discussedThemeIds.size === 0 ?
+  `- You are still in the warm-up phase. The respondent just shared their mood. Continue building rapport with a natural follow-up before transitioning to the first theme.` : ""}
 ${exchangeCount >= 8 && uncoveredThemes.length > 0 ? 
   `- You have discussed ${discussedThemeIds.size} of ${totalThemes} themes after ${exchangeCount} exchanges. ${uncoveredThemes.length} themes remain: ${uncoveredThemes.map((t: any) => t.name).join(", ")}. Prioritize transitioning to uncovered themes — use shorter follow-ups on the current theme if needed.` : ""}
-${uncoveredThemes.length > 0 && exchangeCount < 8 ? 
+${uncoveredThemes.length > 0 && exchangeCount < 8 && exchangeCount > 2 ? 
   `- These themes have NOT been discussed yet: ${uncoveredThemes.map((t: any) => t.name).join(", ")}. You MUST cover all themes before closing.` : ""}
 `;
 };
