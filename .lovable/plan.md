@@ -1,16 +1,19 @@
 
 
-# Export Employee Satisfaction System Prompt
+# Update Social Preview Image
 
 ## What This Does
-Export the complete employee satisfaction interviewer system prompt as a text document, ready to paste into Langfuse. This includes the full prompt template with all building blocks (response format, core approach, empathy rules, probing principles, reflecting, theme transitions, input types, skip handling, closing) plus the dynamic conversation context template.
+Replace the current OpenGraph/Twitter social preview image with the uploaded Spradley logo PNG.
 
 ## Steps
 
-1. Assemble the full prompt by interpolating all constant blocks into `getEmployeeSatisfactionPrompt()` — replacing `${RESPONSE_FORMAT}`, `${CORE_APPROACH}`, etc. with their actual text
-2. Append the `buildConversationContextForType()` template as a separate section showing the dynamic context structure (with placeholder variables)
-3. Write to `/mnt/documents/employee_satisfaction_prompt.txt`
+1. Copy `user-uploads://social_previe.png` to `public/social-preview.png`
+2. Update `index.html` meta tags to point to the new image using the published URL (`https://spradley.lovable.app/social-preview.png`)
 
-## Output
-A single text file containing the complete prompt as Langfuse would receive it, with `${themesText}` and `${conversationContext}` documented as variable injection points.
+## Files
+
+| Action | File |
+|--------|------|
+| Copy | `social_previe.png` → `public/social-preview.png` |
+| Modify | `index.html` — update `og:image` and `twitter:image` meta tags |
 
