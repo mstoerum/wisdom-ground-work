@@ -124,15 +124,15 @@ const shouldCompleteBasedOnThemes = (
     return turnCount >= 8;
   }
 
-  // Hard cap: force completion after themes * 4 exchanges (safety net)
-  const hardMax = Math.max(16, themes.length * 4);
+  // Hard cap: force completion after themes * 6 exchanges (safety net)
+  const hardMax = Math.max(18, themes.length * 6);
   if (turnCount >= hardMax) {
     console.log(`[shouldCompleteBasedOnThemes] turnCount=${turnCount} >= hardMax=${hardMax} — FORCE COMPLETE`);
     return true;
   }
 
-  // Hard minimum: at least themes.length + 4 or MIN_EXCHANGES, whichever is larger
-  const hardMinimum = Math.max(MIN_EXCHANGES, themes.length + 4);
+  // Hard minimum: at least themes.length * 3 + 2 or MIN_EXCHANGES, whichever is larger
+  const hardMinimum = Math.max(MIN_EXCHANGES, themes.length * 3 + 2);
   if (turnCount < hardMinimum) {
     return false;
   }
@@ -155,7 +155,7 @@ const shouldCompleteBasedOnThemes = (
     return false;
   }
 
-  // Depth check: average at least 1 exchange per discussed theme
+  // Depth check: EVERY theme must have at least 2 exchanges
   const themeExchangeCounts = new Map<string, number>();
   previousResponses.forEach(r => {
     if (r.theme_id) {
@@ -163,16 +163,13 @@ const shouldCompleteBasedOnThemes = (
     }
   });
 
-  const avgExchangesPerTheme = discussedCount > 0
-    ? Array.from(themeExchangeCounts.values()).reduce((a, b) => a + b, 0) / discussedCount
-    : 0;
-
-  if (avgExchangesPerTheme < 1) {
-    console.log(`[shouldCompleteBasedOnThemes] turnCount=${turnCount}, allTouched=true, avgDepth=${avgExchangesPerTheme.toFixed(1)} — insufficient depth, continuing`);
+  const shallowThemes = themes.filter(t => (themeExchangeCounts.get(t.id) || 0) < 2);
+  if (shallowThemes.length > 0) {
+    console.log(`[shouldCompleteBasedOnThemes] turnCount=${turnCount}, shallow themes: ${shallowThemes.map(t => t.name).join(", ")} — insufficient per-theme depth, continuing`);
     return false;
   }
 
-  console.log(`[shouldCompleteBasedOnThemes] turnCount=${turnCount}, discussed=${discussedCount}/${totalThemes}, avgDepth=${avgExchangesPerTheme.toFixed(1)} — COMPLETE`);
+  console.log(`[shouldCompleteBasedOnThemes] turnCount=${turnCount}, discussed=${discussedCount}/${totalThemes}, all themes ≥2 exchanges — COMPLETE`);
   return true;
 };
 
